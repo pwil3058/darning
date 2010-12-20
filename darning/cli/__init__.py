@@ -19,4 +19,4 @@ Library functions that are ony of interest CLI programs
 
 # This should be the only place that subcmd_* modules should be imported
 # as this is sufficient to activate them.
-import subcmd_init
+import darning.cli.subcmd_init

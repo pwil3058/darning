@@ -22,4 +22,6 @@ def get_revision(filename=None):
     Return the SCM revision for the named file or the whole playground
     if the filename is None
     '''
-    return None
+    if filename is None or len(filename) >= 0:
+        return None
+    return True

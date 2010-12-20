@@ -22,10 +22,12 @@ import cPickle
 import os
 import stat
 import copy
+import errno
 
 from darning import scm_ifce
 
 class Failure:
+    '''Report failure'''
     def __init__(self, msg):
         self.msg = msg
     def __bool__(self):
@@ -38,6 +40,7 @@ class Failure:
         return 'Failure(%s)' % self.msg
 
 class _FileData:
+    '''Change data for a single file'''
     def __init__(self, name):
         self.name = name
         self.diff = ''
@@ -49,7 +52,7 @@ class _FileData:
         self.timestamp = 0
         self.scm_revision = None
         self.deleted = False
-    def set_diff_data(diff):
+    def set_diff_data(self, diff):
         '''Set diff data for this file'''
         self.diff = diff
         try:
@@ -64,7 +67,7 @@ class _FileData:
             self.timestamp = os.path.getmtime(self.name)
             self.deleted = True
         self.scm_revision = scm_ifce.get_revision(self.name)
-    def needs_refresh():
+    def needs_refresh(self):
         '''Does this file need a refresh? (Given that it is not overshadowed.)'''
         if os.path.exists(self.name):
             return self.timestamp < os.path.getmtime(self.name) or self.deleted
@@ -72,6 +75,7 @@ class _FileData:
             return not self.deleted
 
 class _PatchData:
+    '''Store data for changes to a number of files as a single patch'''
     def __init__(self, name, description):
         self.name = name
         self.description = description
@@ -80,17 +84,20 @@ class _PatchData:
         self.neg_guards = set()
         self.scm_revision = None
     def get_file_names_set(self):
+        '''Return the set of names for the files in this patch'''
         return set([entry for entry in self.files])
-    def is_applied():
+    def is_applied(self):
+        '''Is this patch applied?'''
         return os.path.isdir(os.path.join(_BACKUPS_DIR, self.name))
 
 class _DataBase:
-    def __init__(self, description, host_scm):
+    '''Storage for an ordered sequence/series of patches'''
+    def __init__(self, description, host_scm=None):
         self.description = description
         self.selected_guards = set()
         self.series = list()
         self.kept_patches = dict()
-        self.host_scm = None
+        self.host_scm = host_scm
 
 _DB_DIR = '.darning.dbd'
 _BACKUPS_DIR = os.path.join(_DB_DIR, 'backups')
@@ -115,12 +122,15 @@ def find_base_dir(dirpath=None):
     return None, None
 
 def exists():
+    '''Does the current directory contain a patch database?'''
     return os.path.isfile(_DB_FILE)
 
 def is_readable():
+    '''Is the database open for reading?'''
     return exists() and _DB is not None
 
 def is_writable():
+    '''Is the databas modifiable?'''
     if not is_readable():
         return False
     try:
@@ -130,7 +140,9 @@ def is_writable():
     return lock_pid and lock_pid == str(os.getpid())
 
 def create_db(description, dirpath=None):
+    '''Create a patch database in the current directory?'''
     def rollback():
+        '''Undo steps that were completed before failure occured'''
         if os.path.exists(db_file):
             os.remove(db_file)
         for dirnm in [bu_dir, db_dir]:
@@ -219,6 +231,7 @@ def get_patch_series_names():
 def get_applied_patch_set():
     '''Get the set of applied patches' names'''
     def isdir(item):
+        '''Is item a directory?'''
         return os.path.isdir(os.path.join(_BACKUPS_DIR, item))
     return set([item for item in os.listdir(_BACKUPS_DIR) if isdir(item)])
 
@@ -263,12 +276,15 @@ def _get_top_patch_index():
     return None
 
 def patch_is_in_series(name):
+    '''Is there a patch with the given name in the series?'''
     return _get_patch_index(name) is not None
 
 def is_applied(name):
+    '''Is the named patch currently applied?'''
     return os.path.isdir(os.path.join(_BACKUPS_DIR, name))
 
 def is_top_applied_patch(name):
+    '''Is the named patch the top applied patch?'''
     top_index = _get_top_patch_index()
     if top_index is None:
         return False

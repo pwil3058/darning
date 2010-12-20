@@ -13,6 +13,8 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+'''Create a darning patch management system (persistent) database'''
+
 from darning import patch_db
 from darning.cli import cli_args
 
@@ -31,6 +33,7 @@ PARSER.add_argument(
 )
 
 def run_init(args):
+    '''Execute the "init" sub command using the supplied args'''
     result = patch_db.create_db(description=args.description)
     if not result:
         return 'Error: %s' % result
