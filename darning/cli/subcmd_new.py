@@ -29,10 +29,10 @@ PARSER = cli_args.SUB_CMD_PARSER.add_parser(
 )
 
 PARSER.add_argument(
-    '--descr',
+    cli_args.OPT_DESCR.name,
     help='a description of the patch\'s purpose.',
-    dest='description',
-    metavar='text',
+    dest=cli_args.OPT_DESCR.dest,
+    metavar=cli_args.OPT_DESCR.metavar,
 )
 
 PARSER.add_argument(

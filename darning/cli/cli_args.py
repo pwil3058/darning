@@ -19,6 +19,7 @@ mechanism for sub commands to add their components.
 '''
 
 import argparse
+import collections
 
 import darning.version
 
@@ -31,3 +32,15 @@ PARSER.add_argument(
 )
 
 SUB_CMD_PARSER = PARSER.add_subparsers(title='commands')
+
+# There doesn't seem to be a way to easily change the help messages
+# in argparse arguments incorporated using the "parents" mechanism so
+# we'll adopt a slghtly different approach
+
+_COMOPT = collections.namedtuple('_COMOPT', ['name', 'action', 'nargs',
+    'const', 'default', 'type', 'choices', 'required', 'help',
+    'metavar', 'dest'])
+
+_DEFAULT_COMOPT = _COMOPT(None, None, None, None, None, None, None, None, None, None, None)
+
+OPT_DESCR = _DEFAULT_COMOPT._replace(name='--descr', dest='description', metavar='text')
