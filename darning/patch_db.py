@@ -353,3 +353,45 @@ def restore_patch(name, newname=None):
         del _DB.kept_patches[name]
         is_ok = dump_db()
     return is_ok
+
+def top_patch_needs_refresh():
+    '''Does the top applied patch need a refresh?'''
+    assert is_readable()
+    top = _get_top_patch_index()
+    if top is not None:
+        for file_data in _DB.series[top].files.values():
+            if file_data.needs_refresh():
+                return True
+    return False
+
+def _get_next_patch_index():
+    '''Get the next patch to be applied'''
+    assert is_readable()
+    top = _get_top_patch_index()
+    index = 0 if top is None else top + 1
+    while index < len(_DB.series):
+        patch = _DB.series[index]
+        if (patch.pos_guards & _DB.selected_guards) != patch.pos_guards:
+            continue
+        if len(patch.neg_guards & _DB.selected_guards) != 0:
+            continue
+        return index
+    return None
+
+def apply_patch():
+    '''Apply the next patch in the series'''
+    assert is_writable()
+    next_index = _get_next_patch_index()
+    if next_index is None:
+        return 'There are no pushable patches available'
+    next_patch = _DB.series[next_index]
+    os.mkdir(os.path.join(_BACKUPS_DIR, next_patch.name))
+    # This is enough for "new" but needs expansion for normal use
+    if len(next_patch.files) == 0:
+        return True
+
+def get_top_patch_name():
+    '''Return the name of the top applied patch'''
+    assert is_readable()
+    top = _get_top_patch_index()
+    return None if top is None else _DB.series[top].name

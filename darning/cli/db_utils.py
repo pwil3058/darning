@@ -14,10 +14,28 @@
 ### Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 '''
-Library functions that are ony of interest CLI programs
+Utility database functions that are ony of interest CLI programs
 '''
 
-# This should be the only place that subcmd_* modules should be imported
-# as this is sufficient to activate them.
-import darning.cli.subcmd_init
-import darning.cli.subcmd_new
+import os
+import sys
+
+from darning import patch_db
+
+BASE_DIR = SUB_DIR = None
+
+def open_db(modifiable):
+    '''Change directory to the base direcory and open the database'''
+    global BASE_DIR, SUB_DIR
+    BASE_DIR, SUB_DIR = patch_db.find_base_dir()
+    if BASE_DIR is None:
+        sys.exit('Error: could not find a "darning" database')
+    os.chdir(BASE_DIR)
+    result = patch_db.load_db(modifiable)
+    if not result:
+        sys.exit('Error: %s' % result)
+    return True
+
+def close_db():
+    '''Close the database'''
+    return patch_db.release_db()
