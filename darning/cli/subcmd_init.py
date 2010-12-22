@@ -17,8 +17,7 @@
 
 from darning import patch_db
 from darning.cli import cli_args
-
-OK = 0
+from darning.cli import msg
 
 PARSER = cli_args.SUB_CMD_PARSER.add_parser(
     'init',
@@ -37,7 +36,7 @@ def run_init(args):
     '''Execute the "init" sub command using the supplied args'''
     result = patch_db.create_db(description=args.description)
     if not result:
-        return 'Error: %s' % result
-    return OK
+        return msg.Error(result)
+    return msg.OK
 
 PARSER.set_defaults(run_cmd=run_init)

@@ -13,30 +13,32 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
-'''
-Utility database functions that are ony of interest CLI programs
-'''
+'''Standardize CLI error, warning and info messages'''
 
-import os
 import sys
 
-from darning import patch_db
-from darning.cli import msg
+OK = 0
+ERROR = 1
 
-BASE_DIR = SUB_DIR = None
+def Info(template, *args):
+    if len(args) == 0:
+        sys.stdout.write(template + '\n')
+    else:
+        sys.stdout.write(template.format(*args) + '\n')
+    return OK
 
-def open_db(modifiable):
-    '''Change directory to the base direcory and open the database'''
-    global BASE_DIR, SUB_DIR
-    BASE_DIR, SUB_DIR = patch_db.find_base_dir()
-    if BASE_DIR is None:
-        sys.exit(msg.Error('could not find a "darning" database'))
-    os.chdir(BASE_DIR)
-    result = patch_db.load_db(modifiable)
-    if not result:
-        sys.exit(msg.Error(result))
-    return True
+def Warning(template, *args):
+    sys.stderr.write('Warning: ')
+    if len(args) == 0:
+        sys.stderr.write(template + '\n')
+    else:
+        sys.stderr.write(template.format(*args) + '\n')
+    return OK
 
-def close_db():
-    '''Close the database'''
-    return patch_db.release_db()
+def Error(template, *args):
+    sys.stderr.write('Error: ')
+    if len(args) == 0:
+        sys.stderr.write(template + '\n')
+    else:
+        sys.stderr.write(template.format(*args) + '\n')
+    return ERROR
