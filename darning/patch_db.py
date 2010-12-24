@@ -23,8 +23,10 @@ import os
 import stat
 import copy
 import errno
+import shutil
 
 from darning import scm_ifce
+from darning import runext
 
 class Failure:
     '''Report failure'''
@@ -228,23 +230,38 @@ def get_patch_series_names():
     assert is_readable()
     return [patch.name for patch in _DB.series]
 
-def get_applied_patch_set():
+def get_applied_patch_names_set():
     '''Get the set of applied patches' names'''
     def isdir(item):
         '''Is item a directory?'''
         return os.path.isdir(os.path.join(_BACKUPS_DIR, item))
     return set([item for item in os.listdir(_BACKUPS_DIR) if isdir(item)])
 
-def get_applied_patch_list():
+def get_applied_patch_name_list():
     '''Get an ordered list of applied patch names'''
     assert is_readable()
     applied = list()
-    applied_set = get_applied_patch_set()
+    applied_set = get_applied_patch_names_set()
     if len(applied_set) == 0:
         return []
     for patch in _DB.series:
         if patch.name in applied_set:
             applied.append(patch.name)
+            applied_set.remove(patch.name)
+            if len(applied_set) == 0:
+                return applied
+    assert False, 'Series/applied patches discrepency'
+
+def get_applied_patch_list():
+    '''Get an ordered list of applied patch names'''
+    assert is_readable()
+    applied = list()
+    applied_set = get_applied_patch_names_set()
+    if len(applied_set) == 0:
+        return []
+    for patch in _DB.series:
+        if patch.name in applied_set:
+            applied.append(patch)
             applied_set.remove(patch.name)
             if len(applied_set) == 0:
                 return applied
@@ -263,7 +280,7 @@ def _get_patch_index(name):
 def _get_top_patch_index():
     '''Get the index in series of the top applied patch'''
     assert is_readable()
-    applied_set = get_applied_patch_set()
+    applied_set = get_applied_patch_names_set()
     if len(applied_set) == 0:
         return None
     index = 0
@@ -378,20 +395,96 @@ def _get_next_patch_index():
         return index
     return None
 
+OverlapData = collections.namedtuple('OverlapData', ['unrefreshed', 'uncommitted'])
+
+def _get_patch_overlap_data(patch):
+    '''
+    Get the data detailing unrefreshed/uncommitted files that will be
+    overlapped by the supplied patch
+    '''
+    assert is_readable()
+    data = OverlapData(unrefreshed = {}, uncommitted = [])
+    next_index = _get_next_patch_index()
+    applied_patches = get_applied_patch_list()
+    for file_data in patch.files.items():
+        for applied_patch in reversed(applied_patches):
+            apfile = applied_patch.files.get(file_data.name, None)
+            if apfile is not None:
+                if apfile.needs_refresh():
+                    data.unrefreshed[file_data.name] = applied_patch.name
+                break
+        if scm_ifce.has_uncommitted_change(file_data.name):
+            data.uncommited.append(file_data.name)
+    return data
+
+def get_next_patch_overlap_data():
+    '''
+    Get the data detailing unrefreshed/uncommitted files that will be
+    overlapped by the nextpatch
+    '''
+    assert is_readable()
+    next_index = _get_next_patch_index()
+    if next_index is None:
+        return OverlapData(unrefreshed = {}, uncommitted = [])
+    return _get_patch_overlap_data(_DB.series[next_index])
+
 def apply_patch():
     '''Apply the next patch in the series'''
+    def total_len(overlap_data):
+        count = 0
+        for item in overlap_data:
+            count += len(item)
+        return count
+    def turn_off_write(mode):
+        return mode & ~(stat.S_IWUSR|stat.S_IWGRP|stat.S_IWOTH)
     assert is_writable()
     next_index = _get_next_patch_index()
     if next_index is None:
-        return 'There are no pushable patches available'
+        return (False, 'There are no pushable patches available')
     next_patch = _DB.series[next_index]
+    assert total_len(_get_patch_overlap_data(next_patch)) == 0
     os.mkdir(os.path.join(_BACKUPS_DIR, next_patch.name))
-    # This is enough for "new" but needs expansion for normal use
+    results = {}
     if len(next_patch.files) == 0:
-        return True
+        return (True, results)
+    patch_cmd = ['patch', '--merge', '--force', '-p1', '--batch', '--silent']
+    for file_data in next_patch.files.items():
+        if os.path.exists(file_data.name):
+            bu_f_name = os.path.join(_BACKUPS_DIR, next_patch.name, file_data.name)
+            # We need this so that we need to reset it on pop
+            file_data.old_mode = os.stat(file_data.name).st_mode
+            # We'll try to preserve links when we pop patches
+            # so we move the file to the backups directory and then make
+            # a copy (without links) in the working directory
+            shutil.move(file_data.name, bu_f_name)
+            shutil.copy2(bu_f_name, file_data.name)
+            # Make the backup read only to prevent accidental change
+            os.chmod(bu_f_name, turn_off_write(file_data.old_mode))
+        else:
+            file_data.old_mode = None
+        if file_data.diff:
+            results[file_data.name] = runext.run_cmd(patch_cmd, file_data.diff)
+        if os.path.exists(file_data.name) and file_data.new_mode is not None:
+            os.chmod(file_data.name, file_data.new_mode)
+    return (dump_db(), results)
 
 def get_top_patch_name():
     '''Return the name of the top applied patch'''
     assert is_readable()
     top = _get_top_patch_index()
     return None if top is None else _DB.series[top].name
+
+def is_blocked_by_guard(patch):
+    '''Is the named patch blocked from being applied by any guards?'''
+    assert is_readable()
+    assert _get_next_patch_index(patch) is not None
+    patch = _DB.series[_get_next_patch_index(patch)]
+    return (patch.pos_guards & _DB.selected_guards) != patch.pos_guards
+
+def is_pushable(patch=None):
+    '''Return the name of the top applied patch'''
+    assert is_readable()
+    if patch is None:
+        return _get_next_patch_index() is not None
+    else:
+        return not is_applied(patch) and not is_blocked_by_guard(patch)

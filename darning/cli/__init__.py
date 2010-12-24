@@ -21,3 +21,4 @@ Library functions that are ony of interest CLI programs
 # as this is sufficient to activate them.
 import darning.cli.subcmd_init
 import darning.cli.subcmd_new
+import darning.cli.subcmd_push

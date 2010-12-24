@@ -15,6 +15,7 @@
 
 '''
 Provide an interface to SCM controlling source on which patches sit
+ONLY A DUMMY interface for the time being.
 '''
 
 def get_revision(filename=None):
@@ -22,6 +23,16 @@ def get_revision(filename=None):
     Return the SCM revision for the named file or the whole playground
     if the filename is None
     '''
+    # Always return None for the time being
     if filename is None or len(filename) >= 0:
         return None
     return True
+
+def has_uncommitted_change(filename):
+    '''
+    Does the SCM have uncommitted changes for the named file?
+    '''
+    # Always return False for the time being (assuming a filename is given)
+    if filename is None or len(filename) == 0:
+        return True
+    return False
