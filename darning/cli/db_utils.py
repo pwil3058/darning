@@ -21,6 +21,7 @@ import os
 import sys
 
 from darning import patch_db
+from darning import scm_ifce
 from darning.cli import msg
 
 BASE_DIR = SUB_DIR = None
@@ -32,6 +33,7 @@ def open_db(modifiable):
     if BASE_DIR is None:
         sys.exit(msg.Error('could not find a "darning" database'))
     os.chdir(BASE_DIR)
+    scm_ifce.reset_back_end()
     result = patch_db.load_db(modifiable)
     if not result:
         sys.exit(msg.Error(result))

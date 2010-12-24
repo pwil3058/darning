@@ -15,24 +15,38 @@
 
 '''
 Provide an interface to SCM controlling source on which patches sit
-ONLY A DUMMY interface for the time being.
 '''
+
+_AVAILABLE_BACK_ENDS = {}
+
+_CURRENT_BACK_END = None
+
+def add_back_end(backend):
+    '''Add a new back end interface to the pool'''
+    _AVAILABLE_BACK_ENDS[backend.name] = backend
+
+def reset_back_end():
+    '''Reset the current back end to one that is valid for cwd'''
+    global _CURRENT_BACK_END
+    for name in _AVAILABLE_BACK_ENDS:
+        if _AVAILABLE_BACK_ENDS[name].in_playground():
+            _CURRENT_BACK_END = _AVAILABLE_BACK_ENDS[name]
+            return
+    _CURRENT_BACK_END = None
 
 def get_revision(filename=None):
     '''
     Return the SCM revision for the named file or the whole playground
     if the filename is None
     '''
-    # Always return None for the time being
-    if filename is None or len(filename) >= 0:
+    if _CURRENT_BACK_END is None:
         return None
-    return True
+    return _CURRENT_BACK_END.get_revision(filename)
 
 def has_uncommitted_change(filename):
     '''
     Does the SCM have uncommitted changes for the named file?
     '''
-    # Always return False for the time being (assuming a filename is given)
-    if filename is None or len(filename) == 0:
-        return True
-    return False
+    if _CURRENT_BACK_END is None:
+        return False
+    return _CURRENT_BACK_END.has_uncommitted_change(filename)
