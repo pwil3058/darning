@@ -407,13 +407,15 @@ def _get_patch_overlap_data(patch):
     next_index = _get_next_patch_index()
     applied_patches = get_applied_patch_list()
     for file_data in patch.files.items():
+        in_patch = False
         for applied_patch in reversed(applied_patches):
             apfile = applied_patch.files.get(file_data.name, None)
             if apfile is not None:
+                in_patch = True
                 if apfile.needs_refresh():
                     data.unrefreshed[file_data.name] = applied_patch.name
                 break
-        if scm_ifce.has_uncommitted_change(file_data.name):
+        if not in_patch and scm_ifce.has_uncommitted_change(file_data.name):
             data.uncommited.append(file_data.name)
     return data
 
