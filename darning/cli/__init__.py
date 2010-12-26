@@ -22,3 +22,4 @@ Library functions that are ony of interest CLI programs
 import darning.cli.subcmd_init
 import darning.cli.subcmd_new
 import darning.cli.subcmd_push
+import darning.cli.subcmd_pop

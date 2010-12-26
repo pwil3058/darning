@@ -406,7 +406,7 @@ def _get_patch_overlap_data(patch):
     data = OverlapData(unrefreshed = {}, uncommitted = [])
     next_index = _get_next_patch_index()
     applied_patches = get_applied_patch_list()
-    for file_data in patch.files.items():
+    for file_data in patch.files.values():
         in_patch = False
         for applied_patch in reversed(applied_patches):
             apfile = applied_patch.files.get(file_data.name, None)
@@ -450,7 +450,7 @@ def apply_patch():
     if len(next_patch.files) == 0:
         return (True, results)
     patch_cmd = ['patch', '--merge', '--force', '-p1', '--batch', '--silent']
-    for file_data in next_patch.files.items():
+    for file_data in next_patch.files.values():
         if os.path.exists(file_data.name):
             bu_f_name = os.path.join(_BACKUPS_DIR, next_patch.name, file_data.name)
             # We need this so that we need to reset it on pop
@@ -490,3 +490,19 @@ def is_pushable(patch=None):
         return _get_next_patch_index() is not None
     else:
         return not is_applied(patch) and not is_blocked_by_guard(patch)
+
+def unapply_top_patch():
+    '''Unapply the top applied patch'''
+    assert is_writable()
+    assert not top_patch_needs_refresh()
+    top_patch_index = _get_top_patch_index()
+    assert top_patch_index is not None
+    top_patch = _DB.series[top_patch_index]
+    for file_data in top_patch.files.values():
+        if os.path.exists(file_data.name):
+            os.remove(file_data.name)
+        bu_f_name = os.path.join(_BACKUPS_DIR, next_patch.name, file_data.name)
+        if os.path.exists(bu_f_name):
+            os.chmod(bu_f_name, file_data.old_mode)
+            shutil.move(bu_f_name, file_data.name)
+    shutil.rmtree(os.path.join(_BACKUPS_DIR, top_patch.name))
