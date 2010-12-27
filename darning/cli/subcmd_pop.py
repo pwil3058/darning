@@ -15,8 +15,6 @@
 
 '''Unapply the current top patch.'''
 
-import sys
-
 from darning import patch_db
 from darning.cli import cli_args
 from darning.cli import db_utils
@@ -30,19 +28,16 @@ PARSER = cli_args.SUB_CMD_PARSER.add_parser(
 def run_pop(args):
     '''Execute the "pop" sub command using the supplied args'''
     db_utils.open_db(modifiable=True)
-    try:
-        top_patch = patch_db.get_top_patch_name()
-        if not top_patch:
-            return msg.Error('No patches applied')
-        if patch_db.top_patch_needs_refresh():
-            return msg.Error('Top patch ("{0}") needs to be refreshed', top_patch)
-        result = patch_db.unapply_top_patch()
-        if result is not True:
-            return msg.Error('{0}: top patch is now "{1}"', result, patch_db.get_top_patch_name())
-        else:
-            return msg.Info('Patch "{1}" is now on top', result, patch_db.get_top_patch_name())
-    finally:
-        close_ok = db_utils.close_db()
-    return msg.OK if close_ok else msg.Error(close_ok)
+    top_patch = patch_db.get_top_patch_name()
+    if not top_patch:
+        return msg.Error('No patches applied')
+    if patch_db.top_patch_needs_refresh():
+        return msg.Error('Top patch ("{0}") needs to be refreshed', top_patch)
+    result = patch_db.unapply_top_patch()
+    if result is not True:
+        return msg.Error('{0}: top patch is now "{1}"', result, patch_db.get_top_patch_name())
+    else:
+        return msg.Info('Patch "{1}" is now on top', result, patch_db.get_top_patch_name())
+    return msg.OK
 
 PARSER.set_defaults(run_cmd=run_pop)

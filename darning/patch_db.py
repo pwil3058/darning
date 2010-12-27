@@ -24,6 +24,7 @@ import stat
 import copy
 import errno
 import shutil
+import atexit
 
 from darning import scm_ifce
 from darning import runext
@@ -175,6 +176,15 @@ def create_db(description, dirpath=None):
         raise
     return True
 
+def release_db():
+    '''Release access to the database'''
+    assert is_readable()
+    global _DB
+    writeable = is_writable()
+    _DB = None
+    if writeable:
+        os.remove(_DB_LOCK_FILE)
+
 def load_db(lock=True):
     '''Load the database for access (read only unless lock is True)'''
     global _DB
@@ -198,6 +208,7 @@ def load_db(lock=True):
         raise
     finally:
         fobj.close()
+    atexit.register(release_db)
     return True
 
 def dump_db():
@@ -211,19 +222,6 @@ def dump_db():
     finally:
         fobj.close()
     return True
-
-def release_db():
-    '''Release access to the database'''
-    assert is_readable()
-    global _DB
-    writeable = is_writable()
-    was_ok = True
-    if writeable:
-        was_ok = dump_db()
-    _DB = None
-    if writeable:
-        os.remove(_DB_LOCK_FILE)
-    return was_ok
 
 def get_patch_series_names():
     '''Get a list of patch names in series order (names only)'''
@@ -404,7 +402,6 @@ def _get_patch_overlap_data(patch):
     '''
     assert is_readable()
     data = OverlapData(unrefreshed = {}, uncommitted = [])
-    next_index = _get_next_patch_index()
     applied_patches = get_applied_patch_list()
     for file_data in patch.files.values():
         in_patch = False
@@ -433,11 +430,13 @@ def get_next_patch_overlap_data():
 def apply_patch():
     '''Apply the next patch in the series'''
     def total_len(overlap_data):
+        '''Total number of overlaps'''
         count = 0
         for item in overlap_data:
             count += len(item)
         return count
     def turn_off_write(mode):
+        '''Return the given mode with the write bits turned off'''
         return mode & ~(stat.S_IWUSR|stat.S_IWGRP|stat.S_IWOTH)
     assert is_writable()
     next_index = _get_next_patch_index()
@@ -476,11 +475,11 @@ def get_top_patch_name():
     top = _get_top_patch_index()
     return None if top is None else _DB.series[top].name
 
-def is_blocked_by_guard(patch):
+def is_blocked_by_guard(name):
     '''Is the named patch blocked from being applied by any guards?'''
     assert is_readable()
-    assert _get_next_patch_index(patch) is not None
-    patch = _DB.series[_get_next_patch_index(patch)]
+    assert _get_patch_index(name) is not None
+    patch = _DB.series[_get_patch_index(name)]
     return (patch.pos_guards & _DB.selected_guards) != patch.pos_guards
 
 def is_pushable(patch=None):
@@ -501,8 +500,9 @@ def unapply_top_patch():
     for file_data in top_patch.files.values():
         if os.path.exists(file_data.name):
             os.remove(file_data.name)
-        bu_f_name = os.path.join(_BACKUPS_DIR, next_patch.name, file_data.name)
+        bu_f_name = os.path.join(_BACKUPS_DIR, top_patch.name, file_data.name)
         if os.path.exists(bu_f_name):
             os.chmod(bu_f_name, file_data.old_mode)
             shutil.move(bu_f_name, file_data.name)
     shutil.rmtree(os.path.join(_BACKUPS_DIR, top_patch.name))
+    return True

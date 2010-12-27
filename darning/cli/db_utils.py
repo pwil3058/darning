@@ -38,7 +38,3 @@ def open_db(modifiable):
     if not result:
         sys.exit(msg.Error(result))
     return True
-
-def close_db():
-    '''Close the database'''
-    return patch_db.release_db()

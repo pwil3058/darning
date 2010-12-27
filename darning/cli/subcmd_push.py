@@ -15,8 +15,6 @@
 
 '''Apply the next patch in the series.'''
 
-import sys
-
 from darning import patch_db
 from darning.cli import cli_args
 from darning.cli import db_utils
@@ -30,49 +28,46 @@ PARSER = cli_args.SUB_CMD_PARSER.add_parser(
 def run_push(args):
     '''Execute the "push" sub command using the supplied args'''
     db_utils.open_db(modifiable=True)
-    try:
-        if not patch_db.is_pushable():
-            top_patch = patch_db.get_top_patch_name()
-            if top_patch:
-                return msg.Error('no pushable patches. "{0}" is on top.', top_patch)
-            else:
-                return msg.Error('no pushable patches.')
-        is_ok = True
-        overlaps = patch_db.get_next_patch_overlap_data()
-        if len(overlaps.uncommitted) > 0:
-            is_ok = False
-            msg.Error('The following (overlapped) files have uncommited SCM changes:')
-            for filename in sorted(overlaps.uncommitted):
-                msg.Error('\t{0}', filename)
-        if len(overlaps.unrefreshed) > 0:
-            is_ok = False
-            msg.Error('The following (overlapped) files have unrefreshed changes (in an applied patch):')
-            for filename in sorted(overlaps.unrefreshed):
-                msg.Error('\t{0} : in patch "{1}"', filename, overlaps.unrefreshed[filename])
-        if not is_ok:
-            return msg.Error('Aborting')
-        _db_ok, results = patch_db.apply_patch()
-        highest_ecode = 0
-        for filename in results:
-            print filename
-            result = results[filename]
-            print result
-            highest_ecode = highest_ecode if result.ecode < highest_ecode else result.ecode
-            for line in result.stdout.splitlines(False):
-                msg.Info(line)
-            if result.ecode == 0:
-                for line in result.stderr.splitlines(False):
-                    msg.Warning(line)
-            else:
-                for line in result.stderr.splitlines(False):
-                    msg.Error(line)
-        msg.Info('Patch "{0}" is now on top.', patch_db.get_top_patch_name())
-        if highest_ecode > 1:
-            return msg.Error('A refresh is required after issues are resolved.')
-        if highest_ecode > 0:
-            return msg.Error('A refresh is required.')
-    finally:
-        close_ok = db_utils.close_db()
-    return msg.OK if close_ok else msg.Error(close_ok)
+    if not patch_db.is_pushable():
+        top_patch = patch_db.get_top_patch_name()
+        if top_patch:
+            return msg.Error('no pushable patches. "{0}" is on top.', top_patch)
+        else:
+            return msg.Error('no pushable patches.')
+    is_ok = True
+    overlaps = patch_db.get_next_patch_overlap_data()
+    if len(overlaps.uncommitted) > 0:
+        is_ok = False
+        msg.Error('The following (overlapped) files have uncommited SCM changes:')
+        for filename in sorted(overlaps.uncommitted):
+            msg.Error('\t{0}', filename)
+    if len(overlaps.unrefreshed) > 0:
+        is_ok = False
+        msg.Error('The following (overlapped) files have unrefreshed changes (in an applied patch):')
+        for filename in sorted(overlaps.unrefreshed):
+            msg.Error('\t{0} : in patch "{1}"', filename, overlaps.unrefreshed[filename])
+    if not is_ok:
+        return msg.Error('Aborting')
+    _db_ok, results = patch_db.apply_patch()
+    highest_ecode = 0
+    for filename in results:
+        print filename
+        result = results[filename]
+        print result
+        highest_ecode = highest_ecode if result.ecode < highest_ecode else result.ecode
+        for line in result.stdout.splitlines(False):
+            msg.Info(line)
+        if result.ecode == 0:
+            for line in result.stderr.splitlines(False):
+                msg.Warn(line)
+        else:
+            for line in result.stderr.splitlines(False):
+                msg.Error(line)
+    msg.Info('Patch "{0}" is now on top.', patch_db.get_top_patch_name())
+    if highest_ecode > 1:
+        return msg.Error('A refresh is required after issues are resolved.')
+    if highest_ecode > 0:
+        return msg.Error('A refresh is required.')
+    return msg.OK
 
 PARSER.set_defaults(run_cmd=run_push)
