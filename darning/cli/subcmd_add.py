@@ -39,17 +39,18 @@ def run_add(args):
     elif not patch_db.patch_is_in_series(args.opt_patch):
         return msg.Error('patch "{0}" is unknown', args.opt_patch)
     is_ok = True
+    db_utils.prepend_subdir(args.filenames)
     overlaps = patch_db.get_patch_overlap_data(args.opt_patch, args.filenames)
     if len(overlaps.uncommitted) > 0:
         is_ok = False
         msg.Error('The following (overlapped) files have uncommited SCM changes:')
         for filename in sorted(overlaps.uncommitted):
-            msg.Error('\t{0}', filename)
+            msg.Error('\t{0}', db_utils.rel_subdir(filename))
     if len(overlaps.unrefreshed) > 0:
         is_ok = False
         msg.Error('The following (overlapped) files have unrefreshed changes (in an applied patch):')
         for filename in sorted(overlaps.unrefreshed):
-            msg.Error('\t{0} : in patch "{1}"', filename, overlaps.unrefreshed[filename])
+            msg.Error('\t{0} : in patch "{1}"', db_utils.rel_subdir(filename), db_utils.rel_subdir(overlaps.unrefreshed[filename]))
     if not is_ok:
         return msg.Error('Aborting')
     already_in_patch = set(patch_db.get_filenames_in_patch(args.opt_patch, args.filenames))
@@ -57,9 +58,9 @@ def run_add(args):
         if filename not in already_in_patch:
             patch_db.add_file_to_patch(args.opt_patch, filename)
             already_in_patch.add(filename)
-            msg.Info('file "{0}" added to patch "{1}".', filename, args.opt_patch)
+            msg.Info('file "{0}" added to patch "{1}".', db_utils.rel_subdir(filename), args.opt_patch)
         else:
-            msg.Warn('file "{0}" already in patch "{1}". Ignored.', filename, args.opt_patch)
+            msg.Warn('file "{0}" already in patch "{1}". Ignored.', db_utils.rel_subdir(filename), args.opt_patch)
     return msg.OK
 
 PARSER.set_defaults(run_cmd=run_add)
