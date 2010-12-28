@@ -34,7 +34,7 @@ PARSER.add_argument(
 
 def run_init(args):
     '''Execute the "init" sub command using the supplied args'''
-    result = patch_db.create_db(description=args.description)
+    result = patch_db.create_db(description=args.opt_description)
     if not result:
         return msg.Error(result)
     return msg.OK

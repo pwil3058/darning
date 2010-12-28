@@ -43,4 +43,7 @@ _COMOPT = collections.namedtuple('_COMOPT', ['name', 'action', 'nargs',
 
 _DEFAULT_COMOPT = _COMOPT(None, None, None, None, None, None, None, None, None, None, None)
 
-OPT_DESCR = _DEFAULT_COMOPT._replace(name='--descr', dest='description', metavar='text')
+OPT_DESCR = _DEFAULT_COMOPT._replace(name='--descr', dest='opt_description', metavar='text')
+OPT_PATCH = _DEFAULT_COMOPT._replace(name='-P', dest='opt_patch', metavar='patch')
+
+ARG_FILES = _DEFAULT_COMOPT._replace(name='filenames', metavar='file', nargs='+')

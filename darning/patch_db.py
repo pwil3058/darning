@@ -395,7 +395,20 @@ def _get_next_patch_index():
 
 OverlapData = collections.namedtuple('OverlapData', ['unrefreshed', 'uncommitted'])
 
-def _get_patch_overlap_data(patch):
+def _get_overlapping_patch(patch, filename):
+    '''Return the patch (if any) which overlaps the named file in this patch'''
+    assert is_readable()
+    assert is_applied(patch.name)
+    after = False
+    for apatch in get_applied_patch_list():
+        if after:
+            if filename in apatch.files:
+                return apatch
+        else:
+            after = apatch.name == patch.name
+    return None
+
+def _get_patch_overlap_data(patch, filenames=None):
     '''
     Get the data detailing unrefreshed/uncommitted files that will be
     overlapped by the supplied patch
@@ -403,18 +416,37 @@ def _get_patch_overlap_data(patch):
     assert is_readable()
     data = OverlapData(unrefreshed = {}, uncommitted = [])
     applied_patches = get_applied_patch_list()
-    for file_data in patch.files.values():
+    try:
+        patch_index = applied_patches.index(patch)
+        applied_patches = applied_patches[:patch_index]
+    except ValueError:
+        pass
+    if filenames is None:
+        filenames = [name for name in patch.files]
+    for filename in patch.files.values():
         in_patch = False
         for applied_patch in reversed(applied_patches):
-            apfile = applied_patch.files.get(file_data.name, None)
+            apfile = applied_patch.files.get(filename, None)
             if apfile is not None:
                 in_patch = True
                 if apfile.needs_refresh():
-                    data.unrefreshed[file_data.name] = applied_patch.name
+                    data.unrefreshed[filename] = applied_patch.name
                 break
-        if not in_patch and scm_ifce.has_uncommitted_change(file_data.name):
-            data.uncommited.append(file_data.name)
+        if not in_patch and scm_ifce.has_uncommitted_change(filename):
+            data.uncommited.append(filename)
     return data
+
+def get_patch_overlap_data(name, filenames=None):
+    '''
+    Get the data detailing unrefreshed/uncommitted files that will be
+    overlapped by the named patch's current files if filenames is None
+    or otherwise for the named files (regardless of whether they are in
+    the patch).
+    '''
+    assert is_readable()
+    patch_index = _get_patch_index(name)
+    assert patch_index is not None
+    return _get_patch_overlap_data(_DB.series[patch_index], filenames)
 
 def get_next_patch_overlap_data():
     '''
@@ -427,6 +459,30 @@ def get_next_patch_overlap_data():
         return OverlapData(unrefreshed = {}, uncommitted = [])
     return _get_patch_overlap_data(_DB.series[next_index])
 
+def _back_up_file(patch, filename):
+    '''Back up the named file for the given patch'''
+    assert is_writable()
+    assert is_applied(patch.name)
+    assert _get_overlapping_patch(patch, filename) is None
+    assert filename in patch.files
+    def turn_off_write(mode):
+        '''Return the given mode with the write bits turned off'''
+        return mode & ~(stat.S_IWUSR|stat.S_IWGRP|stat.S_IWOTH)
+    file_data = patch.files[filename]
+    if os.path.exists(file_data.name):
+        bu_f_name = os.path.join(_BACKUPS_DIR, patch.name, file_data.name)
+        # We need this so that we need to reset it on pop
+        file_data.old_mode = os.stat(file_data.name).st_mode
+        # We'll try to preserve links when we pop patches
+        # so we move the file to the backups directory and then make
+        # a copy (without links) in the working directory
+        shutil.move(file_data.name, bu_f_name)
+        shutil.copy2(bu_f_name, file_data.name)
+        # Make the backup read only to prevent accidental change
+        os.chmod(bu_f_name, turn_off_write(file_data.old_mode))
+    else:
+        file_data.old_mode = None
+
 def apply_patch():
     '''Apply the next patch in the series'''
     def total_len(overlap_data):
@@ -435,9 +491,6 @@ def apply_patch():
         for item in overlap_data:
             count += len(item)
         return count
-    def turn_off_write(mode):
-        '''Return the given mode with the write bits turned off'''
-        return mode & ~(stat.S_IWUSR|stat.S_IWGRP|stat.S_IWOTH)
     assert is_writable()
     next_index = _get_next_patch_index()
     if next_index is None:
@@ -450,19 +503,7 @@ def apply_patch():
         return (True, results)
     patch_cmd = ['patch', '--merge', '--force', '-p1', '--batch', '--silent']
     for file_data in next_patch.files.values():
-        if os.path.exists(file_data.name):
-            bu_f_name = os.path.join(_BACKUPS_DIR, next_patch.name, file_data.name)
-            # We need this so that we need to reset it on pop
-            file_data.old_mode = os.stat(file_data.name).st_mode
-            # We'll try to preserve links when we pop patches
-            # so we move the file to the backups directory and then make
-            # a copy (without links) in the working directory
-            shutil.move(file_data.name, bu_f_name)
-            shutil.copy2(bu_f_name, file_data.name)
-            # Make the backup read only to prevent accidental change
-            os.chmod(bu_f_name, turn_off_write(file_data.old_mode))
-        else:
-            file_data.old_mode = None
+        _back_up_file(next_patch, file_data.name)
         if file_data.diff:
             results[file_data.name] = runext.run_cmd(patch_cmd, file_data.diff)
         if os.path.exists(file_data.name) and file_data.new_mode is not None:
@@ -506,3 +547,45 @@ def unapply_top_patch():
             shutil.move(bu_f_name, file_data.name)
     shutil.rmtree(os.path.join(_BACKUPS_DIR, top_patch.name))
     return True
+
+def get_filenames_in_patch(name, filenames=None):
+    '''
+    Return the names of the files in the named patch.
+    If filenames is not None restrict the returned list to names that
+    are also infilenames.
+    '''
+    assert is_readable()
+    patch_index = _get_patch_index(name)
+    assert patch_index is not None
+    patch = _DB.series[patch_index]
+    if filenames is None:
+        return [filename for filename in patch.files]
+    else:
+        return [filename for filename in patch.files if filename in filenames]
+
+def add_file_to_patch(name, filename):
+    '''Add the named file to the named patch'''
+    assert is_writable()
+    patch_index = _get_patch_index(name)
+    assert patch_index is not None
+    patch = _DB.series[patch_index]
+    assert filename not in patch.files
+    if not is_applied(name):
+        # not much to do here
+        patch.files[filename] = _FileData(filename)
+        return dump_db()
+    overlaps = _get_patch_overlap_data(patch, [filename])
+    assert len(overlaps.unrefreshed) + len(overlaps.uncommitted) == 0
+    patch.files[filename] = _FileData(filename)
+    overlapped_by = _get_overlapping_patch(patch, filename)
+    if overlapped_by is None:
+        _back_up_file(patch, filename)
+    else:
+        overlapping_backup = os.path.join(_BACKUPS_DIR, overlapped_by.name, filename)
+        if os.path.exists(overlapping_backup):
+            bu_f_name = os.path.join(_BACKUPS_DIR, patch.name, filename)
+            os.link(overlapping_backup, bu_f_name)
+            patch.files[filename].old_mode = overlapped_by.files[filename].old_mode
+        else:
+            patch.files[filename].old_mode = None
+    return dump_db()
