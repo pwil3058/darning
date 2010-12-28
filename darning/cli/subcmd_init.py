@@ -24,13 +24,7 @@ PARSER = cli_args.SUB_CMD_PARSER.add_parser(
     description='Create a new patch database.',
 )
 
-
-PARSER.add_argument(
-    cli_args.OPT_DESCR.name,
-    help='a message to describe the purpose of the patches to be managed.',
-    dest=cli_args.OPT_DESCR.dest,
-    metavar=cli_args.OPT_DESCR.metavar,
-)
+cli_args.add_descr_option(PARSER, helptext='a message to describe the purpose of the patches to be managed.')
 
 def run_init(args):
     '''Execute the "init" sub command using the supplied args'''

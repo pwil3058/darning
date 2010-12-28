@@ -37,13 +37,26 @@ SUB_CMD_PARSER = PARSER.add_subparsers(title='commands')
 # in argparse arguments incorporated using the "parents" mechanism so
 # we'll adopt a slghtly different approach
 
-_COMOPT = collections.namedtuple('_COMOPT', ['name', 'action', 'nargs',
-    'const', 'default', 'type', 'choices', 'required', 'help',
-    'metavar', 'dest'])
+def add_descr_option(parser, helptext):
+    parser.add_argument(
+        '--descr',
+        help=helptext,
+        dest='opt_description',
+        metavar='text',
+    )
 
-_DEFAULT_COMOPT = _COMOPT(None, None, None, None, None, None, None, None, None, None, None)
+def add_patch_option(parser, helptext):
+    parser.add_argument(
+        '-P',
+        help=helptext,
+        dest='opt_patch',
+        metavar='patch',
+    )
 
-OPT_DESCR = _DEFAULT_COMOPT._replace(name='--descr', dest='opt_description', metavar='text')
-OPT_PATCH = _DEFAULT_COMOPT._replace(name='-P', dest='opt_patch', metavar='patch')
-
-ARG_FILES = _DEFAULT_COMOPT._replace(name='filenames', metavar='file', nargs='+')
+def add_files_argument(parser, helptext):
+    parser.add_argument(
+        'filenames',
+        help=helptext,
+        nargs='+',
+        metavar='file',
+    )

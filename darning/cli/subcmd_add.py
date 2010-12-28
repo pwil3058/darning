@@ -25,19 +25,9 @@ PARSER = cli_args.SUB_CMD_PARSER.add_parser(
     description='Add nominated file(s) to the top (or nominated) patch.',
 )
 
-PARSER.add_argument(
-    cli_args.OPT_PATCH.name,
-    help='the name of the patch to add the file(s) to.',
-    dest=cli_args.OPT_PATCH.dest,
-    metavar=cli_args.OPT_PATCH.metavar,
-)
+cli_args.add_patch_option(PARSER, helptext='the name of the patch to add the file(s) to.')
 
-PARSER.add_argument(
-    cli_args.ARG_FILES.name,
-    help='the file(s) to be added.',
-    metavar=cli_args.ARG_FILES.metavar,
-    nargs=cli_args.ARG_FILES.nargs,
-)
+cli_args.add_files_argument(PARSER, helptext='the file(s) to be added.')
 
 def run_add(args):
     '''Execute the "add" sub command using the supplied args'''

@@ -25,12 +25,7 @@ PARSER = cli_args.SUB_CMD_PARSER.add_parser(
     description='Create a new patch in the series after the current top patch.',
 )
 
-PARSER.add_argument(
-    cli_args.OPT_DESCR.name,
-    help='a description of the patch\'s purpose.',
-    dest=cli_args.OPT_DESCR.dest,
-    metavar=cli_args.OPT_DESCR.metavar,
-)
+cli_args.add_descr_option(PARSER, helptext='a description of the patch\'s purpose.')
 
 PARSER.add_argument(
     'patchname',
