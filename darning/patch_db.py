@@ -22,21 +22,22 @@ import cPickle
 import os
 import stat
 import copy
-import errno
 import shutil
 import atexit
 
 from darning import scm_ifce
 from darning import runext
+from darning import utils
 
 class Failure:
     '''Report failure'''
     def __init__(self, msg):
+        self._bool = False
         self.msg = msg
     def __bool__(self):
-        return False
+        return self._bool
     def __nonzero__(self):
-        return False
+        return self._bool
     def __str__(self):
         return self.msg
     def __repr__(self):
@@ -55,27 +56,14 @@ class _FileData:
         self.timestamp = 0
         self.scm_revision = None
         self.deleted = False
-    def set_diff_data(self, diff):
-        '''Set diff data for this file'''
-        self.diff = diff
-        try:
-            stat_data = os.stat(self.name)
-            self.new_mode = stat_data.st_mode
-            self.timestamp = stat_data.st_mtime
-            self.deleted = False
-        except OSError as edata:
-            if edata.errno != errno.ENOENT:
-                raise
-            self.new_mode = None
-            self.timestamp = os.path.getmtime(self.name)
-            self.deleted = True
-        self.scm_revision = scm_ifce.get_revision(self.name)
     def needs_refresh(self):
         '''Does this file need a refresh? (Given that it is not overshadowed.)'''
         if os.path.exists(self.name):
             return self.timestamp < os.path.getmtime(self.name) or self.deleted
         else:
             return not self.deleted
+
+OverlapData = collections.namedtuple('OverlapData', ['unrefreshed', 'uncommitted'])
 
 class _PatchData:
     '''Store data for changes to a number of files as a single patch'''
@@ -86,12 +74,194 @@ class _PatchData:
         self.pos_guards = set()
         self.neg_guards = set()
         self.scm_revision = None
-    def get_file_names_set(self):
-        '''Return the set of names for the files in this patch'''
-        return set([entry for entry in self.files])
+    def do_add_file(self, filename):
+        '''Add the named file to this patch'''
+        assert is_writable()
+        assert filename not in self.files
+        if not self.is_applied():
+            # not much to do here
+            self.files[filename] = _FileData(filename)
+            return dump_db()
+        overlaps = self.get_overlap_data([filename])
+        assert len(overlaps.unrefreshed) + len(overlaps.uncommitted) == 0
+        self.files[filename] = _FileData(filename)
+        overlapped_by = self.get_overlapping_patch_for_file(filename)
+        if overlapped_by is None:
+            self.do_back_up_file(filename)
+        else:
+            overlapping_backup = overlapped_by.get_backup_file_name(filename)
+            if os.path.exists(overlapping_backup):
+                os.link(overlapping_backup, self.get_backup_file_name(filename))
+                self.files[filename].old_mode = overlapped_by.files[filename].old_mode
+            else:
+                self.files[filename].old_mode = None
+        return dump_db()
+    def do_back_up_file(self, filename):
+        '''Back up the named file for this patch'''
+        assert is_writable()
+        assert filename in self.files
+        assert self.is_applied()
+        assert self.get_overlapping_patch_for_file(filename) is None
+        if os.path.exists(filename):
+            bu_f_name = self.get_backup_file_name(filename)
+            # We need this so that we need to reset it on pop
+            old_mode = os.stat(filename).st_mode
+            # We'll try to preserve links when we pop patches
+            # so we move the file to the backups directory and then make
+            # a copy (without links) in the working directory
+            shutil.move(filename, bu_f_name)
+            shutil.copy2(bu_f_name, filename)
+            # Make the backup read only to prevent accidental change
+            os.chmod(bu_f_name, utils.turn_off_write(old_mode))
+            self.files[filename].old_mode = old_mode
+        else:
+            self.files[filename].old_mode = None
+    def do_refresh_file(self, filename):
+        '''Refresh the named file in this patch'''
+        assert is_writable()
+        assert filename in self.files
+        assert self.is_applied()
+        assert self.get_overlapping_patch_for_file(filename) is None
+        bu_f_name = os.path.join(_BACKUPS_DIR, self.name, filename)
+        file_data = self.files[filename]
+        if os.path.exists(filename):
+            # Do a check for unresolved merges here
+            if False:
+                file_data.deleted = False
+                file_data.timestamp = 0
+                result = runext.Result(3, '', 'File has unresolved merge(s).\n')
+            if os.path.exists(bu_f_name):
+                pass
+            else:
+                pass
+            stat_data = os.stat(filename)
+            curr_mode = stat_data.st_mode
+            timestamp = stat_data.st_mtime
+            deleted = False
+            # TODO: finish this
+        elif os.path.exists(bu_f_name):
+            curr_mode = None
+            timestamp = 0
+            deleted = True
+            # TODO: finish this
+        else:
+            file_data.diff = ''
+            file_data.new_mode = None
+            file_data.timestamp = 0
+            file_data.scm_revision = scm_ifce.get_revision(filename=file_data.name)
+            file_data.deleted = True
+            result = runext.Result(0, '', 'File does not exist\n')
+        dump_db()
+        return result
+    def do_unapply(self):
+        '''Unapply this patch'''
+        assert is_writable()
+        assert self.is_applied()
+        assert not self.needs_refresh()
+        assert not self.is_overlapped()
+        for file_data in self.files.values():
+            if os.path.exists(file_data.name):
+                os.remove(file_data.name)
+            bu_f_name = self.get_backup_file_name(file_data.name)
+            if os.path.exists(bu_f_name):
+                os.chmod(bu_f_name, file_data.old_mode)
+                shutil.move(bu_f_name, file_data.name)
+        shutil.rmtree(self.get_backup_dir_name())
+        return True
+    def do_refresh(self):
+        '''Refresh the patch'''
+        assert is_writable()
+        assert self.is_applied()
+        results = {}
+        for filename in self.files:
+            results[filename] = self.do_refresh_file(filename)
+        return results
+    def get_backup_dir_name(self):
+        '''Return the name of the backup directory for this patch'''
+        return os.path.join(_BACKUPS_DIR, self.name)
+    def get_backup_file_name(self, filename):
+        '''Return the name of the backup directory for the named file in this patch'''
+        return os.path.join(_BACKUPS_DIR, self.name, filename)
+    def get_filenames(self, filenames=None):
+        '''
+        Return the names of the files in this patch.
+        If filenames is not None restrict the returned list to names that
+        are also in filenames.
+        '''
+        if filenames is None:
+            return [filename for filename in self.files]
+        else:
+            return [filename for filename in self.files if filename in filenames]
+    def get_file_names_set(self, filenames=None):
+        '''Return the set of names for the files in this patch.
+        If filenames is not None restrict the returned set to names that
+        are also in filenames.
+        '''
+        return set(self.get_filenames(filenames=filenames))
+    def get_overlapping_patch_for_file(self, filename):
+        '''Return the patch (if any) which overlaps the named file in this patch'''
+        assert is_readable()
+        assert self.is_applied()
+        after = False
+        for apatch in get_applied_patch_list():
+            if after:
+                if filename in apatch.files:
+                    return apatch
+            else:
+                after = apatch.name == self.name
+        return None
+    def get_overlap_data(self, filenames=None):
+        '''
+        Get the data detailing unrefreshed/uncommitted files that will be
+        overlapped by this patch
+        '''
+        assert is_readable()
+        data = OverlapData(unrefreshed = {}, uncommitted = [])
+        applied_patches = get_applied_patch_list()
+        try:
+            patch_index = applied_patches.index(self)
+            applied_patches = applied_patches[:patch_index]
+        except ValueError:
+            pass
+        if filenames is None:
+            filenames = [name for name in self.files]
+        for filename in filenames:
+            in_patch = False
+            for applied_patch in reversed(applied_patches):
+                apfile = applied_patch.files.get(filename, None)
+                if apfile is not None:
+                    in_patch = True
+                    if apfile.needs_refresh():
+                        data.unrefreshed[filename] = applied_patch.name
+                    break
+            if not in_patch and scm_ifce.has_uncommitted_change(filename):
+                data.uncommited.append(filename)
+        return data
     def is_applied(self):
         '''Is this patch applied?'''
-        return os.path.isdir(os.path.join(_BACKUPS_DIR, self.name))
+        return os.path.isdir(self.get_backup_dir_name())
+    def is_blocked_by_guard(self):
+        '''Is the this patch blocked from being applied by any guards?'''
+        if (self.pos_guards & _DB.selected_guards) != self.pos_guards:
+            return True
+        if len(self.neg_guards & _DB.selected_guards) != 0:
+            return True
+        return False
+    def is_overlapped(self):
+        '''Are any files in this patch overlapped by applied patches?'''
+        for filename in self.files:
+            if self.get_overlapping_patch_for_file(filename) is not None:
+                return True
+        return False
+    def is_pushable(self):
+        '''Is this patch pushable?'''
+        return not self.is_applied() and not self.is_blocked_by_guard()
+    def needs_refresh(self):
+        '''Does this patch need a refresh?'''
+        for file_data in self.files.values():
+            if file_data.needs_refresh():
+                return True
+        return False
 
 class _DataBase:
     '''Storage for an ordered sequence/series of patches'''
@@ -101,6 +271,23 @@ class _DataBase:
         self.series = list()
         self.kept_patches = dict()
         self.host_scm = host_scm
+    def get_series_index(self, name):
+        '''Get the series index for the patch with the given name'''
+        assert is_readable()
+        index = 0
+        for patch in self.series:
+            if patch.name == name:
+                return index
+            index += 1
+        return None
+    def get_patch(self, name):
+        '''Get the patch with the given name'''
+        assert is_readable()
+        patch_index = self.get_series_index(name)
+        if patch_index is not None:
+            return self.series[patch_index]
+        else:
+            return None
 
 _DB_DIR = '.darning.dbd'
 _BACKUPS_DIR = os.path.join(_DB_DIR, 'backups')
@@ -228,7 +415,7 @@ def get_patch_series_names():
     assert is_readable()
     return [patch.name for patch in _DB.series]
 
-def get_applied_patch_names_set():
+def _get_applied_patch_names_set():
     '''Get the set of applied patches' names'''
     def isdir(item):
         '''Is item a directory?'''
@@ -239,7 +426,7 @@ def get_applied_patch_name_list():
     '''Get an ordered list of applied patch names'''
     assert is_readable()
     applied = list()
-    applied_set = get_applied_patch_names_set()
+    applied_set = _get_applied_patch_names_set()
     if len(applied_set) == 0:
         return []
     for patch in _DB.series:
@@ -254,7 +441,7 @@ def get_applied_patch_list():
     '''Get an ordered list of applied patch names'''
     assert is_readable()
     applied = list()
-    applied_set = get_applied_patch_names_set()
+    applied_set = _get_applied_patch_names_set()
     if len(applied_set) == 0:
         return []
     for patch in _DB.series:
@@ -265,20 +452,15 @@ def get_applied_patch_list():
                 return applied
     assert False, 'Series/applied patches discrepency'
 
-def _get_patch_index(name):
+def get_patch_series_index(name):
     '''Get the index in series for the patch with the given name'''
     assert is_readable()
-    index = 0
-    for patch in _DB.series:
-        if patch.name == name:
-            return index
-        index += 1
-    return None
+    return _DB.get_series_index(name)
 
 def _get_top_patch_index():
     '''Get the index in series of the top applied patch'''
     assert is_readable()
-    applied_set = get_applied_patch_names_set()
+    applied_set = _get_applied_patch_names_set()
     if len(applied_set) == 0:
         return None
     index = 0
@@ -292,11 +474,11 @@ def _get_top_patch_index():
 
 def patch_is_in_series(name):
     '''Is there a patch with the given name in the series?'''
-    return _get_patch_index(name) is not None
+    return get_patch_series_index(name) is not None
 
 def is_applied(name):
     '''Is the named patch currently applied?'''
-    return os.path.isdir(os.path.join(_BACKUPS_DIR, name))
+    return _DB.get_patch(name).is_applied()
 
 def is_top_applied_patch(name):
     '''Is the named patch the top applied patch?'''
@@ -308,11 +490,11 @@ def is_top_applied_patch(name):
 def _insert_patch(patch, after=None):
     '''Insert a patch into series after the top or nominated patch'''
     assert is_writable()
-    assert _get_patch_index(patch.name) is None
-    assert after is None or _get_patch_index(after) is not None
+    assert get_patch_series_index(patch.name) is None
+    assert after is None or get_patch_series_index(after) is not None
     if after is not None:
         assert not is_applied(after) or is_top_applied_patch(after)
-        index = _get_patch_index(after) + 1
+        index = get_patch_series_index(after) + 1
     else:
         top_index = _get_top_patch_index()
         index = top_index + 1 if top_index is not None else 0
@@ -322,22 +504,22 @@ def _insert_patch(patch, after=None):
 def patch_needs_refresh(name):
     '''Does the named patch need to be refreshed?'''
     assert is_readable()
-    assert _get_patch_index(name) is not None
-    return False
+    assert get_patch_series_index(name) is not None
+    return _DB.get_patch(name).needs_refresh()
 
 def create_new_patch(name, description):
     '''Create a new patch with the given name and description (after the top patch)'''
     assert is_writable()
-    assert _get_patch_index(name) is None
+    assert get_patch_series_index(name) is None
     patch = _PatchData(name, description)
     return _insert_patch(patch)
 
 def duplicate_patch(name, newname, newdescription):
     '''Create a duplicate of the named patch with a new name and new description (after the top patch)'''
     assert is_writable()
-    assert _get_patch_index(newname) is None
-    assert _get_patch_index(name) is not None and not patch_needs_refresh(name)
-    patch = _DB.series[_get_patch_index(name)]
+    assert get_patch_series_index(newname) is None
+    assert get_patch_series_index(name) is not None and not patch_needs_refresh(name)
+    patch = _DB.series[get_patch_series_index(name)]
     newpatch = copy.deepcopy(patch)
     newpatch.name = newname
     newpatch.description = newdescription
@@ -346,9 +528,9 @@ def duplicate_patch(name, newname, newdescription):
 def remove_patch(name, keep=True):
     '''Remove the named patch from series and (optionally) keep it for later restoration'''
     assert is_writable()
-    assert _get_patch_index(name) is not None
+    assert get_patch_series_index(name) is not None
     assert not is_applied(name)
-    patch = _DB.series[_get_patch_index(name)]
+    patch = _DB.series[get_patch_series_index(name)]
     if keep:
         _DB.kept_patches[patch.name] = patch
     _DB.series.remove(patch)
@@ -357,8 +539,8 @@ def remove_patch(name, keep=True):
 def restore_patch(name, newname=None):
     '''Restore a previously removed patch to the series (after the top patch)'''
     assert is_writable()
-    assert newname is None or _get_patch_index(newname) is None
-    assert newname is not None or _get_patch_index(name) is None
+    assert newname is None or get_patch_series_index(newname) is None
+    assert newname is not None or get_patch_series_index(name) is None
     assert name in _DB.kept_patches
     patch = _DB.kept_patches[name]
     if newname is not None:
@@ -386,55 +568,10 @@ def _get_next_patch_index():
     index = 0 if top is None else top + 1
     while index < len(_DB.series):
         patch = _DB.series[index]
-        if (patch.pos_guards & _DB.selected_guards) != patch.pos_guards:
-            continue
-        if len(patch.neg_guards & _DB.selected_guards) != 0:
+        if patch.is_blocked_by_guard():
             continue
         return index
     return None
-
-OverlapData = collections.namedtuple('OverlapData', ['unrefreshed', 'uncommitted'])
-
-def _get_overlapping_patch(patch, filename):
-    '''Return the patch (if any) which overlaps the named file in this patch'''
-    assert is_readable()
-    assert is_applied(patch.name)
-    after = False
-    for apatch in get_applied_patch_list():
-        if after:
-            if filename in apatch.files:
-                return apatch
-        else:
-            after = apatch.name == patch.name
-    return None
-
-def _get_patch_overlap_data(patch, filenames=None):
-    '''
-    Get the data detailing unrefreshed/uncommitted files that will be
-    overlapped by the supplied patch
-    '''
-    assert is_readable()
-    data = OverlapData(unrefreshed = {}, uncommitted = [])
-    applied_patches = get_applied_patch_list()
-    try:
-        patch_index = applied_patches.index(patch)
-        applied_patches = applied_patches[:patch_index]
-    except ValueError:
-        pass
-    if filenames is None:
-        filenames = [name for name in patch.files]
-    for filename in patch.files.values():
-        in_patch = False
-        for applied_patch in reversed(applied_patches):
-            apfile = applied_patch.files.get(filename, None)
-            if apfile is not None:
-                in_patch = True
-                if apfile.needs_refresh():
-                    data.unrefreshed[filename] = applied_patch.name
-                break
-        if not in_patch and scm_ifce.has_uncommitted_change(filename):
-            data.uncommited.append(filename)
-    return data
 
 def get_patch_overlap_data(name, filenames=None):
     '''
@@ -444,9 +581,9 @@ def get_patch_overlap_data(name, filenames=None):
     the patch).
     '''
     assert is_readable()
-    patch_index = _get_patch_index(name)
+    patch_index = get_patch_series_index(name)
     assert patch_index is not None
-    return _get_patch_overlap_data(_DB.series[patch_index], filenames)
+    return _DB.series[patch_index].get_overlap_data(filenames)
 
 def get_next_patch_overlap_data():
     '''
@@ -457,31 +594,7 @@ def get_next_patch_overlap_data():
     next_index = _get_next_patch_index()
     if next_index is None:
         return OverlapData(unrefreshed = {}, uncommitted = [])
-    return _get_patch_overlap_data(_DB.series[next_index])
-
-def _back_up_file(patch, filename):
-    '''Back up the named file for the given patch'''
-    assert is_writable()
-    assert is_applied(patch.name)
-    assert _get_overlapping_patch(patch, filename) is None
-    assert filename in patch.files
-    def turn_off_write(mode):
-        '''Return the given mode with the write bits turned off'''
-        return mode & ~(stat.S_IWUSR|stat.S_IWGRP|stat.S_IWOTH)
-    file_data = patch.files[filename]
-    if os.path.exists(file_data.name):
-        bu_f_name = os.path.join(_BACKUPS_DIR, patch.name, file_data.name)
-        # We need this so that we need to reset it on pop
-        file_data.old_mode = os.stat(file_data.name).st_mode
-        # We'll try to preserve links when we pop patches
-        # so we move the file to the backups directory and then make
-        # a copy (without links) in the working directory
-        shutil.move(file_data.name, bu_f_name)
-        shutil.copy2(bu_f_name, file_data.name)
-        # Make the backup read only to prevent accidental change
-        os.chmod(bu_f_name, turn_off_write(file_data.old_mode))
-    else:
-        file_data.old_mode = None
+    return _DB.series[next_index].get_overlap_data()
 
 def apply_patch():
     '''Apply the next patch in the series'''
@@ -496,14 +609,14 @@ def apply_patch():
     if next_index is None:
         return (False, 'There are no pushable patches available')
     next_patch = _DB.series[next_index]
-    assert total_len(_get_patch_overlap_data(next_patch)) == 0
+    assert total_len(next_patch.get_overlap_data()) == 0
     os.mkdir(os.path.join(_BACKUPS_DIR, next_patch.name))
     results = {}
     if len(next_patch.files) == 0:
         return (True, results)
     patch_cmd = ['patch', '--merge', '--force', '-p1', '--batch', '--silent']
     for file_data in next_patch.files.values():
-        _back_up_file(next_patch, file_data.name)
+        next_patch.do_back_up_file(file_data.name)
         if file_data.diff:
             results[file_data.name] = runext.run_cmd(patch_cmd, file_data.diff)
         if os.path.exists(file_data.name) and file_data.new_mode is not None:
@@ -519,17 +632,18 @@ def get_top_patch_name():
 def is_blocked_by_guard(name):
     '''Is the named patch blocked from being applied by any guards?'''
     assert is_readable()
-    assert _get_patch_index(name) is not None
-    patch = _DB.series[_get_patch_index(name)]
-    return (patch.pos_guards & _DB.selected_guards) != patch.pos_guards
+    assert get_patch_series_index(name) is not None
+    return _DB.get_patch(name).is_blocked_by_guard()
 
-def is_pushable(patch=None):
-    '''Return the name of the top applied patch'''
+def is_pushable():
+    '''Is there a pushable patch?'''
     assert is_readable()
-    if patch is None:
-        return _get_next_patch_index() is not None
-    else:
-        return not is_applied(patch) and not is_blocked_by_guard(patch)
+    return _get_next_patch_index() is not None
+
+def is_patch_pushable(name):
+    '''Is the named patch pushable?'''
+    assert is_readable()
+    return _DB.get_patch(name).is_pushable()
 
 def unapply_top_patch():
     '''Unapply the top applied patch'''
@@ -537,55 +651,36 @@ def unapply_top_patch():
     assert not top_patch_needs_refresh()
     top_patch_index = _get_top_patch_index()
     assert top_patch_index is not None
-    top_patch = _DB.series[top_patch_index]
-    for file_data in top_patch.files.values():
-        if os.path.exists(file_data.name):
-            os.remove(file_data.name)
-        bu_f_name = os.path.join(_BACKUPS_DIR, top_patch.name, file_data.name)
-        if os.path.exists(bu_f_name):
-            os.chmod(bu_f_name, file_data.old_mode)
-            shutil.move(bu_f_name, file_data.name)
-    shutil.rmtree(os.path.join(_BACKUPS_DIR, top_patch.name))
-    return True
+    return _DB.series[top_patch_index].do_unapply()
 
 def get_filenames_in_patch(name, filenames=None):
     '''
     Return the names of the files in the named patch.
     If filenames is not None restrict the returned list to names that
-    are also infilenames.
+    are also in filenames.
     '''
     assert is_readable()
-    patch_index = _get_patch_index(name)
+    patch_index = get_patch_series_index(name)
     assert patch_index is not None
-    patch = _DB.series[patch_index]
-    if filenames is None:
-        return [filename for filename in patch.files]
-    else:
-        return [filename for filename in patch.files if filename in filenames]
+    return _DB.series[patch_index].get_filenames(filenames)
 
 def add_file_to_patch(name, filename):
     '''Add the named file to the named patch'''
     assert is_writable()
-    patch_index = _get_patch_index(name)
+    patch_index = get_patch_series_index(name)
     assert patch_index is not None
     patch = _DB.series[patch_index]
     assert filename not in patch.files
-    if not is_applied(name):
-        # not much to do here
-        patch.files[filename] = _FileData(filename)
-        return dump_db()
-    overlaps = _get_patch_overlap_data(patch, [filename])
-    assert len(overlaps.unrefreshed) + len(overlaps.uncommitted) == 0
-    patch.files[filename] = _FileData(filename)
-    overlapped_by = _get_overlapping_patch(patch, filename)
-    if overlapped_by is None:
-        _back_up_file(patch, filename)
-    else:
-        overlapping_backup = os.path.join(_BACKUPS_DIR, overlapped_by.name, filename)
-        if os.path.exists(overlapping_backup):
-            bu_f_name = os.path.join(_BACKUPS_DIR, patch.name, filename)
-            os.link(overlapping_backup, bu_f_name)
-            patch.files[filename].old_mode = overlapped_by.files[filename].old_mode
-        else:
-            patch.files[filename].old_mode = None
-    return dump_db()
+    return patch.do_add_file(filename)
+
+def do_refresh_patch(name):
+    '''Refresh the named patch'''
+    assert is_writable()
+    assert is_applied(name)
+    patch_index = get_patch_series_index(name)
+    assert patch_index is not None
+    patch = _DB.series[patch_index]
+    results = {}
+    for filename in patch.files:
+        results[filename] = patch.do_refresh_file(filename)
+    return results
