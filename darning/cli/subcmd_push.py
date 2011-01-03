@@ -51,9 +51,7 @@ def run_push(args):
     _db_ok, results = patch_db.apply_patch()
     highest_ecode = 0
     for filename in results:
-        print filename
         result = results[filename]
-        print result
         highest_ecode = highest_ecode if result.ecode < highest_ecode else result.ecode
         for line in result.stdout.splitlines(False):
             msg.Info(line)

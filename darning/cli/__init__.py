@@ -24,3 +24,4 @@ import darning.cli.subcmd_new
 import darning.cli.subcmd_push
 import darning.cli.subcmd_pop
 import darning.cli.subcmd_add
+import darning.cli.subcmd_refresh
