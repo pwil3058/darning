@@ -271,23 +271,56 @@ class _DataBase:
         self.series = list()
         self.kept_patches = dict()
         self.host_scm = host_scm
+    def _do_insert_patch(self, patch, after=None):
+        '''Insert give patch into series after the top or nominated patch'''
+        assert is_writable()
+        assert self.get_series_index(patch.name) is None
+        assert after is None or self.get_series_index(after) is not None
+        if after is not None:
+            assert not is_applied(after) or is_top_applied_patch(after)
+            index = self.get_series_index(after) + 1
+        else:
+            top_index = self.get_series_index_for_top()
+            index = top_index + 1 if top_index is not None else 0
+        self.series.insert(index, patch)
+        return dump_db()
+    def get_patch(self, name):
+        '''Get the patch with the given name'''
+        patch_index = self.get_series_index(name)
+        if patch_index is not None:
+            return self.series[patch_index]
+        else:
+            return None
     def get_series_index(self, name):
         '''Get the series index for the patch with the given name'''
-        assert is_readable()
         index = 0
         for patch in self.series:
             if patch.name == name:
                 return index
             index += 1
         return None
-    def get_patch(self, name):
-        '''Get the patch with the given name'''
-        assert is_readable()
-        patch_index = self.get_series_index(name)
-        if patch_index is not None:
-            return self.series[patch_index]
-        else:
+    def get_series_index_for_next(self):
+        '''Get the index of the next patch to be applied'''
+        top = self.get_series_index_for_top()
+        index = 0 if top is None else top + 1
+        while index < len(self.series):
+            if self.series[index].is_blocked_by_guard():
+                continue
+            return index
+        return None
+    def get_series_index_for_top(self):
+        '''Get the index in series of the top applied patch'''
+        applied_set = _get_applied_patch_names_set()
+        if len(applied_set) == 0:
             return None
+        index = 0
+        for patch in self.series:
+            if patch.name in applied_set:
+                applied_set.remove(patch.name)
+                if len(applied_set) == 0:
+                    return index
+            index += 1
+        return None
 
 _DB_DIR = '.darning.dbd'
 _BACKUPS_DIR = os.path.join(_DB_DIR, 'backups')
@@ -460,17 +493,7 @@ def get_patch_series_index(name):
 def _get_top_patch_index():
     '''Get the index in series of the top applied patch'''
     assert is_readable()
-    applied_set = _get_applied_patch_names_set()
-    if len(applied_set) == 0:
-        return None
-    index = 0
-    for patch in _DB.series:
-        if patch.name in applied_set:
-            applied_set.remove(patch.name)
-            if len(applied_set) == 0:
-                return index
-        index += 1
-    return None
+    return _DB.get_series_index_for_top()
 
 def patch_is_in_series(name):
     '''Is there a patch with the given name in the series?'''
@@ -487,20 +510,6 @@ def is_top_applied_patch(name):
         return False
     return _DB.series[top_index].name == name
 
-def _insert_patch(patch, after=None):
-    '''Insert a patch into series after the top or nominated patch'''
-    assert is_writable()
-    assert get_patch_series_index(patch.name) is None
-    assert after is None or get_patch_series_index(after) is not None
-    if after is not None:
-        assert not is_applied(after) or is_top_applied_patch(after)
-        index = get_patch_series_index(after) + 1
-    else:
-        top_index = _get_top_patch_index()
-        index = top_index + 1 if top_index is not None else 0
-    _DB.series.insert(index, patch)
-    return dump_db()
-
 def patch_needs_refresh(name):
     '''Does the named patch need to be refreshed?'''
     assert is_readable()
@@ -512,7 +521,7 @@ def create_new_patch(name, description):
     assert is_writable()
     assert get_patch_series_index(name) is None
     patch = _PatchData(name, description)
-    return _insert_patch(patch)
+    return _DB._do_insert_patch(patch)
 
 def duplicate_patch(name, newname, newdescription):
     '''Create a duplicate of the named patch with a new name and new description (after the top patch)'''
@@ -523,7 +532,7 @@ def duplicate_patch(name, newname, newdescription):
     newpatch = copy.deepcopy(patch)
     newpatch.name = newname
     newpatch.description = newdescription
-    return _insert_patch(newpatch)
+    return _DB._do_insert_patch(newpatch)
 
 def remove_patch(name, keep=True):
     '''Remove the named patch from series and (optionally) keep it for later restoration'''
@@ -545,7 +554,7 @@ def restore_patch(name, newname=None):
     patch = _DB.kept_patches[name]
     if newname is not None:
         patch.name = newname
-    is_ok = _insert_patch(patch)
+    is_ok = _DB._do_insert_patch(patch)
     if is_ok:
         del _DB.kept_patches[name]
         is_ok = dump_db()
@@ -556,22 +565,13 @@ def top_patch_needs_refresh():
     assert is_readable()
     top = _get_top_patch_index()
     if top is not None:
-        for file_data in _DB.series[top].files.values():
-            if file_data.needs_refresh():
-                return True
+        return _DB.series[top].needs_refresh()
     return False
 
 def _get_next_patch_index():
     '''Get the next patch to be applied'''
     assert is_readable()
-    top = _get_top_patch_index()
-    index = 0 if top is None else top + 1
-    while index < len(_DB.series):
-        patch = _DB.series[index]
-        if patch.is_blocked_by_guard():
-            continue
-        return index
-    return None
+    return _DB.get_series_index_for_next()
 
 def get_patch_overlap_data(name, filenames=None):
     '''
