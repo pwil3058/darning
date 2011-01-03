@@ -81,7 +81,7 @@ class _PatchData:
         if not self.is_applied():
             # not much to do here
             self.files[filename] = _FileData(filename)
-            return dump_db()
+            dump_db()
         overlaps = self.get_overlap_data([filename])
         assert len(overlaps.unrefreshed) + len(overlaps.uncommitted) == 0
         self.files[filename] = _FileData(filename)
@@ -95,7 +95,7 @@ class _PatchData:
                 self.files[filename].old_mode = overlapped_by.files[filename].old_mode
             else:
                 self.files[filename].old_mode = None
-        return dump_db()
+        dump_db()
     def do_back_up_file(self, filename):
         '''Back up the named file for this patch'''
         assert is_writable()
@@ -283,7 +283,7 @@ class _DataBase:
             top_index = self.get_series_index_for_top()
             index = top_index + 1 if top_index is not None else 0
         self.series.insert(index, patch)
-        return dump_db()
+        dump_db()
     def get_patch(self, name):
         '''Get the patch with the given name'''
         patch_index = self.get_series_index(name)
@@ -437,11 +437,8 @@ def dump_db():
     fobj = open(_DB_FILE, 'wb')
     try:
         cPickle.dump(_DB, fobj)
-    except Exception:
-        return Failure('Failed to write to database')
     finally:
         fobj.close()
-    return True
 
 def get_patch_series_names():
     '''Get a list of patch names in series order (names only)'''
@@ -521,7 +518,7 @@ def create_new_patch(name, description):
     assert is_writable()
     assert get_patch_series_index(name) is None
     patch = _PatchData(name, description)
-    return _DB._do_insert_patch(patch)
+    _DB._do_insert_patch(patch)
 
 def duplicate_patch(name, newname, newdescription):
     '''Create a duplicate of the named patch with a new name and new description (after the top patch)'''
@@ -532,7 +529,7 @@ def duplicate_patch(name, newname, newdescription):
     newpatch = copy.deepcopy(patch)
     newpatch.name = newname
     newpatch.description = newdescription
-    return _DB._do_insert_patch(newpatch)
+    _DB._do_insert_patch(newpatch)
 
 def remove_patch(name, keep=True):
     '''Remove the named patch from series and (optionally) keep it for later restoration'''
@@ -543,7 +540,7 @@ def remove_patch(name, keep=True):
     if keep:
         _DB.kept_patches[patch.name] = patch
     _DB.series.remove(patch)
-    return dump_db()
+    dump_db()
 
 def restore_patch(name, newname=None):
     '''Restore a previously removed patch to the series (after the top patch)'''
@@ -554,11 +551,9 @@ def restore_patch(name, newname=None):
     patch = _DB.kept_patches[name]
     if newname is not None:
         patch.name = newname
-    is_ok = _DB._do_insert_patch(patch)
-    if is_ok:
-        del _DB.kept_patches[name]
-        is_ok = dump_db()
-    return is_ok
+    _DB._do_insert_patch(patch)
+    del _DB.kept_patches[name]
+    dump_db()
 
 def top_patch_needs_refresh():
     '''Does the top applied patch need a refresh?'''
@@ -621,7 +616,8 @@ def apply_patch():
             results[file_data.name] = runext.run_cmd(patch_cmd, file_data.diff)
         if os.path.exists(file_data.name) and file_data.new_mode is not None:
             os.chmod(file_data.name, file_data.new_mode)
-    return (dump_db(), results)
+    dump_db()
+    return (True, results)
 
 def get_top_patch_name():
     '''Return the name of the top applied patch'''
