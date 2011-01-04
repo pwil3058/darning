@@ -24,6 +24,7 @@ import stat
 import copy
 import shutil
 import atexit
+import errno
 
 from darning import scm_ifce
 from darning import runext
@@ -65,6 +66,13 @@ class _FileData:
 
 OverlapData = collections.namedtuple('OverlapData', ['unrefreshed', 'uncommitted'])
 
+def _total_overlap_count(overlap_data):
+    '''Total number of overlaps'''
+    count = 0
+    for item in overlap_data:
+        count += len(item)
+    return count
+
 class _PatchData:
     '''Store data for changes to a number of files as a single patch'''
     def __init__(self, name, description):
@@ -96,6 +104,34 @@ class _PatchData:
             else:
                 self.files[filename].old_mode = None
         dump_db()
+    def do_apply(self):
+        '''Apply this patch'''
+        assert is_writable()
+        assert not self.is_applied()
+        assert _total_overlap_count(self.get_overlap_data()) == 0
+        os.mkdir(self.get_backup_dir_name())
+        results = {}
+        if len(self.files) == 0:
+            return results
+        patch_cmd = ['patch', '--merge', '--force', '-p1', '--batch', '--silent']
+        for file_data in self.files.values():
+            self.do_back_up_file(file_data.name)
+            if file_data.diff:
+                results[file_data.name] = runext.run_cmd(patch_cmd, file_data.diff)
+                if results[file_data.name].ecode == 0:
+                    try:
+                        file_data.timestamp = os.path.getmtime(file_data.name)
+                    except IOError as edata:
+                        if edata.errno == errno.ENOENT:
+                            file_data.timestamp = 0
+                        else:
+                            raise
+                else:
+                    file_data.timestamp = 0
+            if os.path.exists(file_data.name) and file_data.new_mode is not None:
+                os.chmod(file_data.name, file_data.new_mode)
+        dump_db()
+        return results
     def do_back_up_file(self, filename):
         '''Back up the named file for this patch'''
         assert is_writable()
@@ -272,7 +308,7 @@ class _DataBase:
         self.kept_patches = dict()
         self.host_scm = host_scm
     def _do_insert_patch(self, patch, after=None):
-        '''Insert give patch into series after the top or nominated patch'''
+        '''Insert given patch into series after the top or nominated patch'''
         assert is_writable()
         assert self.get_series_index(patch.name) is None
         assert after is None or self.get_series_index(after) is not None
@@ -284,6 +320,58 @@ class _DataBase:
             index = top_index + 1 if top_index is not None else 0
         self.series.insert(index, patch)
         dump_db()
+    def do_create_new_patch(self, name, description):
+        '''Create a new patch with the given name and description (after the top patch)'''
+        assert is_writable()
+        assert self.get_series_index(name) is None
+        patch = _PatchData(name, description)
+        self._do_insert_patch(patch)
+    def do_duplicate_patch(self, name, newname, newdescription):
+        '''Create a duplicate of the named patch with a new name and new description (after the top patch)'''
+        assert is_writable()
+        assert self.get_series_index(newname) is None
+        patch = self.get_patch(name)
+        assert patch is not None and not patch.needs_refresh()
+        newpatch = copy.deepcopy(patch)
+        newpatch.name = newname
+        newpatch.description = newdescription
+        self._do_insert_patch(newpatch)
+    def do_remove_patch(self, name, keep=True):
+        '''Remove the named patch from series and (optionally) keep it for later restoration'''
+        assert is_writable()
+        patch = self.get_patch(name)
+        assert patch is not None
+        assert not patch.is_applied()
+        if keep:
+            self.kept_patches[patch.name] = patch
+        self.series.remove(patch)
+        dump_db()
+    def do_restore_patch(self, name, newname=None):
+        '''Restore a previously removed patch to the series (after the top patch)'''
+        assert is_writable()
+        assert newname is None or self.get_series_index(newname) is None
+        assert newname is not None or self.get_series_index(name) is None
+        assert name in self.kept_patches
+        patch = self.kept_patches[name]
+        if newname is not None:
+            patch.name = newname
+        self._do_insert_patch(patch)
+        del self.kept_patches[name]
+        dump_db()
+    def get_applied_patches(self):
+        '''Get a list of applied patches in series order'''
+        applied = list()
+        applied_set = _get_applied_patch_names_set()
+        if len(applied_set) == 0:
+            return []
+        for patch in self.series:
+            if patch.name in applied_set:
+                applied.append(patch)
+                applied_set.remove(patch.name)
+                if len(applied_set) == 0:
+                    break
+        assert len(applied_set) == 0, 'Series/applied patches discrepency'
+        return applied
     def get_patch(self, name):
         '''Get the patch with the given name'''
         patch_index = self.get_series_index(name)
@@ -455,32 +543,12 @@ def _get_applied_patch_names_set():
 def get_applied_patch_name_list():
     '''Get an ordered list of applied patch names'''
     assert is_readable()
-    applied = list()
-    applied_set = _get_applied_patch_names_set()
-    if len(applied_set) == 0:
-        return []
-    for patch in _DB.series:
-        if patch.name in applied_set:
-            applied.append(patch.name)
-            applied_set.remove(patch.name)
-            if len(applied_set) == 0:
-                return applied
-    assert False, 'Series/applied patches discrepency'
+    return [patch.name for patch in _DB.get_applied_patches()]
 
 def get_applied_patch_list():
-    '''Get an ordered list of applied patch names'''
+    '''Get an ordered list of applied patches'''
     assert is_readable()
-    applied = list()
-    applied_set = _get_applied_patch_names_set()
-    if len(applied_set) == 0:
-        return []
-    for patch in _DB.series:
-        if patch.name in applied_set:
-            applied.append(patch)
-            applied_set.remove(patch.name)
-            if len(applied_set) == 0:
-                return applied
-    assert False, 'Series/applied patches discrepency'
+    return _DB.get_applied_patches()
 
 def get_patch_series_index(name):
     '''Get the index in series for the patch with the given name'''
@@ -517,43 +585,7 @@ def create_new_patch(name, description):
     '''Create a new patch with the given name and description (after the top patch)'''
     assert is_writable()
     assert get_patch_series_index(name) is None
-    patch = _PatchData(name, description)
-    _DB._do_insert_patch(patch)
-
-def duplicate_patch(name, newname, newdescription):
-    '''Create a duplicate of the named patch with a new name and new description (after the top patch)'''
-    assert is_writable()
-    assert get_patch_series_index(newname) is None
-    assert get_patch_series_index(name) is not None and not patch_needs_refresh(name)
-    patch = _DB.series[get_patch_series_index(name)]
-    newpatch = copy.deepcopy(patch)
-    newpatch.name = newname
-    newpatch.description = newdescription
-    _DB._do_insert_patch(newpatch)
-
-def remove_patch(name, keep=True):
-    '''Remove the named patch from series and (optionally) keep it for later restoration'''
-    assert is_writable()
-    assert get_patch_series_index(name) is not None
-    assert not is_applied(name)
-    patch = _DB.series[get_patch_series_index(name)]
-    if keep:
-        _DB.kept_patches[patch.name] = patch
-    _DB.series.remove(patch)
-    dump_db()
-
-def restore_patch(name, newname=None):
-    '''Restore a previously removed patch to the series (after the top patch)'''
-    assert is_writable()
-    assert newname is None or get_patch_series_index(newname) is None
-    assert newname is not None or get_patch_series_index(name) is None
-    assert name in _DB.kept_patches
-    patch = _DB.kept_patches[name]
-    if newname is not None:
-        patch.name = newname
-    _DB._do_insert_patch(patch)
-    del _DB.kept_patches[name]
-    dump_db()
+    _DB.do_create_new_patch(name, description)
 
 def top_patch_needs_refresh():
     '''Does the top applied patch need a refresh?'''
@@ -593,31 +625,11 @@ def get_next_patch_overlap_data():
 
 def apply_patch():
     '''Apply the next patch in the series'''
-    def total_len(overlap_data):
-        '''Total number of overlaps'''
-        count = 0
-        for item in overlap_data:
-            count += len(item)
-        return count
     assert is_writable()
     next_index = _get_next_patch_index()
     if next_index is None:
         return (False, 'There are no pushable patches available')
-    next_patch = _DB.series[next_index]
-    assert total_len(next_patch.get_overlap_data()) == 0
-    os.mkdir(os.path.join(_BACKUPS_DIR, next_patch.name))
-    results = {}
-    if len(next_patch.files) == 0:
-        return (True, results)
-    patch_cmd = ['patch', '--merge', '--force', '-p1', '--batch', '--silent']
-    for file_data in next_patch.files.values():
-        next_patch.do_back_up_file(file_data.name)
-        if file_data.diff:
-            results[file_data.name] = runext.run_cmd(patch_cmd, file_data.diff)
-        if os.path.exists(file_data.name) and file_data.new_mode is not None:
-            os.chmod(file_data.name, file_data.new_mode)
-    dump_db()
-    return (True, results)
+    return (True, _DB.series[next_index].do_apply())
 
 def get_top_patch_name():
     '''Return the name of the top applied patch'''
@@ -675,8 +687,4 @@ def do_refresh_patch(name):
     assert is_applied(name)
     patch_index = get_patch_series_index(name)
     assert patch_index is not None
-    patch = _DB.series[patch_index]
-    results = {}
-    for filename in patch.files:
-        results[filename] = patch.do_refresh_file(filename)
-    return results
+    return _DB.series[patch_index].do_refresh()
