@@ -24,7 +24,6 @@ import stat
 import copy
 import shutil
 import atexit
-import errno
 
 from darning import scm_ifce
 from darning import runext
@@ -116,21 +115,32 @@ class _PatchData:
         patch_cmd = ['patch', '--merge', '--force', '-p1', '--batch', '--silent']
         for file_data in self.files.values():
             self.do_back_up_file(file_data.name)
+            result = None
             if file_data.diff:
-                results[file_data.name] = runext.run_cmd(patch_cmd, file_data.diff)
-                if results[file_data.name].ecode == 0:
-                    try:
-                        file_data.timestamp = os.path.getmtime(file_data.name)
-                    except IOError as edata:
-                        if edata.errno == errno.ENOENT:
-                            file_data.timestamp = 0
-                        else:
-                            raise
+                result = runext.run_cmd(patch_cmd, file_data.diff)
+                patch_ok = results[file_data.name].ecode == 0
+            else:
+                patch_ok = True
+            file_exists = os.path.exists(file_data.name)
+            if file_exists:
+                if file_data.new_mode is not None:
+                    os.chmod(file_data.name, file_data.new_mode)
+            else:
+                # A non None new_mode means that the file existed when
+                # the diff was made so a refresh will be required
+                patch_ok = file_data.new_mode is None
+            if os.path.exists(file_data.name) and patch_ok:
+                file_data.timestamp = os.path.getmtime(file_data.name)
+            else:
+                file_data.timestamp = 0
+            if not patch_ok:
+                if result is None:
+                    result = runext.Result(1, '', 'Needs update.\n')
                 else:
-                    file_data.timestamp = 0
-            if os.path.exists(file_data.name) and file_data.new_mode is not None:
-                os.chmod(file_data.name, file_data.new_mode)
-        dump_db()
+                    result = runext.Result(max(result.ecode, 1), result.stdout, result.stderr + 'Needs update.\n')
+            if result is not None:
+                results[file_data.name] = result
+            dump_db()
         return results
     def do_back_up_file(self, filename):
         '''Back up the named file for this patch'''
