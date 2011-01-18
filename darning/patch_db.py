@@ -24,6 +24,7 @@ import stat
 import copy
 import shutil
 import atexit
+import time
 
 from darning import scm_ifce
 from darning import runext
@@ -71,6 +72,19 @@ def _total_overlap_count(overlap_data):
     for item in overlap_data:
         count += len(item)
     return count
+
+def _pts_tz_str(tz_seconds=None):
+    '''Return the timezone as a string suitable for use in patch header'''
+    if tz_seconds is None:
+        tz_seconds = -time.timezone
+    if tz_seconds > 0:
+        hrs = tz_seconds / 3600
+    else:
+        hrs = -(-tz_seconds / 3600)
+    mins = (abs(tz_seconds) % 3600) / 60
+    return '{0:0=+3}{1:02}'.format(hrs, mins)
+
+_PTS_TEMPL = '%Y-%m-%d %H:%M:%S.%s ' + _pts_tz_str()
 
 class _PatchData:
     '''Store data for changes to a number of files as a single patch'''
