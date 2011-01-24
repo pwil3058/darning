@@ -57,6 +57,7 @@ class _FileData:
         self.timestamp = 0
         self.scm_revision = None
         self.deleted = False
+        self.binary = False
     def needs_refresh(self):
         '''Does this file need a refresh? (Given that it is not overshadowed.)'''
         if os.path.exists(self.name):
@@ -84,7 +85,18 @@ def _pts_tz_str(tz_seconds=None):
     mins = (abs(tz_seconds) % 3600) / 60
     return '{0:0=+3}{1:02}'.format(hrs, mins)
 
-_PTS_TEMPL = '%Y-%m-%d %H:%M:%S.%s ' + _pts_tz_str()
+_PTS_TEMPL = '%Y-%m-%d %H:%M:%S.{0:09} ' + _pts_tz_str()
+
+def _pts_str(secs=None):
+    '''Return the "in patch" timestamp string for "secs" seconds'''
+    ts_str = time.strftime(_PTS_TEMPL, time.localtime(secs))
+    return ts_str.format(int((secs % 1) * 1000000000))
+
+_PTS_ZERO = _pts_str(0)
+
+def _pts_for_path(path):
+    '''Return the "in patch" timestamp string for "secs" seconds'''
+    return _pts_str(os.path.getmtime(path))
 
 class _PatchData:
     '''Store data for changes to a number of files as a single patch'''
@@ -130,11 +142,15 @@ class _PatchData:
         for file_data in self.files.values():
             self.do_back_up_file(file_data.name)
             result = None
-            if file_data.diff:
+            patch_ok = True
+            if file_data.binary is not False:
+                if not file_data.deleted:
+                    open(file_data.name, 'wb').write(file_data.binary)
+                elif os.path.exists(file_data.name):
+                    os.remove(file_data.name)
+            elif file_data.diff:
                 result = runext.run_cmd(patch_cmd, file_data.diff)
                 patch_ok = results[file_data.name].ecode == 0
-            else:
-                patch_ok = True
             file_exists = os.path.exists(file_data.name)
             if file_exists:
                 if file_data.new_mode is not None:
@@ -142,7 +158,7 @@ class _PatchData:
             else:
                 # A non None new_mode means that the file existed when
                 # the diff was made so a refresh will be required
-                patch_ok = file_data.new_mode is None
+                patch_ok = patch_ok and file_data.new_mode is None
             if os.path.exists(file_data.name) and patch_ok:
                 file_data.timestamp = os.path.getmtime(file_data.name)
             else:
@@ -182,6 +198,8 @@ class _PatchData:
         assert filename in self.files
         assert self.is_applied()
         assert self.get_overlapping_patch_for_file(filename) is None
+        def do_diff(labels, operands):
+            return runext.run_cmd(['diff', '-u', '--binary', '-p'] + labels + operands)
         bu_f_name = os.path.join(_BACKUPS_DIR, self.name, filename)
         file_data = self.files[filename]
         if os.path.exists(filename):
@@ -189,28 +207,61 @@ class _PatchData:
             if False:
                 file_data.deleted = False
                 file_data.timestamp = 0
-                result = runext.Result(3, '', 'File has unresolved merge(s).\n')
+                dump_db()
+                return runext.Result(3, '', 'File has unresolved merge(s).\n')
             if os.path.exists(bu_f_name):
-                pass
+                labels = ['--label={0} {1}'.format(os.path.join('a', filename), _pts_for_path(bu_f_name))]
+                operands = [bu_f_name, filename]
             else:
-                pass
-            stat_data = os.stat(filename)
-            curr_mode = stat_data.st_mode
-            timestamp = stat_data.st_mtime
-            deleted = False
-            # TODO: finish this
+                labels = ['--label=/dev/null {0}'.format(_PTS_ZERO)]
+                operands = ['/dev/null', filename]
+            labels.append('--label={0} {1}'.format(os.path.join('b', filename), _pts_for_path(filename)))
+            result = do_diff(labels, operands)
+            if result.stderr:
+                assert result.ecode > 1
+                file_data.deleted = False
+                file_data.timestamp = 0
+                if result.ecode <= 2:
+                    result = runext.Result(3, result.stdout, result.stderr)
+            else:
+                stat_data = os.stat(filename)
+                file_data.curr_mode = stat_data.st_mode
+                file_data.timestamp = stat_data.st_mtime
+                file_data.deleted = False
+                if result.ecode < 2:
+                    file_data.diff = result.stdout
+                    file_data.binary = False
+                else:
+                    file_data.diff = None
+                    file_data.binary = open(filename, 'rb').read()
         elif os.path.exists(bu_f_name):
-            curr_mode = None
-            timestamp = 0
-            deleted = True
-            # TODO: finish this
+            labels = ['--label={0} {1}'.format(os.path.join('a', filename), _pts_for_path(bu_f_name)),
+                '--label=/dev/null {0}'.format(_PTS_ZERO)]
+            operands = [bu_f_name, '/dev/null']
+            result = do_diff(labels, operands)
+            if result.stderr:
+                assert result.ecode > 1
+                file_data.deleted = True
+                file_data.timestamp = 0
+                if result.ecode <= 2:
+                    result = runext.Result(3, result.stdout, result.stderr)
+            else:
+                file_data.curr_mode = None
+                file_data.timestamp = 0
+                file_data.deleted = True
+                if result.ecode < 2:
+                    file_data.diff = result.stdout
+                    file_data.binary = False
+                else:
+                    file_data.diff = None
+                    file_data.binary = True
         else:
             file_data.diff = ''
             file_data.new_mode = None
             file_data.timestamp = 0
             file_data.scm_revision = scm_ifce.get_revision(filename=file_data.name)
             file_data.deleted = True
-            result = runext.Result(0, '', 'File does not exist\n')
+            result = runext.Result(0, '', 'File "{0}" does not exist\n'.format(filename))
         dump_db()
         return result
     def do_unapply(self):

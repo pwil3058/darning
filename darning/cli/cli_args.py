@@ -53,6 +53,14 @@ def add_patch_option(parser, helptext):
         metavar='patch',
     )
 
+def add_verbose_option(parser, helptext):
+    parser.add_argument(
+        '-v', '--verbose',
+        help=helptext,
+        dest='opt_verbose',
+        action='store_true',
+    )
+
 def add_files_argument(parser, helptext):
     parser.add_argument(
         'filenames',

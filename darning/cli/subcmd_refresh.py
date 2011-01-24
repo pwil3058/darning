@@ -27,6 +27,8 @@ PARSER = cli_args.SUB_CMD_PARSER.add_parser(
 
 cli_args.add_patch_option(PARSER, helptext='the name of the patch to be refreshed.')
 
+cli_args.add_verbose_option(PARSER, helptext='display diff output.')
+
 def run_refresh(args):
     '''Execute the "refresh" sub command using the supplied args'''
     db_utils.open_db(modifiable=True)
@@ -41,15 +43,19 @@ def run_refresh(args):
     for filename in results:
         result = results[filename]
         highest_ecode = highest_ecode if result.ecode < highest_ecode else result.ecode
-        for line in result.stdout.splitlines(False):
-            msg.Info(line)
+        if args.opt_verbose:
+            if result.ecode < 2:
+                for line in result.stdout.splitlines(False):
+                    msg.Info(line)
+            else:
+                msg.Info('{0}: {1}'.format(filename, result.stdout))
         if result.ecode in [0, 1]:
             for line in result.stderr.splitlines(False):
                 msg.Warn(line)
         else:
             for line in result.stderr.splitlines(False):
                 msg.Error(line)
-    if highest_ecode > 1:
+    if highest_ecode > 2:
         return msg.Error('Patch "{0}" requires another refresh after issues are resolved.', args.opt_patch)
     return msg.Info('Patch "{0}" refreshed.', args.opt_patch)
 
