@@ -44,11 +44,9 @@ def run_refresh(args):
         result = results[filename]
         highest_ecode = highest_ecode if result.ecode < highest_ecode else result.ecode
         if args.opt_verbose:
-            if result.ecode < 2:
-                for line in result.stdout.splitlines(False):
-                    msg.Info(line)
-            else:
-                msg.Info('{0}: {1}'.format(filename, result.stdout))
+            msg.Info('Refreshing: {0}'.format(filename))
+            for line in result.stdout.splitlines(False):
+                msg.Info(line)
         if result.ecode in [0, 1]:
             for line in result.stderr.splitlines(False):
                 msg.Warn(line)
