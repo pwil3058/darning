@@ -150,7 +150,7 @@ class _PatchData:
                     os.remove(file_data.name)
             elif file_data.diff:
                 result = runext.run_cmd(patch_cmd, file_data.diff)
-                patch_ok = results[file_data.name].ecode == 0
+                patch_ok = results.ecode == 0
             file_exists = os.path.exists(file_data.name)
             if file_exists:
                 if file_data.new_mode is not None:
