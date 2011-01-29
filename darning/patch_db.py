@@ -50,20 +50,21 @@ class _FileData:
         self.name = name
         self.diff = ''
         try:
-            self.old_mode = os.stat(name).st_mode
+            fstat = os.stat(name)
+            self.old_mode = fstat.st_mode
+            self.timestamp = fstat.st_mtime
         except OSError:
             self.old_mode = None
-        self.new_mode = None
-        self.timestamp = 0
+            self.timestamp = 0
+        self.new_mode = self.old_mode
         self.scm_revision = None
-        self.deleted = False
         self.binary = False
     def needs_refresh(self):
         '''Does this file need a refresh? (Given that it is not overshadowed.)'''
         if os.path.exists(self.name):
-            return self.timestamp < os.path.getmtime(self.name) or self.deleted
+            return self.timestamp < os.path.getmtime(self.name) or self.new_mode is None
         else:
-            return not self.deleted
+            return self.new_mode is not None or self.timestamp < 0
 
 OverlapData = collections.namedtuple('OverlapData', ['unrefreshed', 'uncommitted'])
 
@@ -144,7 +145,7 @@ class _PatchData:
             result = None
             patch_ok = True
             if file_data.binary is not False:
-                if not file_data.deleted:
+                if file_data.new_mode is not None:
                     open(file_data.name, 'wb').write(file_data.binary)
                 elif os.path.exists(file_data.name):
                     os.remove(file_data.name)
@@ -205,8 +206,8 @@ class _PatchData:
         if os.path.exists(filename):
             # Do a check for unresolved merges here
             if False:
-                file_data.deleted = False
-                file_data.timestamp = 0
+                # ensure this file shows up as needing refresh
+                file_data.timestamp = -1
                 dump_db()
                 return runext.Result(3, '', 'File has unresolved merge(s).\n')
             if os.path.exists(bu_f_name):
@@ -219,15 +220,14 @@ class _PatchData:
             result = do_diff(labels, operands)
             if result.stderr:
                 assert result.ecode > 1
-                file_data.deleted = False
-                file_data.timestamp = 0
+                # ensure this file shows up as needing refresh
+                file_data.timestamp = -1
                 if result.ecode <= 2:
                     result = runext.Result(3, result.stdout, result.stderr)
             else:
                 stat_data = os.stat(filename)
-                file_data.curr_mode = stat_data.st_mode
+                file_data.new_mode = stat_data.st_mode
                 file_data.timestamp = stat_data.st_mtime
-                file_data.deleted = False
                 if result.ecode < 2:
                     file_data.diff = result.stdout
                     file_data.binary = False
@@ -241,14 +241,14 @@ class _PatchData:
             result = do_diff(labels, operands)
             if result.stderr:
                 assert result.ecode > 1
-                file_data.deleted = True
-                file_data.timestamp = 0
+                file_data.new_mode = None
+                # ensure this file shows up as needing refresh
+                file_data.timestamp = -1
                 if result.ecode <= 2:
                     result = runext.Result(3, result.stdout, result.stderr)
             else:
-                file_data.curr_mode = None
+                file_data.new_mode = None
                 file_data.timestamp = 0
-                file_data.deleted = True
                 if result.ecode < 2:
                     file_data.diff = result.stdout
                     file_data.binary = False
@@ -260,7 +260,6 @@ class _PatchData:
             file_data.new_mode = None
             file_data.timestamp = 0
             file_data.scm_revision = scm_ifce.get_revision(filename=file_data.name)
-            file_data.deleted = True
             result = runext.Result(0, '', 'File "{0}" does not exist\n'.format(filename))
         dump_db()
         return result
