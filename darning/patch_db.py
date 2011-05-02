@@ -116,6 +116,7 @@ class _PatchData:
             # not much to do here
             self.files[filename] = _FileData(filename)
             dump_db()
+            return
         overlaps = self.get_overlap_data([filename])
         assert len(overlaps.unrefreshed) + len(overlaps.uncommitted) == 0
         self.files[filename] = _FileData(filename)
@@ -150,7 +151,7 @@ class _PatchData:
                 elif os.path.exists(file_data.name):
                     os.remove(file_data.name)
             elif file_data.diff:
-                result = runext.run_cmd(patch_cmd, file_data.diff)
+                result = runext.run_cmd(patch_cmd + [file_data.name], file_data.diff)
                 patch_ok = results.ecode == 0
             file_exists = os.path.exists(file_data.name)
             if file_exists:
@@ -399,6 +400,23 @@ class _DataBase:
         assert is_writable()
         assert self.get_series_index(name) is None
         patch = _PatchData(name, description)
+        self._do_insert_patch(patch)
+    def do_import_patch(self, epatch, name):
+        '''Import an external patch with the given name (after the top patch)'''
+        assert is_writable()
+        assert self.get_series_index(name) is None
+        patch = _PatchData(name, epatch.get_description())
+        for filepatch in epatch.file_patches:
+            path = filepatch.get_file_path(epatch.num_strip_levels)
+            patch.do_add_file(path)
+            patch.files[path].diff = filepatch.diff.get_as_string()
+            for preamble in filepatch.preambles:
+                if preample.preamble_type == 'git':
+                    for key in ['new mode', 'new file mode']:
+                        if key in preamble.extras:
+                            patch.files[path].new_mode = int(preamble.extras[key], 8)
+                            break
+                    break
         self._do_insert_patch(patch)
     def do_duplicate_patch(self, name, newname, newdescription):
         '''Create a duplicate of the named patch with a new name and new description (after the top patch)'''
@@ -660,6 +678,12 @@ def create_new_patch(name, description):
     assert is_writable()
     assert get_patch_series_index(name) is None
     _DB.do_create_new_patch(name, description)
+
+def import_patch(epatch, name):
+    '''Import an external patch with the given name (after the top patch)'''
+    assert is_writable()
+    assert get_patch_series_index(name) is None
+    _DB.do_import_patch(epatch, name)
 
 def top_patch_needs_refresh():
     '''Does the top applied patch need a refresh?'''
