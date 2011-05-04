@@ -49,10 +49,16 @@ def run_refresh(args):
                 msg.Info(line)
         if result.ecode in [0, 1]:
             for line in result.stderr.splitlines(False):
-                msg.Warn(line)
+                if not args.opt_verbose:
+                    msg.Warn('{0}: {1}', filename, line)
+                else:
+                    msg.Warn(line)
         else:
             for line in result.stderr.splitlines(False):
-                msg.Error(line)
+                if not args.opt_verbose:
+                    msg.Error('{0}: {1}', filename, line)
+                else:
+                    msg.Error(line)
     if highest_ecode > 2:
         return msg.Error('Patch "{0}" requires another refresh after issues are resolved.', args.opt_patch)
     return msg.Info('Patch "{0}" refreshed.', args.opt_patch)

@@ -25,6 +25,7 @@ import copy
 import shutil
 import atexit
 import time
+import re
 
 from darning import scm_ifce
 from darning import runext
@@ -46,6 +47,7 @@ class Failure:
 
 class _FileData:
     '''Change data for a single file'''
+    MERGE_CRE = re.compile('^(<<<<<<<|>>>>>>>).*$')
     def __init__(self, name):
         self.name = name
         self.diff = ''
@@ -65,6 +67,12 @@ class _FileData:
             return self.timestamp < os.path.getmtime(self.name) or self.new_mode is None
         else:
             return self.new_mode is not None or self.timestamp < 0
+    def has_unresolved_merges(self):
+        if os.path.exists(self.name):
+            for line in open(self.name).readlines():
+                if _FileData.MERGE_CRE.match(line):
+                    return True
+        return False
 
 OverlapData = collections.namedtuple('OverlapData', ['unrefreshed', 'uncommitted'])
 
@@ -209,7 +217,7 @@ class _PatchData:
         file_data = self.files[filename]
         if os.path.exists(filename):
             # Do a check for unresolved merges here
-            if False:
+            if file_data.has_unresolved_merges():
                 # ensure this file shows up as needing refresh
                 file_data.timestamp = -1
                 dump_db()
