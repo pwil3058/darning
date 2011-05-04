@@ -140,7 +140,7 @@ class _PatchData:
         results = {}
         if len(self.files) == 0:
             return results
-        patch_cmd = ['patch', '--merge', '--force', '-p1', '--batch', '--silent']
+        patch_cmd = ['patch', '--merge', '--force', '-p1', '--batch',]
         for file_data in self.files.values():
             self.do_back_up_file(file_data.name)
             result = None
@@ -152,7 +152,7 @@ class _PatchData:
                     os.remove(file_data.name)
             elif file_data.diff:
                 result = runext.run_cmd(patch_cmd + [file_data.name], file_data.diff)
-                patch_ok = results.ecode == 0
+                patch_ok = result.ecode == 0
             file_exists = os.path.exists(file_data.name)
             if file_exists:
                 if file_data.new_mode is not None:
@@ -187,6 +187,9 @@ class _PatchData:
             # We'll try to preserve links when we pop patches
             # so we move the file to the backups directory and then make
             # a copy (without links) in the working directory
+            bu_f_dir = os.path.dirname(bu_f_name)
+            if not os.path.exists(bu_f_dir):
+                os.makedirs(bu_f_dir)
             shutil.move(filename, bu_f_name)
             shutil.copy2(bu_f_name, filename)
             # Make the backup read only to prevent accidental change
@@ -406,12 +409,12 @@ class _DataBase:
         assert is_writable()
         assert self.get_series_index(name) is None
         patch = _PatchData(name, epatch.get_description())
-        for filepatch in epatch.file_patches:
-            path = filepatch.get_file_path(epatch.num_strip_levels)
+        for diff_plus in epatch.diff_pluses:
+            path = diff_plus.get_file_path(epatch.num_strip_levels)
             patch.do_add_file(path)
-            patch.files[path].diff = filepatch.diff.get_as_string()
-            for preamble in filepatch.preambles:
-                if preample.preamble_type == 'git':
+            patch.files[path].diff = str(diff_plus.diff)
+            for preamble in diff_plus.preambles:
+                if preamble.preamble_type == 'git':
                     for key in ['new mode', 'new file mode']:
                         if key in preamble.extras:
                             patch.files[path].new_mode = int(preamble.extras[key], 8)
