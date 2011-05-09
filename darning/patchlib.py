@@ -26,7 +26,6 @@ _PAIR = collections.namedtuple('_PAIR', ['before', 'after',])
 _FILE_AND_TS = collections.namedtuple('_FILE_AND_TS', ['path', 'timestamp',])
 _FILE_AND_TWS_LINES = collections.namedtuple('_FILE_AND_TWS_LINES', ['path', 'tws_lines',])
 _DIFF_DATA = collections.namedtuple('_DIFF_DATA', ['file_data', 'hunks',])
-_FILE_PATH_PLUS = collections.namedtuple('_FILE_PATH_PLUS', ['path', 'status', 'expath'])
 
 # Useful strings for including in regular expressions
 _PATH_RE_STR = '"([^"]+)"|(\S+)'
@@ -39,13 +38,26 @@ class ParseError(Exception):
         self.message = message
         self.lineno = lineno
 
+class TooMayStripLevels(Exception):
+    def __init__(self, message, path, levels):
+        self.message = message
+        self.path = path
+        self.levels = levels
+
 DEBUG = False
 class Bug(Exception): pass
 
 def gen_strip_level_function(level):
     '''Return a function for stripping the specified levels off a file path'''
+    def strip_n(path, level):
+        try:
+            return path.split(os.sep, level)[level]
+        except IndexError:
+            raise TooMayStripLevels('Strip level too large', path, level)
     level = int(level)
-    return lambda string: string if string.startswith(os.sep) else string.split(os.sep, level)[level]
+    if level == 0:
+        return lambda path: path
+    return lambda path: path if path.startswith(os.sep) else strip_n(path, level)
 
 def get_common_path(filelist):
     '''Return the longest common path componet for the files in the list'''
@@ -241,10 +253,6 @@ class Header(object):
     def set_diffstat(self, text):
         self.diffstat_lines = _Lines(text)
 
-ADDED = 'A'
-EXTANT = 'E'
-DELETED = 'D'
-
 def _is_non_null(path):
     return path and path != '/dev/null'
 
@@ -258,21 +266,30 @@ def _file_path_fm_pair(pair, strip=lambda x: x):
         return strip(before)
     return None
 
-def _file_path_plus_fm_pair(pair, strip=lambda x: x):
-    get_path = lambda x: x if isinstance(x, str) else x.path
-    path = None
-    status = None
-    after = get_path(pair.after)
-    before = get_path(pair.before)
-    if _is_non_null(after):
-        path = strip(after)
-        status = EXTANT if _is_non_null(before) else ADDED
-    elif _is_non_null(before):
-        path = strip(before)
-        status = DELETED
-    else:
-        return None
-    return _FILE_PATH_PLUS(path=path, status=status, expath=None)
+class FilePathPlus(object):
+    ADDED = '+'
+    EXTANT = ' '
+    DELETED = '-'
+    def __init__(self, path, status, expath=None):
+        self.path = path
+        self.status = status
+        self.expath = expath
+    @staticmethod
+    def fm_pair(pair, strip=lambda x: x):
+        get_path = lambda x: x if isinstance(x, str) else x.path
+        path = None
+        status = None
+        after = get_path(pair.after)
+        before = get_path(pair.before)
+        if _is_non_null(after):
+            path = strip(after)
+            status = FilePathPlus.EXTANT if _is_non_null(before) else FilePathPlus.ADDED
+        elif _is_non_null(before):
+            path = strip(before)
+            status = FilePathPlus.DELETED
+        else:
+            return None
+        return FilePathPlus(path=path, status=status, expath=None)
 
 class Preamble(_Lines):
     subtypes = list()
@@ -308,7 +325,12 @@ class Preamble(_Lines):
         else:
             return None
     def get_file_path_plus(self, strip_level=0):
-        return _FILE_PATH_PLUS(path=self.get_file_path(strip_level), status=None, expath=None)
+        if isinstance(self.file_data, str):
+            return FilePathPlus(path=self.get_file_path(strip_level), status=None, expath=None)
+        elif isinstance(self.file_data, _PAIR):
+            return FilePathPlus.fm_pair(self.file_data, gen_strip_level_function(strip_level))
+        else:
+            return None
     def get_file_expath(self, strip_level=0):
         return None
 
@@ -356,10 +378,9 @@ class GitPreamble(Preamble):
         return _file_path_fm_pair(self.file_data, strip)
     def get_file_path_plus(self, strip_level=0):
         path_plus = Preamble.get_file_path_plus(self, strip_level=strip_level)
-        if path_plus and path_plus.status == ADDED:
-            expath = self.get_file_expath(strip_level=strip_level)
-            path_plus = _FILE_PATH_PLUS(path=path_plus.path, status=path_plus.status, expath=expath)
-        return None
+        if path_plus and path_plus.status == FilePathPlus.ADDED:
+            path_plus.expath = self.get_file_expath(strip_level=strip_level)
+        return path_plus
     def get_file_expath(self, strip_level=0):
         for key in ['copy from', 'rename from']:
             if key in self.extras:
@@ -381,7 +402,7 @@ class DiffPreamble(Preamble):
         next_index = index + 1
         return (DiffPreamble(lines[index:next_index], _PAIR(file1, file2), match.group(1)), next_index)
     def __init__(self, lines, file_data, extras=None):
-        Preamble.__init__(self, 'diff', lines=lines, file_data=file_data,extras=extras)
+        Preamble.__init__(self, 'diff', lines=lines, file_data=file_data, extras=extras)
     def get_file_path(self, strip_level=0):
         strip = gen_strip_level_function(strip_level)
         return _file_path_fm_pair(self.file_data, strip)
@@ -569,9 +590,9 @@ class Diff(object):
     def get_file_path_plus(self, strip_level=0):
         strip = gen_strip_level_function(strip_level)
         if isinstance(self.file_data, str):
-            return _FILE_PATH_PLUS(path=strip(self.file_data), status=None, expath=None)
+            return FilePathPlus(path=strip(self.file_data), status=None, expath=None)
         elif isinstance(self.file_data, _PAIR):
-            return _file_path_plus_fm_pair(self.file_data, strip)
+            return FilePathPlus.fm_pair(self.file_data, strip)
         else:
             return None
 
@@ -825,9 +846,8 @@ class DiffPlus(object):
         path_plus = self.diff.get_file_path_plus(strip_level) if self.diff else None
         if not path_plus:
             path_plus = self.preambles.get_file_path_plus(strip_level=strip_level)
-        elif path_plus.status == ADDED and path_plus.expath is None:
-            expath = self.preambles.get_file_expath(strip_level=strip_level)
-            path_plus = _FILE_PATH_PLUS(path=path_plus.path, status=path_plus.status, expath=expath)
+        elif path_plus.status == FilePathPlus.ADDED and path_plus.expath is None:
+            path_plus.expath = self.preambles.get_file_expath(strip_level=strip_level)
         return path_plus
 
 class Patch(object):
