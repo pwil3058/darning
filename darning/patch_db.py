@@ -620,7 +620,6 @@ def load_db(lock=True):
         raise
     finally:
         fobj.close()
-    atexit.register(release_db)
     return True
 
 def dump_db():
