@@ -416,7 +416,8 @@ class _DataBase:
         '''Import an external patch with the given name (after the top patch)'''
         assert is_writable()
         assert self.get_series_index(name) is None
-        patch = _PatchData(name, epatch.get_description())
+        descr = utils.make_utf8_compliant(epatch.get_description())
+        patch = _PatchData(name, descr)
         for diff_plus in epatch.diff_pluses:
             path = diff_plus.get_file_path(epatch.num_strip_levels)
             patch.do_add_file(path)
