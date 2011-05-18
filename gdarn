@@ -1,0 +1,102 @@
+#!/usr/bin/env python
+### Copyright (C) 2010 Peter Williams <peter_ono@users.sourceforge.net>
+###
+### This program is free software; you can redistribute it and/or modify
+### it under the terms of the GNU General Public License as published by
+### the Free Software Foundation; version 2 of the License only.
+###
+### This program is distributed in the hope that it will be useful,
+### but WITHOUT ANY WARRANTY; without even the implied warranty of
+### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+### GNU General Public License for more details.
+###
+### You should have received a copy of the GNU General Public License
+### along with this program; if not, write to the Free Software
+### Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+'''GUI interface for the darning patch management system'''
+
+import argparse
+import os
+import sys
+import gtk
+
+_REPORT_REQUEST_MSG = \
+'''
+Please report this problem by either:
+  submitting a bug report at <http://sourceforge.net/tracker/?group_id=386122&atid=1604800>
+or:
+  e-mailing <darning-discussion@lists.sourceforge.net>
+and including a copy of the details below this message.
+
+Thank you.
+'''
+
+def report_exception(exc_data, parent=None):
+    import traceback
+    msg = ''.join(traceback.format_exception(exc_data[0], exc_data[1], exc_data[2]))
+    dialog = gtk.MessageDialog(parent=parent,
+                               flags=gtk.DIALOG_MODAL|gtk.DIALOG_DESTROY_WITH_PARENT,
+                               type=gtk.MESSAGE_ERROR, buttons=gtk.BUTTONS_CLOSE,
+                               message_format=_REPORT_REQUEST_MSG)
+    dialog.set_title('darning: Unhandled Exception')
+    dialog.format_secondary_text(msg)
+    dialog.run()
+    dialog.destroy()
+
+try:
+    from darning.gui import gdarn
+    from darning.gui import ifce
+    from darning.gui import config
+    from darning.gui import dialogue
+except Exception:
+    report_exception(sys.exc_info())
+    sys.exit(3)
+
+PARSER = argparse.ArgumentParser(description='GUI to manage stacked patches')
+
+PARSER.add_argument(
+    'playground',
+    help='Directory where patches are to be managed',
+    metavar='dir',
+    nargs='?'
+)
+
+ARGS = PARSER.parse_args()
+
+if ARGS.playground:
+    try:
+        os.chdir(ARGS.playground)
+    except OSError as msg:
+        sys.stderr.write(str(msg) + '\n')
+        sys.exit(2)
+
+try:
+    dialogue.report_any_problems(ifce.init())
+    open_dialog = None
+    if not ifce.in_valid_pgnd and ARGS.playground is None:
+        open_dialog = config.PgndOpenDialog()
+        if open_dialog.run() == gtk.RESPONSE_OK:
+            wspath = open_dialog.get_path()
+            if wspath:
+                open_dialog.show_busy()
+                result = ifce.chdir(wspath)
+                open_dialog.unshow_busy()
+                open_dialog.report_any_problems(result)
+        else:
+            sys.exit()
+        open_dialog.show_busy()
+    gdarn.Darning(dir_specified=ARGS.playground is not None).show()
+    if open_dialog:
+        open_dialog.unshow_busy()
+        open_dialog.destroy()
+    gtk.main()
+except (SystemExit, KeyboardInterrupt):
+    pass
+except Exception:
+    report_exception(sys.exc_info())
+    sys.exit(3)
+finally:
+    ifce.close()
+
+

@@ -39,6 +39,7 @@ def open_db(modifiable):
     result = patch_db.load_db(modifiable)
     if not result:
         sys.exit(msg.Error(result))
+    atexit.register(patch_db.release_db)
     return True
 
 def prepend_subdir(filenames):

@@ -34,6 +34,10 @@ def reset_back_end():
             return
     _CURRENT_BACK_END = None
 
+def is_valid_repo():
+    '''Is the currend working directory in a valid repository?'''
+    return _CURRENT_BACK_END is not None
+
 def get_revision(filename=None):
     '''
     Return the SCM revision for the named file or the whole playground

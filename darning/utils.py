@@ -18,7 +18,44 @@ Utility functions
 '''
 
 import stat
+import os
+
+from darning import urlops
+
+HOME = os.path.expanduser("~")
+
+def path_rel_home(path):
+    """Return the given path as a path relative to user's home directory."""
+    if urlops.parse_url(path).scheme:
+        return path
+    path = os.path.abspath(path)
+    len_home = len(HOME)
+    if len(path) >= len_home and HOME == path[:len_home]:
+        path = "~" + path[len_home:]
+    return path
 
 def turn_off_write(mode):
     '''Return the given mode with the write bits turned off'''
     return mode & ~(stat.S_IWUSR|stat.S_IWGRP|stat.S_IWOTH)
+
+def is_utf8_compliant(text):
+    try:
+        _ = text.decode('utf-8')
+    except UnicodeError:
+        return False
+    return True
+
+ISO_8859_CODECS = ['iso-8859-{0}'.format(x) for x in range(1, 17)]
+ISO_2022_CODECS = ['iso-2022-jp', 'iso-2022-kr'] + \
+    ['iso-2022-jp-{0}'.format(x) for x in range(1, 3) + ['2004', 'ext']]
+
+def make_utf8_compliant(text):
+    if is_utf8_compliant(text):
+        return text
+    for codec in ISO_8859_CODECS + ISO_2022_CODECS:
+        try:
+            text = unicode(text, codec).encode('utf-8')
+            return text
+        except UnicodeError:
+            continue
+    raise UnicodeError
