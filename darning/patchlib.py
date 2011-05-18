@@ -903,8 +903,28 @@ class Patch(object):
                 if len([fp for fp in expfiles if os.path.exists(os.path.join(dirpath, fp))]) > 0:
                     return num_strip_level
             except:
-                pass
+                # in which case the strip level is obviously 0
+                return 0
         return None
+    def check_relevance(self, strip_level=None, path=None):
+        relevance = collections.namedtuple('relevance', ['goodness', 'missing', 'unexpected'])
+        fpath = (lambda fp: fp) if path is None else lambda fp: os.path.join(path, fp)
+        missing = list()
+        unexpected = list()
+        fpluses = self.get_file_paths_plus(strip_level)
+        for fplus in fpluses:
+            fppath = fpath(fplus.path)
+            exists = os.path.exists(fppath)
+            if fplus.status == FilePathPlus.ADDED:
+                num_created += 1
+                if exists:
+                    unexpected.append(fppath)
+            else:
+                num_expected += 1
+                if not exists:
+                    missing.append(fppath)
+        badness = 100 if len(fpluses) == 0 else (100 * len(missing) * len(unexpected)) / len(fpluses)
+        return relevance(goodness=100-badness, missing=missing, unexpected=unexpected)
     def get_header(self):
         return self.header
     def set_header(self, text):
