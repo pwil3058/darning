@@ -62,8 +62,9 @@ def chdir(newdir=None):
         os.chdir(root)
         retval = PM.open_db()
         in_valid_pgnd = retval.eflags == cmd_result.OK
-        from darning.gui import config
-        config.append_saved_pgnd(root)
+        if in_valid_pgnd:
+            from darning.gui import config
+            config.append_saved_pgnd(root)
     else:
         in_valid_pgnd = False
     SCM.reset_back_end()
@@ -75,4 +76,23 @@ def chdir(newdir=None):
             TERM.set_cwd(new_wd)
         if LOG:
             LOG.append_entry("New Playground: %s" % new_wd)
+    return retval
+
+def new_playground(description, pgdir=None):
+    global in_valid_pgnd
+    if pgdir is not None:
+        result = chdir(pgdir)
+        if result.eflags != cmd_result.OK:
+            return result
+    if in_valid_pgnd:
+        return cmd_result.Result(cmd_result.WARNING, '', 'Already initialized')
+    result = PM.initialize(description)
+    if result is not True:
+        return cmd_result.Result(cmd_result.ERROR, '', str(result))
+    retval = PM.open_db()
+    in_valid_pgnd = retval.eflags == cmd_result.OK
+    if in_valid_pgnd:
+        from darning.gui import config
+        config.append_saved_pgnd(os.getcwd())
+        ws_event.notify_events(ws_event.PGND_MOD)
     return retval

@@ -32,5 +32,9 @@ def close_db():
     if patch_db.is_readable():
         patch_db.release_db()
 
+def initialize(description):
+    '''Create a patch database in the current directory'''
+    return patch_db.create_db(description)
+
 def get_in_progress():
     return patch_db.is_readable() and patch_db.get_top_patch_name() is not None

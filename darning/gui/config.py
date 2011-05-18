@@ -26,6 +26,9 @@ from darning.gui import dialogue
 from darning.gui import gutils
 from darning.gui import table
 from darning.gui import tlview
+from darning.gui import actions
+from darning.gui import ifce
+from darning.gui import icons
 
 PARow = collections.namedtuple('PARow', ['Alias', 'Path'])
 
@@ -371,3 +374,34 @@ class EditorAllocationDialog(dialogue.Dialog):
             self._table.apply_changes()
         self.destroy()
 
+# Define some actions that are widget independent
+def editor_allocation_acb(_arg):
+    EditorAllocationDialog().show()
+
+def change_pgnd_acb(_arg):
+    open_dialog = PgndOpenDialog()
+    if open_dialog.run() == gtk.RESPONSE_OK:
+        newpg = open_dialog.get_path()
+        if newpg:
+            open_dialog.show_busy()
+            result = ifce.chdir(newpg)
+            open_dialog.unshow_busy()
+            open_dialog.report_any_problems(result)
+    open_dialog.destroy()
+
+def new_playground_acb(_arg):
+    newpg = dialogue.ask_dir_name("Select/create playground ..")
+    if newpg is not None:
+        result = ifce.new_playground('description', newpg)
+        dialogue.report_any_problems(result)
+
+actions.add_class_indep_actions(actions.Condns.DONT_CARE,
+    [
+        ("config_menu", None, "_Configuration"),
+        ("config_change_playground", gtk.STOCK_OPEN, "_Open", "",
+         "Change current playground", change_pgnd_acb),
+        ("config_new_playground", icons.STOCK_NEW_PLAYGROUND, "_New", "",
+         "Create a new intitialized playground", new_playground_acb),
+        ("config_allocate_editors", gtk.STOCK_PREFERENCES, "_Editor Allocation", "",
+         "Allocate editors to file types", editor_allocation_acb),
+    ])

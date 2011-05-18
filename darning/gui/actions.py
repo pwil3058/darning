@@ -200,3 +200,10 @@ class AGandUIManager(ws_event.Listener):
         return box
     def set_visibility_for_condns(self, condns, visible):
         self._action_groups.set_visibility_for_condns(condns, visible)
+
+add_class_indep_actions(Condns.DONT_CARE,
+    [
+        ("actions_playground_menu", None, "_Playground"),
+        ("actions_quit", gtk.STOCK_QUIT, "_Quit", "",
+         "Quit", gtk.main_quit),
+    ])

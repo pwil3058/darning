@@ -22,18 +22,45 @@ from darning.gui import dialogue
 from darning.gui import ifce
 from darning.gui import icons
 from darning.gui import actions
+from darning.gui import ws_event
 
 class Darning(gtk.Window, dialogue.BusyIndicator, actions.AGandUIManager):
+    UI_DESCR = '''
+    <ui>
+        <menubar name="gdarn_left_menubar">
+            <menu name="gdarn_pgnd" action="actions_playground_menu">
+              <menuitem action="config_change_playground"/>
+              <menuitem action="config_new_playground"/>
+              <menuitem action="actions_quit"/>
+            </menu>
+        </menubar>
+        <menubar name="gdarn_right_menubar">
+            <menu name="gdarn_config" action="config_menu">
+              <menuitem action="config_allocate_editors"/>
+            </menu>
+        </menubar>
+    </ui>
+    '''
     def __init__(self, dir_specified=False):
         gtk.Window.__init__(self, gtk.WINDOW_TOPLEVEL)
         self.set_icon_from_file(icons.APP_ICON_FILE)
-        self.connect("destroy", self._quit)
+        self.connect("destroy", gtk.main_quit)
         self._update_title()
+        dialogue.init(self)
         dialogue.BusyIndicator.__init__(self)
         actions.AGandUIManager.__init__(self)
-        dialogue.init(self)
-        print ifce.in_valid_pgnd, ifce.in_valid_repo
-    def _quit(self, _widget):
-        gtk.main_quit()
+        self.ui_manager.add_ui_from_string(Darning.UI_DESCR)
+        vbox = gtk.VBox()
+        self.add(vbox)
+        mbar_box = gtk.HBox()
+        mbar_box.pack_start(self.ui_manager.get_widget("/gdarn_left_menubar"), expand=False)
+        mbar_box.pack_end(self.ui_manager.get_widget("/gdarn_right_menubar"), expand=False)
+        vbox.pack_start(mbar_box, expand=False)
+        self.add_notification_cb(ws_event.CHANGE_WD, self._change_pgnd_ncb)
+        self.show_all()
     def _update_title(self):
         self.set_title("gdarn: %s" % utils.path_rel_home(os.getcwd()))
+    def _change_pgnd_ncb(self, _arg=None):
+        self._update_title()
+
+        

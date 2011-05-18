@@ -22,7 +22,7 @@ to update their displayed/cached data
 
 import gobject
 
-_NFLAGS = 16
+_NFLAGS = 17
 FILE_ADD, \
 FILE_DEL, \
 FILE_MOD, \
@@ -32,6 +32,7 @@ REPO_HGRC, \
 USER_HGRC, \
 CHANGE_WD, \
 CHECKOUT, \
+PGND_MOD, \
 PATCH_PUSH, \
 PATCH_POP, \
 PATCH_REFRESH, \
@@ -47,7 +48,6 @@ FILE_CHANGES = FILE_ADD | FILE_DEL | FILE_MOD | FILE_HGIGNORE
 PATCH_CHANGES = PATCH_PUSH | PATCH_POP | PATCH_CREATE | PATCH_DELETE | PATCH_MODIFY
 
 _NOTIFICATION_CBS = []
-
 
 def add_notification_cb(events, callback):
     """
@@ -96,6 +96,7 @@ def notify_events(events, data=None):
                     callback()
             except Exception:
                 invalid_cbs.append((registered_events, callback))
+                raise
     for cb_token in invalid_cbs:
         del_notification_cb(cb_token)
 

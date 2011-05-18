@@ -112,6 +112,7 @@ STOCK_STATUS_OK = 'darning_stock_ok'
 STOCK_SYNCH = 'darning_stock_synch'
 STOCK_UPDATE = 'darning_stock_update'
 STOCK_VERIFY = 'darning_stock_verify'
+STOCK_NEW_PLAYGROUND = 'darning_stock_new_playground'
 
 # Icons that have to be designed eventually (using GtK stock in the meantime)
 _STOCK_ALIAS_LIST = [
@@ -145,6 +146,7 @@ _STOCK_ALIAS_LIST = [
     StockAlias(name=STOCK_SYNCH, alias=gtk.STOCK_REFRESH, text=''),
     StockAlias(name=STOCK_UPDATE, alias=gtk.STOCK_EXECUTE, text=''),
     StockAlias(name=STOCK_VERIFY, alias=STOCK_APPLIED, text=''),
+    StockAlias(name=STOCK_NEW_PLAYGROUND, alias=gtk.STOCK_NEW, text='New Playground'),
 ]
 
 _STYLE = gtk.Frame().get_style()
@@ -153,4 +155,3 @@ for _item in _STOCK_ALIAS_LIST:
     _FACTORY.add(_item.name, _STYLE.lookup_icon_set(_item.alias))
 
 gtk.stock_add([(item.name, item.text, 0, 0, None) for item in _STOCK_ALIAS_LIST])
-
