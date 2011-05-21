@@ -85,6 +85,34 @@ class FileChooserDialog(gtk.FileChooserDialog):
             parent = main_window
         gtk.FileChooserDialog.__init__(self, title=title, parent=parent, action=action, buttons=buttons, backend=backend)
 
+def ask_file_name(prompt, suggestion=None, existing=True, parent=None):
+    if existing:
+        mode = gtk.FILE_CHOOSER_ACTION_OPEN
+        if suggestion and not os.path.exists(suggestion):
+            suggestion = None
+    else:
+        mode = gtk.FILE_CHOOSER_ACTION_SAVE
+    dialog = FileChooserDialog(prompt, parent, mode,
+                               (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+                                gtk.STOCK_OK, gtk.RESPONSE_OK))
+    dialog.set_default_response(gtk.RESPONSE_OK)
+    if suggestion:
+        if os.path.isdir(suggestion):
+            dialog.set_current_folder(suggestion)
+        else:
+            dirname, basename = os.path.split(suggestion)
+            if dirname:
+                dialog.set_current_folder(dirname)
+            if basename:
+                dialog.set_current_name(basename)
+    response = dialog.run()
+    if response == gtk.RESPONSE_OK:
+        new_file_name = dialog.get_filename()
+    else:
+        new_file_name = None
+    dialog.destroy()
+    return new_file_name
+
 def ask_dir_name(prompt, suggestion=None, existing=True, parent=None):
     if existing:
         mode = gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER

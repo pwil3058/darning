@@ -20,6 +20,7 @@ import os
 
 from darning import scm_ifce as SCM
 from darning import cmd_result
+from darning import utils
 
 from darning.gui import pdb_ifce as PM
 from darning.gui import ws_event
@@ -96,3 +97,16 @@ def new_playground(description, pgdir=None):
         config.append_saved_pgnd(os.getcwd())
         ws_event.notify_events(ws_event.PGND_MOD)
     return retval
+
+DEFAULT_NAME_EVARS = ["GIT_AUTHOR_NAME", "GECOS"]
+DEFAULT_EMAIL_VARS = ["GIT_AUTHOR_EMAIL", "EMAIL_ADDRESS"]
+
+def get_author_name_and_email():
+    # Do some 'configuration' stuff here
+    name = utils.get_first_in_envar(DEFAULT_NAME_EVARS)
+    if not name:
+        name = "UNKNOWN"
+    email = utils.get_first_in_envar(DEFAULT_EMAIL_VARS)
+    if not email:
+        email = "UNKNOWN"
+    return "%s <%s>" % (name, email)

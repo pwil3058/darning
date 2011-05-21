@@ -29,6 +29,7 @@ from darning.gui import tlview
 from darning.gui import actions
 from darning.gui import ifce
 from darning.gui import icons
+from darning.gui import text_edit
 
 PARow = collections.namedtuple('PARow', ['Alias', 'Path'])
 
@@ -374,6 +375,53 @@ class EditorAllocationDialog(dialogue.Dialog):
             self._table.apply_changes()
         self.destroy()
 
+class NewDescriptionDialog(dialogue.Dialog):
+    class Widget(text_edit.Widget):
+        UI_DESCR = '''
+            <ui>
+              <menubar name="menubar">
+                <menu name="ndd_menu" action="load_menu">
+                  <separator/>
+                  <menuitem action="text_edit_insert_from"/>
+                </menu>
+              </menubar>
+              <toolbar name="toolbar">
+                <toolitem action="text_edit_ack"/>
+                <toolitem action="text_edit_sign_off"/>
+                <toolitem action="text_edit_author"/>
+              </toolbar>
+            </ui>
+        '''
+        def __init__(self):
+            text_edit.Widget.__init__(self)
+            self.action_group.add_actions(
+                [
+                    ("load_menu", None, "_File"),
+                ])
+    def __init__(self, parent=None):
+        flags = gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT
+        title = 'New Patch Series: %s -- gdarn' % utils.path_rel_home(os.getcwd())
+        dialogue.Dialog.__init__(self, title, parent, flags,
+                                 (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+                                  gtk.STOCK_OK, gtk.RESPONSE_OK))
+        if not parent:
+            self.set_icon_from_file(icons.APP_ICON_FILE)
+        self.edit_descr_widget = NewDescriptionDialog.Widget()
+        hbox = gtk.HBox()
+        menubar = self.edit_descr_widget.ui_manager.get_widget("/menubar")
+        hbox.pack_start(menubar, fill=True, expand=False)
+        toolbar = self.edit_descr_widget.ui_manager.get_widget("/toolbar")
+        toolbar.set_style(gtk.TOOLBAR_BOTH)
+        toolbar.set_orientation(gtk.ORIENTATION_HORIZONTAL)
+        hbox.pack_end(toolbar, fill=False, expand=False)
+        hbox.show_all()
+        self.vbox.pack_start(hbox, expand=False)
+        self.vbox.pack_start(self.edit_descr_widget)
+        self.set_focus_child(self.edit_descr_widget)
+        self.edit_descr_widget.show_all()
+    def get_descr(self):
+        return self.edit_descr_widget.get_contents()
+
 # Define some actions that are widget independent
 def editor_allocation_acb(_arg):
     EditorAllocationDialog().show()
@@ -392,8 +440,13 @@ def change_pgnd_acb(_arg):
 def new_playground_acb(_arg):
     newpg = dialogue.ask_dir_name("Select/create playground ..")
     if newpg is not None:
-        result = ifce.new_playground('description', newpg)
-        dialogue.report_any_problems(result)
+        dlg = NewDescriptionDialog(parent=dialogue.main_window)
+        if dlg.run() == gtk.RESPONSE_OK:
+            dlg.show_busy()
+            result = ifce.new_playground(dlg.get_descr(), newpg)
+            dlg.show_busy()
+            dialogue.report_any_problems(result)
+        dlg.destroy()
 
 actions.add_class_indep_actions(actions.Condns.DONT_CARE,
     [

@@ -22,7 +22,7 @@ import gtk, collections
 
 def model_col(descr, label):
     """Return the index of the column with the given label in the descr
-    which is named tuple"""
+    which is a named tuple"""
     return descr._fields.index(label)
 
 class Model(gtk.TreeModel):

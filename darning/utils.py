@@ -34,6 +34,24 @@ def path_rel_home(path):
         path = "~" + path[len_home:]
     return path
 
+# handle the fact os.path.samefile is not available on all operating systems
+def samefile(filename1, filename2):
+    """Return whether the given paths refer to the same file or not."""
+    try:
+        return os.path.samefile(filename1, filename2)
+    except AttributeError:
+        return os.path.abspath(filename1) == os.path.abspath(filename2)
+
+def get_first_in_envar(envar_list):
+    for envar in envar_list:
+        try:
+            value = os.environ[envar]
+            if value != '':
+                return value
+        except KeyError:
+            continue
+    return ''
+
 def turn_off_write(mode):
     '''Return the given mode with the write bits turned off'''
     return mode & ~(stat.S_IWUSR|stat.S_IWGRP|stat.S_IWOTH)
