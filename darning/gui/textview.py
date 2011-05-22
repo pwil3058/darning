@@ -23,83 +23,56 @@ import pango
 from darning import utils
 
 try:
+    from gtksourceview2 import Buffer as _Buffer
+    from gtksourceview2 import View as _View
+except ImportError:
     try:
-        import gtksourceview2
-        class Buffer(gtksourceview2.Buffer):
-            def __init__(self):
-                gtksourceview2.Buffer.__init__(self)
-            def set_text(self, text, undoable=False):
-                return gtksourceview2.Buffer.set_text(self, utils.make_utf8_compliant(text))
-            def insert(self, text_iter, text):
-                return gtksourceview2.Buffer.insert(self, text_iter, utils.make_utf8_compliant(text))
-            def insert_at_cursor(self, text):
-                return gtksourceview2.Buffer.insert_at_cursor(self, utils.make_utf8_compliant(text))
-            def insert_interactive(self, text_iter, text, default_editable):
-                return gtksourceview2.Buffer.insert_interactive(self, text_iter, utils.make_utf8_compliant(text), default_editable)
-            def insert_interactive_at_cursor(self, text, default_editable):
-                return gtksourceview2.Buffer.insert_interactive_at_cursor(self, utils.make_utf8_compliant(text), default_editable)
-            def insert_with_tags(self, text_iter, text, *args):
-                return gtksourceview2.Buffer.insert_with_tags(self, text_iter, utils.make_utf8_compliant(text), *args)
-            def insert_with_tags_by_name(self, text_iter, text, *args):
-                return gtksourceview2.Buffer.insert_with_tags_by_name(self, text_iter, utils.make_utf8_compliant(text), *args)
-        class View(gtksourceview2.View):
+        from gtksourceview import SourceBuffer as _Buffer
+        from gtksourceview import SourceView as _SourceView
+        class _View(_SourceView):
             def __init__(self, buffer=None):
-                gtksourceview2.View.__init__(self, buffer=buffer if buffer else Buffer())
-    except ImportError:
-        import gtksourceview
-        class Buffer(gtksourceview.SourceBuffer):
-            def __init__(self):
-                gtksourceview.SourceBuffer.__init__(self)
-            def set_text(self, text, undoable=False):
-                return gtksourceview.SourceBuffer.set_text(self, utils.make_utf8_compliant(text))
-            def insert(self, text_iter, text):
-                return gtksourceview.SourceBuffer.insert(self, text_iter, utils.make_utf8_compliant(text))
-            def insert_at_cursor(self, text):
-                return gtksourceview.SourceBuffer.insert_at_cursor(self, utils.make_utf8_compliant(text))
-            def insert_interactive(self, text_iter, text, default_editable):
-                return gtksourceview.SourceBuffer.insert_interactive(self, text_iter, utils.make_utf8_compliant(text), default_editable)
-            def insert_interactive_at_cursor(self, text, default_editable):
-                return gtksourceview.SourceBuffer.insert_interactive_at_cursor(self, utils.make_utf8_compliant(text), default_editable)
-            def insert_with_tags(self, text_iter, text, *args):
-                return gtksourceview.SourceBuffer.insert_with_tags(self, text_iter, utils.make_utf8_compliant(text), *args)
-            def insert_with_tags_by_name(self, text_iter, text, *args):
-                return gtksourceview.SourceBuffer.insert_with_tags_by_name(self, text_iter, utils.make_utf8_compliant(text), *args)
-        class View(gtksourceview.SourceView):
-            def __init__(self, buffer=None):
-                gtksourceview.SourceView.__init__(self, buffer=buffer if buffer else Buffer())
+                _SourceView.__init__(self, buffer=buffer if buffer else _Buffer())
             def set_right_margin_position(self, val):
                 self.set_margin(val)
             def set_show_right_margin(self, val):
                 self.set_show_margin(val)
-except ImportError:
-    class Buffer(gtk.TextBuffer):
-        def __init__(self):
-            gtk.TextBuffer.__init__(self)
-        def begin_not_undoable_action(self):
-            pass
-        def end_not_undoable_action(self):
-            pass
-        def set_text(self, text, undoable=False):
-            return gtk.TextBuffer.set_text(self, utils.make_utf8_compliant(text))
-        def insert(self, text_iter, text):
-            return gtk.TextBuffer.insert(self, text_iter, utils.make_utf8_compliant(text))
-        def insert_at_cursor(self, text):
-            return gtk.TextBuffer.insert_at_cursor(self, utils.make_utf8_compliant(text))
-        def insert_interactive(self, text_iter, text, default_editable):
-            return gtk.TextBuffer.insert_interactive(self, text_iter, utils.make_utf8_compliant(text), default_editable)
-        def insert_interactive_at_cursor(self, text, default_editable):
-            return gtk.TextBuffer.insert_interactive_at_cursor(self, utils.make_utf8_compliant(text), default_editable)
-        def insert_with_tags(self, text_iter, text, *args):
-            return gtk.TextBuffer.insert_with_tags(self, text_iter, utils.make_utf8_compliant(text), *args)
-        def insert_with_tags_by_name(self, text_iter, text, *args):
-            return gtk.TextBuffer.insert_with_tags_by_name(self, text_iter, utils.make_utf8_compliant(text), *args)
-    class View(gtk.TextView):
-        def __init__(self, buffer=None):
-            gtk.TextView.__init__(self, buffer=buffer if buffer else Buffer())
-        def set_right_margin_position(self, val):
-            pass
-        def set_show_margin(self, val):
-            pass
+    except ImportError:
+        class _Buffer(gtk.TextBuffer):
+            def __init__(self):
+                gtk.TextBuffer.__init__(self)
+            def begin_not_undoable_action(self):
+                pass
+            def end_not_undoable_action(self):
+                pass
+        class _View(gtk.TextView):
+            def __init__(self, buffer=None):
+                gtk.TextView.__init__(self, buffer=buffer if buffer else _Buffer())
+            def set_right_margin_position(self, val):
+                pass
+            def set_show_margin(self, val):
+                pass
+
+class Buffer(_Buffer):
+    def __init__(self):
+        _Buffer.__init__(self)
+    def set_text(self, text, undoable=False):
+        return _Buffer.set_text(self, utils.make_utf8_compliant(text))
+    def insert(self, text_iter, text):
+        return _Buffer.insert(self, text_iter, utils.make_utf8_compliant(text))
+    def insert_at_cursor(self, text):
+        return _Buffer.insert_at_cursor(self, utils.make_utf8_compliant(text))
+    def insert_interactive(self, text_iter, text, default_editable):
+        return _Buffer.insert_interactive(self, text_iter, utils.make_utf8_compliant(text), default_editable)
+    def insert_interactive_at_cursor(self, text, default_editable):
+        return _Buffer.insert_interactive_at_cursor(self, utils.make_utf8_compliant(text), default_editable)
+    def insert_with_tags(self, text_iter, text, *args):
+        return _Buffer.insert_with_tags(self, text_iter, utils.make_utf8_compliant(text), *args)
+    def insert_with_tags_by_name(self, text_iter, text, *args):
+        return _Buffer.insert_with_tags_by_name(self, text_iter, utils.make_utf8_compliant(text), *args)
+
+class View(_View):
+    def __init__(self, buffer=None):
+        _View.__init__(self, buffer=buffer if buffer else Buffer())
 
 class Widget(gtk.ScrolledWindow):
     def __init__(self, width_in_chars=81, fdesc=None):
