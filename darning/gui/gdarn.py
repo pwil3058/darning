@@ -31,6 +31,7 @@ class Darning(gtk.Window, dialogue.BusyIndicator, actions.AGandUIManager):
             <menu name="gdarn_pgnd" action="actions_playground_menu">
               <menuitem action="config_change_playground"/>
               <menuitem action="config_new_playground"/>
+              <menuitem action="config_init_cwd"/>
               <menuitem action="actions_quit"/>
             </menu>
         </menubar>

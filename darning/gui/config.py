@@ -400,7 +400,7 @@ class NewDescriptionDialog(dialogue.Dialog):
                 ])
     def __init__(self, parent=None):
         flags = gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT
-        title = 'New Patch Series: %s -- gdarn' % utils.path_rel_home(os.getcwd())
+        title = 'Patch Series Description: %s -- gdarn' % utils.path_rel_home(os.getcwd())
         dialogue.Dialog.__init__(self, title, parent, flags,
                                  (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
                                   gtk.STOCK_OK, gtk.RESPONSE_OK))
@@ -448,6 +448,15 @@ def new_playground_acb(_arg):
             dialogue.report_any_problems(result)
         dlg.destroy()
 
+def init_cwd_acb(_arg):
+    dlg = NewDescriptionDialog(parent=dialogue.main_window)
+    if dlg.run() == gtk.RESPONSE_OK:
+        dlg.show_busy()
+        result = ifce.new_playground(dlg.get_descr())
+        dlg.show_busy()
+        dialogue.report_any_problems(result)
+    dlg.destroy()
+
 actions.add_class_indep_actions(actions.Condns.DONT_CARE,
     [
         ("config_menu", None, "_Configuration"),
@@ -457,4 +466,10 @@ actions.add_class_indep_actions(actions.Condns.DONT_CARE,
          "Create a new intitialized playground", new_playground_acb),
         ("config_allocate_editors", gtk.STOCK_PREFERENCES, "_Editor Allocation", "",
          "Allocate editors to file types", editor_allocation_acb),
+    ])
+
+actions.add_class_indep_actions(actions.Condns.NOT_IN_PGND,
+    [
+        ("config_init_cwd", icons.STOCK_INIT, "_Initialize", "",
+         "Create a patch series in the current directory", init_cwd_acb),
     ])
