@@ -249,10 +249,8 @@ class TableWithAGandUI(gtk.VBox, actions.AGandUIManager, dialogue.BusyIndicatorU
 _NEEDS_RESET = 123
 
 class MapManagedTable(TableWithAGandUI, gutils.MappedManager):
-    def __init__(self, model_descr, table_descr, popup=None, scroll_bar=True,
-                 busy_indicator=None, size_req=None):
-        TableWithAGandUI.__init__(self, model_descr=model_descr,
-                                  table_descr=table_descr, popup=popup,
+    def __init__(self, popup=None, scroll_bar=True, busy_indicator=None, size_req=None):
+        TableWithAGandUI.__init__(self, popup=popup,
                                   busy_indicator=busy_indicator,
                                   size_req=size_req,
                                   scroll_bar=scroll_bar)
