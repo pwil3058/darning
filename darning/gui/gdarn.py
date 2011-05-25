@@ -25,6 +25,7 @@ from darning.gui import actions
 from darning.gui import ws_event
 
 class Darning(gtk.Window, dialogue.BusyIndicator, actions.AGandUIManager):
+    count = 0
     UI_DESCR = '''
     <ui>
         <menubar name="gdarn_left_menubar">
@@ -43,6 +44,8 @@ class Darning(gtk.Window, dialogue.BusyIndicator, actions.AGandUIManager):
     </ui>
     '''
     def __init__(self, dir_specified=False):
+        assert Darning.count == 0
+        Darning.count += 1
         gtk.Window.__init__(self, gtk.WINDOW_TOPLEVEL)
         self.set_icon_from_file(icons.APP_ICON_FILE)
         self.connect("destroy", gtk.main_quit)
