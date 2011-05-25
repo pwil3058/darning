@@ -19,6 +19,7 @@ insertion'''
 
 import gtk
 import pango
+import hashlib
 
 from darning import utils
 
@@ -79,18 +80,21 @@ class Widget(gtk.ScrolledWindow):
         gtk.ScrolledWindow.__init__(self)
         # Set up text buffer and view
         self.view = View()
-        self.text_buffer = self.view.get_buffer()
-        if fdesc is None:
-            fdesc = pango.FontDescription("mono, 10")
-        self.view.modify_font(fdesc)
+        self._fdesc = fdesc if fdesc is not None else pango.FontDescription("mono 10")
+        self.view.modify_font(self._fdesc)
         self._width_in_chars = width_in_chars
         self.set_width_in_chars(self._width_in_chars)
         self._initialize_contents()
         self.add(self.view)
+    @property
+    def bfr(self):
+        return self.view.get_buffer()
+    @property
+    def digest(self):
+        return hashlib.sha256(self.get_contents()).digest()
     def _adjust_size_request(self):
         context = self.view.get_pango_context()
-        fdesc = context.get_font_description()
-        metrics = context.get_metrics(fdesc)
+        metrics = context.get_metrics(self._fdesc)
         width = pango.PIXELS(metrics.get_approximate_char_width() * self._width_in_chars)
         x, y = self.view.buffer_to_window_coords(gtk.TEXT_WINDOW_TEXT, width, width / 3)
         self.view.set_size_request(x, y)
@@ -98,18 +102,19 @@ class Widget(gtk.ScrolledWindow):
         self._width_in_chars = width_in_chars
         self._adjust_size_request()
     def set_font(self, fdesc):
-        self.view.modify_font(fdesc)
+        self._fdesc = fdesc
+        self.view.modify_font(self._fdesc)
         self._adjust_size_request()
     def set_contents(self, text, undoable=False):
         if not undoable:
-            self.text_buffer.begin_not_undoable_action()
-        result = self.text_buffer.set_text(text)
+            self.bfr.begin_not_undoable_action()
+        result = self.bfr.set_text(text)
         if not undoable:
-            self.text_buffer.end_not_undoable_action()
+            self.bfr.end_not_undoable_action()
         return result
     def _initialize_contents(self):
         self.set_contents('')
     def get_contents(self):
-        start_iter = self.text_buffer.get_start_iter()
-        end_iter = self.text_buffer.get_end_iter()
-        return self.text_buffer.get_text(start_iter, end_iter)
+        start_iter = self.bfr.get_start_iter()
+        end_iter = self.bfr.get_end_iter()
+        return self.bfr.get_text(start_iter, end_iter)
