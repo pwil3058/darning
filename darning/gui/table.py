@@ -26,10 +26,6 @@ from darning.gui import tlview
 from darning.gui import icons
 from darning.gui import dialogue
 
-class Model(tlview.ListStore):
-    def __init__(self, descr):
-        tlview.ListStore.__init__(self, descr)
-
 ALWAYS_ON = 'table_always_on'
 MODIFIED = 'table_modified'
 NOT_MODIFIED = 'table_not_modified'
@@ -42,10 +38,10 @@ TABLE_STATES = \
      UNIQUE_SELECTION]
 
 class Table(gtk.VBox):
-    def __init__(self, model_descr, table_descr, size_req=None):
+    View = tlview.ListView
+    def __init__(self, size_req=None):
         gtk.VBox.__init__(self)
-        self.model = Model(model_descr)
-        self.view = tlview.View(table_descr, self.model)
+        self.view = self.View()
         self.seln = self.view.get_selection()
         if size_req:
             self.view.set_size_request(*size_req)
@@ -78,6 +74,9 @@ class Table(gtk.VBox):
         self.view.register_modification_callback(self._set_modified, True)
         self.seln.unselect_all()
         self._selection_changed_cb(self.seln)
+    @property
+    def model(self):
+        return self.view.get_model()
     def _set_modified(self, val):
         self._modified = val
         self.action_groups[MODIFIED].set_sensitive(val)
@@ -131,20 +130,18 @@ class Table(gtk.VBox):
             result.append(store.get_values(model_iter, columns))
         return result
     def get_selected_data_by_label(self, labels):
-        columns = self.model.get_cols(labels)
+        columns = self.model.col_indices(labels)
         return self.get_selected_data(columns)
 
 class TableWithAGandUI(gtk.VBox, actions.AGandUIManager, dialogue.BusyIndicatorUser):
-    def __init__(self, model_descr, table_descr, popup=None, scroll_bar=True,
-                 busy_indicator=None, size_req=None, model_class=Model):
-        assert issubclass(model_class, Model)
+    View = tlview.ListView
+    def __init__(self, popup=None, scroll_bar=True, busy_indicator=None, size_req=None):
         self._popup = popup
         gtk.VBox.__init__(self)
         dialogue.BusyIndicatorUser.__init__(self, busy_indicator)
         self.header = gutils.SplitBar()
         self.pack_start(self.header, expand=False)
-        self.model = model_class(model_descr)
-        self.view = tlview.View(table_descr, self.model)
+        self.view = self.View()
         actions.AGandUIManager.__init__(self, self.view.get_selection())
         if size_req:
             self.view.set_size_request(size_req[0], size_req[1])
@@ -154,6 +151,9 @@ class TableWithAGandUI(gtk.VBox, actions.AGandUIManager, dialogue.BusyIndicatorU
             self.pack_start(self.view)
         self.view.connect("button_press_event", self._handle_button_press_cb)
         self.view.connect("key_press_event", self._handle_key_press_cb)
+    @property
+    def model(self):
+        return self.view.get_model()
     def _handle_button_press_cb(self, widget, event):
         if event.type == gtk.gdk.BUTTON_PRESS:
             if event.button == 3 and self._popup:
@@ -225,9 +225,9 @@ class TableWithAGandUI(gtk.VBox, actions.AGandUIManager, dialogue.BusyIndicatorU
             keys.append(store.get_value(model_iter, keycol))
         return keys
     def get_selected_data_by_label(self, labels):
-        return self.get_selected_data(self.model.get_cols(labels))
+        return self.get_selected_data(self.model.col_indices(labels))
     def get_selected_keys_by_label(self, label):
-        return self.get_selected_keys(self.model.get_col(label))
+        return self.get_selected_keys(self.model.col_index(label))
     def get_selected_key(self, keycol=0):
         keys = self.get_selected_keys(keycol)
         assert len(keys) <= 1
@@ -236,7 +236,7 @@ class TableWithAGandUI(gtk.VBox, actions.AGandUIManager, dialogue.BusyIndicatorU
         else:
             return None
     def get_selected_key_by_label(self, label):
-        return self.get_selected_key(self.model.get_col(label))
+        return self.get_selected_key(self.model.col_index(label))
     def select_and_scroll_to_row_with_key_value(self, key_value, key=None):
         model_iter = self.model.get_row_with_key_value(key_value, key)
         if not model_iter:

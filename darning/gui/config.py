@@ -25,60 +25,10 @@ from darning import urlops
 from darning.gui import dialogue
 from darning.gui import gutils
 from darning.gui import table
-from darning.gui import tlview
 from darning.gui import actions
 from darning.gui import ifce
 from darning.gui import icons
 from darning.gui import text_edit
-
-PARow = collections.namedtuple('PARow', ['Alias', 'Path'])
-
-PATH_ALIAS_MODEL_DESCR = PARow(Alias=gobject.TYPE_STRING, Path=gobject.TYPE_STRING)
-
-PATH_ALIAS_TABLE_DESCR = tlview.ViewTemplate(
-    properties={
-        'enable-grid-lines' : False,
-        'reorderable' : False, 
-        'rules_hint' : False,
-        'headers-visible' : True,
-    },
-    selection_mode=gtk.SELECTION_SINGLE,
-    columns=[
-        tlview.Column(
-            title='Alias',
-            properties={'expand': False, 'resizable' : True},
-            cells=[
-                tlview.Cell(
-                    creator=tlview.CellCreator(
-                        function=gtk.CellRendererText,
-                        expand=False,
-                        start=True
-                    ),
-                    properties={'editable' : True},
-                    renderer=None,
-                    attributes = {'text' : tlview.model_col(PATH_ALIAS_MODEL_DESCR, 'Alias')}
-                ),
-            ],
-        ),
-        tlview.Column(
-            title='Path',
-            properties={'expand': False, 'resizable' : True},
-            cells=[
-                tlview.Cell(
-                    creator=tlview.CellCreator(
-                        function=gtk.CellRendererText,
-                        expand=False,
-                        start=True
-                    ),
-                    properties={'editable' : False},
-                    renderer=None,
-                    attributes = {'text' : tlview.model_col(PATH_ALIAS_MODEL_DESCR, 'Path')}
-                ),
-            ],
-        ),
-    ]
-)
-
 CONFIG_DIR_NAME = os.sep.join([utils.HOME, ".darning.d"])
 SAVED_PGND_FILE_NAME = os.sep.join([CONFIG_DIR_NAME, "playgrounds"])
 
@@ -97,11 +47,56 @@ def append_saved_pgnd(path, alias=None):
 _KEYVAL_ESCAPE = gtk.gdk.keyval_from_name('Escape')
 
 class AliasPathTable(table.Table):
+    class View(table.Table.View):
+        class Model(table.Table.View.Model):
+            Row = collections.namedtuple('Row', ['Alias', 'Path'])
+            types = Row(Alias=gobject.TYPE_STRING, Path=gobject.TYPE_STRING)
+        template = table.Table.View.Template(
+            properties={
+                'enable-grid-lines' : False,
+                'reorderable' : False,
+                'rules_hint' : False,
+                'headers-visible' : True,
+            },
+            selection_mode=gtk.SELECTION_SINGLE,
+            columns=[
+                table.Table.View.Column(
+                    title='Alias',
+                    properties={'expand': False, 'resizable' : True},
+                    cells=[
+                        table.Table.View.Cell(
+                            creator=table.Table.View.CellCreator(
+                                function=gtk.CellRendererText,
+                                expand=False,
+                                start=True
+                            ),
+                            properties={'editable' : True},
+                            renderer=None,
+                            attributes = {'text' : Model.col_index('Alias')}
+                        ),
+                    ],
+                ),
+                table.Table.View.Column(
+                    title='Path',
+                    properties={'expand': False, 'resizable' : True},
+                    cells=[
+                        table.Table.View.Cell(
+                            creator=table.Table.View.CellCreator(
+                                function=gtk.CellRendererText,
+                                expand=False,
+                                start=True
+                            ),
+                            properties={'editable' : False},
+                            renderer=None,
+                            attributes = {'text' : Model.col_index('Path')}
+                        ),
+                    ],
+                ),
+            ]
+        )
     def __init__(self, saved_file):
         self._saved_file = saved_file
-        table.Table.__init__(self, model_descr=PATH_ALIAS_MODEL_DESCR,
-                             table_descr=PATH_ALIAS_TABLE_DESCR,
-                             size_req=(480, 160))
+        table.Table.__init__(self, size_req=(480, 160))
         self.view.register_modification_callback(self.save_to_file)
         self.connect("key_press_event", self._key_press_cb)
         self.connect('button_press_event', self._handle_button_press_cb)
@@ -116,7 +111,7 @@ class AliasPathTable(table.Table):
         lines = fobj.readlines()
         fobj.close()
         for line in lines:
-            data = PARow(*line.strip().split(os.pathsep, 1))
+            data = self.View.Model.Row(*line.strip().split(os.pathsep, 1))
             if data in extant_ap_list:
                 continue
             if self._extant_path(data.Path):
@@ -147,7 +142,7 @@ class AliasPathTable(table.Table):
                 model_iter = self.model.iter_next(model_iter)
             if not alias:
                 alias = self._default_alias(path)
-            data = PARow(Path=self._abbrev_path(path), Alias=alias)
+            data = self.View.Model.Row(Path=self._abbrev_path(path), Alias=alias)
             self.model.append(data)
             self.save_to_file()
     def save_to_file(self, _arg=None):
@@ -298,56 +293,54 @@ def assign_extern_editors(file_list):
             ed_assignments[DEFAULT_EDITOR] = unassigned_files
     return ed_assignments
 
-GERow = collections.namedtuple('GERow', ['globs', 'editor'])
-
-EDITOR_GLOB_MODEL_DESCR = GERow(globs=gobject.TYPE_STRING, editor=gobject.TYPE_STRING)
-
-EDITOR_GLOB_TABLE_DESCR = tlview.ViewTemplate(
-    properties={
-        'enable-grid-lines' : True,
-        'reorderable' : True,
-    },
-    selection_mode=gtk.SELECTION_MULTIPLE,
-    columns=[
-        tlview.Column(
-            title='File Pattern(s)',
-            properties={'expand' : True},
-            cells=[
-                tlview.Cell(
-                    creator=tlview.CellCreator(
-                        function=gtk.CellRendererText,
-                        expand=False,
-                        start=True
-                    ),
-                    properties={'editable' : True},
-                    renderer=None,
-                    attributes={'text' : tlview.model_col(EDITOR_GLOB_MODEL_DESCR, 'globs')}
-                ),
-            ],
-        ),
-        tlview.Column(
-            title='Editor Command',
-            properties={'expand' : True},
-            cells=[
-                tlview.Cell(
-                    creator=tlview.CellCreator(
-                        function=gtk.CellRendererText,
-                        expand=False,
-                        start=True
-                    ),
-                    properties={'editable' : True},
-                    renderer=None,
-                    attributes={'text' : tlview.model_col(EDITOR_GLOB_MODEL_DESCR, 'editor')}
-                ),
-            ],
-        ),
-    ]
-)
-
 class EditorAllocationTable(table.Table):
+    class View(table.Table.View):
+        class Model(table.Table.View.Model):
+            Row = collections.namedtuple('Row', ['globs', 'editor'])
+            types = Row(globs=gobject.TYPE_STRING, editor=gobject.TYPE_STRING)
+        template = table.Table.View.Template(
+            properties={
+                'enable-grid-lines' : True,
+                'reorderable' : True,
+            },
+            selection_mode=gtk.SELECTION_MULTIPLE,
+            columns=[
+                table.Table.View.Column(
+                    title='File Pattern(s)',
+                    properties={'expand' : True},
+                    cells=[
+                        table.Table.View.Cell(
+                            creator=table.Table.View.CellCreator(
+                                function=gtk.CellRendererText,
+                                expand=False,
+                                start=True
+                            ),
+                            properties={'editable' : True},
+                            renderer=None,
+                            attributes={'text' : Model.col_index('globs')}
+                        ),
+                    ],
+                ),
+                table.Table.View.Column(
+                    title='Editor Command',
+                    properties={'expand' : True},
+                    cells=[
+                        table.Table.View.Cell(
+                            creator=table.Table.View.CellCreator(
+                                function=gtk.CellRendererText,
+                                expand=False,
+                                start=True
+                            ),
+                            properties={'editable' : True},
+                            renderer=None,
+                            attributes={'text' : Model.col_index('editor')}
+                        ),
+                    ],
+                ),
+            ]
+        )
     def __init__(self, edeff=EDITOR_GLOB_FILE_NAME):
-        table.Table.__init__(self, EDITOR_GLOB_MODEL_DESCR,
-                             EDITOR_GLOB_TABLE_DESCR, (320, 160))
+        table.Table.__init__(self, (320, 160))
         self._edeff = edeff
         self.set_contents()
     def _fetch_contents(self):
