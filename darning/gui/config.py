@@ -111,7 +111,7 @@ class AliasPathTable(table.Table):
         lines = fobj.readlines()
         fobj.close()
         for line in lines:
-            data = self.View.Model.Row(*line.strip().split(os.pathsep, 1))
+            data = self.model.Row(*line.strip().split(os.pathsep, 1))
             if data in extant_ap_list:
                 continue
             if self._extant_path(data.Path):
@@ -142,7 +142,7 @@ class AliasPathTable(table.Table):
                 model_iter = self.model.iter_next(model_iter)
             if not alias:
                 alias = self._default_alias(path)
-            data = self.View.Model.Row(Path=self._abbrev_path(path), Alias=alias)
+            data = self.model.Row(Path=self._abbrev_path(path), Alias=alias)
             self.model.append(data)
             self.save_to_file()
     def save_to_file(self, _arg=None):
