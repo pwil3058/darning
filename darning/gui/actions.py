@@ -126,23 +126,25 @@ class ConditionalActions:
             string += '\tGroup({0:x},{1}): {2}\n'.format(condns, name, member_names)
         return string
 
-class_indep_ags = ConditionalActions('class_indep')
+_CLASS_INDEP_AGS = ConditionalActions('class_indep')
 
 def _update_class_indep_cwd_cb(_arg=None):
     condns = MaskedCondns.get_in_pgnd_condns() | MaskedCondns.get_in_repo_condns()
-    class_indep_ags.set_sensitivity_for_condns(condns)
+    _CLASS_INDEP_AGS.set_sensitivity_for_condns(condns)
 
 def _update_class_indep_pmic_cb(_arg=None):
-    class_indep_ags.set_sensitivity_for_condns(MaskedCondns.get_pmic_condns())
+    _CLASS_INDEP_AGS.set_sensitivity_for_condns(MaskedCondns.get_pmic_condns())
 
 def add_class_indep_action(condns, action):
-    class_indep_ags.add_action(condns, action)
+    assert (condns & Condns.SELN_CONDNS) == 0
+    _CLASS_INDEP_AGS.add_action(condns, action)
 
 def add_class_indep_actions(condns, actions):
-    class_indep_ags.add_actions(condns, actions)
+    assert (condns & Condns.SELN_CONDNS) == 0
+    _CLASS_INDEP_AGS.add_actions(condns, actions)
 
 def get_class_indep_action(action_name):
-    return class_indep_ags.get_action_by_name(action_name)
+    return _CLASS_INDEP_AGS.get_action_by_name(action_name)
 
 ws_event.add_notification_cb(ws_event.CHANGE_WD, _update_class_indep_cwd_cb)
 ws_event.add_notification_cb(ws_event.PMIC_CHANGE|ws_event.CHANGE_WD, _update_class_indep_pmic_cb)
@@ -151,7 +153,7 @@ class AGandUIManager(ws_event.Listener):
     def __init__(self, selection=None):
         ws_event.Listener.__init__(self)
         self.ui_manager = gutils.UIManager()
-        class_indep_ags.add_ui_mgr(self.ui_manager)
+        _CLASS_INDEP_AGS.add_ui_mgr(self.ui_manager)
         self.seln = selection
         name = '{0}:{1:x}'.format(self.__class__.__name__, self.__hash__())
         self._action_groups = ConditionalActions(name, ui_mgrs=[self.ui_manager])
