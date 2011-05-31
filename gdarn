@@ -22,25 +22,43 @@ import sys
 import gtk
 
 _REPORT_REQUEST_MSG = \
-'''
-Please report this problem by either:
-  submitting a bug report at <http://sourceforge.net/tracker/?group_id=386122&atid=1604800>
+'''<b>Please report this problem by either:
+  submitting a bug report at &lt;http://sourceforge.net/tracker/?group_id=386122&amp;atid=1604800&gt;
 or:
-  e-mailing <darning-discussion@lists.sourceforge.net>
+  e-mailing &lt;darning-discussion@lists.sourceforge.net&gt;
 and including a copy of the details below this message.
 
-Thank you.
+Thank you.</b>
 '''
 
 def report_exception(exc_data, parent=None):
+    def copy_cb(tview):
+        tview.get_buffer().copy_clipboard(gtk.clipboard_get())
     import traceback
     msg = ''.join(traceback.format_exception(exc_data[0], exc_data[1], exc_data[2]))
-    dialog = gtk.MessageDialog(parent=parent,
-                               flags=gtk.DIALOG_MODAL|gtk.DIALOG_DESTROY_WITH_PARENT,
-                               type=gtk.MESSAGE_ERROR, buttons=gtk.BUTTONS_CLOSE,
-                               message_format=_REPORT_REQUEST_MSG)
-    dialog.set_title('darning: Unhandled Exception')
-    dialog.format_secondary_text(msg)
+    dialog = gtk.Dialog(title='darning: Unhandled Exception',
+                        parent=parent, flags=gtk.DIALOG_MODAL|gtk.DIALOG_DESTROY_WITH_PARENT,
+                        buttons=(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE))
+    icon = gtk.Image()
+    icon.set_from_stock(gtk.STOCK_DIALOG_ERROR, gtk.ICON_SIZE_DIALOG)
+    vbox = gtk.VBox()
+    vbox.pack_start(icon, expand=False, fill=False)
+    hbox = gtk.HBox()
+    hbox.pack_start(vbox, expand=False, fill=False)
+    label = gtk.Label()
+    label.set_selectable(True)
+    label.set_markup(_REPORT_REQUEST_MSG)
+    hbox.pack_start(label, expand=False, fill=False)
+    dialog.get_content_area().pack_start(hbox, expand=False, fill=False)
+    sbw = gtk.ScrolledWindow()
+    tview = gtk.TextView()
+    tview.set_editable(False)
+    tview.get_buffer().set_text(msg)
+    tview.connect('copy-clipboard', copy_cb)
+    sbw.add(tview)
+    dialog.get_content_area().pack_end(sbw, expand=True, fill=True)
+    dialog.show_all()
+    dialog.set_resizable(True)
     dialog.run()
     dialog.destroy()
 
