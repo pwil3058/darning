@@ -18,6 +18,7 @@ import gtk
 from darning import cmd_result
 
 from darning.gui import icons
+from darning.gui import ws_event
 
 main_window = None
 
@@ -72,6 +73,16 @@ class Dialog(gtk.Dialog, BusyIndicator):
         warn_user(msg, parent=self)
     def alert_user(self, msg):
         alert_user(msg, parent=self)
+
+class AmodalDialog(Dialog, ws_event.Listener):
+    def __init__(self, title=None, parent=None, flags=0, buttons=None):
+        flags &= ~gtk.DIALOG_MODAL
+        Dialog.__init__(self, title=title, parent=parent, flags=flags, buttons=buttons)
+        ws_event.Listener.__init__(self)
+        self.set_type_hint(gtk.gdk.WINDOW_TYPE_HINT_NORMAL)
+        self.add_notification_cb(ws_event.CHANGE_WD, self._change_wd_cb)
+    def _change_wd_cb(self, arg=None):
+        self.destroy()
 
 class MessageDialog(gtk.MessageDialog):
     def __init__(self, parent=None, flags=0, type=gtk.MESSAGE_INFO, buttons=gtk.BUTTONS_NONE, message_format=None):
