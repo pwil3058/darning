@@ -31,6 +31,8 @@ APP_ICON = 'darning'
 APP_ICON_FILE = os.path.join(os.path.dirname(_libdir), APP_ICON + os.extsep + 'png')
 
 STOCK_APPLIED = 'darning_stock_applied'
+STOCK_APPLIED_NEEDS_REFRESH = 'darning_stock_applied_needs_refresh'
+STOCK_APPLIED_UNREFRESHABLE = 'darning_stock_applied_unrefreshable'
 STOCK_BRANCH = 'darning_stock_branch'
 STOCK_COMMIT = 'darning_stock_commit'
 STOCK_DIFF = 'darning_stock_diff'
@@ -48,6 +50,8 @@ STOCK_TAG = 'darning_stock_tag'
 
 _STOCK_ITEMS_OWN_PNG = [
     (STOCK_APPLIED, 'Applied', 0, 0, None),
+    (STOCK_APPLIED_NEEDS_REFRESH, 'Applied (needs refresh)', 0, 0, None),
+    (STOCK_APPLIED_UNREFRESHABLE, 'Applied (unrefreshable)', 0, 0, None),
     (STOCK_BRANCH, 'Branch', 0, 0, None),
     (STOCK_COMMIT, 'Commit', 0, 0, None),
     (STOCK_DIFF, 'Diff', 0, 0, None),

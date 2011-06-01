@@ -437,7 +437,7 @@ def new_playground_acb(_arg):
         if dlg.run() == gtk.RESPONSE_OK:
             dlg.show_busy()
             result = ifce.new_playground(dlg.get_descr(), newpg)
-            dlg.show_busy()
+            dlg.unshow_busy()
             dialogue.report_any_problems(result)
         dlg.destroy()
 
@@ -446,7 +446,7 @@ def init_cwd_acb(_arg):
     if dlg.run() == gtk.RESPONSE_OK:
         dlg.show_busy()
         result = ifce.new_playground(dlg.get_descr())
-        dlg.show_busy()
+        dlg.unshow_busy()
         dialogue.report_any_problems(result)
     dlg.destroy()
 

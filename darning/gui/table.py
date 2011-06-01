@@ -172,9 +172,9 @@ class TableWithAGandUI(gtk.VBox, actions.AGandUIManager, dialogue.BusyIndicatorU
     def _fetch_contents(self):
         pass # define in child
     def _set_contents(self):
-        self.view.set_model(None)
-        self.model.set_contents(self._fetch_contents())
-        self.view.set_model(self.model)
+        model = self.View.Model()
+        model.set_contents(self._fetch_contents())
+        self.view.set_model(model)
         self.view.columns_autosize()
         self.seln.unselect_all()
     def set_contents(self):

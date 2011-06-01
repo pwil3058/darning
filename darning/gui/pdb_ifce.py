@@ -38,3 +38,18 @@ def initialize(description):
 
 def get_in_progress():
     return patch_db.is_readable() and patch_db.get_top_patch_name() is not None
+
+def get_all_patches_data():
+    if not patch_db.is_readable():
+        return []
+    return patch_db.get_patch_table_data()
+
+def get_selected_guards():
+    if not patch_db.is_readable():
+        return set()
+    return patch_db.get_selected_guards()
+
+def is_pushable():
+    if not patch_db.is_readable():
+        return False
+    return patch_db.is_pushable()

@@ -23,6 +23,7 @@ from darning.gui import ifce
 from darning.gui import icons
 from darning.gui import actions
 from darning.gui import ws_event
+from darning.gui import patch_list
 
 class Darning(gtk.Window, dialogue.BusyIndicator, actions.AGandUIManager):
     count = 0
@@ -60,6 +61,10 @@ class Darning(gtk.Window, dialogue.BusyIndicator, actions.AGandUIManager):
         mbar_box.pack_start(self.ui_manager.get_widget("/gdarn_left_menubar"), expand=False)
         mbar_box.pack_end(self.ui_manager.get_widget("/gdarn_right_menubar"), expand=False)
         vbox.pack_start(mbar_box, expand=False)
+        hpane = gtk.HPaned()
+        vbox.pack_start(hpane, expand=True)
+        hpane.add1(gtk.Label('SCM view of files goes here'))
+        hpane.add2(patch_list.List())
         self.add_notification_cb(ws_event.CHANGE_WD, self._change_pgnd_ncb)
         self.show_all()
     def _update_title(self):

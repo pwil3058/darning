@@ -109,7 +109,7 @@ class View(gtk.TreeView):
                 column.pack_end(cell)
         return cell
     def set_model(self, model):
-        assert isinstance(model, self.Model)
+        assert model is None or isinstance(model, self.Model)
         gtk.TreeView.set_model(self, model)
     def _view_add_column(self, col_d):
         col = gtk.TreeViewColumn(col_d.title)

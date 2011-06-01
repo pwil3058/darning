@@ -107,6 +107,15 @@ def _pts_for_path(path):
     '''Return the "in patch" timestamp string for "secs" seconds'''
     return _pts_str(os.path.getmtime(path))
 
+class PatchState(object):
+    UNAPPLIED = ' '
+    APPLIED_REFRESHED = '+'
+    APPLIED_NEEDS_REFRESH = '-'
+    APPLIED_UNFEFRESHABLE = '!'
+
+class PatchTable(object):
+    Row = collections.namedtuple('Row', ['name', 'state', 'pos_guards', 'neg_guards'])
+
 class _PatchData:
     '''Store data for changes to a number of files as a single patch'''
     def __init__(self, name, description):
@@ -359,6 +368,14 @@ class _PatchData:
             if not in_patch and scm_ifce.has_uncommitted_change(filename):
                 data.uncommited.append(filename)
         return data
+    def get_table_row(self):
+        if not self.is_applied():
+            state = PatchState.UNAPPLIED
+        elif self.needs_refresh():
+            state = PatchState.APPLIED_NEEDS_REFRESH
+        else:
+            state = PatchState.APPLIED_REFRESHED
+        return PatchTable.Row(name=self.name, state=state, pos_guards=self.pos_guards, neg_guards=self.neg_guards)
     def is_applied(self):
         '''Is this patch applied?'''
         return os.path.isdir(self.get_backup_dir_name())
@@ -483,6 +500,8 @@ class _DataBase:
             return self.series[patch_index]
         else:
             return None
+    def get_patch_table_data(self):
+        return [patch.get_table_row() for patch in self.series]
     def get_series_index(self, name):
         '''Get the series index for the patch with the given name'''
         index = 0
@@ -797,3 +816,11 @@ def do_refresh_patch(name):
     patch_index = get_patch_series_index(name)
     assert patch_index is not None
     return _DB.series[patch_index].do_refresh()
+
+def get_patch_table_data():
+    assert is_readable()
+    return _DB.get_patch_table_data()
+
+def get_selected_guards():
+    assert is_readable()
+    return _DB.selected_guards
