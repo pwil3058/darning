@@ -16,7 +16,9 @@
 import gtk
 import gobject
 import collections
+import os
 
+from darning import utils
 from darning.patch_db import PatchState
 
 from darning.gui import ifce
@@ -24,6 +26,8 @@ from darning.gui import actions
 from darning.gui import ws_event
 from darning.gui import table
 from darning.gui import icons
+from darning.gui import dialogue
+from darning.gui import text_edit
 
 class Condns(actions.Condns):
     _NEXTRACONDS = 3
@@ -158,3 +162,82 @@ class List(table.MapManagedTable):
         self.show_busy()
         self.repopulate_list()
         self.unshow_busy()
+
+class NewDescriptionDialog(dialogue.Dialog):
+    class Widget(text_edit.Widget):
+        UI_DESCR = '''
+            <ui>
+              <menubar name="menubar">
+                <menu name="ndd_menu" action="load_menu">
+                  <separator/>
+                  <menuitem action="text_edit_insert_from"/>
+                </menu>
+              </menubar>
+              <toolbar name="toolbar">
+                <toolitem action="text_edit_ack"/>
+                <toolitem action="text_edit_sign_off"/>
+                <toolitem action="text_edit_author"/>
+              </toolbar>
+            </ui>
+        '''
+        def __init__(self):
+            text_edit.Widget.__init__(self)
+            self.action_group.add_actions(
+                [
+                    ("load_menu", None, "_File"),
+                ])
+    def __init__(self, parent=None):
+        flags = gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT
+        title = 'Patch Series Description: %s -- gdarn' % utils.path_rel_home(os.getcwd())
+        dialogue.Dialog.__init__(self, title, parent, flags,
+                                 (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+                                  gtk.STOCK_OK, gtk.RESPONSE_OK))
+        if not parent:
+            self.set_icon_from_file(icons.APP_ICON_FILE)
+        self.edit_descr_widget = NewDescriptionDialog.Widget()
+        hbox = gtk.HBox()
+        menubar = self.edit_descr_widget.ui_manager.get_widget("/menubar")
+        hbox.pack_start(menubar, fill=True, expand=False)
+        toolbar = self.edit_descr_widget.ui_manager.get_widget("/toolbar")
+        toolbar.set_style(gtk.TOOLBAR_BOTH)
+        toolbar.set_orientation(gtk.ORIENTATION_HORIZONTAL)
+        hbox.pack_end(toolbar, fill=False, expand=False)
+        hbox.show_all()
+        self.vbox.pack_start(hbox, expand=False)
+        self.vbox.pack_start(self.edit_descr_widget)
+        self.set_focus_child(self.edit_descr_widget)
+        self.edit_descr_widget.show_all()
+    def get_descr(self):
+        return self.edit_descr_widget.get_contents()
+
+def new_playground_acb(_arg):
+    newpg = dialogue.ask_dir_name("Select/create playground ..")
+    if newpg is not None:
+        dlg = NewDescriptionDialog(parent=dialogue.main_window)
+        if dlg.run() == gtk.RESPONSE_OK:
+            dlg.show_busy()
+            result = ifce.new_playground(dlg.get_descr(), newpg)
+            dlg.unshow_busy()
+            dialogue.report_any_problems(result)
+        dlg.destroy()
+
+def init_cwd_acb(_arg):
+    dlg = NewDescriptionDialog(parent=dialogue.main_window)
+    if dlg.run() == gtk.RESPONSE_OK:
+        dlg.show_busy()
+        result = ifce.new_playground(dlg.get_descr())
+        dlg.unshow_busy()
+        dialogue.report_any_problems(result)
+    dlg.destroy()
+
+actions.add_class_indep_actions(actions.Condns.DONT_CARE,
+    [
+        ("config_new_playground", icons.STOCK_NEW_PLAYGROUND, "_New", "",
+         "Create a new intitialized playground", new_playground_acb),
+    ])
+
+actions.add_class_indep_actions(actions.Condns.NOT_IN_PGND,
+    [
+        ("config_init_cwd", icons.STOCK_INIT, "_Initialize", "",
+         "Create a patch series in the current directory", init_cwd_acb),
+    ])
