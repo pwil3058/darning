@@ -16,6 +16,8 @@
 import gtk
 import pango
 
+from darning import cmd_result
+
 from darning.gui import textview
 from darning.gui import gutils
 from darning.gui import dialogue
@@ -74,6 +76,9 @@ class Widget(textview.Widget):
         self.save_toggle_action.set_active(auto_save)
         self.conditional_action_group.add_action(self.save_toggle_action)
         self._update_action_sensitivities()
+        # Make some buttons
+        self.save_button = gutils.ActionButton(self.action_group.get_action("text_edit_save"), use_underline=False)
+        self.reload_button = gutils.ActionButton(self.action_group.get_action("text_edit_load"), use_underline=False)
         # Set up UI manager
         self.ui_manager = gutils.UIManager()
         self.ui_manager.insert_action_group(self.action_group)
@@ -99,14 +104,13 @@ class Widget(textview.Widget):
             self.bfr.set_modified(False)
     def load_text_fm_db(self):
         try:
-            text = self._get_text_fm_db()
-            self.set_content(self.set_text_fm_db())
+            self.set_contents(self.get_text_fm_db())
             self.bfr.set_modified(False)
             self._save_file_digest = None
         except cmd_result.Failure as failure:
             dialogue.report_failure(failure)
     def _ok_to_overwrite_summary(self):
-        if self.get_char_count():
+        if self.bfr.get_char_count():
             return dialogue.ask_ok_cancel("Buffer contents will be destroyed. Continue?")
         return True
     def _reload_text_acb(self, _action=None):

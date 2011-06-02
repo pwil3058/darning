@@ -120,7 +120,7 @@ class _PatchData:
     '''Store data for changes to a number of files as a single patch'''
     def __init__(self, name, description):
         self.name = name
-        self.description = description
+        self.description = description if description is not None else ''
         self.files = dict()
         self.pos_guards = set()
         self.neg_guards = set()
@@ -816,6 +816,18 @@ def do_refresh_patch(name):
     patch_index = get_patch_series_index(name)
     assert patch_index is not None
     return _DB.series[patch_index].do_refresh()
+
+def do_set_patch_description(name, text):
+    assert is_readable()
+    patch_index = get_patch_series_index(name)
+    assert patch_index is not None
+    _DB.series[patch_index].description = text if text is not None else ''
+
+def get_patch_description(name):
+    assert is_readable()
+    patch_index = get_patch_series_index(name)
+    assert patch_index is not None
+    return _DB.series[patch_index].description
 
 def get_patch_table_data():
     assert is_readable()

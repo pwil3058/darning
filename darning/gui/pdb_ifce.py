@@ -49,6 +49,17 @@ def get_selected_guards():
         return set()
     return patch_db.get_selected_guards()
 
+def get_patch_description(patch):
+    if not patch_db.is_readable():
+        raise cmd_result.Failure('Database is unreadable')
+    return patch_db.get_patch_description(patch)
+
+def do_set_patch_description(patch, text):
+    if not patch_db.is_readable():
+        return cmd_result.Result(cmd_result.ERROR, '', 'Database is unreadable')
+    patch_db.do_set_patch_description(patch, text)
+    return cmd_result.Result(cmd_result.OK, '', '')
+
 def is_pushable():
     if not patch_db.is_readable():
         return False

@@ -101,6 +101,17 @@ class List(table.MapManagedTable):
         <menu name="patch_list_menu" action="menu_patch_list">
         </menu>
       </menubar>
+      <popup name="patches_popup">
+        <placeholder name="applied">
+        </placeholder>
+        <separator/>
+        <placeholder name="applied_indifferent">
+          <menuitem action="pm_edit_patch_descr"/>
+        </placeholder>
+        <separator/>
+        <placeholder name="unapplied">
+        </placeholder>
+      </popup>
     </ui>
     '''
     status_icons = {
@@ -129,6 +140,11 @@ class List(table.MapManagedTable):
                                        busy_indicator=busy_indicator,
                                        size_req=None)
         self.add_conditional_action(Condns.DONT_CARE, gtk.Action("menu_patch_list", "Patch _List", None, None))
+        self.add_conditional_actions(Condns.SELN,
+            [
+                ("pm_edit_patch_descr", gtk.STOCK_EDIT, "Description", None,
+                 "Edit the selected patch's description", self.do_edit_description),
+            ])
         self.ui_manager.add_ui_from_string(self.UI_DESCR)
         self.header.lhs.pack_start(self.ui_manager.get_widget('/patch_list_menubar'), expand=True, fill=True)
         self.seln.connect("changed", self._selection_changed_cb)
@@ -162,6 +178,71 @@ class List(table.MapManagedTable):
         self.show_busy()
         self.repopulate_list()
         self.unshow_busy()
+    def do_edit_description(self, _action=None):
+        patch = self.get_selected_patch()
+        PatchDescrEditDialog(patch, parent=None).show()
+
+class PatchDescrEditDialog(dialogue.Dialog):
+    class Widget(text_edit.Widget):
+        UI_DESCR = '''
+            <ui>
+              <menubar name="menubar">
+                <menu name="ndd_menu" action="load_menu">
+                  <separator/>
+                  <menuitem action="text_edit_insert_from"/>
+                </menu>
+              </menubar>
+              <toolbar name="toolbar">
+                <toolitem action="text_edit_ack"/>
+                <toolitem action="text_edit_sign_off"/>
+                <toolitem action="text_edit_author"/>
+              </toolbar>
+            </ui>
+        '''
+        def __init__(self, patch):
+            text_edit.Widget.__init__(self)
+            self._patch = patch
+            self.load_text_fm_db()
+            self.action_group.add_actions(
+                [
+                    ("load_menu", None, "_File"),
+                ])
+        def get_text_fm_db(self):
+            return ifce.PM.get_patch_description(self._patch)
+        def set_text_in_db(self, text):
+            return ifce.PM.do_set_patch_description(self._patch, text)
+    def __init__(self, patch, parent=None):
+        flags = ~gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT
+        title = 'Patch: {0} : {1} -- gdarn'.format(patch, utils.path_rel_home(os.getcwd()))
+        dialogue.Dialog.__init__(self, title, parent, flags, None)
+        if not parent:
+            self.set_icon_from_file(icons.APP_ICON_FILE)
+        self.edit_descr_widget = PatchDescrEditDialog.Widget(patch)
+        hbox = gtk.HBox()
+        menubar = self.edit_descr_widget.ui_manager.get_widget("/menubar")
+        hbox.pack_start(menubar, fill=True, expand=False)
+        toolbar = self.edit_descr_widget.ui_manager.get_widget("/toolbar")
+        toolbar.set_style(gtk.TOOLBAR_BOTH)
+        toolbar.set_orientation(gtk.ORIENTATION_HORIZONTAL)
+        hbox.pack_end(toolbar, fill=False, expand=False)
+        hbox.show_all()
+        self.vbox.pack_start(hbox, expand=False)
+        self.vbox.pack_start(self.edit_descr_widget)
+        self.set_focus_child(self.edit_descr_widget)
+        self.action_area.pack_start(self.edit_descr_widget.reload_button)
+        self.action_area.pack_start(self.edit_descr_widget.save_button)
+        self.add_button(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
+        self.connect("response", self._handle_response_cb)
+        self.set_focus_child(self.edit_descr_widget.view)
+        self.edit_descr_widget.show_all()
+    def _handle_response_cb(self, dialog, response_id):
+        if response_id == gtk.RESPONSE_CLOSE:
+            if self.edit_descr_widget.view.get_buffer().get_modified():
+                qtn = '\n'.join(["Unsaved changes to summary will be lost.", "Close anyway?"])
+                if dialogue.ask_yes_no(qtn):
+                    self.destroy()
+            else:
+                self.destroy()
 
 class NewDescriptionDialog(dialogue.Dialog):
     class Widget(text_edit.Widget):

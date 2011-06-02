@@ -19,6 +19,7 @@ from darning import cmd_result
 
 from darning.gui import icons
 from darning.gui import ws_event
+from darning.gui import gutils
 
 main_window = None
 
@@ -95,6 +96,43 @@ class FileChooserDialog(gtk.FileChooserDialog):
         if not parent:
             parent = main_window
         gtk.FileChooserDialog.__init__(self, title=title, parent=parent, action=action, buttons=buttons, backend=backend)
+
+class QuestionDialog(Dialog):
+    def __init__(self, title=None, parent=None, flags=0, buttons=None, question=""):
+        Dialog.__init__(self, title=title, parent=parent, flags=flags, buttons=buttons)
+        hbox = gtk.HBox()
+        self.vbox.add(hbox)
+        hbox.show()
+        self.image = gtk.Image()
+        self.image.set_from_stock(gtk.STOCK_DIALOG_QUESTION, gtk.ICON_SIZE_DIALOG)
+        hbox.pack_start(self.image, expand=False)
+        self.image.show()
+        self.tview = gtk.TextView()
+        self.tview.set_cursor_visible(False)
+        self.tview.set_editable(False)
+        self.tview.set_size_request(320, 80)
+        self.tview.show()
+        self.tview.get_buffer().set_text(question)
+        hbox.add(gutils.wrap_in_scrolled_window(self.tview))
+    def set_question(self, question):
+        self.tview.get_buffer().set_text(question)
+
+def ask_question(question, parent=None,
+                 buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+                          gtk.STOCK_OK, gtk.RESPONSE_OK)):
+    dialog = QuestionDialog(parent=parent,
+                            flags=gtk.DIALOG_MODAL|gtk.DIALOG_DESTROY_WITH_PARENT,
+                            buttons=buttons, question=question)
+    response = dialog.run()
+    dialog.destroy()
+    return response
+
+def ask_ok_cancel(question, parent=None):
+    return ask_question(question, parent) == gtk.RESPONSE_OK
+
+def ask_yes_no(question, parent=None):
+    buttons = (gtk.STOCK_NO, gtk.RESPONSE_NO, gtk.STOCK_YES, gtk.RESPONSE_YES)
+    return ask_question(question, parent, buttons) == gtk.RESPONSE_YES
 
 def ask_file_name(prompt, suggestion=None, existing=True, parent=None):
     if existing:
