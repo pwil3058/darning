@@ -217,7 +217,7 @@ class PatchDescrEditDialog(dialogue.Dialog):
         dialogue.Dialog.__init__(self, title, parent, flags, None)
         if not parent:
             self.set_icon_from_file(icons.APP_ICON_FILE)
-        self.edit_descr_widget = PatchDescrEditDialog.Widget(patch)
+        self.edit_descr_widget = self.Widget(patch)
         hbox = gtk.HBox()
         menubar = self.edit_descr_widget.ui_manager.get_widget("/menubar")
         hbox.pack_start(menubar, fill=True, expand=False)
@@ -244,7 +244,7 @@ class PatchDescrEditDialog(dialogue.Dialog):
             else:
                 self.destroy()
 
-class NewDescriptionDialog(dialogue.Dialog):
+class NewSeriesDescrDialog(dialogue.Dialog):
     class Widget(text_edit.Widget):
         UI_DESCR = '''
             <ui>
@@ -275,7 +275,7 @@ class NewDescriptionDialog(dialogue.Dialog):
                                   gtk.STOCK_OK, gtk.RESPONSE_OK))
         if not parent:
             self.set_icon_from_file(icons.APP_ICON_FILE)
-        self.edit_descr_widget = NewDescriptionDialog.Widget()
+        self.edit_descr_widget = self.Widget()
         hbox = gtk.HBox()
         menubar = self.edit_descr_widget.ui_manager.get_widget("/menubar")
         hbox.pack_start(menubar, fill=True, expand=False)
@@ -291,10 +291,25 @@ class NewDescriptionDialog(dialogue.Dialog):
     def get_descr(self):
         return self.edit_descr_widget.get_contents()
 
+class NewPatchDescrDialog(NewSeriesDescrDialog):
+    def __init__(self, parent=None):
+        NewSeriesDescrDialog.__init__(self, parent=parent)
+        self.set_title('New Patch Description: %s -- gdarn' % utils.path_rel_home(os.getcwd()))
+        self.hbox = gtk.HBox()
+        self.hbox.pack_start(gtk.Label('New Patch Name:'), fill=False, expand=False)
+        self.new_name_entry = gtk.Entry()
+        self.new_name_entry.set_width_chars(32)
+        self.hbox.pack_start(self.new_name_entry)
+        self.hbox.show_all()
+        self.vbox.pack_start(self.hbox)
+        self.vbox.reorder_child(self.hbox, 0)
+    def get_new_patch_name(self):
+        return self.new_name_entry.get_text()
+
 def new_playground_acb(_arg):
     newpg = dialogue.ask_dir_name("Select/create playground ..")
     if newpg is not None:
-        dlg = NewDescriptionDialog(parent=dialogue.main_window)
+        dlg = NewSeriesDescrDialog(parent=dialogue.main_window)
         if dlg.run() == gtk.RESPONSE_OK:
             dlg.show_busy()
             result = ifce.new_playground(dlg.get_descr(), newpg)
@@ -303,10 +318,19 @@ def new_playground_acb(_arg):
         dlg.destroy()
 
 def init_cwd_acb(_arg):
-    dlg = NewDescriptionDialog(parent=dialogue.main_window)
+    dlg = NewSeriesDescrDialog(parent=dialogue.main_window)
     if dlg.run() == gtk.RESPONSE_OK:
         dlg.show_busy()
         result = ifce.new_playground(dlg.get_descr())
+        dlg.unshow_busy()
+        dialogue.report_any_problems(result)
+    dlg.destroy()
+
+def new_patch_acb(_arg):
+    dlg = NewPatchDescrDialog(parent=dialogue.main_window)
+    if dlg.run() == gtk.RESPONSE_OK:
+        dlg.show_busy()
+        result = ifce.PM.do_create_new_patch(dlg.get_new_patch_name(), dlg.get_descr())
         dlg.unshow_busy()
         dialogue.report_any_problems(result)
     dlg.destroy()
@@ -321,4 +345,10 @@ actions.add_class_indep_actions(actions.Condns.NOT_IN_PGND,
     [
         ("config_init_cwd", icons.STOCK_INIT, "_Initialize", "",
          "Create a patch series in the current directory", init_cwd_acb),
+    ])
+
+actions.add_class_indep_actions(Condns.IN_PGND,
+    [
+        ("patch_list_new_patch", icons.STOCK_NEW_PATCH, None, None,
+         "Create a new patch", new_patch_acb),
     ])

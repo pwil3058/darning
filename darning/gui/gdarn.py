@@ -42,6 +42,11 @@ class Darning(gtk.Window, dialogue.BusyIndicator, actions.AGandUIManager):
               <menuitem action="config_allocate_editors"/>
             </menu>
         </menubar>
+        <toolbar name="gdarn_patches_toolbar">
+            <separator/>
+            <separator/>
+            <toolitem name="New" action="patch_list_new_patch"/>
+        </toolbar>
     </ui>
     '''
     def __init__(self, dir_specified=False):
@@ -61,6 +66,7 @@ class Darning(gtk.Window, dialogue.BusyIndicator, actions.AGandUIManager):
         mbar_box.pack_start(self.ui_manager.get_widget("/gdarn_left_menubar"), expand=False)
         mbar_box.pack_end(self.ui_manager.get_widget("/gdarn_right_menubar"), expand=False)
         vbox.pack_start(mbar_box, expand=False)
+        vbox.pack_start(self.ui_manager.get_widget("/gdarn_patches_toolbar"), expand=False)
         hpane = gtk.HPaned()
         vbox.pack_start(hpane, expand=True)
         hpane.add1(gtk.Label('SCM view of files goes here'))

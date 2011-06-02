@@ -21,6 +21,8 @@ from darning import cmd_result
 # patch_db commands that don't need wrapping
 from darning.patch_db import find_base_dir
 
+from darning.gui import ws_event
+
 def open_db():
     result = patch_db.load_db(lock=True)
     if result is True:
@@ -53,6 +55,13 @@ def get_patch_description(patch):
     if not patch_db.is_readable():
         raise cmd_result.Failure('Database is unreadable')
     return patch_db.get_patch_description(patch)
+
+def do_create_new_patch(name, descr):
+    if patch_db.patch_is_in_series(name):
+        return cmd_result.Result(cmd_result.ERROR, '', '{0}: Already exists in database'.format(name))
+    patch_db.create_new_patch(name, descr)
+    ws_event.notify_events(ws_event.PATCH_CREATE)
+    return cmd_result.Result(cmd_result.OK, '', '')
 
 def do_set_patch_description(patch, text):
     if not patch_db.is_readable():
