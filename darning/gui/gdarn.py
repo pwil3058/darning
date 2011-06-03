@@ -68,10 +68,19 @@ class Darning(gtk.Window, dialogue.BusyIndicator, actions.AGandUIManager):
         mbar_box.pack_end(self.ui_manager.get_widget("/gdarn_right_menubar"), expand=False)
         vbox.pack_start(mbar_box, expand=False)
         vbox.pack_start(self.ui_manager.get_widget("/gdarn_patches_toolbar"), expand=False)
+        vpane = gtk.VPaned()
+        vbox.pack_start(vpane, expand=True)
         hpane = gtk.HPaned()
-        vbox.pack_start(hpane, expand=True)
+        vpane.add1(hpane)
         hpane.add1(gtk.Label('SCM view of files goes here'))
         hpane.add2(patch_list.List())
+        if ifce.TERM:
+            nbook = gtk.Notebook()
+            nbook.append_page(ifce.LOG, gtk.Label("Transaction Log"))
+            nbook.append_page(ifce.TERM, gtk.Label("Terminal"))
+            vpane.add2(nbook)
+        else:
+            vpane.add2(ifce.LOG, gtk.Label("Transaction Log"))
         self.add_notification_cb(ws_event.CHANGE_WD, self._change_pgnd_ncb)
         self.show_all()
     def _update_title(self):

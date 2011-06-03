@@ -50,7 +50,7 @@ except ImportError:
                 gtk.TextView.__init__(self, buffer=buffer if buffer else _Buffer())
             def set_right_margin_position(self, val):
                 pass
-            def set_show_margin(self, val):
+            def set_show_right_margin(self, val):
                 pass
 
 class Buffer(_Buffer):

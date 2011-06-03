@@ -24,9 +24,11 @@ from darning import utils
 
 from darning.gui import pdb_ifce as PM
 from darning.gui import ws_event
+from darning.gui import terminal
+from darning.gui import console
 
-TERM = None
-LOG = None
+TERM = terminal.Terminal() if terminal.AVAILABLE else None
+LOG = console.ConsoleLog()
 
 def init():
     global in_valid_repo, in_valid_pgnd
