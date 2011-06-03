@@ -44,6 +44,7 @@ class Darning(gtk.Window, dialogue.BusyIndicator, actions.AGandUIManager):
         </menubar>
         <toolbar name="gdarn_patches_toolbar">
             <separator/>
+            <toolitem name="Push" action="patch_list_push"/>
             <separator/>
             <toolitem name="New" action="patch_list_new_patch"/>
         </toolbar>

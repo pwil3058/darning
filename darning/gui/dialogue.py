@@ -23,6 +23,14 @@ from darning.gui import gutils
 
 main_window = None
 
+def show_busy():
+    if main_window is not None:
+        main_window.show_busy()
+
+def unshow_busy():
+    if main_window is not None:
+        main_window.unshow_busy()
+
 def init(window):
     global main_window
     main_window = window

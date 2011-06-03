@@ -146,6 +146,9 @@ def add_class_indep_actions(condns, actions):
 def get_class_indep_action(action_name):
     return _CLASS_INDEP_AGS.get_action_by_name(action_name)
 
+def set_class_indep_sensitivity_for_condns(condns):
+    _CLASS_INDEP_AGS.set_sensitivity_for_condns(condns)
+
 ws_event.add_notification_cb(ws_event.CHANGE_WD, _update_class_indep_cwd_cb)
 ws_event.add_notification_cb(ws_event.PMIC_CHANGE|ws_event.CHANGE_WD, _update_class_indep_pmic_cb)
 

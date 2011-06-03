@@ -63,6 +63,31 @@ def do_create_new_patch(name, descr):
     ws_event.notify_events(ws_event.PATCH_CREATE)
     return cmd_result.Result(cmd_result.OK, '', '')
 
+def do_push_next_patch():
+    is_ok = True
+    msg = ''
+    overlaps = patch_db.get_next_patch_overlap_data()
+    if len(overlaps.uncommitted) > 0:
+        is_ok = False
+        msg += 'The following (overlapped) files have uncommited SCM changes:\n'
+        for filename in sorted(overlaps.uncommitted):
+            msg += '\t{0}\n'.format(filename)
+    if len(overlaps.unrefreshed) > 0:
+        is_ok = False
+        msg += 'The following (overlapped) files have unrefreshed changes (in an applied patch):\n'
+        for filename in sorted(overlaps.unrefreshed):
+            msg += '\t{0} : in patch "{1}"\n'.format(filename, overlaps.unrefreshed[filename])
+    if not is_ok:
+        return cmd_result.Result(cmd_result.ERROR, '', msg)
+    _db_ok, results = patch_db.apply_patch()
+    highest_ecode = 0
+    for filename in results:
+        result = results[filename]
+        highest_ecode = highest_ecode if result.ecode < highest_ecode else result.ecode
+        msg += result.stderr
+    ws_event.notify_events(ws_event.PATCH_PUSH)
+    return cmd_result.Result(cmd_result.ERROR if highest_ecode > 0 else cmd_result.OK, '', msg)
+
 def do_set_patch_description(patch, text):
     if not patch_db.is_readable():
         return cmd_result.Result(cmd_result.ERROR, '', 'Database is unreadable')

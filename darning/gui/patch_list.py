@@ -307,6 +307,12 @@ class NewPatchDescrDialog(NewSeriesDescrDialog):
     def get_new_patch_name(self):
         return self.new_name_entry.get_text()
 
+def _update_class_indep_pushable_cb(_arg=None):
+    condns = MaskedCondns.get_pushable_condns()
+    actions.set_class_indep_sensitivity_for_condns(condns)
+
+ws_event.add_notification_cb(ws_event.CHANGE_WD|ws_event.PATCH_CHANGES, _update_class_indep_pushable_cb)
+
 def new_playground_acb(_arg):
     newpg = dialogue.ask_dir_name("Select/create playground ..")
     if newpg is not None:
@@ -338,6 +344,12 @@ def new_patch_acb(_arg):
             break
     dlg.destroy()
 
+def push_next_patch_acb(_arg):
+    dialogue.show_busy()
+    result = ifce.PM.do_push_next_patch()
+    dialogue.unshow_busy()
+    dialogue.report_any_problems(result)
+
 actions.add_class_indep_actions(actions.Condns.DONT_CARE,
     [
         ("config_new_playground", icons.STOCK_NEW_PLAYGROUND, "_New", "",
@@ -354,4 +366,10 @@ actions.add_class_indep_actions(Condns.IN_PGND,
     [
         ("patch_list_new_patch", icons.STOCK_NEW_PATCH, None, None,
          "Create a new patch", new_patch_acb),
+    ])
+
+actions.add_class_indep_actions(Condns.PUSH_POSSIBLE,
+    [
+        ("patch_list_push", icons.STOCK_PUSH_PATCH, "Push", None,
+         "Apply the next unapplied patch", push_next_patch_acb),
     ])
