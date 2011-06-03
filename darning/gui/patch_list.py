@@ -19,6 +19,7 @@ import collections
 import os
 
 from darning import utils
+from darning import cmd_result
 from darning.patch_db import PatchState
 
 from darning.gui import ifce
@@ -328,11 +329,13 @@ def init_cwd_acb(_arg):
 
 def new_patch_acb(_arg):
     dlg = NewPatchDescrDialog(parent=dialogue.main_window)
-    if dlg.run() == gtk.RESPONSE_OK:
+    while dlg.run() == gtk.RESPONSE_OK:
         dlg.show_busy()
         result = ifce.PM.do_create_new_patch(dlg.get_new_patch_name(), dlg.get_descr())
         dlg.unshow_busy()
         dialogue.report_any_problems(result)
+        if not (result.eflags & cmd_result.SUGGEST_RENAME):
+            break
     dlg.destroy()
 
 actions.add_class_indep_actions(actions.Condns.DONT_CARE,

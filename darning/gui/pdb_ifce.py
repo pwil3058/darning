@@ -58,7 +58,7 @@ def get_patch_description(patch):
 
 def do_create_new_patch(name, descr):
     if patch_db.patch_is_in_series(name):
-        return cmd_result.Result(cmd_result.ERROR, '', '{0}: Already exists in database'.format(name))
+        return cmd_result.Result(cmd_result.ERROR|cmd_result.SUGGEST_RENAME, '', '{0}: Already exists in database'.format(name))
     patch_db.create_new_patch(name, descr)
     ws_event.notify_events(ws_event.PATCH_CREATE)
     return cmd_result.Result(cmd_result.OK, '', '')
