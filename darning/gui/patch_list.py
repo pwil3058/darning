@@ -350,6 +350,12 @@ def push_next_patch_acb(_arg):
     dialogue.unshow_busy()
     dialogue.report_any_problems(result)
 
+def pop_top_patch_acb(_arg):
+    dialogue.show_busy()
+    result = ifce.PM.do_pop_top_patch()
+    dialogue.unshow_busy()
+    dialogue.report_any_problems(result)
+
 actions.add_class_indep_actions(actions.Condns.DONT_CARE,
     [
         ("config_new_playground", icons.STOCK_NEW_PLAYGROUND, "_New", "",
@@ -372,4 +378,10 @@ actions.add_class_indep_actions(Condns.PUSH_POSSIBLE,
     [
         ("patch_list_push", icons.STOCK_PUSH_PATCH, "Push", None,
          "Apply the next unapplied patch", push_next_patch_acb),
+    ])
+
+actions.add_class_indep_actions(Condns.POP_POSSIBLE,
+    [
+        ("patch_list_pop", icons.STOCK_POP_PATCH, "Pop", None,
+         "Pop the top applied patch", pop_top_patch_acb),
     ])

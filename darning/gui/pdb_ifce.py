@@ -99,9 +99,33 @@ def do_push_next_patch():
         console.LOG.append_stderr(result.stderr)
         if result.ecode:
             msg += result.stdin + result.stderr
+    console.LOG.append_stdout('Patch "{0}" is now on top\n'.format(patch_db.get_top_patch_name()))
     console.LOG.end_cmd()
     ws_event.notify_events(ws_event.PATCH_PUSH)
     return cmd_result.Result(cmd_result.ERROR if highest_ecode > 0 else cmd_result.OK, '', msg)
+
+def do_pop_top_patch():
+    if patch_db.top_patch_needs_refresh():
+        top_patch = patch_db.get_top_patch_name()
+        return cmd_result.Result(cmd_result.ERROR_SUGGEST_REFRESH, '', 'Top patch ("{0}") needs to be refreshed'.format(top_patch))
+    console.LOG.start_cmd('pop')
+    result = patch_db.unapply_top_patch()
+    if result is not True:
+        stderr = '{0}: top patch is now "{1}"'.format(result, patch_db.get_top_patch_name())
+        console.LOG.append_stderr(stderr)
+        console.LOG.end_cmd()
+        eflags = cmd_result.ERROR
+    else:
+        top_patch = patch_db.get_top_patch_name()
+        if top_patch is None:
+            console.LOG.append_stdout('There are now no patches applied\n')
+        else:
+            console.LOG.append_stdout('Patch "{0}" is now on top\n'.format(top_patch))
+        console.LOG.end_cmd()
+        stderr = ''
+        eflags = cmd_result.OK
+    ws_event.notify_events(ws_event.PATCH_PUSH)
+    return cmd_result.Result(eflags, '', stderr)
 
 def do_set_patch_description(patch, text):
     if not patch_db.is_readable():

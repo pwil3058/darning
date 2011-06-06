@@ -41,7 +41,7 @@ def run_pop(args):
         if top_patch is None:
             return msg.Info('There are now no patches applied')
         else:
-            return msg.Info('Patch "{1}" is now on top', result, top_patch)
+            return msg.Info('Patch "{1}" is now on top', top_patch)
     return msg.OK
 
 PARSER.set_defaults(run_cmd=run_pop)
