@@ -14,6 +14,7 @@
 ### Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 '''GUI interface to patch_db'''
+import os
 
 from darning import patch_db
 from darning import cmd_result
@@ -22,6 +23,7 @@ from darning import cmd_result
 from darning.patch_db import find_base_dir
 
 from darning.gui import ws_event
+from darning.gui import console
 
 def open_db():
     result = patch_db.load_db(lock=True)
@@ -34,9 +36,14 @@ def close_db():
     if patch_db.is_readable():
         patch_db.release_db()
 
-def initialize(description):
+def do_initialization(description):
     '''Create a patch database in the current directory'''
-    return patch_db.create_db(description)
+    console.LOG.start_cmd('initialize {0}\n"{1}"'.format(os.getcwd(), description))
+    result = patch_db.create_db(description)
+    console.LOG.append_stdin(result.stdin)
+    console.LOG.append_stderr(result.stderr)
+    console.LOG.end_cmd()
+    return result
 
 def get_in_progress():
     return patch_db.is_readable() and patch_db.get_top_patch_name() is not None
@@ -60,10 +67,13 @@ def do_create_new_patch(name, descr):
     if patch_db.patch_is_in_series(name):
         return cmd_result.Result(cmd_result.ERROR|cmd_result.SUGGEST_RENAME, '', '{0}: Already exists in database'.format(name))
     patch_db.create_new_patch(name, descr)
+    console.LOG.append_entry('new patch "{0}"\n"{1}"'.format(name, descr))
+    patch_db.apply_patch()
     ws_event.notify_events(ws_event.PATCH_CREATE)
     return cmd_result.Result(cmd_result.OK, '', '')
 
 def do_push_next_patch():
+    console.LOG.start_cmd('push')
     is_ok = True
     msg = ''
     overlaps = patch_db.get_next_patch_overlap_data()
@@ -78,13 +88,18 @@ def do_push_next_patch():
         for filename in sorted(overlaps.unrefreshed):
             msg += '\t{0} : in patch "{1}"\n'.format(filename, overlaps.unrefreshed[filename])
     if not is_ok:
+        console.LOG.append_stderr(msg)
+        console.LOG.end_cmd()
         return cmd_result.Result(cmd_result.ERROR, '', msg)
     _db_ok, results = patch_db.apply_patch()
-    highest_ecode = 0
+    highest_ecode = max([result.ecode for result in results]) if results else 0
     for filename in results:
         result = results[filename]
-        highest_ecode = highest_ecode if result.ecode < highest_ecode else result.ecode
-        msg += result.stderr
+        console.LOG.append_stdin(result.stdin)
+        console.LOG.append_stderr(result.stderr)
+        if result.ecode:
+            msg += result.stdin + result.stderr
+    console.LOG.end_cmd()
     ws_event.notify_events(ws_event.PATCH_PUSH)
     return cmd_result.Result(cmd_result.ERROR if highest_ecode > 0 else cmd_result.OK, '', msg)
 
@@ -92,6 +107,7 @@ def do_set_patch_description(patch, text):
     if not patch_db.is_readable():
         return cmd_result.Result(cmd_result.ERROR, '', 'Database is unreadable')
     patch_db.do_set_patch_description(patch, text)
+    console.LOG.append_entry('set patch "{0}" description:\n"{1}"'.format(name, descr))
     return cmd_result.Result(cmd_result.OK, '', '')
 
 def is_pushable():

@@ -25,10 +25,9 @@ from darning import utils
 from darning.gui import pdb_ifce as PM
 from darning.gui import ws_event
 from darning.gui import terminal
-from darning.gui import console
+from darning.gui.console import LOG
 
 TERM = terminal.Terminal() if terminal.AVAILABLE else None
-LOG = console.ConsoleLog()
 
 def init():
     global in_valid_repo, in_valid_pgnd
@@ -89,7 +88,7 @@ def new_playground(description, pgdir=None):
             return result
     if in_valid_pgnd:
         return cmd_result.Result(cmd_result.WARNING, '', 'Already initialized')
-    result = PM.initialize(description)
+    result = PM.do_initialization(description)
     if result is not True:
         return cmd_result.Result(cmd_result.ERROR, '', str(result))
     retval = PM.open_db()

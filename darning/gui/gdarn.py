@@ -19,6 +19,7 @@ import os
 from darning import utils
 
 from darning.gui import dialogue
+from darning.gui import console
 from darning.gui import ifce
 from darning.gui import icons
 from darning.gui import actions
@@ -76,11 +77,11 @@ class Darning(gtk.Window, dialogue.BusyIndicator, actions.AGandUIManager):
         hpane.add2(patch_list.List())
         if ifce.TERM:
             nbook = gtk.Notebook()
-            nbook.append_page(ifce.LOG, gtk.Label("Transaction Log"))
+            nbook.append_page(console.LOG, gtk.Label("Transaction Log"))
             nbook.append_page(ifce.TERM, gtk.Label("Terminal"))
             vpane.add2(nbook)
         else:
-            vpane.add2(ifce.LOG, gtk.Label("Transaction Log"))
+            vpane.add2(console.LOG, gtk.Label("Transaction Log"))
         self.add_notification_cb(ws_event.CHANGE_WD, self._change_pgnd_ncb)
         self.show_all()
     def _update_title(self):

@@ -32,6 +32,7 @@ class ConsoleLog(textview.Widget):
         self.stderr_tag = self.bfr.create_tag("STDERR", foreground="#AA0000", family="monospace")
         self.stdin_tag = self.bfr.create_tag("STDIN", foreground="#00AA00", family="monospace")
         self._eobuf = self.bfr.create_mark("eobuf", self.bfr.get_end_iter(), False)
+        self.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_ALWAYS)
     def _append_tagged_text(self, text, tag):
         model_iter = self.bfr.get_end_iter()
         assert model_iter is not None, "ConsoleLogBuffer"
@@ -52,3 +53,5 @@ class ConsoleLog(textview.Widget):
         self._append_tagged_text("%s: " % time.strftime("%Y-%m-%d %H:%M:%S"), self.bold_tag)
         self._append_tagged_text(msg, self.cmd_tag)
         self._append_tagged_text(os.linesep + "% ", self.bold_tag)
+
+LOG = ConsoleLog()
