@@ -139,7 +139,6 @@ def do_refresh_patch(name=None):
         console.LOG.append_stdout('Refreshing: {0}\n'.format(filename))
         console.LOG.append_stdout(result.stdout)
         console.LOG.append_stderr(result.stderr)
-        msg += result.stderr
         for line in result.stderr.splitlines(False):
             msg += '{0}: {1}\n'.format(filename, line)
     console.LOG.end_cmd()

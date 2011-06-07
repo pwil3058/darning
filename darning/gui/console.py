@@ -26,6 +26,7 @@ from darning.gui import textview
 class ConsoleLog(textview.Widget):
     def __init__(self, width_in_chars=81, fdesc=None):
         textview.Widget.__init__(self, width_in_chars=width_in_chars, fdesc=fdesc)
+        self.view.set_editable(False)
         self.bold_tag = self.bfr.create_tag("BOLD", weight=pango.WEIGHT_BOLD, foreground="black", family="monospace")
         self.cmd_tag = self.bfr.create_tag("CMD", foreground="black", family="monospace")
         self.stdout_tag = self.bfr.create_tag("STDOUT", foreground="black", family="monospace")

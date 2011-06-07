@@ -14,6 +14,7 @@
 ### Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import gtk
+import pango
 
 from darning import cmd_result
 
@@ -93,11 +94,45 @@ class AmodalDialog(Dialog, ws_event.Listener):
     def _change_wd_cb(self, arg=None):
         self.destroy()
 
-class MessageDialog(gtk.MessageDialog):
-    def __init__(self, parent=None, flags=0, type=gtk.MESSAGE_INFO, buttons=gtk.BUTTONS_NONE, message_format=None):
+class MessageDialog(Dialog):
+    icons = {
+        gtk.MESSAGE_INFO: gtk.STOCK_DIALOG_INFO,
+        gtk.MESSAGE_WARNING: gtk.STOCK_DIALOG_WARNING,
+        gtk.MESSAGE_QUESTION: gtk.STOCK_DIALOG_QUESTION,
+        gtk.MESSAGE_ERROR: gtk.STOCK_DIALOG_ERROR,
+    }
+    labels = {
+        gtk.MESSAGE_INFO: 'FYI',
+        gtk.MESSAGE_WARNING: 'Warning',
+        gtk.MESSAGE_QUESTION: 'Question',
+        gtk.MESSAGE_ERROR: 'Error',
+    }
+    @staticmethod
+    def copy_cb(tview):
+        tview.get_buffer().copy_clipboard(gtk.clipboard_get())
+    def __init__(self, parent=None, flags=gtk.DIALOG_MODAL|gtk.DIALOG_DESTROY_WITH_PARENT, type=gtk.MESSAGE_INFO, buttons=None, message_format=None):
         if not parent:
             parent = main_window
-        gtk.MessageDialog.__init__(self, parent=parent, flags=flags, type=type, buttons=buttons, message_format=message_format)
+        Dialog.__init__(self, title='gdarn: {0}'.format(self.labels[type]), parent=parent, flags=flags, buttons=buttons)
+        hbox = gtk.HBox()
+        icon = gtk.Image()
+        icon.set_from_stock(self.icons[type], gtk.ICON_SIZE_DIALOG)
+        hbox.pack_start(icon, expand=False, fill=False)
+        label = gtk.Label(self.labels[type])
+        label.modify_font(pango.FontDescription('bold 35'))
+        hbox.pack_start(label, expand=False, fill=False)
+        self.get_content_area().pack_start(hbox, expand=False, fill=False)
+        sbw = gtk.ScrolledWindow()
+        sbw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+        tview = gtk.TextView()
+        tview.set_size_request(480,120)
+        tview.set_editable(False)
+        tview.get_buffer().set_text(message_format.strip())
+        tview.connect('copy-clipboard', MessageDialog.copy_cb)
+        sbw.add(tview)
+        self.get_content_area().pack_end(sbw, expand=True, fill=True)
+        self.show_all()
+        self.set_resizable(True)
 
 class FileChooserDialog(gtk.FileChooserDialog):
     def __init__(self, title=None, parent=None, action=gtk.FILE_CHOOSER_ACTION_OPEN, buttons=None, backend=None):
@@ -199,7 +234,7 @@ def ask_dir_name(prompt, suggestion=None, existing=True, parent=None):
 def inform_user(msg, parent=None, problem_type=gtk.MESSAGE_INFO):
     dialog = MessageDialog(parent=parent,
                            flags=gtk.DIALOG_MODAL|gtk.DIALOG_DESTROY_WITH_PARENT,
-                           type=problem_type, buttons=gtk.BUTTONS_CLOSE,
+                           type=problem_type, buttons=(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE),
                            message_format=msg)
     dialog.run()
     dialog.destroy()
