@@ -150,7 +150,7 @@ def set_class_indep_sensitivity_for_condns(condns):
     _CLASS_INDEP_AGS.set_sensitivity_for_condns(condns)
 
 ws_event.add_notification_cb(ws_event.CHANGE_WD, _update_class_indep_cwd_cb)
-ws_event.add_notification_cb(ws_event.PMIC_CHANGE|ws_event.CHANGE_WD, _update_class_indep_pmic_cb)
+ws_event.add_notification_cb(ws_event.PATCH_PUSH|ws_event.PATCH_POP|ws_event.CHANGE_WD, _update_class_indep_pmic_cb)
 
 class AGandUIManager(ws_event.Listener):
     def __init__(self, selection=None):
@@ -163,7 +163,7 @@ class AGandUIManager(ws_event.Listener):
         if self.seln:
             self.seln.connect('changed', self.seln_condns_change_cb)
         self.add_notification_cb(ws_event.CHANGE_WD, self.cwd_condns_change_cb)
-        self.add_notification_cb(ws_event.PMIC_CHANGE|ws_event.CHANGE_WD, self.pmic_condns_change_cb)
+        self.add_notification_cb(ws_event.PATCH_PUSH|ws_event.PATCH_POP|ws_event.CHANGE_WD, self.pmic_condns_change_cb)
         self.init_action_states()
     def seln_condns_change_cb(self, seln):
         self._action_groups.set_sensitivity_for_condns(MaskedCondns.get_seln_condns(seln))

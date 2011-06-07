@@ -22,7 +22,7 @@ to update their displayed/cached data
 
 import gobject
 
-_NFLAGS = 17
+_NFLAGS = 16
 FILE_ADD, \
 FILE_DEL, \
 FILE_MOD, \
@@ -38,8 +38,7 @@ PATCH_POP, \
 PATCH_REFRESH, \
 PATCH_CREATE, \
 PATCH_DELETE, \
-PATCH_MODIFY, \
-PMIC_CHANGE = [2 ** flag_num for flag_num in range(_NFLAGS)]
+PATCH_MODIFY = [2 ** flag_num for flag_num in range(_NFLAGS)]
 
 ALL_EVENTS = 2 ** _NFLAGS - 1
 ALL_BUT_CHANGE_WD = ALL_EVENTS &  ~CHANGE_WD

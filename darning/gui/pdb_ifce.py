@@ -69,7 +69,7 @@ def do_create_new_patch(name, descr):
     patch_db.create_new_patch(name, descr)
     console.LOG.append_entry('new patch "{0}"\n"{1}"'.format(name, descr))
     patch_db.apply_patch()
-    ws_event.notify_events(ws_event.PATCH_CREATE)
+    ws_event.notify_events(ws_event.PATCH_CREATE|ws_event.PATCH_PUSH)
     return cmd_result.Result(cmd_result.OK, '', '')
 
 def do_push_next_patch():
@@ -124,7 +124,7 @@ def do_pop_top_patch():
         console.LOG.end_cmd()
         stderr = ''
         eflags = cmd_result.OK
-    ws_event.notify_events(ws_event.PATCH_PUSH)
+    ws_event.notify_events(ws_event.PATCH_POP)
     return cmd_result.Result(eflags, '', stderr)
 
 def do_refresh_patch(name=None):
