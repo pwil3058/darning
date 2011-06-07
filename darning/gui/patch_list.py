@@ -356,6 +356,12 @@ def pop_top_patch_acb(_arg):
     dialogue.unshow_busy()
     dialogue.report_any_problems(result)
 
+def refresh_top_patch_acb(_arg):
+    dialogue.show_busy()
+    result = ifce.PM.do_refresh_patch()
+    dialogue.unshow_busy()
+    dialogue.report_any_problems(result)
+
 actions.add_class_indep_actions(actions.Condns.DONT_CARE,
     [
         ("config_new_playground", icons.STOCK_NEW_PLAYGROUND, "_New", "",
@@ -384,4 +390,10 @@ actions.add_class_indep_actions(Condns.POP_POSSIBLE,
     [
         ("patch_list_pop", icons.STOCK_POP_PATCH, "Pop", None,
          "Pop the top applied patch", pop_top_patch_acb),
+    ])
+
+actions.add_class_indep_actions(Condns.PMIC,
+    [
+        ("patch_list_refresh_top_patch", icons.STOCK_REFRESH_PATCH, None, None,
+         "Refresh the top patch", refresh_top_patch_acb),
     ])

@@ -92,7 +92,7 @@ def do_push_next_patch():
         console.LOG.end_cmd()
         return cmd_result.Result(cmd_result.ERROR, '', msg)
     _db_ok, results = patch_db.apply_patch()
-    highest_ecode = max([result.ecode for result in results]) if results else 0
+    highest_ecode = max([result.ecode for result in results.values()]) if results else 0
     for filename in results:
         result = results[filename]
         console.LOG.append_stdin(result.stdin)
@@ -126,6 +126,30 @@ def do_pop_top_patch():
         eflags = cmd_result.OK
     ws_event.notify_events(ws_event.PATCH_PUSH)
     return cmd_result.Result(eflags, '', stderr)
+
+def do_refresh_patch(name=None):
+    if name is None:
+        name = patch_db.get_top_patch_name()
+    console.LOG.start_cmd('refresh {0}'.format(name))
+    results = patch_db.do_refresh_patch(name)
+    highest_ecode = max([result.ecode for result in results.values()]) if results else 0
+    msg = ''
+    for filename in results:
+        result = results[filename]
+        console.LOG.append_stdout('Refreshing: {0}\n'.format(filename))
+        console.LOG.append_stdout(result.stdout)
+        console.LOG.append_stderr(result.stderr)
+        msg += result.stderr
+        for line in result.stderr.splitlines(False):
+            msg += '{0}: {1}\n'.format(filename, line)
+    console.LOG.end_cmd()
+    if highest_ecode > 2:
+        eflags = cmd_result.ERROR
+        msg += '\nPatch "{0}" requires another refresh after issues are resolved.'.format(name)
+    else:
+        eflags = cmd_result.OK if highest_ecode == 0 else cmd_result.WARNING
+    ws_event.notify_events(ws_event.PATCH_REFRESH)
+    return cmd_result.Result(eflags, '', msg)
 
 def do_set_patch_description(patch, text):
     if not patch_db.is_readable():
