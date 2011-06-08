@@ -18,6 +18,7 @@ import os
 
 from darning import utils
 
+from darning.gui import gutils
 from darning.gui import dialogue
 from darning.gui import console
 from darning.gui import ifce
@@ -25,6 +26,7 @@ from darning.gui import icons
 from darning.gui import actions
 from darning.gui import ws_event
 from darning.gui import patch_list
+from darning.gui import file_tree
 
 class Darning(gtk.Window, dialogue.BusyIndicator, actions.AGandUIManager):
     count = 0
@@ -75,7 +77,7 @@ class Darning(gtk.Window, dialogue.BusyIndicator, actions.AGandUIManager):
         vbox.pack_start(vpane, expand=True)
         hpane = gtk.HPaned()
         vpane.add1(hpane)
-        hpane.add1(gtk.Label('SCM view of files goes here'))
+        hpane.add1(file_tree.ScmTreeWidget())
         hpane.add2(patch_list.List())
         if ifce.TERM:
             nbook = gtk.Notebook()

@@ -108,6 +108,12 @@ class View(gtk.TreeView):
             else:
                 column.pack_end(cell)
         return cell
+    @property
+    def model(self):
+        return self.get_model()
+    @model.setter
+    def model(self, new_model):
+        self.set_model(new_model)
     def set_model(self, model):
         assert model is None or isinstance(model, self.Model)
         gtk.TreeView.set_model(self, model)
@@ -175,9 +181,5 @@ class ListView(View):
 
 class TreeView(View):
     class Model(View.Model, gtk.TreeStore):
-        def __init__(self, descr):
+        def __init__(self):
             gtk.TreeStore.__init__(*[self] + list(self.types))
-        def insert_contents(self, rows):
-            assert True, "append_contents(%s) must be defined in child" % rows
-        def set_contents(self, rows):
-            assert True, "set_contents(%s) must be defined in child" % rows
