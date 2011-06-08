@@ -67,7 +67,7 @@ class Darning(gtk.Window, dialogue.BusyIndicator, actions.AGandUIManager):
         vbox = gtk.VBox()
         self.add(vbox)
         mbar_box = gtk.HBox()
-        mbar_box.pack_start(self.ui_manager.get_widget("/gdarn_left_menubar"), expand=False)
+        mbar_box.pack_start(self.ui_manager.get_widget("/gdarn_left_menubar"), expand=True)
         mbar_box.pack_end(self.ui_manager.get_widget("/gdarn_right_menubar"), expand=False)
         vbox.pack_start(mbar_box, expand=False)
         vbox.pack_start(self.ui_manager.get_widget("/gdarn_patches_toolbar"), expand=False)
