@@ -18,10 +18,14 @@ import gobject
 import collections
 import os
 
+from darning import utils
+
 from darning.gui import tlview
 from darning.gui import gutils
 from darning.gui import ifce
 from darning.gui import actions
+from darning.gui import dialogue
+from darning.gui import ws_event
 
 class Tree(tlview.TreeView, actions.AGandUIManager):
     class Model(tlview.TreeView.Model):
@@ -72,7 +76,7 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
             for label in ['style', 'foreground', 'status', 'origin']:
                 index = self.col_index(label)
                 self.set_value(fsobj_iter, index, to_tuple[index])
-    #@staticmethod
+    # This is not a method but a function within the Tree namespace
     def _format_file_name_crcb(_column, cell_renderer, store, tree_iter, _arg=None):
         name = store.get_value(tree_iter, store.col_index('name'))
         xinfo = store.get_value(tree_iter, store.col_index('origin'))
@@ -146,7 +150,7 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
             widget.get_selection().unselect_all()
             return True
         return False
-    def __init__(self, show_hidden=False, populate_all=False):
+    def __init__(self, show_hidden=False, populate_all=False, auto_expand=False):
         tlview.TreeView.__init__(self)
         actions.AGandUIManager.__init__(self, self.get_selection())
         self.show_hidden_action = gtk.ToggleAction('show_hidden_files', 'Show Hidden Files',
@@ -157,6 +161,7 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
         self.show_hidden_action.set_tool_item_type(gtk.ToggleToolButton)
         self.add_conditional_action(actions.Condns.DONT_CARE, self.show_hidden_action)
         self._populate_all = populate_all
+        self._auto_expand = auto_expand
         self.connect("row-expanded", self.model.on_row_expanded_cb)
         self.connect("row-collapsed", self.model.on_row_collapsed_cb)
         self.connect('button_press_event', self._handle_button_press_cb)
@@ -164,7 +169,9 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
         self._file_db = None
         self.repopulate()
     def _toggle_show_hidden_cb(self, toggleaction):
+        dialogue.show_busy()
         self._update_dir('', None)
+        dialogue.unshow_busy()
     def _get_dir_contents(self, dirpath):
         return self._file_db.dir_contents(dirpath, self.show_hidden_action.get_active())
     def _row_expanded(self, dir_iter):
@@ -176,7 +183,7 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
             dir_iter = self.model.append(parent_iter, row_tuple)
             if self._populate_all:
                 self._populate(os.path.join(dirpath, dirdata.name), dir_iter)
-                if self._expand_new_rows():
+                if self._auto_expand:
                     self.expand_row(self.model.get_path(dir_iter), True)
             else:
                 self.model.insert_place_holder(dir_iter)
@@ -204,7 +211,7 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
                 dir_iter = self.model.append(parent_iter, row_tuple)
                 if self._populate_all:
                     self._update_dir(os.path.join(dirpath, dirdata.name), dir_iter)
-                    if self._expand_new_rows():
+                    if self._auto_expand:
                         self.expand_row(self.model.get_path(dir_iter), True)
                 else:
                     self.model.insert_place_holder(dir_iter)
@@ -214,7 +221,7 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
                 dir_iter = self.model.insert_before(parent_iter, child_iter, row_tuple)
                 if self._populate_all:
                     self._update_dir(os.path.join(dirpath, dirdata.name), dir_iter)
-                    if self._expand_new_rows():
+                    if self._auto_expand:
                         self.expand_row(self.model.get_path(dir_iter), True)
                 else:
                     self.model.insert_place_holder(dir_iter)
@@ -250,12 +257,24 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
     def _get_file_db():
         assert False, '_get_file_db() must be defined in descendants'
     def repopulate(self):
+        dialogue.show_busy()
         self._file_db = self._get_file_db()
         self.model.clear()
         self._populate('', self.model.get_iter_first())
+        dialogue.unshow_busy()
     def update(self):
+        dialogue.show_busy()
         self._file_db = self._get_file_db()
         self._update_dir('', None)
+        dialogue.unshow_busy()
+    def get_selected_files(self):
+        store, selection = self.get_selection().get_selected_rows()
+        return [store.fs_path(store.get_iter(x)) for x in selection]
+    def add_selected_files_to_clipboard(self, clipboard=None):
+        if not clipboard:
+            clipboard = gtk.clipboard_get(gtk.gdk.SELECTION_CLIPBOARD)
+        sel = utils.file_list_to_string(self.get_selected_files())
+        clipboard.set_text(sel)
 
 class ScmTreeWidget(gtk.VBox):
     class ScmTree(Tree):
@@ -283,6 +302,8 @@ class ScmTreeWidget(gtk.VBox):
         def __init__(self):
             Tree.__init__(self)
             self.ui_manager.add_ui_from_string(self.UI_DESCR)
+            self.add_notification_cb(ws_event.CHECKOUT|ws_event.CHANGE_WD, self.repopulate)
+            self.add_notification_cb(ws_event.FILE_CHANGES, self.update)
     def __init__(self):
         gtk.VBox.__init__(self)
         self.tree = self.ScmTree()

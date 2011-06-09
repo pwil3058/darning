@@ -34,6 +34,19 @@ def path_rel_home(path):
         path = "~" + path[len_home:]
     return path
 
+def file_list_to_string(file_list):
+    """Return the given list of file names as a single string:
+    - using a single space as a separator, and
+    - placing double quotes around file names that contain spaces.
+    """
+    mod_file_list = []
+    for fname in file_list:
+        if fname.count(' ') == 0:
+            mod_file_list.append(fname)
+        else:
+            mod_file_list.append('"%s"' % fname)
+    return ' '.join(mod_file_list)
+
 # handle the fact os.path.samefile is not available on all operating systems
 def samefile(filename1, filename2):
     """Return whether the given paths refer to the same file or not."""
