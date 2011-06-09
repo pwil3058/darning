@@ -150,7 +150,7 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
             widget.get_selection().unselect_all()
             return True
         return False
-    def __init__(self, show_hidden=False, populate_all=False, auto_expand=False):
+    def __init__(self, show_hidden=False, populate_all=False, auto_expand=False, auto_refresh=False):
         tlview.TreeView.__init__(self)
         actions.AGandUIManager.__init__(self, self.get_selection())
         self.show_hidden_action = gtk.ToggleAction('show_hidden_files', 'Show Hidden Files',
@@ -160,6 +160,20 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
         self.show_hidden_action.set_menu_item_type(gtk.CheckMenuItem)
         self.show_hidden_action.set_tool_item_type(gtk.ToggleToolButton)
         self.add_conditional_action(actions.Condns.DONT_CARE, self.show_hidden_action)
+        self._refresh_interval = 20000 # milliseconds
+        self.auto_refresh_action = gtk.ToggleAction('auto_refresh_files', 'Auto Refresh Files',
+                                                   'Automatically/periodically refresh file display', None)
+        self.auto_refresh_action.set_active(auto_refresh)
+        self.auto_refresh_action.connect('toggled', self._toggle_auto_refresh_cb)
+        self.auto_refresh_action.set_menu_item_type(gtk.CheckMenuItem)
+        self.auto_refresh_action.set_tool_item_type(gtk.ToggleToolButton)
+        self.add_conditional_action(actions.Condns.DONT_CARE, self.auto_refresh_action)
+        self.add_conditional_actions(actions.Condns.DONT_CARE,
+            [
+                ('files_menu_files', None, '_Files'),
+                ('refresh_files', gtk.STOCK_REFRESH, '_Refresh Files', None,
+                 'Refresh/update the file tree display', self.update),
+            ])
         self._populate_all = populate_all
         self._auto_expand = auto_expand
         self.connect("row-expanded", self.model.on_row_expanded_cb)
@@ -168,10 +182,20 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
         self.connect('key_press_event', self._handle_key_press_cb)
         self._file_db = None
         self.repopulate()
+        self._toggle_auto_refresh_cb()
     def _toggle_show_hidden_cb(self, toggleaction):
         dialogue.show_busy()
         self._update_dir('', None)
         dialogue.unshow_busy()
+    def _do_auto_refresh(self):
+        if self.auto_refresh_action.get_active():
+            self.update()
+            return True
+        else:
+            return False
+    def _toggle_auto_refresh_cb(self, action=None):
+        if self.auto_refresh_action.get_active():
+            gobject.timeout_add(self._refresh_interval, self._do_auto_refresh)
     def _get_dir_contents(self, dirpath):
         return self._file_db.dir_contents(dirpath, self.show_hidden_action.get_active())
     def _row_expanded(self, dir_iter):
@@ -256,13 +280,13 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
     @staticmethod
     def _get_file_db():
         assert False, '_get_file_db() must be defined in descendants'
-    def repopulate(self):
+    def repopulate(self, _arg=None):
         dialogue.show_busy()
         self._file_db = self._get_file_db()
         self.model.clear()
         self._populate('', self.model.get_iter_first())
         dialogue.unshow_busy()
-    def update(self):
+    def update(self, _arg=None):
         dialogue.show_busy()
         self._file_db = self._get_file_db()
         self._update_dir('', None)
@@ -280,6 +304,12 @@ class ScmTreeWidget(gtk.VBox):
     class ScmTree(Tree):
         UI_DESCR = '''
         <ui>
+          <menubar name="files_menubar">
+            <menu name="files_menu" action="files_menu_files">
+              <menuitem action="refresh_files"/>
+              <menuitem action="auto_refresh_files"/>
+            </menu>
+          </menubar>
         </ui>
         '''
         _FILE_ICON = {True : gtk.STOCK_DIRECTORY, False : gtk.STOCK_FILE}
@@ -307,6 +337,7 @@ class ScmTreeWidget(gtk.VBox):
     def __init__(self):
         gtk.VBox.__init__(self)
         self.tree = self.ScmTree()
+        self.pack_start(self.tree.ui_manager.get_widget('/files_menubar'))
         self.pack_start(gutils.wrap_in_scrolled_window(self.tree), expand=True, fill=True)
         hbox = gtk.HBox()
         for action_name in ['show_hidden_files']:
