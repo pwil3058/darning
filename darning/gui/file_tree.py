@@ -121,6 +121,31 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
             )
         ]
     )
+    KEYVAL_c = gtk.gdk.keyval_from_name('c')
+    KEYVAL_C = gtk.gdk.keyval_from_name('C')
+    KEYVAL_ESCAPE = gtk.gdk.keyval_from_name('Escape')
+    @staticmethod
+    def _handle_button_press_cb(widget, event):
+        if event.type == gtk.gdk.BUTTON_PRESS:
+            if event.button == 3:
+                menu = widget.ui_manager.get_widget('/files_popup')
+                if menu is not None:
+                    menu.popup(None, None, None, event.button, event.time)
+                return True
+            elif event.button == 2:
+                widget.get_selection().unselect_all()
+                return True
+        return False
+    @staticmethod
+    def _handle_key_press_cb(widget, event):
+        if event.state & gtk.gdk.CONTROL_MASK:
+            if event.keyval in [Tree.KEYVAL_c, Tree.KEYVAL_C]:
+                widget.add_selected_files_to_clipboard()
+                return True
+        elif event.keyval == Tree.KEYVAL_ESCAPE:
+            widget.get_selection().unselect_all()
+            return True
+        return False
     def __init__(self, show_hidden=False, populate_all=False):
         tlview.TreeView.__init__(self)
         actions.AGandUIManager.__init__(self, self.get_selection())
@@ -135,19 +160,9 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
         self.connect("row-expanded", self.model.on_row_expanded_cb)
         self.connect("row-collapsed", self.model.on_row_collapsed_cb)
         self.connect('button_press_event', self._handle_button_press_cb)
+        self.connect('key_press_event', self._handle_key_press_cb)
         self._file_db = None
         self.repopulate()
-    def _handle_button_press_cb(self, widget, event):
-        if event.type == gtk.gdk.BUTTON_PRESS:
-            if event.button == 3:
-                menu = self.ui_manager.get_widget('/files_popup')
-                if menu is not None:
-                    menu.popup(None, None, None, event.button, event.time)
-                return True
-            elif event.button == 2:
-                self.get_selection().unselect_all()
-                return True
-        return False
     def _toggle_show_hidden_cb(self, toggleaction):
         self._update_dir('', None)
     def _get_dir_contents(self, dirpath):
