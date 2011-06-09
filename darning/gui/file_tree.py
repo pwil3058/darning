@@ -23,7 +23,7 @@ from darning.gui import gutils
 from darning.gui import ifce
 from darning.gui import actions
 
-class Tree(tlview.TreeView):
+class Tree(tlview.TreeView, actions.AGandUIManager):
     class Model(tlview.TreeView.Model):
         Row = collections.namedtuple('Row', ['name', 'is_dir', 'style', 'foreground', 'icon', 'status', 'origin'])
         types = Row(
@@ -86,12 +86,14 @@ class Tree(tlview.TreeView):
     )
     def __init__(self, show_hidden=False, populate_all=False):
         tlview.TreeView.__init__(self)
+        actions.AGandUIManager.__init__(self, self.get_selection())
         self.show_hidden_action = gtk.ToggleAction('show_hidden_files', 'Show Hidden Files',
                                                    'Show/hide ignored files and those beginning with "."', None)
         self.show_hidden_action.set_active(show_hidden)
         self.show_hidden_action.connect('toggled', self._toggle_show_hidden_cb)
         self.show_hidden_action.set_menu_item_type(gtk.CheckMenuItem)
         self.show_hidden_action.set_tool_item_type(gtk.ToggleToolButton)
+        self.add_conditional_action(actions.Condns.DONT_CARE, self.show_hidden_action)
         self._populate_all = populate_all
         self.connect("row-expanded", self.on_row_expanded_cb)
         self.connect("row-collapsed", self.on_row_collapsed_cb)
@@ -225,7 +227,7 @@ class Tree(tlview.TreeView):
         self._update_dir('', None)
 
 class ScmTreeWidget(gtk.VBox):
-    class ScmTree(Tree, actions.AGandUIManager):
+    class ScmTree(Tree):
         UI_DESCR = '''
         <ui>
         </ui>
@@ -249,8 +251,6 @@ class ScmTreeWidget(gtk.VBox):
             return row
         def __init__(self):
             Tree.__init__(self)
-            actions.AGandUIManager.__init__(self, self.get_selection())
-            self.add_conditional_action(actions.Condns.DONT_CARE, self.show_hidden_action)
             self.ui_manager.add_ui_from_string(self.UI_DESCR)
     def __init__(self):
         gtk.VBox.__init__(self)
