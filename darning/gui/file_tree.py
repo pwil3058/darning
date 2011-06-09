@@ -40,6 +40,12 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
         def insert_place_holder_if_needed(self, dir_iter):
             if self.iter_n_children(dir_iter) == 0:
                 self.insert_place_holder(dir_iter)
+        def recursive_remove(self, fsobj_iter):
+            child_iter = self.iter_children(fsobj_iter)
+            if child_iter != None:
+                while self.recursive_remove(child_iter):
+                    pass
+            return self.remove(fsobj_iter)
         def remove_place_holder(self, dir_iter):
             child_iter = self.iter_children(dir_iter)
             if child_iter and self.get_labelled_value(child_iter, 'name') is None:
@@ -128,8 +134,20 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
         self._populate_all = populate_all
         self.connect("row-expanded", self.model.on_row_expanded_cb)
         self.connect("row-collapsed", self.model.on_row_collapsed_cb)
+        self.connect('button_press_event', self._handle_button_press_cb)
         self._file_db = None
         self.repopulate()
+    def _handle_button_press_cb(self, widget, event):
+        if event.type == gtk.gdk.BUTTON_PRESS:
+            if event.button == 3:
+                menu = self.ui_manager.get_widget('/files_popup')
+                if menu is not None:
+                    menu.popup(None, None, None, event.button, event.time)
+                return True
+            elif event.button == 2:
+                self.get_selection().unselect_all()
+                return True
+        return False
     def _toggle_show_hidden_cb(self, toggleaction):
         self._update_dir('', None)
     def _get_dir_contents(self, dirpath):
@@ -210,7 +228,7 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
             dead_entries.append(child_iter)
             child_iter = self.model.iter_next(child_iter)
         for dead_entry in dead_entries:
-            self._recursive_remove(dead_entry)
+            self.model.recursive_remove(dead_entry)
         if parent_iter is not None:
             self.model.insert_place_holder_if_needed(parent_iter)
     @staticmethod
