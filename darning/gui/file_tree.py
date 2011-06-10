@@ -317,7 +317,7 @@ class ScmTreeWidget(gtk.VBox):
         def _get_file_db():
             return ifce.SCM.get_file_db()
         @staticmethod
-        def _generate_row_tuple(data, isdir=None):
+        def _generate_row_tuple(data, isdir):
             deco = ifce.SCM.get_status_deco(data.status)
             row = ScmTreeWidget.ScmTree.Model.Row(
                 name=data.name,
