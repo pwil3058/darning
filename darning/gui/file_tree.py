@@ -170,7 +170,6 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
         self.add_conditional_action(actions.Condns.DONT_CARE, self.auto_refresh_action)
         self.add_conditional_actions(actions.Condns.DONT_CARE,
             [
-                ('files_menu_files', None, '_Files'),
                 ('refresh_files', gtk.STOCK_REFRESH, '_Refresh Files', None,
                  'Refresh/update the file tree display', self.update),
             ])
@@ -304,8 +303,8 @@ class ScmTreeWidget(gtk.VBox):
     class ScmTree(Tree):
         UI_DESCR = '''
         <ui>
-          <menubar name="files_menubar">
-            <menu name="files_menu" action="files_menu_files">
+          <menubar name="scm_files_menubar">
+            <menu name="scm_files_menu" action="scm_files_menu_files">
               <menuitem action="refresh_files"/>
               <menuitem action="auto_refresh_files"/>
             </menu>
@@ -331,13 +330,17 @@ class ScmTreeWidget(gtk.VBox):
             return row
         def __init__(self):
             Tree.__init__(self)
+            self.add_conditional_actions(actions.Condns.DONT_CARE,
+                [
+                    ('scm_files_menu_files', None, '_Files'),
+                ])
             self.ui_manager.add_ui_from_string(self.UI_DESCR)
             self.add_notification_cb(ws_event.CHECKOUT|ws_event.CHANGE_WD, self.repopulate)
             self.add_notification_cb(ws_event.FILE_CHANGES, self.update)
     def __init__(self):
         gtk.VBox.__init__(self)
         self.tree = self.ScmTree()
-        self.pack_start(self.tree.ui_manager.get_widget('/files_menubar'))
+        self.pack_start(self.tree.ui_manager.get_widget('/scm_files_menubar'))
         self.pack_start(gutils.wrap_in_scrolled_window(self.tree), expand=True, fill=True)
         hbox = gtk.HBox()
         for action_name in ['show_hidden_files']:
