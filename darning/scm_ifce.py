@@ -73,3 +73,11 @@ def get_status_deco(status):
         import pango
         return fsdb.Deco(pango.STYLE_NORMAL, "black")
     return _CURRENT_BACK_END.get_status_deco(status)
+
+def get_name():
+    '''
+    Get the SCM name to use in displays
+    '''
+    if _CURRENT_BACK_END is None:
+        return 'os'
+    return _CURRENT_BACK_END.get_name()

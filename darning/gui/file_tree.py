@@ -299,7 +299,7 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
         sel = utils.file_list_to_string(self.get_selected_files())
         clipboard.set_text(sel)
 
-class ScmTreeWidget(gtk.VBox):
+class ScmTreeWidget(gtk.VBox, ws_event.Listener):
     class ScmTree(Tree):
         UI_DESCR = '''
         <ui>
@@ -339,8 +339,13 @@ class ScmTreeWidget(gtk.VBox):
             self.add_notification_cb(ws_event.FILE_CHANGES, self.update)
     def __init__(self):
         gtk.VBox.__init__(self)
+        ws_event.Listener.__init__(self)
+        hbox = gtk.HBox()
+        self.scm_label = gtk.Label(ifce.SCM.get_name() + ':')
         self.tree = self.ScmTree()
-        self.pack_start(self.tree.ui_manager.get_widget('/scm_files_menubar'))
+        hbox.pack_start(self.scm_label, expand=False, fill=False)
+        hbox.pack_start(self.tree.ui_manager.get_widget('/scm_files_menubar'), expand=True, fill=True)
+        self.pack_start(hbox, expand=False, fill=False)
         self.pack_start(gutils.wrap_in_scrolled_window(self.tree), expand=True, fill=True)
         hbox = gtk.HBox()
         for action_name in ['show_hidden_files']:
@@ -351,3 +356,6 @@ class ScmTreeWidget(gtk.VBox):
             hbox.pack_start(button)
         self.pack_end(hbox, expand=False, fill=False)
         self.show_all()
+        self.add_notification_cb(ws_event.CHANGE_WD, self._cwd_change_cb)
+    def _cwd_change_cb(self):
+        self.scm_label.set_text(ifce.SCM.get_name() + ':')
