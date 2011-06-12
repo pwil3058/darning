@@ -328,8 +328,16 @@ class ScmTreeWidget(gtk.VBox, ws_event.Listener):
                 foreground=deco.foreground
             )
             return row
-        def __init__(self):
-            Tree.__init__(self)
+        def __init__(self, auto_refresh=False, hide_clean=False):
+            self.hide_clean_action = gtk.ToggleAction('hide_clean_files', 'Hide Clean Files',
+                                                       'Show/hide "clean" files', None)
+            self.hide_clean_action.set_active(hide_clean)
+            
+            Tree.__init__(self, show_hidden=False, populate_all=False, auto_expand=False, auto_refresh=auto_refresh)
+            self.hide_clean_action.connect('toggled', self._toggle_hide_clean_cb)
+            self.hide_clean_action.set_menu_item_type(gtk.CheckMenuItem)
+            self.hide_clean_action.set_tool_item_type(gtk.ToggleToolButton)
+            self.add_conditional_action(actions.Condns.DONT_CARE, self.hide_clean_action)
             self.add_conditional_actions(actions.Condns.DONT_CARE,
                 [
                     ('scm_files_menu_files', None, '_Files'),
@@ -337,18 +345,30 @@ class ScmTreeWidget(gtk.VBox, ws_event.Listener):
             self.ui_manager.add_ui_from_string(self.UI_DESCR)
             self.add_notification_cb(ws_event.CHECKOUT|ws_event.CHANGE_WD, self.repopulate)
             self.add_notification_cb(ws_event.FILE_CHANGES, self.update)
-    def __init__(self):
+        def _toggle_hide_clean_cb(self, toggleaction):
+            dialogue.show_busy()
+            self._update_dir('', None)
+            dialogue.unshow_busy()
+        def _get_dir_contents(self, dirpath):
+            show_hidden = self.show_hidden_action.get_active()
+            if not show_hidden and self.hide_clean_action.get_active():
+                dirs, files = self._file_db.dir_contents(dirpath, show_hidden)
+                return ([ncd for ncd in dirs if not ifce.SCM.is_clean(ncd.status)],
+                        [ncf for ncf in files if not ifce.SCM.is_clean(ncf.status)])
+            return self._file_db.dir_contents(dirpath, show_hidden)
+    def __init__(self, auto_refresh=False, hide_clean=False):
         gtk.VBox.__init__(self)
         ws_event.Listener.__init__(self)
         hbox = gtk.HBox()
-        self.scm_label = gtk.Label(ifce.SCM.get_name() + ':')
-        self.tree = self.ScmTree()
+        name = ifce.SCM.get_name()
+        self.scm_label = gtk.Label('' if not name else (name + ':'))
+        self.tree = self.ScmTree(auto_refresh=auto_refresh, hide_clean=hide_clean)
         hbox.pack_start(self.scm_label, expand=False, fill=False)
         hbox.pack_start(self.tree.ui_manager.get_widget('/scm_files_menubar'), expand=True, fill=True)
         self.pack_start(hbox, expand=False, fill=False)
         self.pack_start(gutils.wrap_in_scrolled_window(self.tree), expand=True, fill=True)
         hbox = gtk.HBox()
-        for action_name in ['show_hidden_files']:
+        for action_name in ['show_hidden_files', 'hide_clean_files']:
             button = gtk.CheckButton()
             action = self.tree.get_conditional_action(action_name)
             action.connect_proxy(button)
@@ -358,4 +378,5 @@ class ScmTreeWidget(gtk.VBox, ws_event.Listener):
         self.show_all()
         self.add_notification_cb(ws_event.CHANGE_WD, self._cwd_change_cb)
     def _cwd_change_cb(self):
-        self.scm_label.set_text(ifce.SCM.get_name() + ':')
+        name = ifce.SCM.get_name()
+        self.scm_label.set_text('' if not name else (name + ':'))

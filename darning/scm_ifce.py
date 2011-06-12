@@ -79,5 +79,13 @@ def get_name():
     Get the SCM name to use in displays
     '''
     if _CURRENT_BACK_END is None:
-        return 'os'
+        return ''
     return _CURRENT_BACK_END.get_name()
+
+def is_clean(status):
+    '''
+    Does this status indicate a clean object?
+    '''
+    if _CURRENT_BACK_END is None:
+        return False
+    return _CURRENT_BACK_END.is_clean(status)
