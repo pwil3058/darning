@@ -16,3 +16,6 @@
 '''
 Provide modules to support management of stacked patches.
 '''
+
+# import SCM backend interfaces here
+from darning import scm_ifce_hg

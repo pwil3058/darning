@@ -29,7 +29,7 @@ def reset_back_end():
     '''Reset the current back end to one that is valid for cwd'''
     global _CURRENT_BACK_END
     for name in _AVAILABLE_BACK_ENDS:
-        if _AVAILABLE_BACK_ENDS[name].in_playground():
+        if _AVAILABLE_BACK_ENDS[name].is_valid_repo():
             _CURRENT_BACK_END = _AVAILABLE_BACK_ENDS[name]
             return
     _CURRENT_BACK_END = None
@@ -80,7 +80,7 @@ def get_name():
     '''
     if _CURRENT_BACK_END is None:
         return ''
-    return _CURRENT_BACK_END.get_name()
+    return _CURRENT_BACK_END.name
 
 def is_clean(status):
     '''
