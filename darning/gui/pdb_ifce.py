@@ -15,9 +15,11 @@
 
 '''GUI interface to patch_db'''
 import os
+import pango
 
 from darning import patch_db
 from darning import cmd_result
+from darning import fsdb
 
 # patch_db commands that don't need wrapping
 from darning.patch_db import find_base_dir
@@ -62,6 +64,42 @@ def get_patch_description(patch):
     if not patch_db.is_readable():
         raise cmd_result.Failure('Database is unreadable')
     return patch_db.get_patch_description(patch)
+
+DECO_MAP = {
+    None: fsdb.Deco(pango.STYLE_NORMAL, "black"),
+    patch_db.FileData.Presence.ADDED: fsdb.Deco(pango.STYLE_NORMAL, "darkgreen"),
+    patch_db.FileData.Presence.REMOVED: fsdb.Deco(pango.STYLE_NORMAL, "red"),
+    patch_db.FileData.Presence.EXTANT: fsdb.Deco(pango.STYLE_NORMAL, "black"),
+}
+
+def get_status_deco(status):
+    return DECO_MAP[status.presence]
+
+class FileDb(fsdb.GenFileDb):
+    class Dir(fsdb.GenDir):
+        def __init__(self):
+            fsdb.GenDir.__init__(self)
+            self.status = patch_db.FileData.Status(None, None)
+        def _new_dir(self):
+            return FileDb.Dir()
+        def _update_own_status(self):
+            if len(self.status_set) == 1:
+                self.status = list(self.status_set)[0]
+            else:
+                self.status = patch_db.FileData.Status(None, None)
+    def __init__(self, file_list):
+        fsdb.GenFileDb.__init__(self, FileDb.Dir)
+        for item in file_list:
+            parts = fsdb.split_path(item.name)
+            self.base_dir.add_file(parts, item.status, item.origin)
+        self.decorate_dirs()
+
+def get_file_db(patch=None):
+    if not patch_db.is_readable():
+        return fsdb.NullFileDb()
+    if patch is None:
+        patch = patch_db.get_top_patch_name()
+    return fsdb.NullFileDb() if patch is None else FileDb(patch_db.get_patch_file_table(patch))
 
 def do_create_new_patch(name, descr):
     if patch_db.patch_is_in_series(name):

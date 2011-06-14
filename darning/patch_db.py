@@ -30,6 +30,8 @@ import re
 from darning import scm_ifce
 from darning import runext
 from darning import utils
+from darning import patchlib
+from darning import fsdb
 
 class Failure:
     '''Report failure'''
@@ -45,8 +47,15 @@ class Failure:
     def __repr__(self):
         return 'Failure(%s)' % self.msg
 
-class _FileData:
+class FileData:
     '''Change data for a single file'''
+    class Presence(object):
+        ADDED = patchlib.FilePathPlus.ADDED
+        REMOVED = patchlib.FilePathPlus.DELETED
+        EXTANT = patchlib.FilePathPlus.EXTANT
+    class Validity(object):
+        REFRESHED, NEEDS_REFRESH, UNREFRESHABLE = range(3)
+    Status = collections.namedtuple('Status', ['presence', 'validity'])
     MERGE_CRE = re.compile('^(<<<<<<<|>>>>>>>).*$')
     def __init__(self, name):
         self.name = name
@@ -70,9 +79,31 @@ class _FileData:
     def has_unresolved_merges(self):
         if os.path.exists(self.name):
             for line in open(self.name).readlines():
-                if _FileData.MERGE_CRE.match(line):
+                if FileData.MERGE_CRE.match(line):
                     return True
         return False
+    def get_presence(self):
+        if self.old_mode is None:
+            return FileData.Presence.ADDED
+        elif self.new_mode is None:
+            return FileData.Presence.DELETED
+        else:
+            return FileData.Presence.EXTANT
+    def get_validity(self):
+        if self.needs_refresh():
+            if self.has_unresolved_merges():
+                return FileData.Validity.UNREFRESHABLE
+            else:
+                return FileData.Validity.NEEDS_REFRESH
+        else:
+            return FileData.Validity.REFRESHED
+    def get_status(self, applied=True):
+        if applied:
+            return FileData.Status(self.get_presence(), self.get_validity())
+        else:
+            return FileData.Status(self.get_presence(), None)
+
+_FileData = FileData
 
 OverlapData = collections.namedtuple('OverlapData', ['unrefreshed', 'uncommitted'])
 
@@ -131,12 +162,12 @@ class _PatchData:
         assert filename not in self.files
         if not self.is_applied():
             # not much to do here
-            self.files[filename] = _FileData(filename)
+            self.files[filename] = FileData(filename)
             dump_db()
             return
         overlaps = self.get_overlap_data([filename])
         assert len(overlaps.unrefreshed) + len(overlaps.uncommitted) == 0
-        self.files[filename] = _FileData(filename)
+        self.files[filename] = FileData(filename)
         overlapped_by = self.get_overlapping_patch_for_file(filename)
         if overlapped_by is None:
             self.do_back_up_file(filename)
@@ -329,6 +360,9 @@ class _PatchData:
         are also in filenames.
         '''
         return set(self.get_filenames(filenames=filenames))
+    def get_files_table(self):
+        applied = self.is_applied()
+        return [fsdb.Data(fde.name, fde.get_status(applied), None) for fde in self.files.values()]
     def get_overlapping_patch_for_file(self, filename):
         '''Return the patch (if any) which overlaps the named file in this patch'''
         assert is_readable()
@@ -676,6 +710,13 @@ def get_patch_series_index(name):
     '''Get the index in series for the patch with the given name'''
     assert is_readable()
     return _DB.get_series_index(name)
+
+def get_patch_file_table(name):
+    assert is_readable()
+    if len(_DB.series) == 0:
+        return []
+    index = _DB.get_series_index(name)
+    return _DB.series[index].get_files_table()
 
 def _get_top_patch_index():
     '''Get the index in series of the top applied patch'''

@@ -77,8 +77,11 @@ class Darning(gtk.Window, dialogue.BusyIndicator, actions.AGandUIManager):
         vbox.pack_start(vpane, expand=True)
         hpane = gtk.HPaned()
         vpane.add1(hpane)
-        hpane.add1(file_tree.ScmTreeWidget())
-        hpane.add2(patch_list.List())
+        hpane.add1(file_tree.ScmFileTreeWidget())
+        phpane = gtk.HPaned()
+        phpane.add1(file_tree.PatchFileTreeWidget())
+        phpane.add2(patch_list.List())
+        hpane.add2(phpane)
         if ifce.TERM:
             nbook = gtk.Notebook()
             nbook.append_page(console.LOG, gtk.Label("Transaction Log"))

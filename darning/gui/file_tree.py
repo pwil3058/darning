@@ -276,7 +276,6 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
             self.model.recursive_remove(dead_entry)
         if parent_iter is not None:
             self.model.insert_place_holder_if_needed(parent_iter)
-    @staticmethod
     def _get_file_db():
         assert False, '_get_file_db() must be defined in descendants'
     def repopulate(self, _arg=None):
@@ -299,7 +298,7 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
         sel = utils.file_list_to_string(self.get_selected_files())
         clipboard.set_text(sel)
 
-class ScmTreeWidget(gtk.VBox, ws_event.Listener):
+class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
     class ScmTree(Tree):
         UI_DESCR = '''
         <ui>
@@ -318,10 +317,10 @@ class ScmTreeWidget(gtk.VBox, ws_event.Listener):
         @staticmethod
         def _generate_row_tuple(data, isdir):
             deco = ifce.SCM.get_status_deco(data.status)
-            row = ScmTreeWidget.ScmTree.Model.Row(
+            row = ScmFileTreeWidget.ScmTree.Model.Row(
                 name=data.name,
                 is_dir=isdir,
-                icon=ScmTreeWidget.ScmTree._FILE_ICON[isdir],
+                icon=ScmFileTreeWidget.ScmTree._FILE_ICON[isdir],
                 status=data.status,
                 origin=data.origin,
                 style=deco.style,
@@ -332,7 +331,6 @@ class ScmTreeWidget(gtk.VBox, ws_event.Listener):
             self.hide_clean_action = gtk.ToggleAction('hide_clean_files', 'Hide Clean Files',
                                                        'Show/hide "clean" files', None)
             self.hide_clean_action.set_active(hide_clean)
-            
             Tree.__init__(self, show_hidden=False, populate_all=False, auto_expand=False, auto_refresh=auto_refresh)
             self.hide_clean_action.connect('toggled', self._toggle_hide_clean_cb)
             self.hide_clean_action.set_menu_item_type(gtk.CheckMenuItem)
@@ -380,3 +378,36 @@ class ScmTreeWidget(gtk.VBox, ws_event.Listener):
     def _cwd_change_cb(self):
         name = ifce.SCM.get_name()
         self.scm_label.set_text('' if not name else (name + ':'))
+
+class PatchFileTreeWidget(gtk.VBox):
+    class PatchFileTree(Tree):
+        @staticmethod
+        def _generate_row_tuple(data, isdir):
+            deco = ifce.PM.get_status_deco(data.status)
+            if isdir:
+                icon = gtk.STOCK_DIRECTORY
+            else:
+                icon = gtk.STOCK_FILE
+            row = PatchFileTreeWidget.PatchFileTree.Model.Row(
+                name=data.name,
+                is_dir=isdir,
+                icon=icon,
+                status='',
+                origin=data.origin,
+                style=deco.style,
+                foreground=deco.foreground
+            )
+            return row
+        def __init__(self, patch=None, auto_refresh=True):
+            self.patch = patch
+            Tree.__init__(self, show_hidden=True, populate_all=True, auto_expand=True, auto_refresh=auto_refresh)
+            self.add_notification_cb(ws_event.CHECKOUT|ws_event.CHANGE_WD|ws_event.PATCH_PUSH|ws_event.PATCH_POP, self.repopulate)
+            self.add_notification_cb(ws_event.FILE_CHANGES|ws_event.PATCH_REFRESH, self.update)
+        def _get_file_db(self):
+            return ifce.PM.get_file_db(self.patch)
+    def __init__(self, patch=None, auto_refresh=True):
+        gtk.VBox.__init__(self)
+        self.pack_start(gtk.Label('Top Patch Files'), expand=False, fill=False)
+        self.tree = self.PatchFileTree(patch=patch, auto_refresh=auto_refresh)
+        self.pack_start(gutils.wrap_in_scrolled_window(self.tree), expand=True, fill=True)
+        self.show_all()
