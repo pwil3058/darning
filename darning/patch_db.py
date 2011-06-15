@@ -103,8 +103,6 @@ class FileData:
         else:
             return FileData.Status(self.get_presence(), None)
 
-_FileData = FileData
-
 OverlapData = collections.namedtuple('OverlapData', ['unrefreshed', 'uncommitted'])
 
 def _total_overlap_count(overlap_data):
@@ -147,7 +145,7 @@ class PatchState(object):
 class PatchTable(object):
     Row = collections.namedtuple('Row', ['name', 'state', 'pos_guards', 'neg_guards'])
 
-class _PatchData:
+class PatchData:
     '''Store data for changes to a number of files as a single patch'''
     def __init__(self, name, description):
         self.name = name
@@ -445,7 +443,7 @@ class _PatchData:
                 return True
         return False
 
-class _DataBase:
+class DataBase:
     '''Storage for an ordered sequence/series of patches'''
     def __init__(self, description, host_scm=None):
         self.description = description
@@ -470,14 +468,14 @@ class _DataBase:
         '''Create a new patch with the given name and description (after the top patch)'''
         assert is_writable()
         assert self.get_series_index(name) is None
-        patch = _PatchData(name, description)
+        patch = PatchData(name, description)
         self._do_insert_patch(patch)
     def do_import_patch(self, epatch, name):
         '''Import an external patch with the given name (after the top patch)'''
         assert is_writable()
         assert self.get_series_index(name) is None
         descr = utils.make_utf8_compliant(epatch.get_description())
-        patch = _PatchData(name, descr)
+        patch = PatchData(name, descr)
         for diff_plus in epatch.diff_pluses:
             path = diff_plus.get_file_path(epatch.num_strip_levels)
             patch.do_add_file(path)
@@ -636,7 +634,7 @@ def create_db(description, dirpath=None):
         dir_mode = stat.S_IRWXU|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH
         os.mkdir(db_dir, dir_mode)
         os.mkdir(bu_dir, dir_mode)
-        db_obj = _DataBase(description, None)
+        db_obj = DataBase(description, None)
         fobj = open(db_file, 'wb', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
         try:
             cPickle.dump(db_obj, fobj)
