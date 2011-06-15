@@ -47,6 +47,9 @@ STOCK_POP_PATCH = 'darning_stock_pop_patch'
 STOCK_PUSH_PATCH = 'darning_stock_push_patch'
 STOCK_REFRESH_PATCH = 'darning_stock_refresh_patch'
 STOCK_TAG = 'darning_stock_tag'
+STOCK_FILE_REFRESHED = 'darning_stock_file_refreshed'
+STOCK_FILE_NEEDS_REFRESH = 'darning_stock_file_needs_refresh'
+STOCK_FILE_UNREFRESHABLE = 'darning_stock_file_unrefreshable'
 
 _STOCK_ITEMS_OWN_PNG = [
     (STOCK_APPLIED, 'Applied', 0, 0, None),
@@ -66,6 +69,9 @@ _STOCK_ITEMS_OWN_PNG = [
     (STOCK_PUSH_PATCH, 'Push', 0, 0, None),
     (STOCK_REFRESH_PATCH, 'Refresh', 0, 0, None),
     (STOCK_TAG, 'Tag', 0, 0, None),
+    (STOCK_FILE_REFRESHED, 'Refreshed', 0, 0, None),
+    (STOCK_FILE_NEEDS_REFRESH, 'Needs Refresh', 0, 0, None),
+    (STOCK_FILE_UNREFRESHABLE, 'Unrefreshable', 0, 0, None),
 ]
 
 gtk.stock_add(_STOCK_ITEMS_OWN_PNG)

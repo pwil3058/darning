@@ -19,6 +19,7 @@ import collections
 import os
 
 from darning import utils
+from darning import patch_db
 
 from darning.gui import tlview
 from darning.gui import gutils
@@ -26,6 +27,7 @@ from darning.gui import ifce
 from darning.gui import actions
 from darning.gui import dialogue
 from darning.gui import ws_event
+from darning.gui import icons
 
 class Tree(tlview.TreeView, actions.AGandUIManager):
     class Model(tlview.TreeView.Model):
@@ -386,6 +388,12 @@ class PatchFileTreeWidget(gtk.VBox):
             deco = ifce.PM.get_status_deco(data.status)
             if isdir:
                 icon = gtk.STOCK_DIRECTORY
+            elif data.status.validity == patch_db.FileData.Validity.REFRESHED:
+                icon = icons.STOCK_FILE_REFRESHED
+            elif data.status.validity == patch_db.FileData.Validity.NEEDS_REFRESH:
+                icon = icons.STOCK_FILE_NEEDS_REFRESH
+            elif data.status.validity == patch_db.FileData.Validity.UNREFRESHABLE:
+                icon = icons.STOCK_FILE_UNREFRESHABLE
             else:
                 icon = gtk.STOCK_FILE
             row = PatchFileTreeWidget.PatchFileTree.Model.Row(
