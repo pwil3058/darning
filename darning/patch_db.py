@@ -406,7 +406,10 @@ class _PatchData:
         if not self.is_applied():
             state = PatchState.UNAPPLIED
         elif self.needs_refresh():
-            state = PatchState.APPLIED_NEEDS_REFRESH
+            if self.has_unresolved_merges():
+                state = PatchState.APPLIED_UNFEFRESHABLE
+            else:
+                state = PatchState.APPLIED_NEEDS_REFRESH
         else:
             state = PatchState.APPLIED_REFRESHED
         return PatchTable.Row(name=self.name, state=state, pos_guards=self.pos_guards, neg_guards=self.neg_guards)
@@ -433,6 +436,12 @@ class _PatchData:
         '''Does this patch need a refresh?'''
         for file_data in self.files.values():
             if file_data.needs_refresh():
+                return True
+        return False
+    def has_unresolved_merges(self):
+        '''Is this patch refreshable? i.e. no unresolved mergse'''
+        for file_data in self.files.values():
+            if file_data.has_unresolved_merges():
                 return True
         return False
 
