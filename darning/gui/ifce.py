@@ -66,7 +66,7 @@ def chdir(newdir=None):
         in_valid_pgnd = retval.eflags == cmd_result.OK
         if in_valid_pgnd:
             from darning.gui import config
-            config.append_saved_pgnd(root)
+            config.PgndPathTable.append_saved_pgnd(root)
     else:
         in_valid_pgnd = False
     SCM.reset_back_end()
@@ -95,7 +95,7 @@ def new_playground(description, pgdir=None):
     in_valid_pgnd = retval.eflags == cmd_result.OK
     if in_valid_pgnd:
         from darning.gui import config
-        config.append_saved_pgnd(os.getcwd())
+        config.PgndPathTable.append_saved_pgnd(os.getcwd())
         ws_event.notify_events(ws_event.PGND_MOD)
     return retval
 

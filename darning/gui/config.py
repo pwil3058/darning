@@ -29,24 +29,73 @@ from darning.gui import actions
 from darning.gui import ifce
 from darning.gui import icons
 from darning.gui import text_edit
+
 CONFIG_DIR_NAME = os.sep.join([utils.HOME, ".darning.d"])
 SAVED_PGND_FILE_NAME = os.sep.join([CONFIG_DIR_NAME, "playgrounds"])
 
 if not os.path.exists(CONFIG_DIR_NAME):
     os.mkdir(CONFIG_DIR_NAME, 0o775)
 
-def append_saved_pgnd(path, alias=None):
-    fobj = open(SAVED_PGND_FILE_NAME, 'a')
-    abbr_path = utils.path_rel_home(path)
-    if not alias:
-        alias = os.path.basename(path)
-    fobj.write(os.pathsep.join([alias, abbr_path]))
-    fobj.write(os.linesep)
-    fobj.close()
-
 _KEYVAL_ESCAPE = gtk.gdk.keyval_from_name('Escape')
 
 class AliasPathTable(table.Table):
+    SAVED_FILE_NAME = None
+    @staticmethod
+    def _extant_path(path):
+        return os.path.exists(os.path.expanduser(path))
+    @staticmethod
+    def _same_paths(path1, path2):
+        return utils.samefile(os.path.expanduser(path1), path2)
+    @staticmethod
+    def _default_alias(path):
+        return os.path.basename(path)
+    @staticmethod
+    def _abbrev_path(path):
+        return utils.path_rel_home(path)
+    @classmethod
+    def append_saved_pgnd(cls, path, alias=None):
+        if cls._extant_path(path):
+            content = cls._fetch_contents()
+            found = modified = False
+            for row in content:
+                if cls._same_paths(row.Path, path):
+                    found = True
+                    if alias:
+                        modified = True
+                        row.Alias = alias
+                    break
+            if not found:
+                abbr_path = cls._abbrev_path(path)
+                if not alias:
+                    alias = os.path.basename(path)
+                content.append(cls.model.Row(Path=abbr_path, Alias=alias))
+                modified = True
+            if modified:
+                cls._write_list_to_file(content)
+    @classmethod
+    def _fetch_contents(cls):
+        extant_ap_list = []
+        if not os.path.exists(cls.SAVED_FILE_NAME):
+            return []
+        fobj = open(cls.SAVED_FILE_NAME, 'r')
+        lines = fobj.readlines()
+        fobj.close()
+        for line in lines:
+            data = cls.View.Model.Row(*line.strip().split(os.pathsep, 1))
+            if data in extant_ap_list:
+                continue
+            if cls._extant_path(data.Path):
+                extant_ap_list.append(data)
+        extant_ap_list.sort()
+        cls._write_list_to_file(extant_ap_list)
+        return extant_ap_list
+    @classmethod
+    def _write_list_to_file(cls, ap_list):
+        fobj = open(cls.SAVED_FILE_NAME, 'w')
+        for alpth in ap_list:
+            fobj.write(os.pathsep.join(alpth))
+            fobj.write(os.linesep)
+        fobj.close()
     class View(table.Table.View):
         class Model(table.Table.View.Model):
             Row = collections.namedtuple('Row', ['Alias', 'Path'])
@@ -94,43 +143,12 @@ class AliasPathTable(table.Table):
                 ),
             ]
         )
-    def __init__(self, saved_file):
-        self._saved_file = saved_file
+    def __init__(self):
         table.Table.__init__(self, size_req=(480, 160))
         self.view.register_modification_callback(self.save_to_file)
         self.connect("key_press_event", self._key_press_cb)
         self.connect('button_press_event', self._handle_button_press_cb)
         self.set_contents()
-    def _extant_path(self, path):
-        return os.path.exists(os.path.expanduser(path))
-    def _fetch_contents(self):
-        extant_ap_list = []
-        if not os.path.exists(self._saved_file):
-            return []
-        fobj = open(self._saved_file, 'r')
-        lines = fobj.readlines()
-        fobj.close()
-        for line in lines:
-            data = self.model.Row(*line.strip().split(os.pathsep, 1))
-            if data in extant_ap_list:
-                continue
-            if self._extant_path(data.Path):
-                extant_ap_list.append(data)
-        extant_ap_list.sort()
-        self._write_list_to_file(extant_ap_list)
-        return extant_ap_list
-    def _write_list_to_file(self, ap_list):
-        fobj = open(self._saved_file, 'w')
-        for alpth in ap_list:
-            fobj.write(os.pathsep.join(alpth))
-            fobj.write(os.linesep)
-        fobj.close()
-    def _same_paths(self, path1, path2):
-        return utils.samefile(os.path.expanduser(path1), path2)
-    def _default_alias(self, path):
-        return os.path.basename(path)
-    def _abbrev_path(self, path):
-        return utils.path_rel_home(path)
     def add_ap(self, path, alias=""):
         if self._extant_path(path):
             model_iter = self.model.get_iter_first()
@@ -166,8 +184,7 @@ class AliasPathTable(table.Table):
         return False
 
 class PgndPathTable(AliasPathTable):
-    def __init__(self):
-        AliasPathTable.__init__(self, SAVED_PGND_FILE_NAME)
+    SAVED_FILE_NAME = SAVED_PGND_FILE_NAME
 
 class PathSelectDialog(dialogue.Dialog):
     def __init__(self, create_table, label, parent=None):
