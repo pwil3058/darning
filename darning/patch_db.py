@@ -89,19 +89,6 @@ class FileData:
             return FileData.Presence.DELETED
         else:
             return FileData.Presence.EXTANT
-    def get_validity(self):
-        if self.needs_refresh():
-            if self.has_unresolved_merges():
-                return FileData.Validity.UNREFRESHABLE
-            else:
-                return FileData.Validity.NEEDS_REFRESH
-        else:
-            return FileData.Validity.REFRESHED
-    def get_status(self, applied=True):
-        if applied:
-            return FileData.Status(self.get_presence(), self.get_validity())
-        else:
-            return FileData.Status(self.get_presence(), None)
 
 OverlapData = collections.namedtuple('OverlapData', ['unrefreshed', 'uncommitted'])
 
@@ -359,8 +346,21 @@ class PatchData:
         '''
         return set(self.get_filenames(filenames=filenames))
     def get_files_table(self):
-        applied = self.is_applied()
-        return [fsdb.Data(fde.name, fde.get_status(applied), None) for fde in self.files.values()]
+        is_applied = self.is_applied()
+        if is_applied:
+            table = []
+            for fde in self.files.values():
+                if (self.get_overlapping_patch_for_file(fde.name) is None) and fde.needs_refresh():
+                    if fde.has_unresolved_merges():
+                        validity = FileData.Validity.UNREFRESHABLE
+                    else:
+                        validity = FileData.Validity.NEEDS_REFRESH
+                else:
+                    validity = FileData.Validity.REFRESHED
+                table.append(fsdb.Data(fde.name, FileData.Status(fde.get_presence(), validity), None))
+        else:
+            table = [fsdb.Data(fde.name, FileData.Status(fde.get_presence(), None), None) for fde in self.files.values()]
+        return table
     def get_overlapping_patch_for_file(self, filename):
         '''Return the patch (if any) which overlaps the named file in this patch'''
         assert is_readable()
@@ -433,12 +433,16 @@ class PatchData:
     def needs_refresh(self):
         '''Does this patch need a refresh?'''
         for file_data in self.files.values():
+            if self.get_overlapping_patch_for_file(file_data.name) is not None:
+                continue
             if file_data.needs_refresh():
                 return True
         return False
     def has_unresolved_merges(self):
-        '''Is this patch refreshable? i.e. no unresolved mergse'''
+        '''Is this patch refreshable? i.e. no unresolved merges'''
         for file_data in self.files.values():
+            if self.get_overlapping_patch_for_file(file_data.name) is not None:
+                continue
             if file_data.has_unresolved_merges():
                 return True
         return False
