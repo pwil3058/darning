@@ -415,7 +415,11 @@ class PatchFileTreeWidget(gtk.VBox):
             return ifce.PM.get_file_db(self.patch)
     def __init__(self, patch=None, auto_refresh=True):
         gtk.VBox.__init__(self)
-        self.pack_start(gtk.Label('Top Patch Files'), expand=False, fill=False)
         self.tree = self.PatchFileTree(patch=patch, auto_refresh=auto_refresh)
         self.pack_start(gutils.wrap_in_scrolled_window(self.tree), expand=True, fill=True)
         self.show_all()
+
+class CombinedPatchFileTreeWidget(PatchFileTreeWidget):
+    class PatchFileTree(PatchFileTreeWidget.PatchFileTree):
+        def _get_file_db(self):
+            return ifce.PM.get_combined_patch_file_db()

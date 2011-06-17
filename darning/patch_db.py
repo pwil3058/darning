@@ -538,6 +538,35 @@ class DataBase:
                     break
         assert len(applied_set) == 0, 'Series/applied patches discrepency'
         return applied
+    def get_combined_patch_file_table(self):
+        '''Get a table of file data for all applied patches'''
+        class _Data(object):
+            __slots__ = ['presence', 'validity', 'origin']
+            def __init__(self, presence, validity, origin=None):
+                self.presence = presence
+                self.validity = validity
+                self.origin = origin
+        file_map = {}
+        for patch in self.series:
+            if not patch.is_applied():
+                continue
+            for fde in patch.files.values():
+                if (patch.get_overlapping_patch_for_file(fde.name) is None) and fde.needs_refresh():
+                    if fde.has_unresolved_merges():
+                        validity = FileData.Validity.UNREFRESHABLE
+                    else:
+                        validity = FileData.Validity.NEEDS_REFRESH
+                else:
+                    validity = FileData.Validity.REFRESHED
+                if fde.name in file_map:
+                    file_map[fde.name].validity = validity
+                else:
+                    file_map[fde.name] = _Data(fde.get_presence(), validity)
+        table = []
+        for filename in sorted(file_map):
+            data = file_map[filename]
+            table.append(fsdb.Data(filename, FileData.Status(data.presence, data.validity), data.origin))
+        return table
     def get_patch(self, name):
         '''Get the patch with the given name'''
         patch_index = self.get_series_index(name)
@@ -728,6 +757,12 @@ def get_patch_file_table(name):
         return []
     index = _DB.get_series_index(name)
     return _DB.series[index].get_files_table()
+
+def get_combined_patch_file_table():
+    assert is_readable()
+    if len(_DB.series) == 0:
+        return []
+    return _DB.get_combined_patch_file_table()
 
 def _get_top_patch_index():
     '''Get the index in series of the top applied patch'''

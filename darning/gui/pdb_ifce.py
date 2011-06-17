@@ -101,6 +101,11 @@ def get_file_db(patch=None):
         patch = patch_db.get_top_patch_name()
     return fsdb.NullFileDb() if patch is None else FileDb(patch_db.get_patch_file_table(patch))
 
+def get_combined_patch_file_db():
+    if not patch_db.is_readable():
+        return fsdb.NullFileDb()
+    return FileDb(patch_db.get_combined_patch_file_table())
+
 def do_create_new_patch(name, descr):
     if patch_db.patch_is_in_series(name):
         return cmd_result.Result(cmd_result.ERROR|cmd_result.SUGGEST_RENAME, '', '{0}: Already exists in database'.format(name))

@@ -79,7 +79,10 @@ class Darning(gtk.Window, dialogue.BusyIndicator, actions.AGandUIManager):
         vpane.add1(hpane)
         hpane.add1(file_tree.ScmFileTreeWidget())
         phpane = gtk.HPaned()
-        phpane.add1(file_tree.PatchFileTreeWidget())
+        nbook = gtk.Notebook()
+        nbook.append_page(file_tree.PatchFileTreeWidget(), gtk.Label('Top Patch Files'))
+        nbook.append_page(file_tree.CombinedPatchFileTreeWidget(), gtk.Label('Combined Patch Files'))
+        phpane.add1(nbook)
         phpane.add2(patch_list.List())
         hpane.add2(phpane)
         if ifce.TERM:
