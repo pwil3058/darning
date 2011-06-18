@@ -152,8 +152,13 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
             widget.get_selection().unselect_all()
             return True
         return False
+    @staticmethod
+    def search_equal_func(model, column, key, model_iter, _data=None):
+        text = model.fs_path(model_iter)
+        return text.find(key) == -1
     def __init__(self, show_hidden=False, populate_all=False, auto_expand=False, auto_refresh=False):
         tlview.TreeView.__init__(self)
+        self.set_search_equal_func(self.search_equal_func)
         actions.AGandUIManager.__init__(self, self.get_selection())
         self.show_hidden_action = gtk.ToggleAction('show_hidden_files', 'Show Hidden Files',
                                                    'Show/hide ignored files and those beginning with "."', None)
