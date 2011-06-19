@@ -20,6 +20,7 @@ import pango
 from darning import patch_db
 from darning import cmd_result
 from darning import fsdb
+from darning import utils
 
 # patch_db commands that don't need wrapping
 from darning.patch_db import find_base_dir
@@ -122,7 +123,7 @@ def do_push_next_patch():
     overlaps = patch_db.get_next_patch_overlap_data()
     if len(overlaps.uncommitted) > 0:
         is_ok = False
-        msg += 'The following (overlapped) files have uncommited SCM changes:\n'
+        msg += 'The following (overlapped) files have uncommitted SCM changes:\n'
         for filename in sorted(overlaps.uncommitted):
             msg += '\t{0}\n'.format(filename)
     if len(overlaps.unrefreshed) > 0:
@@ -150,6 +151,7 @@ def do_push_next_patch():
 def do_pop_top_patch():
     if patch_db.top_patch_needs_refresh():
         top_patch = patch_db.get_top_patch_name()
+        ws_event.notify_events(ws_event.PATCH_REFRESH)
         return cmd_result.Result(cmd_result.ERROR_SUGGEST_REFRESH, '', 'Top patch ("{0}") needs to be refreshed'.format(top_patch))
     console.LOG.start_cmd('pop')
     result = patch_db.unapply_top_patch()
@@ -194,10 +196,49 @@ def do_refresh_patch(name=None):
     return cmd_result.Result(eflags, '', msg)
 
 def do_set_patch_description(patch, text):
-    if not patch_db.is_readable():
-        return cmd_result.Result(cmd_result.ERROR, '', 'Database is unreadable')
+    if not patch_db.is_writable():
+        return cmd_result.Result(cmd_result.ERROR, '', 'Database is not writable')
     patch_db.do_set_patch_description(patch, text)
     console.LOG.append_entry('set patch "{0}" description:\n"{1}"'.format(name, descr))
+    return cmd_result.Result(cmd_result.OK, '', '')
+
+def do_add_files_to_patch(files, patch=None):
+    if patch is None:
+        console.LOG.start_cmd('add {0}'.format(utils.file_list_to_string(files)))
+        patch = patch_db.get_top_patch_name()
+    else:
+        console.LOG.start_cmd('add --patch={0} {1}'.format(patch, utils.file_list_to_string(files)))
+    file_list = []
+    for path in files:
+        if os.path.isdir(path):
+            file_list += utils.files_in_dir(path)
+        else:
+            file_list.append(path)
+    for already_in_patch in patch_db.get_filenames_in_patch(patch, file_list):
+        file_list.remove(already_in_patch)
+        console.LOG.append_stdout('File "{0}" already in patch "{1}". Ignored.\n'.format(already_in_patch, patch))
+    is_ok = True
+    msg = ''
+    overlaps = patch_db.get_patch_overlap_data(patch, file_list)
+    if len(overlaps.uncommitted) > 0:
+        is_ok = False
+        msg += 'The following files have uncommitted SCM changes:\n'
+        for filename in sorted(overlaps.uncommitted):
+            msg += '\t{0}\n'.format(filename)
+    if len(overlaps.unrefreshed) > 0:
+        is_ok = False
+        msg += 'The following files have unrefreshed changes (in an applied patch):\n'
+        for filename in sorted(overlaps.unrefreshed):
+            msg += '\t{0} : in patch "{1}"\n'.format(filename, overlaps.unrefreshed[filename])
+    if not is_ok:
+        console.LOG.append_stderr(msg)
+        console.LOG.end_cmd()
+        return cmd_result.Result(cmd_result.ERROR, '', msg)
+    for filename in file_list:
+        patch_db.add_file_to_patch(patch, filename)
+        console.LOG.append_stdout('File "{0}" added to patch "{1}".\n'.format(filename, patch))
+    console.LOG.end_cmd()
+    ws_event.notify_events(ws_event.FILE_ADD)
     return cmd_result.Result(cmd_result.OK, '', '')
 
 def is_pushable():

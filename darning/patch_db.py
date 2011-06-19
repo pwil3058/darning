@@ -398,7 +398,7 @@ class PatchData:
                         data.unrefreshed[filename] = applied_patch.name
                     break
             if not in_patch and scm_ifce.has_uncommitted_change(filename):
-                data.uncommited.append(filename)
+                data.uncommitted.append(filename)
         return data
     def get_table_row(self):
         if not self.is_applied():

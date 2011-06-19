@@ -91,3 +91,19 @@ def make_utf8_compliant(text):
         except UnicodeError:
             continue
     raise UnicodeError
+
+def files_in_dir(dirname, recurse=True, relative=False):
+    '''Return a list of the files in the given directory.'''
+    if recurse:
+        def onerror(exception):
+            raise exception
+        files = []
+        for basedir, dirnames, filenames in os.walk(dirname, onerror=onerror):
+            if relative:
+                basedir = '' if basedir == dirname else os.path.relpath(basedir, dirname)
+            files += [os.path.join(basedir, entry) for entry in filenames]
+        return files
+    elif relative:
+        return [entry for entry in os.listdir(dirname) if not os.path.isdir(entry)]
+    else:
+        return [os.path.join(dirname, entry) for entry in os.listdir(dirname) if not os.path.isdir(entry)]

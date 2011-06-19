@@ -43,7 +43,7 @@ def run_add(args):
     overlaps = patch_db.get_patch_overlap_data(args.opt_patch, args.filenames)
     if len(overlaps.uncommitted) > 0:
         is_ok = False
-        msg.Error('The following (overlapped) files have uncommited SCM changes:')
+        msg.Error('The following (overlapped) files have uncommitted SCM changes:')
         for filename in sorted(overlaps.uncommitted):
             msg.Error('\t{0}', db_utils.rel_subdir(filename))
     if len(overlaps.unrefreshed) > 0:

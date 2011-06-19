@@ -118,10 +118,10 @@ class Mercurial(object):
         '''
         Does the SCM have uncommitted changes for the named file?
         '''
-        cmd = ['hg', 'status', '-cn', filename]
+        cmd = ['hg', 'status', '-cuin', filename]
         result = runext.run_cmd(cmd)
         assert result.ecode == 0
-        return result.stdout.strip() == filename
+        return result.stdout.strip() != filename
     @staticmethod
     def get_file_db():
         '''

@@ -75,7 +75,7 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
         def on_row_collapsed_cb(self, _view, dir_iter, _dummy):
             self.insert_place_holder_if_needed(dir_iter)
         def update_iter_row_tuple(self, fsobj_iter, to_tuple):
-            for label in ['style', 'foreground', 'status', 'origin']:
+            for label in ['style', 'foreground', 'status', 'origin', 'icon']:
                 index = self.col_index(label)
                 self.set_value(fsobj_iter, index, to_tuple[index])
     # This is not a method but a function within the Tree namespace
@@ -315,6 +315,22 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
               <menuitem action="auto_refresh_files"/>
             </menu>
           </menubar>
+          <popup name="files_popup">
+            <placeholder name="selection_indifferent"/>
+            <separator/>
+            <placeholder name="selection">
+              <menuitem action='scm_add_files_to_top_patch'/>
+            </placeholder>
+            <separator/>
+            <placeholder name="selection_not_patched"/>
+            <separator/>
+            <placeholder name="unique_selection"/>
+            <separator/>
+            <placeholder name="no_selection"/>
+            <separator/>
+            <placeholder name="no_selection_not_patched"/>
+            <separator/>
+          </popup>
         </ui>
         '''
         _FILE_ICON = {True : gtk.STOCK_DIRECTORY, False : gtk.STOCK_FILE}
@@ -347,6 +363,11 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
                 [
                     ('scm_files_menu_files', None, '_Files'),
                 ])
+            self.add_conditional_actions(actions.Condns.IN_PGND + actions.Condns.PMIC + actions.Condns.SELN,
+                [
+                    ('scm_add_files_to_top_patch', gtk.STOCK_ADD, '_Add', None,
+                     'Add the selected files to the top patch', self._add_selection_to_top_patch),
+                ])
             self.ui_manager.add_ui_from_string(self.UI_DESCR)
             self.add_notification_cb(ws_event.CHECKOUT|ws_event.CHANGE_WD, self.repopulate)
             self.add_notification_cb(ws_event.FILE_CHANGES, self.update)
@@ -361,6 +382,14 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
                 return ([ncd for ncd in dirs if not ifce.SCM.is_clean(ncd.status)],
                         [ncf for ncf in files if not ifce.SCM.is_clean(ncf.status)])
             return self._file_db.dir_contents(dirpath, show_hidden)
+        def _add_selection_to_top_patch(self, _action=None):
+            files = self.get_selected_files()
+            if len(files) == 0:
+                return
+            dialogue.show_busy()
+            result = ifce.PM.do_add_files_to_patch(files)
+            dialogue.unshow_busy()
+            dialogue.report_any_problems(result)
     def __init__(self, auto_refresh=False, hide_clean=False):
         gtk.VBox.__init__(self)
         ws_event.Listener.__init__(self)
