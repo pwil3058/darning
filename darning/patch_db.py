@@ -150,8 +150,7 @@ class PatchData:
             self.files[filename] = FileData(filename)
             dump_db()
             return
-        overlaps = self.get_overlap_data([filename])
-        assert len(overlaps.unrefreshed) + len(overlaps.uncommitted) == 0
+        assert not self.file_overlaps_uncommitted_or_unrefreshed(filename)
         self.files[filename] = FileData(filename)
         overlapped_by = self.get_overlapping_patch_for_file(filename)
         if overlapped_by is None:
@@ -168,7 +167,7 @@ class PatchData:
         '''Apply this patch'''
         assert is_writable()
         assert not self.is_applied()
-        assert _total_overlap_count(self.get_overlap_data()) == 0
+        assert _total_overlap_count(get_patch_overlap_data(self.name)) == 0
         os.mkdir(self.get_backup_dir_name())
         results = {}
         if len(self.files) == 0:
@@ -373,33 +372,23 @@ class PatchData:
             else:
                 after = apatch.name == self.name
         return None
-    def get_overlap_data(self, filenames=None):
+    def file_overlaps_uncommitted_or_unrefreshed(self, filename):
         '''
         Get the data detailing unrefreshed/uncommitted files that will be
-        overlapped by this patch
+        overlapped by this file in this patch
         '''
         assert is_readable()
-        data = OverlapData(unrefreshed = {}, uncommitted = [])
         applied_patches = get_applied_patch_list()
         try:
             patch_index = applied_patches.index(self)
             applied_patches = applied_patches[:patch_index]
         except ValueError:
             pass
-        if filenames is None:
-            filenames = [name for name in self.files]
-        for filename in filenames:
-            in_patch = False
-            for applied_patch in reversed(applied_patches):
-                apfile = applied_patch.files.get(filename, None)
-                if apfile is not None:
-                    in_patch = True
-                    if apfile.needs_refresh():
-                        data.unrefreshed[filename] = applied_patch.name
-                    break
-            if not in_patch and scm_ifce.has_uncommitted_change(filename):
-                data.uncommitted.append(filename)
-        return data
+        for applied_patch in reversed(applied_patches):
+            apfile = applied_patch.files.get(filename, None)
+            if apfile is not None:
+                return apfile.needs_refresh()
+        return scm_ifce.has_uncommitted_change(filename)
     def get_table_row(self):
         if not self.is_applied():
             state = PatchState.UNAPPLIED
@@ -567,6 +556,37 @@ class DataBase:
             data = file_map[filename]
             table.append(fsdb.Data(filename, FileData.Status(data.presence, data.validity), data.origin))
         return table
+    def get_overlap_data(self, filenames, patchname=None):
+        '''
+        Get the data detailing unrefreshed/uncommitted files that will be
+        overlapped by the named files
+        '''
+        assert is_readable()
+        if not filenames:
+            return OverlapData({}, set())
+        applied_patches = get_applied_patch_list()
+        if patchname is not None:
+            try:
+                patch = self.get_patch(patchname)
+                patch_index = applied_patches.index(patch)
+                applied_patches = applied_patches[:patch_index]
+            except ValueError:
+                pass
+        uncommitted = set(scm_ifce.get_files_with_uncommitted_changes(filenames))
+        remaining_files = set(filenames)
+        unrefreshed = {}
+        for applied_patch in reversed(applied_patches):
+            if len(uncommitted) + len(remaining_files) == 0:
+                break
+            apfiles = applied_patch.get_filenames(remaining_files)
+            if apfiles:
+                apfiles_set = set(apfiles)
+                remaining_files -= apfiles_set
+                uncommitted -= apfiles_set
+                for apfile in apfiles:
+                    if applied_patch.files[apfile].needs_refresh():
+                        unrefreshed[apfile] = applied_patch.name
+        return OverlapData(unrefreshed, uncommitted)
     def get_patch(self, name):
         '''Get the patch with the given name'''
         patch_index = self.get_series_index(name)
@@ -815,17 +835,25 @@ def _get_next_patch_index():
     assert is_readable()
     return _DB.get_series_index_for_next()
 
-def get_patch_overlap_data(name, filenames=None):
+def get_patch_overlap_data(name):
     '''
     Get the data detailing unrefreshed/uncommitted files that will be
-    overlapped by the named patch's current files if filenames is None
-    or otherwise for the named files (regardless of whether they are in
-    the patch).
+    overlapped by the named patch's current files if filenames is None.
     '''
     assert is_readable()
     patch_index = get_patch_series_index(name)
     assert patch_index is not None
-    return _DB.series[patch_index].get_overlap_data(filenames)
+    return _DB.get_overlap_data(_DB.series[patch_index].get_filenames())
+
+def get_filelist_overlap_data(filenames, patchname=None):
+    '''
+    Get the data detailing unrefreshed/uncommitted files that will be
+    overlapped by the files in filelist if they are added to the named
+    (or top, if None) patch.
+    '''
+    assert is_readable()
+    assert patchname is None or get_patch_series_index(patchname) is not None
+    return _DB.get_overlap_data(filenames, patchname)
 
 def get_next_patch_overlap_data():
     '''
@@ -836,7 +864,7 @@ def get_next_patch_overlap_data():
     next_index = _get_next_patch_index()
     if next_index is None:
         return OverlapData(unrefreshed = {}, uncommitted = [])
-    return _DB.series[next_index].get_overlap_data()
+    return _DB.get_overlap_data(_DB.series[next_index].get_filenames())
 
 def apply_patch():
     '''Apply the next patch in the series'''

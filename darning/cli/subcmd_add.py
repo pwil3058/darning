@@ -40,7 +40,7 @@ def run_add(args):
         return msg.Error('patch "{0}" is unknown', args.opt_patch)
     is_ok = True
     db_utils.prepend_subdir(args.filenames)
-    overlaps = patch_db.get_patch_overlap_data(args.opt_patch, args.filenames)
+    overlaps = patch_db.get_filelist_overlap_data(args.filenames, args.opt_patch)
     if len(overlaps.uncommitted) > 0:
         is_ok = False
         msg.Error('The following (overlapped) files have uncommitted SCM changes:')

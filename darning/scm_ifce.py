@@ -55,6 +55,15 @@ def has_uncommitted_change(filename):
         return False
     return _CURRENT_BACK_END.has_uncommitted_change(filename)
 
+def get_files_with_uncommitted_changes(files=None):
+    '''
+    Get the subset of files which have uncommitted SCM changes.  If files
+    is None assume all files in current directory.
+    '''
+    if _CURRENT_BACK_END is None:
+        return []
+    return _CURRENT_BACK_END.get_files_with_uncommitted_changes(files)
+
 def get_file_db():
     '''
     Get the SCM view of the current directory

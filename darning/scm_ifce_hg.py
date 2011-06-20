@@ -123,6 +123,18 @@ class Mercurial(object):
         assert result.ecode == 0
         return result.stdout.strip() != filename
     @staticmethod
+    def get_files_with_uncommitted_changes(files=None):
+        '''
+        Get the subset of files which have uncommitted hg changes.  If files
+        is None assume all files in current directory.
+        '''
+        cmd = ['hg', 'status', '-mardn']
+        if files:
+            cmd += files
+        result = runext.run_cmd(cmd)
+        assert result.ecode == 0
+        return result.stdout.splitlines()
+    @staticmethod
     def get_file_db():
         '''
         Get the SCM view of the current directory

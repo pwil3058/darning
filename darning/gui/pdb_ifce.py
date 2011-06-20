@@ -219,7 +219,7 @@ def do_add_files_to_patch(files, patch=None):
         console.LOG.append_stdout('File "{0}" already in patch "{1}". Ignored.\n'.format(already_in_patch, patch))
     is_ok = True
     msg = ''
-    overlaps = patch_db.get_patch_overlap_data(patch, file_list)
+    overlaps = patch_db.get_filelist_overlap_data(file_list, patch)
     if len(overlaps.uncommitted) > 0:
         is_ok = False
         msg += 'The following files have uncommitted SCM changes:\n'
