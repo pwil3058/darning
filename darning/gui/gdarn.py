@@ -96,7 +96,7 @@ class Darning(gtk.Window, dialogue.BusyIndicator, actions.AGandUIManager):
             nbook.append_page(ifce.TERM, gtk.Label("Terminal"))
             vpane.add2(nbook)
         else:
-            vpane.add2(console.LOG, gtk.Label("Transaction Log"))
+            vpane.add2(console.LOG)
         self.add_notification_cb(ws_event.CHANGE_WD, self._change_pgnd_ncb)
         self.show_all()
     def _update_title(self):
