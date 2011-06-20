@@ -83,7 +83,7 @@ class Darning(gtk.Window, dialogue.BusyIndicator, actions.AGandUIManager):
         phpane = gtk.HPaned()
         nbook = gtk.Notebook()
         nbook.set_size_request(280, 280)
-        nbook.append_page(file_tree.PatchFileTreeWidget(), gtk.Label('Top Patch Files'))
+        nbook.append_page(file_tree.TopPatchFileTreeWidget(), gtk.Label('Top Patch Files'))
         nbook.append_page(file_tree.CombinedPatchFileTreeWidget(), gtk.Label('Combined Patch Files'))
         phpane.add1(nbook)
         plist = patch_list.List()

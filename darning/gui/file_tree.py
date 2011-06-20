@@ -453,6 +453,52 @@ class PatchFileTreeWidget(gtk.VBox):
         self.pack_start(gutils.wrap_in_scrolled_window(self.tree), expand=True, fill=True)
         self.show_all()
 
+class TopPatchFileTreeWidget(PatchFileTreeWidget):
+    class PatchFileTree(PatchFileTreeWidget.PatchFileTree):
+        UI_DESCR = '''
+        <ui>
+          <popup name="files_popup">
+            <placeholder name="selection_indifferent"/>
+            <separator/>
+            <placeholder name="selection">
+              <menuitem action='top_patch_drop_selected_files'/>
+            </placeholder>
+            <separator/>
+            <placeholder name="selection_not_patched"/>
+            <separator/>
+            <placeholder name="unique_selection"/>
+            <separator/>
+            <placeholder name="no_selection"/>
+            <separator/>
+            <placeholder name="no_selection_not_patched"/>
+            <separator/>
+          </popup>
+        </ui>
+        '''
+        def __init__(self, patch=None, auto_refresh=True):
+            assert patch is None
+            PatchFileTreeWidget.PatchFileTree.__init__(self, patch=None, auto_refresh=auto_refresh)
+            self.add_conditional_actions(actions.Condns.IN_PGND + actions.Condns.PMIC + actions.Condns.SELN,
+                [
+                    ('top_patch_drop_selected_files', gtk.STOCK_REMOVE, '_Drop', None,
+                     'Drop/remove the selected files from the top patch', self._drop_selection_from_patch),
+                ])
+            self.ui_manager.add_ui_from_string(self.UI_DESCR)
+        def _drop_selection_from_patch(self, _arg):
+            files = self.get_selected_files()
+            if len(files) == 0:
+                return
+            emsg = '\n'.join(files + ["", "Confirm drop selected file(s) from patch?"])
+            if not dialogue.ask_ok_cancel(emsg):
+                return
+            dialogue.show_busy()
+            result = ifce.PM.do_remove_files_from_patch(files, None)
+            dialogue.unshow_busy()
+            dialogue.report_any_problems(result)
+    def __init__(self, patch=None, auto_refresh=True):
+        assert patch is None
+        PatchFileTreeWidget.__init__(self, patch=None, auto_refresh=auto_refresh)
+
 class CombinedPatchFileTreeWidget(PatchFileTreeWidget):
     class PatchFileTree(PatchFileTreeWidget.PatchFileTree):
         def _get_file_db(self):

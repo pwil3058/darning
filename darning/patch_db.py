@@ -163,6 +163,30 @@ class PatchData:
             else:
                 self.files[filename].old_mode = None
         dump_db()
+    def do_drop_file(self, filename):
+        '''Drop the named file from this patch'''
+        assert is_writable()
+        assert filename in self.files
+        if not self.is_applied():
+            # not much to do here
+            del self.files[filename]
+            dump_db()
+            return
+        overlapped_by = self.get_overlapping_patch_for_file(filename)
+        if overlapped_by is not None:
+            my_backup = self.get_backup_file_name(filename)
+            overlapping_backup = overlapped_by.get_backup_file_name(filename)
+            if os.path.exists(my_backup):
+                os.link(my_backup, overlapping_backup)
+                overlapped_by.files[filename].old_mode = self.files[filename].old_mode
+            else:
+                if os.path.exists(overlapping_backup):
+                    os.remove(overlapping_backup)
+                overlapped_by.files[filename].old_mode = None
+            # Make sure that the overlapping file gets refreshed
+            overlapped_by.files[filename].timestamp = 0
+        del self.files[filename]
+        dump_db()
     def do_apply(self):
         '''Apply this patch'''
         assert is_writable()
@@ -923,6 +947,15 @@ def add_file_to_patch(name, filename):
     patch = _DB.series[patch_index]
     assert filename not in patch.files
     return patch.do_add_file(filename)
+
+def do_drop_file_fm_patch(name, filename):
+    '''Drop the named file from the named patch'''
+    assert is_writable()
+    patch_index = get_patch_series_index(name)
+    assert patch_index is not None
+    patch = _DB.series[patch_index]
+    assert filename in patch.files
+    return patch.do_drop_file(filename)
 
 def do_refresh_patch(name):
     '''Refresh the named patch'''
