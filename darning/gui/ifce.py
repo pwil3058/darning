@@ -73,7 +73,7 @@ def chdir(newdir=None):
     in_valid_repo = SCM.is_valid_repo()
     ws_event.notify_events(ws_event.CHANGE_WD)
     new_wd = os.getcwd()
-    if not os.path.samefile(new_wd, old_wd):
+    if not utils.samefile(new_wd, old_wd):
         if TERM:
             TERM.set_cwd(new_wd)
         if LOG:
