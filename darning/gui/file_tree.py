@@ -304,6 +304,13 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
             clipboard = gtk.clipboard_get(gtk.gdk.SELECTION_CLIPBOARD)
         sel = utils.file_list_to_string(self.get_selected_files())
         clipboard.set_text(sel)
+    def get_filepaths_in_dir(self, dirname, recursive=True):
+        subdirs, files = self._file_db.dir_contents(dirname, show_hidden=True)
+        filepaths = [os.path.join(dirname, fdata.name) for fdata in files]
+        if recursive:
+            for subdir in subdirs:
+                filepaths += self.get_filepaths_in_dir(os.path.join(dirname, subdir.name), recursive)
+        return filepaths
 
 class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
     class ScmTree(Tree):
@@ -488,11 +495,17 @@ class TopPatchFileTreeWidget(PatchFileTreeWidget):
             files = self.get_selected_files()
             if len(files) == 0:
                 return
-            emsg = '\n'.join(files + ["", "Confirm drop selected file(s) from patch?"])
+            file_list = []
+            for path in files:
+                if os.path.isdir(path):
+                    file_list += self.get_filepaths_in_dir(path, recursive=True)
+                else:
+                    file_list.append(path)
+            emsg = '\n'.join(file_list + ["", "Confirm drop selected file(s) from patch?"])
             if not dialogue.ask_ok_cancel(emsg):
                 return
             dialogue.show_busy()
-            result = ifce.PM.do_remove_files_from_patch(files, None)
+            result = ifce.PM.do_drop_files_from_patch(file_list, self.patch)
             dialogue.unshow_busy()
             dialogue.report_any_problems(result)
     def __init__(self, patch=None, auto_refresh=True):

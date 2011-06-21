@@ -156,9 +156,9 @@ class PatchData:
         if overlapped_by is None:
             self.do_back_up_file(filename)
         else:
-            overlapping_backup = overlapped_by.get_backup_file_name(filename)
-            if os.path.exists(overlapping_backup):
-                os.link(overlapping_backup, self.get_backup_file_name(filename))
+            overlapping_bu_f_name = overlapped_by.get_backup_file_name(filename)
+            if os.path.exists(overlapping_bu_f_name):
+                os.link(overlapping_bu_f_name, self.get_backup_file_name(filename))
                 self.files[filename].old_mode = overlapped_by.files[filename].old_mode
             else:
                 self.files[filename].old_mode = None
@@ -172,16 +172,22 @@ class PatchData:
             del self.files[filename]
             dump_db()
             return
+        bu_f_name = self.get_backup_file_name(filename)
         overlapped_by = self.get_overlapping_patch_for_file(filename)
-        if overlapped_by is not None:
-            my_backup = self.get_backup_file_name(filename)
-            overlapping_backup = overlapped_by.get_backup_file_name(filename)
-            if os.path.exists(my_backup):
-                os.link(my_backup, overlapping_backup)
+        if overlapped_by is None:
+            if os.path.exists(filename):
+                os.remove(filename)
+            if os.path.exists(bu_f_name):
+                os.chmod(bu_f_name, self.files[filename].old_mode)
+                shutil.move(bu_f_name, filename)
+        else:
+            overlapping_bu_f_name = overlapped_by.get_backup_file_name(filename)
+            if os.path.exists(bu_f_name):
+                shutil.move(bu_f_name, overlapping_bu_f_name)
                 overlapped_by.files[filename].old_mode = self.files[filename].old_mode
             else:
-                if os.path.exists(overlapping_backup):
-                    os.remove(overlapping_backup)
+                if os.path.exists(overlapping_bu_f_name):
+                    os.remove(overlapping_bu_f_name)
                 overlapped_by.files[filename].old_mode = None
             # Make sure that the overlapping file gets refreshed
             overlapped_by.files[filename].timestamp = 0

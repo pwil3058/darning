@@ -241,21 +241,15 @@ def do_add_files_to_patch(files, patch=None):
     ws_event.notify_events(ws_event.FILE_ADD)
     return cmd_result.Result(cmd_result.OK, '', '')
 
-def do_remove_files_from_patch(files, patch=None):
+def do_drop_files_from_patch(file_list, patch=None):
     if patch is None:
-        console.LOG.start_cmd('drop {0}'.format(utils.file_list_to_string(files)))
+        console.LOG.start_cmd('drop {0}'.format(utils.file_list_to_string(file_list)))
         patch = patch_db.get_top_patch_name()
     else:
-        console.LOG.start_cmd('drop --patch={0} {1}'.format(patch, utils.file_list_to_string(files)))
-    file_list = []
-    for path in files:
-        if os.path.isdir(path):
-            file_list += utils.files_in_dir(path)
-        else:
-            file_list.append(path)
+        console.LOG.start_cmd('drop --patch={0} {1}'.format(patch, utils.file_list_to_string(file_list)))
     for filename in file_list:
         patch_db.do_drop_file_fm_patch(patch, filename)
-        console.LOG.append_stdout('File "{0}" dropped to patch "{1}".\n'.format(filename, patch))
+        console.LOG.append_stdout('File "{0}" dropped from patch "{1}".\n'.format(filename, patch))
     console.LOG.end_cmd()
     ws_event.notify_events(ws_event.FILE_DEL)
     return cmd_result.Result(cmd_result.OK, '', '')
