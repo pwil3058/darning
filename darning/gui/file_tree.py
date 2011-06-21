@@ -525,5 +525,29 @@ class TopPatchFileTreeWidget(PatchFileTreeWidget):
 
 class CombinedPatchFileTreeWidget(PatchFileTreeWidget):
     class PatchFileTree(PatchFileTreeWidget.PatchFileTree):
+        UI_DESCR = '''
+        <ui>
+          <popup name="files_popup">
+            <placeholder name="selection_indifferent"/>
+            <separator/>
+            <placeholder name="selection">
+              <menuitem action='patch_edit_files'/>
+            </placeholder>
+            <separator/>
+            <placeholder name="selection_not_patched"/>
+            <separator/>
+            <placeholder name="unique_selection"/>
+            <separator/>
+            <placeholder name="no_selection"/>
+            <separator/>
+            <placeholder name="no_selection_not_patched"/>
+            <separator/>
+          </popup>
+        </ui>
+        '''
         def _get_file_db(self):
             return ifce.PM.get_combined_patch_file_db()
+        def __init__(self, patch=None, auto_refresh=True):
+            assert patch is None
+            PatchFileTreeWidget.PatchFileTree.__init__(self, patch=None, auto_refresh=auto_refresh)
+            self.ui_manager.add_ui_from_string(self.UI_DESCR)
