@@ -312,6 +312,15 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
             for subdir in subdirs:
                 filepaths += self.get_filepaths_in_dir(os.path.join(dirname, subdir.name), recursive)
         return filepaths
+    def get_expanded_file_list(self, path_list):
+        '''Return the list of files in path_list with directories replaced by their content'''
+        filepath_list = []
+        for path in path_list:
+            if os.path.isdir(path):
+                filepath_list += self.get_filepaths_in_dir(path, recursive=True)
+            else:
+                filepath_list.append(path)
+        return filepath_list
 
 class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
     class ScmTree(Tree):
@@ -460,10 +469,9 @@ class PatchFileTreeWidget(gtk.VBox):
             self.add_notification_cb(ws_event.FILE_CHANGES|ws_event.PATCH_REFRESH, self.update)
         def _get_file_db(self):
             return ifce.PM.get_file_db(self.patch)
-        def _edit_named_files_extern(self, file_list):
-            text_edit.edit_files_extern(file_list)
         def edit_selected_files_acb(self, _menu_item):
-            self._edit_named_files_extern(self.get_selected_files())
+            file_list = self.get_expanded_file_list(self.get_selected_files())
+            text_edit.edit_files_extern(file_list)
     def __init__(self, patch=None, auto_refresh=True):
         gtk.VBox.__init__(self)
         self.tree = self.PatchFileTree(patch=patch, auto_refresh=auto_refresh)
@@ -503,15 +511,9 @@ class TopPatchFileTreeWidget(PatchFileTreeWidget):
                 ])
             self.ui_manager.add_ui_from_string(self.UI_DESCR)
         def _drop_selection_from_patch(self, _arg):
-            files = self.get_selected_files()
-            if len(files) == 0:
+            file_list = self.get_expanded_file_list(self.get_selected_files())
+            if len(file_list) == 0:
                 return
-            file_list = []
-            for path in files:
-                if os.path.isdir(path):
-                    file_list += self.get_filepaths_in_dir(path, recursive=True)
-                else:
-                    file_list.append(path)
             emsg = '\n'.join(file_list + ["", "Confirm drop selected file(s) from patch?"])
             if not dialogue.ask_ok_cancel(emsg):
                 return
