@@ -28,6 +28,7 @@ from darning.gui import actions
 from darning.gui import dialogue
 from darning.gui import ws_event
 from darning.gui import icons
+from darning.gui import text_edit
 
 class Tree(tlview.TreeView, actions.AGandUIManager):
     class Model(tlview.TreeView.Model):
@@ -450,10 +451,19 @@ class PatchFileTreeWidget(gtk.VBox):
         def __init__(self, patch=None, auto_refresh=True):
             self.patch = patch
             Tree.__init__(self, show_hidden=True, populate_all=True, auto_expand=True, auto_refresh=auto_refresh)
+            self.add_conditional_actions(actions.Condns.IN_PGND + actions.Condns.PMIC + actions.Condns.SELN,
+                [
+                    ('patch_edit_files', gtk.STOCK_EDIT, '_Edit', None,
+                     'Edit the selected file(s)', self.edit_selected_files_acb),
+                ])
             self.add_notification_cb(ws_event.CHECKOUT|ws_event.CHANGE_WD|ws_event.PATCH_PUSH|ws_event.PATCH_POP, self.repopulate)
             self.add_notification_cb(ws_event.FILE_CHANGES|ws_event.PATCH_REFRESH, self.update)
         def _get_file_db(self):
             return ifce.PM.get_file_db(self.patch)
+        def _edit_named_files_extern(self, file_list):
+            text_edit.edit_files_extern(file_list)
+        def edit_selected_files_acb(self, _menu_item):
+            self._edit_named_files_extern(self.get_selected_files())
     def __init__(self, patch=None, auto_refresh=True):
         gtk.VBox.__init__(self)
         self.tree = self.PatchFileTree(patch=patch, auto_refresh=auto_refresh)
@@ -468,6 +478,7 @@ class TopPatchFileTreeWidget(PatchFileTreeWidget):
             <placeholder name="selection_indifferent"/>
             <separator/>
             <placeholder name="selection">
+              <menuitem action='patch_edit_files'/>
               <menuitem action='top_patch_drop_selected_files'/>
             </placeholder>
             <separator/>

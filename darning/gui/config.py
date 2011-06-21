@@ -28,7 +28,6 @@ from darning.gui import table
 from darning.gui import actions
 from darning.gui import ifce
 from darning.gui import icons
-from darning.gui import text_edit
 
 CONFIG_DIR_NAME = os.sep.join([utils.HOME, ".darning.d"])
 SAVED_PGND_FILE_NAME = os.sep.join([CONFIG_DIR_NAME, "playgrounds"])
@@ -232,7 +231,7 @@ class PgndOpenDialog(PathSelectDialog):
 
 # Manage external editors
 
-EDITORS_THAT_NEED_A_TERMINAL = ["vi", "joe"]
+EDITORS_THAT_NEED_A_TERMINAL = ["vi", "joe", "vim"]
 DEFAULT_EDITOR = "gedit"
 DEFAULT_TERMINAL = "gnome-terminal"
 if os.name == 'nt' or os.name == 'dos':

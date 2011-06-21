@@ -19,6 +19,8 @@ import os
 import signal
 import subprocess
 import collections
+import shlex
+import gobject
 
 Result = collections.namedtuple('Result', ['ecode', 'stdout', 'stderr'])
 
@@ -35,3 +37,27 @@ def run_cmd(cmd, input_text=None):
     if is_posix:
         signal.signal(signal.SIGPIPE, savedsh)
     return Result(ecode=sub.returncode, stdout=outd, stderr=errd)
+
+def run_cmd_in_bgnd(cmd):
+    """Run the given command in the background and poll for its exit using
+    _wait_for_bgnd_timeout() as a callback.
+    """
+    def _wait_for_bgnd_cmd_timeout(pid):
+        """Callback to clean up after background tasks complete"""
+        try:
+            if os.name == 'nt' or os.name == 'dos':
+                rpid, _ = os.waitpid(pid, 0)
+            else:
+                rpid, _ = os.waitpid(pid, os.WNOHANG)
+            return rpid != pid
+        except OSError:
+            return False
+    if isinstance(cmd, str):
+        cmd = shlex.split(cmd)
+    if not cmd:
+        return False
+    pid = subprocess.Popen(cmd).pid
+    if not pid:
+        return False
+    gobject.timeout_add(2000, _wait_for_bgnd_cmd_timeout, pid)
+    return True

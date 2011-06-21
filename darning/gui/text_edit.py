@@ -15,13 +15,31 @@
 
 import gtk
 import pango
+import shlex
 
 from darning import cmd_result
+from darning import utils
+from darning import runext
 
 from darning.gui import textview
 from darning.gui import gutils
 from darning.gui import dialogue
 from darning.gui import ifce
+from darning.gui import config
+
+def edit_files_extern(file_list):
+    def _edit_files_extern(filelist, edstr=config.DEFAULT_EDITOR):
+        cmd = shlex.split(edstr) + filelist
+        if cmd[0] in config.EDITORS_THAT_NEED_A_TERMINAL:
+            if config.DEFAULT_TERMINAL == "gnome-terminal":
+                flag = '-x'
+            else:
+                flag = '-e'
+            cmd = [config.DEFAULT_TERMINAL, flag] + cmd
+        return runext.run_cmd_in_bgnd(cmd)
+    ed_assigns = config.assign_extern_editors(file_list)
+    for edstr in list(ed_assigns.keys()):
+        _edit_files_extern(ed_assigns[edstr], edstr)
 
 class Widget(textview.Widget):
     UI_DESCR = ''
