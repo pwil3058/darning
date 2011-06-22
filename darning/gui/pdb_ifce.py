@@ -202,18 +202,12 @@ def do_set_patch_description(patch, text):
     console.LOG.append_entry('set patch "{0}" description:\n"{1}"'.format(name, descr))
     return cmd_result.Result(cmd_result.OK, '', '')
 
-def do_add_files_to_patch(files, patch=None):
+def do_add_files_to_patch(file_list, patch=None):
     if patch is None:
-        console.LOG.start_cmd('add {0}'.format(utils.file_list_to_string(files)))
+        console.LOG.start_cmd('add {0}'.format(utils.file_list_to_string(file_list)))
         patch = patch_db.get_top_patch_name()
     else:
-        console.LOG.start_cmd('add --patch={0} {1}'.format(patch, utils.file_list_to_string(files)))
-    file_list = []
-    for path in files:
-        if os.path.isdir(path):
-            file_list += utils.files_in_dir(path)
-        else:
-            file_list.append(path)
+        console.LOG.start_cmd('add --patch={0} {1}'.format(patch, utils.file_list_to_string(file_list)))
     for already_in_patch in patch_db.get_filenames_in_patch(patch, file_list):
         file_list.remove(already_in_patch)
         console.LOG.append_stdout('File "{0}" already in patch "{1}". Ignored.\n'.format(already_in_patch, patch))

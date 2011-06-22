@@ -404,11 +404,12 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
                         [ncf for ncf in files if not ifce.SCM.is_clean(ncf.status)])
             return self._file_db.dir_contents(dirpath, show_hidden)
         def _add_selection_to_top_patch(self, _action=None):
-            files = self.get_selected_files()
-            if len(files) == 0:
+            show_hidden = self.show_hidden_action.get_active()
+            file_list = self.get_expanded_file_list(self.get_selected_files(), show_hidden=show_hidden)
+            if len(file_list) == 0:
                 return
             dialogue.show_busy()
-            result = ifce.PM.do_add_files_to_patch(files)
+            result = ifce.PM.do_add_files_to_patch(file_list)
             dialogue.unshow_busy()
             dialogue.report_any_problems(result)
         def _edit_selection_in_top_patch(self, _action=None):
