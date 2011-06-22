@@ -20,6 +20,7 @@ import os
 
 from darning import utils
 from darning import patch_db
+from darning import cmd_result
 
 from darning.gui import tlview
 from darning.gui import gutils
@@ -305,19 +306,19 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
             clipboard = gtk.clipboard_get(gtk.gdk.SELECTION_CLIPBOARD)
         sel = utils.file_list_to_string(self.get_selected_files())
         clipboard.set_text(sel)
-    def get_filepaths_in_dir(self, dirname, recursive=True):
-        subdirs, files = self._file_db.dir_contents(dirname, show_hidden=True)
+    def get_filepaths_in_dir(self, dirname, show_hidden=True, recursive=True):
+        subdirs, files = self._file_db.dir_contents(dirname, show_hidden=show_hidden)
         filepaths = [os.path.join(dirname, fdata.name) for fdata in files]
         if recursive:
             for subdir in subdirs:
                 filepaths += self.get_filepaths_in_dir(os.path.join(dirname, subdir.name), recursive)
         return filepaths
-    def get_expanded_file_list(self, path_list):
+    def get_expanded_file_list(self, path_list, show_hidden=True):
         '''Return the list of files in path_list with directories replaced by their content'''
         filepath_list = []
         for path in path_list:
             if os.path.isdir(path):
-                filepath_list += self.get_filepaths_in_dir(path, recursive=True)
+                filepath_list += self.get_filepaths_in_dir(path, show_hidden=show_hidden, recursive=True)
             else:
                 filepath_list.append(path)
         return filepath_list
@@ -337,6 +338,7 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
             <separator/>
             <placeholder name="selection">
               <menuitem action='scm_add_files_to_top_patch'/>
+              <menuitem action='scm_edit_files_in_top_patch'/>
             </placeholder>
             <separator/>
             <placeholder name="selection_not_patched"/>
@@ -384,6 +386,8 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
                 [
                     ('scm_add_files_to_top_patch', gtk.STOCK_ADD, '_Add', None,
                      'Add the selected files to the top patch', self._add_selection_to_top_patch),
+                    ('scm_edit_files_in_top_patch', gtk.STOCK_EDIT, '_Edit', None,
+                     'Open the selected files for editing after adding them to the top patch', self._edit_selection_in_top_patch),
                 ])
             self.ui_manager.add_ui_from_string(self.UI_DESCR)
             self.add_notification_cb(ws_event.CHECKOUT|ws_event.CHANGE_WD, self.repopulate)
@@ -407,6 +411,17 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
             result = ifce.PM.do_add_files_to_patch(files)
             dialogue.unshow_busy()
             dialogue.report_any_problems(result)
+        def _edit_selection_in_top_patch(self, _action=None):
+            show_hidden = self.show_hidden_action.get_active()
+            file_list = self.get_expanded_file_list(self.get_selected_files(), show_hidden=show_hidden)
+            if len(file_list) == 0:
+                return
+            dialogue.show_busy()
+            result = ifce.PM.do_add_files_to_patch(file_list)
+            dialogue.unshow_busy()
+            dialogue.report_any_problems(result)
+            if result.eflags == cmd_result.OK:
+                text_edit.edit_files_extern(file_list)
     def __init__(self, auto_refresh=False, hide_clean=False):
         gtk.VBox.__init__(self)
         ws_event.Listener.__init__(self)
