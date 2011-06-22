@@ -98,3 +98,10 @@ def is_clean(status):
     if _CURRENT_BACK_END is None:
         return False
     return _CURRENT_BACK_END.is_clean(status)
+
+def copy_clean_version_to(filename, target_name):
+    '''
+    Copy a clean version of the named file to the specified target
+    '''
+    assert _CURRENT_BACK_END is not None
+    return _CURRENT_BACK_END.copy_clean_version_to(filename, target_name)

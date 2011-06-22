@@ -107,3 +107,8 @@ def files_in_dir(dirname, recurse=True, relative=False):
         return [entry for entry in os.listdir(dirname) if not os.path.isdir(entry)]
     else:
         return [os.path.join(dirname, entry) for entry in os.listdir(dirname) if not os.path.isdir(entry)]
+
+def ensure_file_dir_exists(filename):
+    file_dir = os.path.dirname(filename)
+    if not os.path.exists(file_dir):
+        os.makedirs(file_dir)

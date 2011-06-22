@@ -116,25 +116,37 @@ def do_create_new_patch(name, descr):
     ws_event.notify_events(ws_event.PATCH_CREATE|ws_event.PATCH_PUSH)
     return cmd_result.Result(cmd_result.OK, '', '')
 
-def do_push_next_patch():
+def do_push_next_patch(force=False):
     console.LOG.start_cmd('push')
     is_ok = True
     msg = ''
     overlaps = patch_db.get_next_patch_overlap_data()
     if len(overlaps.uncommitted) > 0:
-        is_ok = False
-        msg += 'The following (overlapped) files have uncommitted SCM changes:\n'
-        for filename in sorted(overlaps.uncommitted):
-            msg += '\t{0}\n'.format(filename)
+        if force:
+            console.LOG.append_stderr('Uncommitted SCM changes in the following files:\n')
+            for filename in sorted(overlaps.uncommitted):
+                console.LOG.append_stderr('\t{0}\n'.format(filename))
+            console.LOG.append_stderr('have been incorporated.\n')
+        else:
+            is_ok = False
+            msg += 'The following (overlapped) files have uncommitted SCM changes:\n'
+            for filename in sorted(overlaps.uncommitted):
+                msg += '\t{0}\n'.format(filename)
     if len(overlaps.unrefreshed) > 0:
-        is_ok = False
-        msg += 'The following (overlapped) files have unrefreshed changes (in an applied patch):\n'
-        for filename in sorted(overlaps.unrefreshed):
-            msg += '\t{0} : in patch "{1}"\n'.format(filename, overlaps.unrefreshed[filename])
+        if force:
+            console.LOG.append_stderr('Unrefreshed changes changes in the following files:\n')
+            for filename in sorted(overlaps.unrefreshed):
+                console.LOG.append_stderr('\t{0}\n'.format(filename))
+            console.LOG.append_stderr('have been incorporated.\n')
+        else:
+            is_ok = False
+            msg += 'The following (overlapped) files have unrefreshed changes (in an applied patch):\n'
+            for filename in sorted(overlaps.unrefreshed):
+                msg += '\t{0} : in patch "{1}"\n'.format(filename, overlaps.unrefreshed[filename])
     if not is_ok:
         console.LOG.append_stderr(msg)
         console.LOG.end_cmd()
-        return cmd_result.Result(cmd_result.ERROR, '', msg)
+        return cmd_result.Result(cmd_result.ERROR_SUGGEST_FORCE, '', msg)
     _db_ok, results = patch_db.apply_patch()
     highest_ecode = max([result.ecode for result in results.values()]) if results else 0
     for filename in results:
@@ -202,7 +214,7 @@ def do_set_patch_description(patch, text):
     console.LOG.append_entry('set patch "{0}" description:\n"{1}"'.format(name, descr))
     return cmd_result.Result(cmd_result.OK, '', '')
 
-def do_add_files_to_patch(file_list, patch=None):
+def do_add_files_to_patch(file_list, patch=None, force=False):
     if patch is None:
         console.LOG.start_cmd('add {0}'.format(utils.file_list_to_string(file_list)))
         patch = patch_db.get_top_patch_name()
@@ -215,19 +227,31 @@ def do_add_files_to_patch(file_list, patch=None):
     msg = ''
     overlaps = patch_db.get_filelist_overlap_data(file_list, patch)
     if len(overlaps.uncommitted) > 0:
-        is_ok = False
-        msg += 'The following files have uncommitted SCM changes:\n'
-        for filename in sorted(overlaps.uncommitted):
-            msg += '\t{0}\n'.format(filename)
+        if force:
+            console.LOG.append_stderr('Uncommitted SCM changes in the following files:\n')
+            for filename in sorted(overlaps.uncommitted):
+                console.LOG.append_stderr('\t{0}\n'.format(filename))
+            console.LOG.append_stderr('have been incorporated.\n')
+        else:
+            is_ok = False
+            msg += 'The following files have uncommitted SCM changes:\n'
+            for filename in sorted(overlaps.uncommitted):
+                msg += '\t{0}\n'.format(filename)
     if len(overlaps.unrefreshed) > 0:
-        is_ok = False
-        msg += 'The following files have unrefreshed changes (in an applied patch):\n'
-        for filename in sorted(overlaps.unrefreshed):
-            msg += '\t{0} : in patch "{1}"\n'.format(filename, overlaps.unrefreshed[filename])
+        if force:
+            console.LOG.append_stderr('Unrefreshed changes changes in the following files:\n')
+            for filename in sorted(overlaps.unrefreshed):
+                console.LOG.append_stderr('\t{0}\n'.format(filename))
+            console.LOG.append_stderr('have been incorporated.\n')
+        else:
+            is_ok = False
+            msg += 'The following files have unrefreshed changes (in an applied patch):\n'
+            for filename in sorted(overlaps.unrefreshed):
+                msg += '\t{0} : in patch "{1}"\n'.format(filename, overlaps.unrefreshed[filename])
     if not is_ok:
         console.LOG.append_stderr(msg)
         console.LOG.end_cmd()
-        return cmd_result.Result(cmd_result.ERROR, '', msg)
+        return cmd_result.Result(cmd_result.ERROR_SUGGEST_FORCE, '', msg)
     for filename in file_list:
         patch_db.add_file_to_patch(patch, filename)
         console.LOG.append_stdout('File "{0}" added to patch "{1}".\n'.format(filename, patch))

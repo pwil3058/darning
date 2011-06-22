@@ -21,6 +21,7 @@ import pango
 from darning import runext
 from darning import scm_ifce
 from darning import fsdb
+from darning import utils
 
 class Mercurial(object):
     name = 'hg'
@@ -162,5 +163,16 @@ class Mercurial(object):
         Does this status indicate a clean object?
         '''
         return status == Mercurial.FileStatus.CLEAN
+    @staticmethod
+    def copy_clean_version_to(filename, target_name):
+        '''
+        Copy a clean version of the named file to the specified target
+        '''
+        result = runext.run_cmd(['hg', 'cat', filename])
+        assert result.ecode == 0
+        if result.stdout:
+            utils.ensure_file_dir_exists(target_name)
+            with open(target_name, 'w') as fobj:
+                fobj.write(result.stdout)
 
 scm_ifce.add_back_end(Mercurial)
