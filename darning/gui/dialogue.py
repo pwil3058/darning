@@ -189,10 +189,16 @@ class Response(object):
     MERGE = 9
 
 def _form_question(result, clarification):
-    if clarification:
-        return '\n'.join(list(result[1:]) + [clarification])
+    if result.stdout:
+        qtn = result.stdout
+        if result.stderr:
+            qtn += '\n' + result.stderr
     else:
-        return '\n'.join(result[1:])
+        qtn = result.stderr
+    if clarification:
+        return qtn + '\n' + clarification
+    else:
+        return qtn
 
 def ask_force_refresh_or_cancel(result, clarification=None, parent=None):
     buttons = (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL)
