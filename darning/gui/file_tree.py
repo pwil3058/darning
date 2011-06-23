@@ -316,11 +316,13 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
     def get_expanded_file_list(self, path_list, show_hidden=True):
         '''Return the list of files in path_list with directories replaced by their content'''
         filepath_list = []
+        dialogue.show_busy()
         for path in path_list:
             if os.path.isdir(path):
                 filepath_list += self.get_filepaths_in_dir(path, show_hidden=show_hidden, recursive=True)
             else:
                 filepath_list.append(path)
+        dialogue.unshow_busy()
         return filepath_list
 
 class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
@@ -403,25 +405,35 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
                 return ([ncd for ncd in dirs if not ifce.SCM.is_clean(ncd.status)],
                         [ncf for ncf in files if not ifce.SCM.is_clean(ncf.status)])
             return self._file_db.dir_contents(dirpath, show_hidden)
+        @staticmethod
+        def _add_files_to_top_patch(file_list):
+            force = False
+            while True:
+                dialogue.show_busy()
+                result = ifce.PM.do_add_files_to_patch(file_list, force=force)
+                dialogue.unshow_busy()
+                if not force and result.eflags & cmd_result.SUGGEST_FORCE != 0:
+                    resp = dialogue.ask_force_refresh_or_cancel(result, clarification=None)
+                    if resp == dialogue.Response.FORCE:
+                        force = True
+                        continue
+                    elif resp == gtk.RESPONSE_CANCEL:
+                        break
+                dialogue.report_any_problems(result)
+                break
+            return result.eflags == cmd_result.OK
         def _add_selection_to_top_patch(self, _action=None):
             show_hidden = self.show_hidden_action.get_active()
             file_list = self.get_expanded_file_list(self.get_selected_files(), show_hidden=show_hidden)
             if len(file_list) == 0:
                 return
-            dialogue.show_busy()
-            result = ifce.PM.do_add_files_to_patch(file_list)
-            dialogue.unshow_busy()
-            dialogue.report_any_problems(result)
+            self._add_files_to_top_patch(file_list)
         def _edit_selection_in_top_patch(self, _action=None):
             show_hidden = self.show_hidden_action.get_active()
             file_list = self.get_expanded_file_list(self.get_selected_files(), show_hidden=show_hidden)
             if len(file_list) == 0:
                 return
-            dialogue.show_busy()
-            result = ifce.PM.do_add_files_to_patch(file_list)
-            dialogue.unshow_busy()
-            dialogue.report_any_problems(result)
-            if result.eflags == cmd_result.OK:
+            if self._add_files_to_top_patch(file_list):
                 text_edit.edit_files_extern(file_list)
     def __init__(self, auto_refresh=False, hide_clean=False):
         gtk.VBox.__init__(self)

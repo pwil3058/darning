@@ -177,6 +177,32 @@ def ask_yes_no(question, parent=None):
     buttons = (gtk.STOCK_NO, gtk.RESPONSE_NO, gtk.STOCK_YES, gtk.RESPONSE_YES)
     return ask_question(question, parent, buttons) == gtk.RESPONSE_YES
 
+class Response(object):
+    SKIP = 1
+    SKIP_ALL = 2
+    FORCE = 3
+    REFRESH = 4
+    RECOVER = 5
+    RENAME = 6
+    DISCARD = 7
+    EDIT = 8
+    MERGE = 9
+
+def _form_question(result, clarification):
+    if clarification:
+        return '\n'.join(list(result[1:]) + [clarification])
+    else:
+        return '\n'.join(result[1:])
+
+def ask_force_refresh_or_cancel(result, clarification=None, parent=None):
+    buttons = (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL)
+    if result.eflags & cmd_result.SUGGEST_REFRESH:
+        buttons += ("_Refresh and Retry", Response.REFRESH)
+    if result.eflags & cmd_result.SUGGEST_FORCE:
+        buttons += ("_Force", Response.FORCE)
+    question = _form_question(result, clarification)
+    return ask_question(question, parent, buttons)
+
 def ask_file_name(prompt, suggestion=None, existing=True, parent=None):
     if existing:
         mode = gtk.FILE_CHOOSER_ACTION_OPEN

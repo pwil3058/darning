@@ -253,10 +253,13 @@ def do_add_files_to_patch(file_list, patch=None, force=False):
         console.LOG.end_cmd()
         return cmd_result.Result(cmd_result.ERROR_SUGGEST_FORCE, '', msg)
     for filename in file_list:
-        patch_db.add_file_to_patch(patch, filename)
+        patch_db.add_file_to_patch(patch, filename, force=force)
         console.LOG.append_stdout('File "{0}" added to patch "{1}".\n'.format(filename, patch))
     console.LOG.end_cmd()
-    ws_event.notify_events(ws_event.FILE_ADD)
+    if force:
+        ws_event.notify_events(ws_event.FILE_ADD|ws_event.PATCH_REFRESH)
+    else:
+        ws_event.notify_events(ws_event.FILE_ADD)
     return cmd_result.Result(cmd_result.OK, '', '')
 
 def do_drop_files_from_patch(file_list, patch=None):

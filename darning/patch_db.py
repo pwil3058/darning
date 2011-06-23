@@ -984,14 +984,14 @@ def get_filenames_in_patch(name, filenames=None):
     assert patch_index is not None
     return _DB.series[patch_index].get_filenames(filenames)
 
-def add_file_to_patch(name, filename):
+def add_file_to_patch(name, filename, force=False):
     '''Add the named file to the named patch'''
     assert is_writable()
     patch_index = get_patch_series_index(name)
     assert patch_index is not None
     patch = _DB.series[patch_index]
     assert filename not in patch.files
-    return patch.do_add_file(filename)
+    return patch.do_add_file(filename, force=force)
 
 def do_drop_file_fm_patch(name, filename):
     '''Drop the named file from the named patch'''

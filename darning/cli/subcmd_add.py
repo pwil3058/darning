@@ -56,7 +56,7 @@ def run_add(args):
     already_in_patch = set(patch_db.get_filenames_in_patch(args.opt_patch, args.filenames))
     for filename in args.filenames:
         if filename not in already_in_patch:
-            patch_db.add_file_to_patch(args.opt_patch, filename)
+            patch_db.add_file_to_patch(args.opt_patch, filename, force=False)
             already_in_patch.add(filename)
             msg.Info('file "{0}" added to patch "{1}".', db_utils.rel_subdir(filename), args.opt_patch)
         else:
