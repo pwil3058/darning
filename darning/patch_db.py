@@ -560,6 +560,24 @@ class DataBase:
         newpatch.name = newname
         newpatch.description = newdescription
         self._do_insert_patch(newpatch)
+    def do_refresh_overlapped_files(self, file_list):
+        '''Refresh the files in the list within the topmost applied patch of
+        which they are a member'''
+        assert is_writable()
+        applied_patches = get_applied_patch_list()
+        assert len(applied_patches) > 0
+        file_set = set(file_list)
+        results = {}
+        for applied_patch in reversed(applied_patches):
+            for file_name in applied_patch.files:
+                if file_name in file_set:
+                    results[file_name] = applied_patch.do_refresh_file(file_name)
+                    file_set.remove(file_name)
+                    if len(file_set) == 0:
+                        break
+            if len(file_set) == 0:
+                break
+        return results
     def do_remove_patch(self, name, keep=True):
         '''Remove the named patch from series and (optionally) keep it for later restoration'''
         assert is_writable()
@@ -1001,6 +1019,13 @@ def do_drop_file_fm_patch(name, filename):
     patch = _DB.series[patch_index]
     assert filename in patch.files
     return patch.do_drop_file(filename)
+
+def do_refresh_overlapped_files(file_list):
+    '''Refresh any files in the list which are in an applied patch
+    (within the topmost such patch).'''
+    assert is_writable()
+    assert _get_top_patch_index() is not None
+    return _DB.do_refresh_overlapped_files(file_list)
 
 def do_refresh_patch(name):
     '''Refresh the named patch'''

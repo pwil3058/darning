@@ -408,17 +408,24 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
         @staticmethod
         def _add_files_to_top_patch(file_list):
             force = False
+            refresh_tried = False
             while True:
                 dialogue.show_busy()
                 result = ifce.PM.do_add_files_to_patch(file_list, force=force)
                 dialogue.unshow_busy()
-                if not force and result.eflags & cmd_result.SUGGEST_FORCE != 0:
+                if refresh_tried:
+                    result = cmd_result.turn_off_flags(result, cmd_result.SUGGEST_REFRESH)
+                if not force and result.eflags & cmd_result.SUGGEST_FORCE_OR_REFRESH != 0:
                     resp = dialogue.ask_force_refresh_or_cancel(result, clarification=None)
-                    if resp == dialogue.Response.FORCE:
-                        force = True
-                        continue
-                    elif resp == gtk.RESPONSE_CANCEL:
+                    if resp == gtk.RESPONSE_CANCEL:
                         break
+                    elif resp == dialogue.Response.FORCE:
+                        force = True
+                    elif resp == dialogue.Response.REFRESH:
+                        refresh_tried = True
+                        result = ifce.PM.do_refresh_overlapped_files(file_list)
+                        dialogue.report_any_problems(result)
+                    continue
                 dialogue.report_any_problems(result)
                 break
             return result.eflags == cmd_result.OK

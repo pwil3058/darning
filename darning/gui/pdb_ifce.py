@@ -184,6 +184,32 @@ def do_pop_top_patch():
     ws_event.notify_events(ws_event.PATCH_POP)
     return cmd_result.Result(eflags, '', stderr)
 
+def do_refresh_overlapped_files(file_list):
+    console.LOG.start_cmd('refresh --files {0}'.format(utils.file_list_to_string(file_list)))
+    results = patch_db.do_refresh_overlapped_files(file_list)
+    highest_ecode = max([result.ecode for result in results.values()]) if results else 0
+    msg = ''
+    failed_files = []
+    for filename in results:
+        result = results[filename]
+        console.LOG.append_stdout('Refreshing: {0}\n'.format(filename))
+        console.LOG.append_stdout(result.stdout)
+        console.LOG.append_stderr(result.stderr)
+        for line in result.stderr.splitlines(False):
+            msg += '{0}: {1}\n'.format(filename, line)
+        if result.ecode > 2:
+            failed_files.append(filename)
+    console.LOG.end_cmd()
+    if highest_ecode > 2:
+        eflags = cmd_result.ERROR
+        msg += '\nThe following files require another refresh after issues are resolved:\n'
+        for filename in failed_files:
+            msg += '\t{0}\n'.format(filename)
+    else:
+        eflags = cmd_result.OK if highest_ecode == 0 else cmd_result.WARNING
+    ws_event.notify_events(ws_event.PATCH_REFRESH)
+    return cmd_result.Result(eflags, '', msg)
+
 def do_refresh_patch(name=None):
     if name is None:
         name = patch_db.get_top_patch_name()
@@ -223,7 +249,7 @@ def do_add_files_to_patch(file_list, patch=None, force=False):
     for already_in_patch in patch_db.get_filenames_in_patch(patch, file_list):
         file_list.remove(already_in_patch)
         console.LOG.append_stdout('File "{0}" already in patch "{1}". Ignored.\n'.format(already_in_patch, patch))
-    is_ok = True
+    eflags = cmd_result.OK
     msg = ''
     overlaps = patch_db.get_filelist_overlap_data(file_list, patch)
     if len(overlaps.uncommitted) > 0:
@@ -233,7 +259,7 @@ def do_add_files_to_patch(file_list, patch=None, force=False):
                 console.LOG.append_stderr('\t{0}\n'.format(filename))
             console.LOG.append_stderr('have been incorporated.\n')
         else:
-            is_ok = False
+            eflags = cmd_result.ERROR_SUGGEST_FORCE
             msg += 'The following files have uncommitted SCM changes:\n'
             for filename in sorted(overlaps.uncommitted):
                 msg += '\t{0}\n'.format(filename)
@@ -244,14 +270,14 @@ def do_add_files_to_patch(file_list, patch=None, force=False):
                 console.LOG.append_stderr('\t{0}\n'.format(filename))
             console.LOG.append_stderr('have been incorporated.\n')
         else:
-            is_ok = False
+            eflags = cmd_result.ERROR_SUGGEST_FORCE_OR_REFRESH
             msg += 'The following files have unrefreshed changes (in an applied patch):\n'
             for filename in sorted(overlaps.unrefreshed):
                 msg += '\t{0} : in patch "{1}"\n'.format(filename, overlaps.unrefreshed[filename])
-    if not is_ok:
+    if eflags is not cmd_result.OK:
         console.LOG.append_stderr(msg)
         console.LOG.end_cmd()
-        return cmd_result.Result(cmd_result.ERROR_SUGGEST_FORCE, '', msg)
+        return cmd_result.Result(eflags, '', msg)
     for filename in file_list:
         patch_db.add_file_to_patch(patch, filename, force=force)
         console.LOG.append_stdout('File "{0}" added to patch "{1}".\n'.format(filename, patch))
@@ -260,7 +286,7 @@ def do_add_files_to_patch(file_list, patch=None, force=False):
         ws_event.notify_events(ws_event.FILE_ADD|ws_event.PATCH_REFRESH)
     else:
         ws_event.notify_events(ws_event.FILE_ADD)
-    return cmd_result.Result(cmd_result.OK, '', '')
+    return cmd_result.Result(eflags, '', '')
 
 def do_drop_files_from_patch(file_list, patch=None):
     if patch is None:

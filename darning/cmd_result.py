@@ -74,6 +74,9 @@ def suggests_force(res):
     else:
         return (res & SUGGEST_FORCE) == SUGGEST_FORCE
 
+def turn_off_flags(result, flags):
+    return Result(result.eflags & ~flags, result.stdout, result.stderr)
+
 def map_cmd_result(result, ignore_err_re=None):
     if result.eflags == 0:
         if result.stderr and not (ignore_err_re and ignore_err_re.match(result.stderr)):
