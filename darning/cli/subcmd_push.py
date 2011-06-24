@@ -25,6 +25,8 @@ PARSER = cli_args.SUB_CMD_PARSER.add_parser(
     description='Apply the next patch in the series.',
 )
 
+cli_args.add_force_option(PARSER, helptext='incorporate uncommitted/unrefreshed changes to overlapped files into the pushed patch.')
+
 def run_push(args):
     '''Execute the "push" sub command using the supplied args'''
     db_utils.open_db(modifiable=True)
@@ -35,20 +37,27 @@ def run_push(args):
         else:
             return msg.Error('no pushable patches.')
     is_ok = True
+    if args.opt_force:
+        ol_report = msg.Info
+    else:
+        ol_report = msg.Error
     overlaps = patch_db.get_next_patch_overlap_data()
     if len(overlaps.uncommitted) > 0:
         is_ok = False
-        msg.Error('The following (overlapped) files have uncommitted SCM changes:')
+        ol_report('The following (overlapped) files have uncommitted SCM changes:')
         for filename in sorted(overlaps.uncommitted):
-            msg.Error('\t{0}', filename)
+            ol_report('\t{0}', filename)
     if len(overlaps.unrefreshed) > 0:
         is_ok = False
-        msg.Error('The following (overlapped) files have unrefreshed changes (in an applied patch):')
+        ol_report('The following (overlapped) files have unrefreshed changes (in an applied patch):')
         for filename in sorted(overlaps.unrefreshed):
-            msg.Error('\t{0} : in patch "{1}"', filename, overlaps.unrefreshed[filename])
+            ol_report('\t{0} : in patch "{1}"', filename, overlaps.unrefreshed[filename])
     if not is_ok:
-        return msg.Error('Aborting')
-    _db_ok, results = patch_db.apply_patch()
+        if args.opt_force:
+            msg.Info('Uncommited/unrefreshed changes incorporated into pushed patch.')
+        else:
+            return msg.Error('Aborting')
+    _db_ok, results = patch_db.apply_patch(force=args.opt_force)
     highest_ecode = 0
     for filename in results:
         result = results[filename]
