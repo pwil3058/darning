@@ -47,10 +47,18 @@ def add_descr_option(parser, helptext):
 
 def add_patch_option(parser, helptext):
     parser.add_argument(
-        '-P',
+        '-P', '--patch',
         help=helptext,
         dest='opt_patch',
         metavar='patch',
+    )
+
+def add_force_option(parser, helptext):
+    parser.add_argument(
+        '-f', '--force',
+        help=helptext,
+        dest='opt_force',
+        action='store_true',
     )
 
 def add_verbose_option(parser, helptext):

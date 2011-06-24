@@ -19,6 +19,7 @@ Utility database functions that are ony of interest CLI programs
 
 import os
 import sys
+import atexit
 
 from darning import patch_db
 from darning import scm_ifce
