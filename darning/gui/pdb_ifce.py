@@ -237,7 +237,7 @@ def do_set_patch_description(patch, text):
     if not patch_db.is_writable():
         return cmd_result.Result(cmd_result.ERROR, '', 'Database is not writable')
     patch_db.do_set_patch_description(patch, text)
-    console.LOG.append_entry('set patch "{0}" description:\n"{1}"'.format(name, descr))
+    console.LOG.append_entry('set patch "{0}" description:\n"{1}"'.format(patch, text))
     return cmd_result.Result(cmd_result.OK, '', '')
 
 def do_add_files_to_patch(file_list, patch=None, force=False):

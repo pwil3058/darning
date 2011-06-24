@@ -1047,10 +1047,11 @@ def do_refresh_patch(name):
     return _DB.series[patch_index].do_refresh()
 
 def do_set_patch_description(name, text):
-    assert is_readable()
+    assert is_writable()
     patch_index = get_patch_series_index(name)
     assert patch_index is not None
     _DB.series[patch_index].description = text if text is not None else ''
+    dump_db()
 
 def get_patch_description(name):
     assert is_readable()
