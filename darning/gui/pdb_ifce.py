@@ -229,7 +229,7 @@ def do_refresh_patch(name=None):
         eflags = cmd_result.ERROR
         msg += '\nPatch "{0}" requires another refresh after issues are resolved.'.format(name)
     else:
-        eflags = cmd_result.OK if highest_ecode == 0 else cmd_result.WARNING
+        eflags = cmd_result.WARNING if (highest_ecode > 0 and msg) else cmd_result.OK
     ws_event.notify_events(ws_event.PATCH_REFRESH)
     return cmd_result.Result(eflags, '', msg)
 
