@@ -43,7 +43,7 @@ def do_initialization(description):
     '''Create a patch database in the current directory'''
     console.LOG.start_cmd('initialize {0}\n"{1}"'.format(os.getcwd(), description))
     result = patch_db.create_db(description)
-    console.LOG.append_stdin(result.stdin)
+    console.LOG.append_stdout(result.stdout)
     console.LOG.append_stderr(result.stderr)
     console.LOG.end_cmd()
     return result
@@ -118,7 +118,7 @@ def do_create_new_patch(name, descr):
 
 def do_push_next_patch(force=False):
     console.LOG.start_cmd('push')
-    is_ok = True
+    eflags = cmd_result.OK
     msg = ''
     overlaps = patch_db.get_next_patch_overlap_data()
     if len(overlaps.uncommitted) > 0:
@@ -128,7 +128,7 @@ def do_push_next_patch(force=False):
                 console.LOG.append_stderr('\t{0}\n'.format(filename))
             console.LOG.append_stderr('have been incorporated.\n')
         else:
-            is_ok = False
+            eflags = cmd_result.ERROR_SUGGEST_FORCE
             msg += 'The following (overlapped) files have uncommitted SCM changes:\n'
             for filename in sorted(overlaps.uncommitted):
                 msg += '\t{0}\n'.format(filename)
@@ -139,22 +139,22 @@ def do_push_next_patch(force=False):
                 console.LOG.append_stderr('\t{0}\n'.format(filename))
             console.LOG.append_stderr('have been incorporated.\n')
         else:
-            is_ok = False
+            eflags = cmd_result.ERROR_SUGGEST_FORCE_OR_REFRESH
             msg += 'The following (overlapped) files have unrefreshed changes (in an applied patch):\n'
             for filename in sorted(overlaps.unrefreshed):
                 msg += '\t{0} : in patch "{1}"\n'.format(filename, overlaps.unrefreshed[filename])
-    if not is_ok:
+    if eflags != cmd_result.OK:
         console.LOG.append_stderr(msg)
         console.LOG.end_cmd()
-        return cmd_result.Result(cmd_result.ERROR_SUGGEST_FORCE, '', msg)
-    _db_ok, results = patch_db.apply_patch()
+        return cmd_result.Result(eflags, '', msg)
+    _db_ok, results = patch_db.apply_patch(force)
     highest_ecode = max([result.ecode for result in results.values()]) if results else 0
     for filename in results:
         result = results[filename]
-        console.LOG.append_stdin(result.stdin)
+        console.LOG.append_stdout(result.stdout)
         console.LOG.append_stderr(result.stderr)
         if result.ecode:
-            msg += result.stdin + result.stderr
+            msg += result.stdout + result.stderr
     console.LOG.append_stdout('Patch "{0}" is now on top\n'.format(patch_db.get_top_patch_name()))
     console.LOG.end_cmd()
     ws_event.notify_events(ws_event.PATCH_PUSH)

@@ -953,13 +953,13 @@ def get_next_patch_overlap_data():
         return OverlapData(unrefreshed = {}, uncommitted = [])
     return _DB.get_overlap_data(_DB.series[next_index].get_filenames())
 
-def apply_patch():
+def apply_patch(force=False):
     '''Apply the next patch in the series'''
     assert is_writable()
     next_index = _get_next_patch_index()
     if next_index is None:
         return (False, 'There are no pushable patches available')
-    return (True, _DB.series[next_index].do_apply())
+    return (True, _DB.series[next_index].do_apply(force))
 
 def get_top_patch_name():
     '''Return the name of the top applied patch'''
@@ -999,6 +999,17 @@ def get_filenames_in_patch(name, filenames=None):
     '''
     assert is_readable()
     patch_index = get_patch_series_index(name)
+    assert patch_index is not None
+    return _DB.series[patch_index].get_filenames(filenames)
+
+def get_filenames_in_next_patch(filenames=None):
+    '''
+    Return the names of the files in the next patch (to be applied).
+    If filenames is not None restrict the returned list to names that
+    are also in filenames.
+    '''
+    assert is_readable()
+    patch_index = _get_next_patch_index()
     assert patch_index is not None
     return _DB.series[patch_index].get_filenames(filenames)
 

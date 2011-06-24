@@ -345,10 +345,28 @@ def new_patch_acb(_arg):
     dlg.destroy()
 
 def push_next_patch_acb(_arg):
-    dialogue.show_busy()
-    result = ifce.PM.do_push_next_patch()
-    dialogue.unshow_busy()
-    dialogue.report_any_problems(result)
+    force = False
+    refresh_tried = False
+    while True:
+        dialogue.show_busy()
+        result = ifce.PM.do_push_next_patch(force=force)
+        dialogue.unshow_busy()
+        if refresh_tried:
+            result = cmd_result.turn_off_flags(result, cmd_result.SUGGEST_REFRESH)
+        if not force and result.eflags & cmd_result.SUGGEST_FORCE_OR_REFRESH != 0:
+            resp = dialogue.ask_force_refresh_or_cancel(result, clarification=None)
+            if resp == gtk.RESPONSE_CANCEL:
+                break
+            elif resp == dialogue.Response.FORCE:
+                force = True
+            elif resp == dialogue.Response.REFRESH:
+                refresh_tried = True
+                file_list = ifce.PM.get_filenames_in_next_patch()
+                result = ifce.PM.do_refresh_overlapped_files(file_list)
+                dialogue.report_any_problems(result)
+            continue
+        dialogue.report_any_problems(result)
+        break
 
 def pop_top_patch_acb(_arg):
     dialogue.show_busy()
