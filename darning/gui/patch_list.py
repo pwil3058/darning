@@ -29,6 +29,7 @@ from darning.gui import table
 from darning.gui import icons
 from darning.gui import dialogue
 from darning.gui import text_edit
+from darning.gui import gutils
 
 class Condns(actions.Condns):
     _NEXTRACONDS = 3
@@ -100,6 +101,9 @@ class List(table.MapManagedTable):
     <ui>
       <menubar name="patch_list_menubar">
         <menu name="patch_list_menu" action="menu_patch_list">
+          <menuitem action="pm_refresh_patch_list"/>
+          <separator/>
+          <menuitem action="pm_auto_refresh_patch_list"/>
         </menu>
       </menubar>
       <popup name="patches_popup">
@@ -140,7 +144,22 @@ class List(table.MapManagedTable):
                                        scroll_bar=True,
                                        busy_indicator=busy_indicator,
                                        size_req=None)
+        self.auto_refresh = gutils.RefreshController(
+            toggle_data=gutils.RefreshController.ToggleData(
+                name='pm_auto_refresh_patch_list',
+                label='Auto Update',
+                tooltip='Enable/disable automatic updating of the patch list',
+                stock_id=gtk.STOCK_REFRESH
+            ),
+            function=self.refresh_contents, is_on=True, interval=10000
+        )
         self.add_conditional_action(Condns.DONT_CARE, gtk.Action("menu_patch_list", "Patch _List", None, None))
+        self.add_conditional_action(Condns.DONT_CARE, self.auto_refresh.toggle_action)
+        self.add_conditional_actions(Condns.IN_PGND,
+            [
+                ("pm_refresh_patch_list", gtk.STOCK_REFRESH, "Update Patch List", None,
+                 "Refresh/update the patch list display", self._update_list_cb),
+            ])
         self.add_conditional_actions(Condns.SELN,
             [
                 ("pm_edit_patch_descr", gtk.STOCK_EDIT, "Description", None,
