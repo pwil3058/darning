@@ -169,14 +169,16 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
         self.show_hidden_action.set_menu_item_type(gtk.CheckMenuItem)
         self.show_hidden_action.set_tool_item_type(gtk.ToggleToolButton)
         self.add_conditional_action(actions.Condns.DONT_CARE, self.show_hidden_action)
-        self._refresh_interval = 20000 # milliseconds
-        self.auto_refresh_action = gtk.ToggleAction('auto_refresh_files', 'Auto Refresh Files',
-                                                   'Automatically/periodically refresh file display', None)
-        self.auto_refresh_action.set_active(auto_refresh)
-        self.auto_refresh_action.connect('toggled', self._toggle_auto_refresh_cb)
-        self.auto_refresh_action.set_menu_item_type(gtk.CheckMenuItem)
-        self.auto_refresh_action.set_tool_item_type(gtk.ToggleToolButton)
-        self.add_conditional_action(actions.Condns.DONT_CARE, self.auto_refresh_action)
+        self.auto_refresh = gutils.RefreshController(
+            toggle_data=gutils.RefreshController.ToggleData(
+                name='auto_refresh_files',
+                label='Auto Refresh Files',
+                tooltip='Automatically/periodically refresh file display',
+                stock_id=gtk.STOCK_REFRESH
+            ),
+            function=self.update, is_on=auto_refresh
+        )
+        self.add_conditional_action(actions.Condns.DONT_CARE, self.auto_refresh.toggle_action)
         self.add_conditional_actions(actions.Condns.DONT_CARE,
             [
                 ('refresh_files', gtk.STOCK_REFRESH, '_Refresh Files', None,
@@ -190,20 +192,10 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
         self.connect('key_press_event', self._handle_key_press_cb)
         self._file_db = None
         self.repopulate()
-        self._toggle_auto_refresh_cb()
     def _toggle_show_hidden_cb(self, toggleaction):
         dialogue.show_busy()
         self._update_dir('', None)
         dialogue.unshow_busy()
-    def _do_auto_refresh(self):
-        if self.auto_refresh_action.get_active():
-            self.update()
-            return True
-        else:
-            return False
-    def _toggle_auto_refresh_cb(self, action=None):
-        if self.auto_refresh_action.get_active():
-            gobject.timeout_add(self._refresh_interval, self._do_auto_refresh)
     def _get_dir_contents(self, dirpath):
         return self._file_db.dir_contents(dirpath, self.show_hidden_action.get_active())
     def _row_expanded(self, dir_iter):
