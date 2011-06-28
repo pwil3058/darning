@@ -107,6 +107,16 @@ def get_combined_patch_file_db():
         return fsdb.NullFileDb()
     return FileDb(patch_db.get_combined_patch_file_table())
 
+def get_filenames_in_next_patch(filenames=None):
+    '''
+    Return the names of the files in the next patch (to be applied).
+    If filenames is not None restrict the returned list to names that
+    are also in filenames.
+    '''
+    if not patch_db.is_readable():
+        return []
+    return patch_db.get_filenames_in_next_patch(filenames=filenames)
+
 def do_create_new_patch(name, descr):
     if patch_db.patch_is_in_series(name):
         return cmd_result.Result(cmd_result.ERROR|cmd_result.SUGGEST_RENAME, '', '{0}: Already exists in database'.format(name))
@@ -156,9 +166,16 @@ def do_push_next_patch(force=False):
         if result.ecode:
             msg += result.stdout + result.stderr
     console.LOG.append_stdout('Patch "{0}" is now on top\n'.format(patch_db.get_top_patch_name()))
+    if highest_ecode > 1:
+        eflags = cmd_result.ERROR
+        msg = 'A refresh is required after issues are resolved.\n'
+    elif highest_ecode > 0:
+        eflags = cmd_result.WARNING
+        msg = 'A refresh is required.\n'
+    console.LOG.append_stderr(msg)
     console.LOG.end_cmd()
     ws_event.notify_events(ws_event.PATCH_PUSH)
-    return cmd_result.Result(cmd_result.ERROR if highest_ecode > 0 else cmd_result.OK, '', msg)
+    return cmd_result.Result(eflags, '', msg)
 
 def do_pop_top_patch():
     if patch_db.top_patch_needs_refresh():

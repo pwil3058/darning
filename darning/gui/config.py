@@ -410,7 +410,7 @@ AUTO_UPDATE = gutils.RefreshController(
         tooltip='Enable/disable automatic updating of displayed data',
         stock_id=gtk.STOCK_REFRESH
     ),
-    function=auto_update_cb, is_on=True, interval=10000
+    function=auto_update_cb, is_on=True, interval=20000
 )
 
 actions.add_class_indep_actions(actions.Condns.DONT_CARE,
