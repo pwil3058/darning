@@ -43,8 +43,8 @@ def do_initialization(description):
     '''Create a patch database in the current directory'''
     console.LOG.start_cmd('initialize {0}\n"{1}"'.format(os.getcwd(), description))
     result = patch_db.create_db(description)
-    console.LOG.append_stdout(result.stdout)
-    console.LOG.append_stderr(result.stderr)
+    if not result:
+        console.LOG.append_stderr(str(result))
     console.LOG.end_cmd()
     return result
 
