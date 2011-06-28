@@ -279,3 +279,23 @@ def report_any_problems(result, parent=None):
     else:
         problem_type = gtk.MESSAGE_ERROR
     inform_user('\n'.join(result[1:]), parent, problem_type)
+
+class CancelOKDialog(Dialog):
+    def __init__(self, title=None, parent=None):
+        flags = gtk.DIALOG_MODAL|gtk.DIALOG_DESTROY_WITH_PARENT
+        buttons = (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OK, gtk.RESPONSE_OK)
+        Dialog.__init__(self, title, parent, flags, buttons)
+
+class ReadTextDialog(CancelOKDialog):
+    def __init__(self, title=None, prompt=None, suggestion="", parent=None):
+        CancelOKDialog.__init__(self, title, parent) 
+        self.hbox = gtk.HBox()
+        self.vbox.add(self.hbox)
+        self.hbox.show()
+        if prompt:
+            self.hbox.pack_start(gtk.Label(prompt), fill=False, expand=False)
+        self.entry = gtk.Entry()
+        self.entry.set_width_chars(32)
+        self.entry.set_text(suggestion)
+        self.hbox.pack_start(self.entry)
+        self.show_all()

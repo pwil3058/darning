@@ -134,6 +134,7 @@ class PatchTable(object):
 
 class PatchData:
     '''Store data for changes to a number of files as a single patch'''
+    Guards = collections.namedtuple('Guards', ['positive', 'negative'])
     def __init__(self, name, description):
         self.name = name
         self.description = description if description is not None else ''
@@ -697,6 +698,7 @@ class DataBase:
         index = 0 if top is None else top + 1
         while index < len(self.series):
             if self.series[index].is_blocked_by_guard():
+                index += 1
                 continue
             return index
         return None
@@ -1066,3 +1068,23 @@ def get_patch_table_data():
 def get_selected_guards():
     assert is_readable()
     return _DB.selected_guards
+
+def get_patch_guards(name):
+    assert is_readable()
+    patch_index = get_patch_series_index(name)
+    assert patch_index is not None
+    patch_data = _DB.series[patch_index]
+    return PatchData.Guards(positive=patch_data.pos_guards, negative=patch_data.neg_guards)
+
+def do_set_patch_guards(name, guards):
+    assert is_writable()
+    patch_index = get_patch_series_index(name)
+    assert patch_index is not None
+    _DB.series[patch_index].pos_guards = set(guards.positive)
+    _DB.series[patch_index].neg_guards = set(guards.negative)
+    dump_db()
+
+def do_select_guards(guards):
+    assert is_writable()
+    _DB.selected_guards = set(guards)
+    dump_db()

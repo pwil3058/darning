@@ -117,6 +117,12 @@ def get_filenames_in_next_patch(filenames=None):
         return []
     return patch_db.get_filenames_in_next_patch(filenames=filenames)
 
+def get_patch_guards(patch):
+    if not patch_db.is_readable():
+        return ''
+    guards = patch_db.get_patch_guards(patch)
+    return ['+' + grd for grd in guards.positive] + ['-' + grd for grd in guards.negative]
+
 def do_create_new_patch(name, descr):
     if patch_db.patch_is_in_series(name):
         return cmd_result.Result(cmd_result.ERROR|cmd_result.SUGGEST_RENAME, '', '{0}: Already exists in database'.format(name))
@@ -255,6 +261,29 @@ def do_set_patch_description(patch, text):
         return cmd_result.Result(cmd_result.ERROR, '', 'Database is not writable')
     patch_db.do_set_patch_description(patch, text)
     console.LOG.append_entry('set patch "{0}" description:\n"{1}"'.format(patch, text))
+    return cmd_result.Result(cmd_result.OK, '', '')
+
+def do_set_patch_guards(patch, guards_str):
+    if not patch_db.is_writable():
+        return cmd_result.Result(cmd_result.ERROR, '', 'Database is not writable')
+    guards_list = guards_str.split()
+    pos_guards = [grd[1:] for grd in guards_list if grd.startswith('+')]
+    neg_guards = [grd[1:] for grd in guards_list if grd.startswith('-')]
+    if len(guards_list) != (len(pos_guards) + len(neg_guards)):
+        return cmd_result.Result(cmd_result.ERROR, '', 'Guards must start with "+" or "-" and contain no whitespace.')
+    patch_db.do_set_patch_guards(patch, patch_db.PatchData.Guards(positive=pos_guards, negative=neg_guards))
+    ws_event.notify_events(ws_event.PATCH_MODIFY)
+    return cmd_result.Result(cmd_result.OK, '', '')
+
+def do_select_guards(guards_str):
+    if not patch_db.is_writable():
+        return cmd_result.Result(cmd_result.ERROR, '', 'Database is not writable')
+    guards_list = guards_str.split()
+    for guard in guards_list:
+        if guard.startswith('+') or guard.startswith('-'):
+            return cmd_result.Result(cmd_result.ERROR, '', 'Guard names may not start with "+" or "-".')
+    patch_db.do_select_guards(guards_list)
+    ws_event.notify_events(ws_event.PATCH_MODIFY)
     return cmd_result.Result(cmd_result.OK, '', '')
 
 def do_add_files_to_patch(file_list, patch=None, force=False):

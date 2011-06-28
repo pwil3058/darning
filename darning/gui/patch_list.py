@@ -109,6 +109,7 @@ class List(table.MapManagedTable):
         <separator/>
         <placeholder name="applied_indifferent">
           <menuitem action="pm_edit_patch_descr"/>
+          <menuitem action="pm_set_patch_guards"/>
         </placeholder>
         <separator/>
         <placeholder name="unapplied">
@@ -126,10 +127,10 @@ class List(table.MapManagedTable):
     def patch_markup(patch_data, selected_guards):
         markup = patch_data.name
         for guard in patch_data.pos_guards:
-            fmt_str = ' <b>+{0}</b>' if guard in selected_guards else '+{0}'
+            fmt_str = ' <b>+{0}</b>' if guard in selected_guards else ' +{0}'
             markup += fmt_str.format(guard)
         for guard in patch_data.neg_guards:
-            fmt_str = ' <b>-{0}</b>' if guard in selected_guards else '-{0}'
+            fmt_str = ' <b>-{0}</b>' if guard in selected_guards else ' -{0}'
             markup += fmt_str.format(guard)
         if patch_data.state == PatchState.UNAPPLIED:
             return '<span foreground="darkgrey" style="italic">' + markup + '</span>'
@@ -151,6 +152,8 @@ class List(table.MapManagedTable):
             [
                 ("pm_edit_patch_descr", gtk.STOCK_EDIT, "Description", None,
                  "Edit the selected patch's description", self.do_edit_description),
+                ("pm_set_patch_guards", icons.STOCK_PATCH_GUARD, None, None,
+                 "Set guards on the selected patch", self.do_set_guards),
             ])
         self.ui_manager.add_ui_from_string(self.UI_DESCR)
         self.header.lhs.pack_start(self.ui_manager.get_widget('/patch_list_menubar'), expand=True, fill=True)
@@ -188,6 +191,20 @@ class List(table.MapManagedTable):
     def do_edit_description(self, _action=None):
         patch = self.get_selected_patch()
         PatchDescrEditDialog(patch, parent=None).show()
+    def do_set_guards(self, _action=None):
+        patch = self.get_selected_patch()
+        cguards = ' '.join(ifce.PM.get_patch_guards(patch))
+        dialog = dialogue.ReadTextDialog("Set Guards: %s" % patch, "Guards:", cguards)
+        response = dialog.run()
+        if response == gtk.RESPONSE_OK:
+            guards = dialog.entry.get_text()
+            dialog.destroy()
+            self.show_busy()
+            result = ifce.PM.do_set_patch_guards(patch, guards)
+            self.unshow_busy()
+            dialogue.report_any_problems(result)
+        else:
+            dialog.destroy()
 
 class PatchDescrEditDialog(dialogue.Dialog):
     class Widget(text_edit.Widget):
@@ -386,6 +403,20 @@ def refresh_top_patch_acb(_arg):
     dialogue.unshow_busy()
     dialogue.report_any_problems(result)
 
+def select_guards_acb(_arg):
+    cselected_guards = ' '.join(ifce.PM.get_selected_guards())
+    dialog = dialogue.ReadTextDialog('Select Guards: {0}'.format(os.getcwd()), 'Guards:', cselected_guards)
+    response = dialog.run()
+    if response == gtk.RESPONSE_OK:
+        selected_guards = dialog.entry.get_text()
+        dialog.destroy()
+        dialogue.show_busy()
+        result = ifce.PM.do_select_guards(selected_guards)
+        dialogue.unshow_busy()
+        dialogue.report_any_problems(result)
+    else:
+        dialog.destroy()
+
 actions.add_class_indep_actions(actions.Condns.DONT_CARE,
     [
         ("config_new_playground", icons.STOCK_NEW_PLAYGROUND, "_New", "",
@@ -402,6 +433,8 @@ actions.add_class_indep_actions(Condns.IN_PGND,
     [
         ("patch_list_new_patch", icons.STOCK_NEW_PATCH, None, None,
          "Create a new patch", new_patch_acb),
+        ("patch_list_select_guards", icons.STOCK_PATCH_GUARD_SELECT, None, None,
+         "Select which guards are in force", select_guards_acb),
     ])
 
 actions.add_class_indep_actions(Condns.PUSH_POSSIBLE,
