@@ -158,7 +158,7 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
     def search_equal_func(model, column, key, model_iter, _data=None):
         text = model.fs_path(model_iter)
         return text.find(key) == -1
-    def __init__(self, show_hidden=False, populate_all=False, auto_expand=False, auto_refresh=False):
+    def __init__(self, show_hidden=False, populate_all=False, auto_expand=False):
         tlview.TreeView.__init__(self)
         self.set_search_equal_func(self.search_equal_func)
         actions.AGandUIManager.__init__(self, self.get_selection())
@@ -169,16 +169,6 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
         self.show_hidden_action.set_menu_item_type(gtk.CheckMenuItem)
         self.show_hidden_action.set_tool_item_type(gtk.ToggleToolButton)
         self.add_conditional_action(actions.Condns.DONT_CARE, self.show_hidden_action)
-        self.auto_refresh = gutils.RefreshController(
-            toggle_data=gutils.RefreshController.ToggleData(
-                name='auto_refresh_files',
-                label='Auto Refresh Files',
-                tooltip='Automatically/periodically refresh file display',
-                stock_id=gtk.STOCK_REFRESH
-            ),
-            function=self.update, is_on=auto_refresh
-        )
-        self.add_conditional_action(actions.Condns.DONT_CARE, self.auto_refresh.toggle_action)
         self.add_conditional_actions(actions.Condns.DONT_CARE,
             [
                 ('refresh_files', gtk.STOCK_REFRESH, '_Refresh Files', None,
@@ -324,7 +314,6 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
           <menubar name="scm_files_menubar">
             <menu name="scm_files_menu" action="scm_files_menu_files">
               <menuitem action="refresh_files"/>
-              <menuitem action="auto_refresh_files"/>
             </menu>
           </menubar>
           <popup name="files_popup">
@@ -363,11 +352,11 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
                 foreground=deco.foreground
             )
             return row
-        def __init__(self, auto_refresh=False, hide_clean=False):
+        def __init__(self, hide_clean=False):
             self.hide_clean_action = gtk.ToggleAction('hide_clean_files', 'Hide Clean Files',
                                                        'Show/hide "clean" files', None)
             self.hide_clean_action.set_active(hide_clean)
-            Tree.__init__(self, show_hidden=False, populate_all=False, auto_expand=False, auto_refresh=auto_refresh)
+            Tree.__init__(self, show_hidden=False, populate_all=False, auto_expand=False)
             self.hide_clean_action.connect('toggled', self._toggle_hide_clean_cb)
             self.hide_clean_action.set_menu_item_type(gtk.CheckMenuItem)
             self.hide_clean_action.set_tool_item_type(gtk.ToggleToolButton)
@@ -385,7 +374,7 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
                 ])
             self.ui_manager.add_ui_from_string(self.UI_DESCR)
             self.add_notification_cb(ws_event.CHECKOUT|ws_event.CHANGE_WD, self.repopulate)
-            self.add_notification_cb(ws_event.FILE_CHANGES, self.update)
+            self.add_notification_cb(ws_event.FILE_CHANGES|ws_event.AUTO_UPDATE, self.update)
         def _toggle_hide_clean_cb(self, toggleaction):
             dialogue.show_busy()
             self._update_dir('', None)
@@ -434,13 +423,13 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
                 return
             if self._add_files_to_top_patch(file_list):
                 text_edit.edit_files_extern(file_list)
-    def __init__(self, auto_refresh=False, hide_clean=False):
+    def __init__(self, hide_clean=False):
         gtk.VBox.__init__(self)
         ws_event.Listener.__init__(self)
         hbox = gtk.HBox()
         name = ifce.SCM.get_name()
         self.scm_label = gtk.Label('' if not name else (name + ':'))
-        self.tree = self.ScmTree(auto_refresh=auto_refresh, hide_clean=hide_clean)
+        self.tree = self.ScmTree(hide_clean=hide_clean)
         hbox.pack_start(self.scm_label, expand=False, fill=False)
         hbox.pack_start(self.tree.ui_manager.get_widget('/scm_files_menubar'), expand=True, fill=True)
         self.pack_start(hbox, expand=False, fill=False)
@@ -484,24 +473,24 @@ class PatchFileTreeWidget(gtk.VBox):
                 foreground=deco.foreground
             )
             return row
-        def __init__(self, patch=None, auto_refresh=True):
+        def __init__(self, patch=None):
             self.patch = patch
-            Tree.__init__(self, show_hidden=True, populate_all=True, auto_expand=True, auto_refresh=auto_refresh)
+            Tree.__init__(self, show_hidden=True, populate_all=True, auto_expand=True)
             self.add_conditional_actions(actions.Condns.IN_PGND + actions.Condns.PMIC + actions.Condns.SELN,
                 [
                     ('patch_edit_files', gtk.STOCK_EDIT, '_Edit', None,
                      'Edit the selected file(s)', self.edit_selected_files_acb),
                 ])
             self.add_notification_cb(ws_event.CHECKOUT|ws_event.CHANGE_WD|ws_event.PATCH_PUSH|ws_event.PATCH_POP, self.repopulate)
-            self.add_notification_cb(ws_event.FILE_CHANGES|ws_event.PATCH_REFRESH, self.update)
+            self.add_notification_cb(ws_event.FILE_CHANGES|ws_event.PATCH_REFRESH|ws_event.AUTO_UPDATE, self.update)
         def _get_file_db(self):
             return ifce.PM.get_file_db(self.patch)
         def edit_selected_files_acb(self, _menu_item):
             file_list = self.get_expanded_file_list(self.get_selected_files())
             text_edit.edit_files_extern(file_list)
-    def __init__(self, patch=None, auto_refresh=True):
+    def __init__(self, patch=None):
         gtk.VBox.__init__(self)
-        self.tree = self.PatchFileTree(patch=patch, auto_refresh=auto_refresh)
+        self.tree = self.PatchFileTree(patch=patch)
         self.pack_start(gutils.wrap_in_scrolled_window(self.tree), expand=True, fill=True)
         self.show_all()
 
@@ -528,9 +517,9 @@ class TopPatchFileTreeWidget(PatchFileTreeWidget):
           </popup>
         </ui>
         '''
-        def __init__(self, patch=None, auto_refresh=True):
+        def __init__(self, patch=None):
             assert patch is None
-            PatchFileTreeWidget.PatchFileTree.__init__(self, patch=None, auto_refresh=auto_refresh)
+            PatchFileTreeWidget.PatchFileTree.__init__(self, patch=None)
             self.add_conditional_actions(actions.Condns.IN_PGND + actions.Condns.PMIC + actions.Condns.SELN,
                 [
                     ('top_patch_drop_selected_files', gtk.STOCK_REMOVE, '_Drop', None,
@@ -548,9 +537,9 @@ class TopPatchFileTreeWidget(PatchFileTreeWidget):
             result = ifce.PM.do_drop_files_from_patch(file_list, self.patch)
             dialogue.unshow_busy()
             dialogue.report_any_problems(result)
-    def __init__(self, patch=None, auto_refresh=True):
+    def __init__(self, patch=None):
         assert patch is None
-        PatchFileTreeWidget.__init__(self, patch=None, auto_refresh=auto_refresh)
+        PatchFileTreeWidget.__init__(self, patch=None)
 
 class CombinedPatchFileTreeWidget(PatchFileTreeWidget):
     class PatchFileTree(PatchFileTreeWidget.PatchFileTree):
@@ -576,7 +565,7 @@ class CombinedPatchFileTreeWidget(PatchFileTreeWidget):
         '''
         def _get_file_db(self):
             return ifce.PM.get_combined_patch_file_db()
-        def __init__(self, patch=None, auto_refresh=True):
+        def __init__(self, patch=None):
             assert patch is None
-            PatchFileTreeWidget.PatchFileTree.__init__(self, patch=None, auto_refresh=auto_refresh)
+            PatchFileTreeWidget.PatchFileTree.__init__(self, patch=None)
             self.ui_manager.add_ui_from_string(self.UI_DESCR)

@@ -28,6 +28,7 @@ from darning.gui import table
 from darning.gui import actions
 from darning.gui import ifce
 from darning.gui import icons
+from darning.gui import ws_event
 
 CONFIG_DIR_NAME = os.sep.join([utils.HOME, ".darning.d"])
 SAVED_PGND_FILE_NAME = os.sep.join([CONFIG_DIR_NAME, "playgrounds"])
@@ -399,6 +400,19 @@ def change_pgnd_acb(_arg):
             open_dialog.report_any_problems(result)
     open_dialog.destroy()
 
+def auto_update_cb(_arg=None):
+    ws_event.notify_events(ws_event.AUTO_UPDATE)
+
+AUTO_UPDATE = gutils.RefreshController(
+    toggle_data=gutils.RefreshController.ToggleData(
+        name='config_auto_update',
+        label='Auto Update',
+        tooltip='Enable/disable automatic updating of displayed data',
+        stock_id=gtk.STOCK_REFRESH
+    ),
+    function=auto_update_cb, is_on=True, interval=10000
+)
+
 actions.add_class_indep_actions(actions.Condns.DONT_CARE,
     [
         ("config_menu", None, "_Configuration"),
@@ -407,3 +421,5 @@ actions.add_class_indep_actions(actions.Condns.DONT_CARE,
         ("config_allocate_editors", gtk.STOCK_PREFERENCES, "_Editor Allocation", "",
          "Allocate editors to file types", editor_allocation_acb),
     ])
+
+actions.add_class_indep_action(actions.Condns.DONT_CARE, AUTO_UPDATE.toggle_action)

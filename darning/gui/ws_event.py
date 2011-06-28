@@ -22,7 +22,8 @@ to update their displayed/cached data
 
 import gobject
 
-_NFLAGS = 16
+_NFLAGS = 17
+AUTO_UPDATE, \
 FILE_ADD, \
 FILE_DEL, \
 FILE_MOD, \

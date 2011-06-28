@@ -29,7 +29,6 @@ from darning.gui import table
 from darning.gui import icons
 from darning.gui import dialogue
 from darning.gui import text_edit
-from darning.gui import gutils
 
 class Condns(actions.Condns):
     _NEXTRACONDS = 3
@@ -102,8 +101,6 @@ class List(table.MapManagedTable):
       <menubar name="patch_list_menubar">
         <menu name="patch_list_menu" action="menu_patch_list">
           <menuitem action="pm_refresh_patch_list"/>
-          <separator/>
-          <menuitem action="pm_auto_refresh_patch_list"/>
         </menu>
       </menubar>
       <popup name="patches_popup">
@@ -144,17 +141,7 @@ class List(table.MapManagedTable):
                                        scroll_bar=True,
                                        busy_indicator=busy_indicator,
                                        size_req=None)
-        self.auto_refresh = gutils.RefreshController(
-            toggle_data=gutils.RefreshController.ToggleData(
-                name='pm_auto_refresh_patch_list',
-                label='Auto Update',
-                tooltip='Enable/disable automatic updating of the patch list',
-                stock_id=gtk.STOCK_REFRESH
-            ),
-            function=self.refresh_contents, is_on=True, interval=10000
-        )
         self.add_conditional_action(Condns.DONT_CARE, gtk.Action("menu_patch_list", "Patch _List", None, None))
-        self.add_conditional_action(Condns.DONT_CARE, self.auto_refresh.toggle_action)
         self.add_conditional_actions(Condns.IN_PGND,
             [
                 ("pm_refresh_patch_list", gtk.STOCK_REFRESH, "Update Patch List", None,
@@ -169,7 +156,7 @@ class List(table.MapManagedTable):
         self.header.lhs.pack_start(self.ui_manager.get_widget('/patch_list_menubar'), expand=True, fill=True)
         self.seln.connect("changed", self._selection_changed_cb)
         self.add_notification_cb(ws_event.CHANGE_WD, self._repopulate_list_cb)
-        self.add_notification_cb(ws_event.PATCH_CHANGES, self._update_list_cb)
+        self.add_notification_cb(ws_event.PATCH_CHANGES|ws_event.AUTO_UPDATE, self._update_list_cb)
         self.repopulate_list()
     def _selection_changed_cb(self, selection):
         self.set_sensitivity_for_condns(MaskedCondns.get_applied_condns(self.seln))
