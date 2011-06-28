@@ -67,7 +67,7 @@ class AliasPathTable(table.Table):
                 abbr_path = cls._abbrev_path(path)
                 if not alias:
                     alias = os.path.basename(path)
-                content.append(cls.model.Row(Path=abbr_path, Alias=alias))
+                content.append(cls.View.Model.Row(Path=abbr_path, Alias=alias))
                 modified = True
             if modified:
                 cls._write_list_to_file(content)
