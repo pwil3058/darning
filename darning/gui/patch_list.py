@@ -195,16 +195,20 @@ class List(table.MapManagedTable):
         patch = self.get_selected_patch()
         cguards = ' '.join(ifce.PM.get_patch_guards(patch))
         dialog = dialogue.ReadTextDialog("Set Guards: %s" % patch, "Guards:", cguards)
-        response = dialog.run()
-        if response == gtk.RESPONSE_OK:
-            guards = dialog.entry.get_text()
-            dialog.destroy()
-            self.show_busy()
-            result = ifce.PM.do_set_patch_guards(patch, guards)
-            self.unshow_busy()
-            dialogue.report_any_problems(result)
-        else:
-            dialog.destroy()
+        while True:
+            response = dialog.run()
+            if response == gtk.RESPONSE_OK:
+                guards = dialog.entry.get_text()
+                self.show_busy()
+                result = ifce.PM.do_set_patch_guards(patch, guards)
+                self.unshow_busy()
+                dialogue.report_any_problems(result)
+                if result.eflags & cmd_result.SUGGEST_EDIT:
+                    continue
+                dialog.destroy()
+            else:
+                dialog.destroy()
+            break
 
 class PatchDescrEditDialog(dialogue.Dialog):
     class Widget(text_edit.Widget):
@@ -406,16 +410,20 @@ def refresh_top_patch_acb(_arg):
 def select_guards_acb(_arg):
     cselected_guards = ' '.join(ifce.PM.get_selected_guards())
     dialog = dialogue.ReadTextDialog('Select Guards: {0}'.format(os.getcwd()), 'Guards:', cselected_guards)
-    response = dialog.run()
-    if response == gtk.RESPONSE_OK:
-        selected_guards = dialog.entry.get_text()
-        dialog.destroy()
-        dialogue.show_busy()
-        result = ifce.PM.do_select_guards(selected_guards)
-        dialogue.unshow_busy()
-        dialogue.report_any_problems(result)
-    else:
-        dialog.destroy()
+    while True:
+        response = dialog.run()
+        if response == gtk.RESPONSE_OK:
+            selected_guards = dialog.entry.get_text()
+            dialogue.show_busy()
+            result = ifce.PM.do_select_guards(selected_guards)
+            dialogue.unshow_busy()
+            dialogue.report_any_problems(result)
+            if result.eflags & cmd_result.SUGGEST_EDIT:
+                continue
+            dialog.destroy()
+        else:
+            dialog.destroy()
+        break
 
 actions.add_class_indep_actions(actions.Condns.DONT_CARE,
     [

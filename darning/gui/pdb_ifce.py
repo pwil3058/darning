@@ -270,7 +270,7 @@ def do_set_patch_guards(patch, guards_str):
     pos_guards = [grd[1:] for grd in guards_list if grd.startswith('+')]
     neg_guards = [grd[1:] for grd in guards_list if grd.startswith('-')]
     if len(guards_list) != (len(pos_guards) + len(neg_guards)):
-        return cmd_result.Result(cmd_result.ERROR, '', 'Guards must start with "+" or "-" and contain no whitespace.')
+        return cmd_result.Result(cmd_result.ERROR|cmd_result.SUGGEST_EDIT, '', 'Guards must start with "+" or "-" and contain no whitespace.')
     patch_db.do_set_patch_guards(patch, patch_db.PatchData.Guards(positive=pos_guards, negative=neg_guards))
     ws_event.notify_events(ws_event.PATCH_MODIFY)
     return cmd_result.Result(cmd_result.OK, '', '')
@@ -281,7 +281,7 @@ def do_select_guards(guards_str):
     guards_list = guards_str.split()
     for guard in guards_list:
         if guard.startswith('+') or guard.startswith('-'):
-            return cmd_result.Result(cmd_result.ERROR, '', 'Guard names may not start with "+" or "-".')
+            return cmd_result.Result(cmd_result.ERROR|cmd_result.SUGGEST_EDIT, '', 'Guard names may not start with "+" or "-".')
     patch_db.do_select_guards(guards_list)
     ws_event.notify_events(ws_event.PATCH_MODIFY)
     return cmd_result.Result(cmd_result.OK, '', '')
