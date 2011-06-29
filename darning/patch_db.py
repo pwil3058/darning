@@ -59,7 +59,7 @@ class FileData:
     MERGE_CRE = re.compile('^(<<<<<<<|>>>>>>>).*$')
     def __init__(self, name):
         self.name = name
-        self.diff = ''
+        self.diff = None
         try:
             fstat = os.stat(name)
             self.old_mode = fstat.st_mode
@@ -214,7 +214,7 @@ class PatchData:
                 elif os.path.exists(file_data.name):
                     os.remove(file_data.name)
             elif file_data.diff:
-                result = runext.run_cmd(patch_cmd + [file_data.name], file_data.diff)
+                result = runext.run_cmd(patch_cmd + [file_data.name], str(file_data.diff))
                 patch_ok = result.ecode == 0
             file_exists = os.path.exists(file_data.name)
             if file_exists:
@@ -259,7 +259,7 @@ class PatchData:
                 fobj.write('')
         if file_data.diff:
             patch_cmd = ['patch', '--merge', '--force', '-p1', '--batch', target_name]
-            runext.run_cmd(patch_cmd, file_data.diff)
+            runext.run_cmd(patch_cmd, str(file_data.diff))
     def do_back_up_file(self, filename, force):
         '''Back up the named file for this patch'''
         # "force" argument is supplied to allow shortcutting SCM check
@@ -327,7 +327,7 @@ class PatchData:
                 file_data.new_mode = stat_data.st_mode
                 file_data.timestamp = stat_data.st_mtime
                 if result.ecode < 2:
-                    file_data.diff = result.stdout
+                    file_data.diff = None if not result.stdout else patchlib.Diff.parse_text(result.stdout)
                     file_data.binary = False
                 else:
                     file_data.diff = None
@@ -348,13 +348,13 @@ class PatchData:
                 file_data.new_mode = None
                 file_data.timestamp = 0
                 if result.ecode < 2:
-                    file_data.diff = result.stdout
+                    file_data.diff = None if not result.stdout else patchlib.Diff.parse_text(result.stdout)
                     file_data.binary = False
                 else:
                     file_data.diff = None
                     file_data.binary = True
         else:
-            file_data.diff = ''
+            file_data.diff = None
             file_data.new_mode = None
             file_data.timestamp = 0
             file_data.scm_revision = scm_ifce.get_revision(filename=file_data.name)
@@ -542,7 +542,7 @@ class DataBase:
         for diff_plus in epatch.diff_pluses:
             path = diff_plus.get_file_path(epatch.num_strip_levels)
             patch.do_add_file(path)
-            patch.files[path].diff = str(diff_plus.diff)
+            patch.files[path].diff = diff_plus.diff
             for preamble in diff_plus.preambles:
                 if preamble.preamble_type == 'git':
                     for key in ['new mode', 'new file mode']:
