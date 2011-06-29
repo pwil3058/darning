@@ -26,6 +26,7 @@ import shutil
 import atexit
 import time
 import re
+import difflib
 
 from darning import scm_ifce
 from darning import runext
@@ -291,68 +292,79 @@ class PatchData:
             self.files[filename].old_mode = old_mode
         else:
             self.files[filename].old_mode = None
+    def generate_diff_for_file(self, filename):
+        assert is_readable()
+        assert filename in self.files
+        assert self.is_applied()
+        olp = self.get_overlapping_patch_for_file(filename)
+        to_file = filename if olp is None else olp.get_backup_file_name(filename)
+        fm_file = self.get_backup_file_name(filename)
+        fm_exists = os.path.exists(fm_file)
+        if os.path.exists(to_file):
+            to_name_label = os.path.join('b' if fm_exists else 'a', filename)
+            to_time_stamp = _pts_for_path(to_file)
+            with open(to_file) as fobj:
+                to_contents = fobj.read()
+        else:
+            to_name_label = '/dev/null'
+            to_time_stamp = _PTS_ZERO
+            to_contents = ''
+        if fm_exists:
+            fm_name_label = os.path.join('a', filename)
+            fm_time_stamp = _pts_for_path(fm_file)
+            with open(fm_file) as fobj:
+                fm_contents = fobj.read()
+        else:
+            fm_name_label = '/dev/null'
+            fm_time_stamp = _PTS_ZERO
+            fm_contents = ''
+        if to_contents == fm_contents:
+            return runext.Result(0, '', '')
+        if to_contents.find('\000') != -1 or fm_contents.find('\000') != -1:
+            return runext.Result(2, 'Binary files "{0}" and "{1}" differ.\n'.format(fm_name_label, to_name_label), '')
+        diff_text = difflib.unified_diff(fm_contents.splitlines(True), to_contents.splitlines(True),
+            fromfile=fm_name_label, tofile=to_name_label, fromfiledate=fm_time_stamp, tofiledate=to_time_stamp)
+        return runext.Result(1, diff_text, '')
     def do_refresh_file(self, filename):
         '''Refresh the named file in this patch'''
         assert is_writable()
         assert filename in self.files
         assert self.is_applied()
         assert self.get_overlapping_patch_for_file(filename) is None
-        def do_diff(labels, operands):
-            return runext.run_cmd(['diff', '-u', '--binary', '-p'] + labels + operands)
-        bu_f_name = os.path.join(_BACKUPS_DIR, self.name, filename)
         file_data = self.files[filename]
-        if os.path.exists(filename):
-            # Do a check for unresolved merges here
-            if file_data.has_unresolved_merges():
-                # ensure this file shows up as needing refresh
-                file_data.timestamp = -1
-                dump_db()
-                return runext.Result(3, '', 'File has unresolved merge(s).\n')
-            if os.path.exists(bu_f_name):
-                labels = ['--label={0} {1}'.format(os.path.join('a', filename), _pts_for_path(bu_f_name))]
-                operands = [bu_f_name, filename]
+        # Do a check for unresolved merges here
+        if file_data.has_unresolved_merges():
+            # ensure this file shows up as needing refresh
+            file_data.timestamp = -1
+            dump_db()
+            return runext.Result(3, '', 'File has unresolved merge(s).\n')
+        f_exists = os.path.exists(filename)
+        if f_exists or os.path.exists(self.get_backup_file_name(filename)):
+            result = self.generate_diff_for_file(filename)
+            if result.ecode == 0:
+                file_data.diff = None
+                file_data.binary = False
+            elif result.ecode == 1:
+                file_data.diff = patchlib.Diff.parse_text(result.stdout)
+                file_data.binary = False
+            elif result.ecode == 2:
+                file_data.diff = None
+                file_data.binary = open(filename, 'rb').read() if f_exists else True
             else:
-                labels = ['--label=/dev/null {0}'.format(_PTS_ZERO)]
-                operands = ['/dev/null', filename]
-            labels.append('--label={0} {1}'.format(os.path.join('b', filename), _pts_for_path(filename)))
-            result = do_diff(labels, operands)
-            if result.stderr:
-                assert result.ecode > 1
-                # ensure this file shows up as needing refresh
-                file_data.timestamp = -1
-                if result.ecode <= 2:
-                    result = runext.Result(3, result.stdout, result.stderr)
-            else:
+                assert False
+            if f_exists:
                 stat_data = os.stat(filename)
                 file_data.new_mode = stat_data.st_mode
                 file_data.timestamp = stat_data.st_mtime
-                if result.ecode < 2:
-                    file_data.diff = None if not result.stdout else patchlib.Diff.parse_text(result.stdout)
-                    file_data.binary = False
-                else:
-                    file_data.diff = None
-                    file_data.binary = open(filename, 'rb').read()
-        elif os.path.exists(bu_f_name):
-            labels = ['--label={0} {1}'.format(os.path.join('a', filename), _pts_for_path(bu_f_name)),
-                '--label=/dev/null {0}'.format(_PTS_ZERO)]
-            operands = [bu_f_name, '/dev/null']
-            result = do_diff(labels, operands)
+            else:
+                file_data.new_mode = None
+                file_data.timestamp = 0
             if result.stderr:
                 assert result.ecode > 1
-                file_data.new_mode = None
                 # ensure this file shows up as needing refresh
                 file_data.timestamp = -1
                 if result.ecode <= 2:
                     result = runext.Result(3, result.stdout, result.stderr)
-            else:
-                file_data.new_mode = None
-                file_data.timestamp = 0
-                if result.ecode < 2:
-                    file_data.diff = None if not result.stdout else patchlib.Diff.parse_text(result.stdout)
-                    file_data.binary = False
-                else:
-                    file_data.diff = None
-                    file_data.binary = True
         else:
             file_data.diff = None
             file_data.new_mode = None
