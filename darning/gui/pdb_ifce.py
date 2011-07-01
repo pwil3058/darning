@@ -117,11 +117,21 @@ def get_filenames_in_next_patch(filenames=None):
         return []
     return patch_db.get_filenames_in_next_patch(filenames=filenames)
 
+def get_file_diff(filename, patchname):
+    if not patch_db.is_readable():
+        return None
+    return patch_db.get_file_diff(filename, patchname)
+
 def get_patch_guards(patch):
     if not patch_db.is_readable():
         return ''
     guards = patch_db.get_patch_guards(patch)
     return ['+' + grd for grd in guards.positive] + ['-' + grd for grd in guards.negative]
+
+def get_top_applied_patch_for_file(filename):
+    if not patch_db.is_readable():
+        return None
+    return patch_db.get_top_applied_patch_for_file(filename)
 
 def do_create_new_patch(name, descr):
     if patch_db.patch_is_in_series(name):

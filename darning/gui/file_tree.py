@@ -30,6 +30,7 @@ from darning.gui import dialogue
 from darning.gui import ws_event
 from darning.gui import icons
 from darning.gui import text_edit
+from darning.gui import diff
 
 class Tree(tlview.TreeView, actions.AGandUIManager):
     class Model(tlview.TreeView.Model):
@@ -481,13 +482,23 @@ class PatchFileTreeWidget(gtk.VBox):
                     ('patch_edit_files', gtk.STOCK_EDIT, '_Edit', None,
                      'Edit the selected file(s)', self.edit_selected_files_acb),
                 ])
+            self.add_conditional_actions(actions.Condns.IN_PGND + actions.Condns.PMIC + actions.Condns.UNIQUE_SELN,
+                [
+                    ('patch_diff_selected_file', icons.STOCK_DIFF, '_Diff', None,
+                     'Display the diff for selected file', self.diff_selected_file_acb),
+                ])
             self.add_notification_cb(ws_event.CHECKOUT|ws_event.CHANGE_WD|ws_event.PATCH_PUSH|ws_event.PATCH_POP, self.repopulate)
             self.add_notification_cb(ws_event.FILE_CHANGES|ws_event.PATCH_REFRESH|ws_event.AUTO_UPDATE, self.update)
         def _get_file_db(self):
             return ifce.PM.get_file_db(self.patch)
-        def edit_selected_files_acb(self, _menu_item):
+        def edit_selected_files_acb(self, _action):
             file_list = self.get_expanded_file_list(self.get_selected_files())
             text_edit.edit_files_extern(file_list)
+        def diff_selected_file_acb(self, _action):
+            filenames = self.get_selected_files()
+            assert len(filenames) == 1
+            dialog = diff.ForFileDialog(filename=filenames[0], patchname=self.patch)
+            dialog.show()
     def __init__(self, patch=None):
         gtk.VBox.__init__(self)
         self.tree = self.PatchFileTree(patch=patch)
@@ -509,6 +520,7 @@ class TopPatchFileTreeWidget(PatchFileTreeWidget):
             <placeholder name="selection_not_patched"/>
             <separator/>
             <placeholder name="unique_selection"/>
+              <menuitem action='patch_diff_selected_file'/>
             <separator/>
             <placeholder name="no_selection"/>
             <separator/>
@@ -555,6 +567,7 @@ class CombinedPatchFileTreeWidget(PatchFileTreeWidget):
             <placeholder name="selection_not_patched"/>
             <separator/>
             <placeholder name="unique_selection"/>
+              <menuitem action='patch_diff_selected_file'/>
             <separator/>
             <placeholder name="no_selection"/>
             <separator/>

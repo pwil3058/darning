@@ -322,9 +322,15 @@ class PatchData:
             return runext.Result(0, '', '')
         if to_contents.find('\000') != -1 or fm_contents.find('\000') != -1:
             return runext.Result(2, 'Binary files "{0}" and "{1}" differ.\n'.format(fm_name_label, to_name_label), '')
-        diff_text = difflib.unified_diff(fm_contents.splitlines(True), to_contents.splitlines(True),
+        diffgen = difflib.unified_diff(fm_contents.splitlines(True), to_contents.splitlines(True),
             fromfile=fm_name_label, tofile=to_name_label, fromfiledate=fm_time_stamp, tofiledate=to_time_stamp)
+        diff_text = ''.join([line for line in diffgen])
         return runext.Result(1, diff_text, '')
+    def get_diff_for_file(self, filename):
+        result = self.generate_diff_for_file(filename)
+        if result.ecode == 1:
+            return patchlib.Diff.parse_text(result.stdout)
+        return None
     def do_refresh_file(self, filename):
         '''Refresh the named file in this patch'''
         assert is_writable()
@@ -946,6 +952,12 @@ def get_patch_overlap_data(name):
     assert patch_index is not None
     return _DB.get_overlap_data(_DB.series[patch_index].get_filenames())
 
+def get_file_diff(filename, patchname):
+    assert is_readable()
+    patch_index = get_patch_series_index(patchname)
+    assert patch_index is not None
+    return _DB.series[patch_index].get_diff_for_file(filename)
+
 def get_filelist_overlap_data(filenames, patchname=None):
     '''
     Get the data detailing unrefreshed/uncommitted files that will be
@@ -974,6 +986,14 @@ def apply_patch(force=False):
     if next_index is None:
         return (False, 'There are no pushable patches available')
     return (True, _DB.series[next_index].do_apply(force))
+
+def get_top_applied_patch_for_file(filename):
+    assert is_readable()
+    applied_patches = get_applied_patch_list()
+    for applied_patch in reversed(applied_patches):
+        if filename in applied_patch.files:
+            return applied_patch.name
+    return None
 
 def get_top_patch_name():
     '''Return the name of the top applied patch'''
