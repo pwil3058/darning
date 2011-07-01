@@ -541,7 +541,7 @@ class Diff(object):
         diff, index = Diff.get_diff_at(lines, 0, raise_if_malformed=True)
         if not diff or index < len(lines):
             raise ParseError('Not a valid diff.')
-        return plus
+        return diff
     @staticmethod
     def parse_text(text):
         '''Parse text and return a valid DiffPlus or raise exception'''
