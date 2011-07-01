@@ -492,6 +492,18 @@ class Preambles(list):
                 return expaths[key]
         return None
 
+class DiffHunk(_Lines):
+    def __init__(self, lines, before, after):
+        _Lines.__init__(self, lines)
+        self.before = before
+        self.after = after
+    def get_diffstat_stats(self):
+        return DiffStat.Stats()
+    def fix_trailing_whitespace(self):
+        return list()
+    def report_trailing_whitespace(self):
+        return list()
+
 class Diff(object):
     subtypes = list()
     @staticmethod
@@ -551,17 +563,6 @@ class Diff(object):
         self.diff_type = diff_type
         self.file_data = file_data
         self.hunks = list() if hunks is None else hunks
-    class Hunk(_Lines):
-        def __init__(self, lines, before, after):
-            _Lines.__init__(self, lines)
-            self.before = before
-            self.after = after
-        def get_diffstat_stats(self):
-            return DiffStat.Stats()
-        def fix_trailing_whitespace(self):
-            return list()
-        def report_trailing_whitespace(self):
-            return list()
     def __str__(self):
         return str(self.header) + ''.join([str(hunk) for hunk in self.hunks])
     def fix_trailing_whitespace(self):
@@ -595,6 +596,40 @@ class Diff(object):
             return FilePathPlus.fm_pair(self.file_data, strip)
         else:
             return None
+
+class UnifiedDiffHunk(DiffHunk):
+    def __init__(self, lines, before, after):
+        DiffHunk.__init__(self, lines, before, after)
+    def _process_tws(self, fix=False):
+        bad_lines = list()
+        after_count = 0
+        for index in range(len(self.lines)):
+            if self.lines[index].startswith('+'):
+                after_count += 1
+                repl_line = _trim_trailing_ws(self.lines[index])
+                if len(repl_line) != len(self.lines[index]):
+                    bad_lines.append(str(self.after.start + after_count - 1))
+                    if fix:
+                        self.lines[index] = repl_line
+            elif self.lines[index].startswith(' '):
+                after_count += 1
+            elif DEBUG and not self.lines[index].startswith('-'):
+                raise Bug('Unexpected end of unified diff hunk.')
+        return bad_lines
+    def get_diffstat_stats(self):
+        stats = DiffStat.Stats()
+        for index in range(len(self.lines)):
+            if self.lines[index].startswith('-'):
+                stats.incr('deleted')
+            elif self.lines[index].startswith('+'):
+                stats.incr('inserted')
+            elif DEBUG and not self.lines[index].startswith(' '):
+                raise Bug('Unexpected end of unified diff hunk.')
+        return stats
+    def fix_trailing_whitespace(self):
+        return self._process_tws(fix=True)
+    def report_trailing_whitespace(self):
+        return self._process_tws(fix=False)
 
 class UnifiedDiff(Diff):
     BEFORE_FILE_CRE = re.compile('^--- ({0})(\s+{1})?(.*)$'.format(_PATH_RE_STR, _EITHER_TS_RE_STR))
@@ -632,47 +667,52 @@ class UnifiedDiff(Diff):
             raise ParseError('Unexpected end of patch text.')
         before_chunk = _CHUNK(int(match.group(1)), before_length)
         after_chunk = _CHUNK(int(match.group(4)), after_length)
-        return (UnifiedDiff.Hunk(lines[start_index:index], before_chunk, after_chunk), index)
+        return (UnifiedDiffHunk(lines[start_index:index], before_chunk, after_chunk), index)
     @staticmethod
     def get_diff_at(lines, start_index, raise_if_malformed=False):
         return Diff._get_diff_at(UnifiedDiff, lines, start_index, raise_if_malformed)
     def __init__(self, lines, file_data, hunks):
         Diff.__init__(self, 'unified', lines, file_data, hunks)
-    class Hunk(Diff.Hunk):
-        def __init__(self, lines, before, after):
-            Diff.Hunk.__init__(self, lines, before, after)
-        def _process_tws(self, fix=False):
-            bad_lines = list()
-            after_count = 0
-            for index in range(len(self.lines)):
-                if self.lines[index].startswith('+'):
-                    after_count += 1
-                    repl_line = _trim_trailing_ws(self.lines[index])
-                    if len(repl_line) != len(self.lines[index]):
-                        bad_lines.append(str(self.after.start + after_count - 1))
-                        if fix:
-                            self.lines[index] = repl_line
-                elif self.lines[index].startswith(' '):
-                    after_count += 1
-                elif DEBUG and not self.lines[index].startswith('-'):
-                    raise Bug('Unexpected end of unified diff hunk.')
-            return bad_lines
-        def get_diffstat_stats(self):
-            stats = DiffStat.Stats()
-            for index in range(len(self.lines)):
-                if self.lines[index].startswith('-'):
-                    stats.incr('deleted')
-                elif self.lines[index].startswith('+'):
-                    stats.incr('inserted')
-                elif DEBUG and not self.lines[index].startswith(' '):
-                    raise Bug('Unexpected end of unified diff hunk.')
-            return stats
-        def fix_trailing_whitespace(self):
-            return self._process_tws(fix=True)
-        def report_trailing_whitespace(self):
-            return self._process_tws(fix=False)
 
 Diff.subtypes.append(UnifiedDiff)
+
+class ContextDiffHunk(DiffHunk):
+    def __init__(self, lines, before, after):
+        DiffHunk.__init__(self, lines, before, after)
+    def _process_tws(self, fix=False):
+        bad_lines = list()
+        for index in range(self.after.offset + 1, self.after.offset + self.after.numlines):
+            if self.lines[index].startswith('+ ') or self.lines[index].startswith('! '):
+                repl_line = self.lines[index][:2] + _trim_trailing_ws(self.lines[index][2:])
+                after_count = index - (self.after.offset + 1)
+                if len(repl_line) != len(self.lines[index]):
+                    bad_lines.append(str(self.after.start + after_count))
+                    if fix:
+                        self.lines[index] = repl_line
+            elif DEBUG and not self.lines[index].startswith('  '):
+                raise Bug('Unexpected end of context diff hunk.')
+        return bad_lines
+    def get_diffstat_stats(self):
+        stats = DiffStat.Stats()
+        for index in range(self.before.offset + 1, self.before.offset + self.before.numlines):
+            if self.lines[index].startswith('- '):
+                stats.incr('deleted')
+            elif self.lines[index].startswith('! '):
+                stats.incr('modified')
+            elif DEBUG and not self.lines[index].startswith('  '):
+                raise Bug('Unexpected end of context diff "before" hunk.')
+        for index in range(self.after.offset + 1, self.after.offset + self.after.numlines):
+            if self.lines[index].startswith('+ '):
+                stats.incr('inserted')
+            elif self.lines[index].startswith('! '):
+                stats.incr('modified')
+            elif DEBUG and not self.lines[index].startswith('  '):
+                raise Bug('Unexpected end of context diff "after" hunk.')
+        return stats
+    def fix_trailing_whitespace(self):
+        return self._process_tws(fix=True)
+    def report_trailing_whitespace(self):
+        return self._process_tws(fix=False)
 
 class ContextDiff(Diff):
     BEFORE_FILE_CRE = re.compile('^\*\*\* ({0})(\s+{1})?$'.format(_PATH_RE_STR, _EITHER_TS_RE_STR))
@@ -742,49 +782,12 @@ class ContextDiff(Diff):
             raise ParseError('Unexpected end of patch text.')
         before_hunk = _HUNK(before_start_index - start_index, before_chunk.start, before_chunk.length, after_start_index - before_start_index)
         after_hunk = _HUNK(after_start_index - start_index, after_chunk.start, after_chunk.length, index - after_start_index)
-        return (ContextDiff.Hunk(lines[start_index:index], before_hunk, after_hunk), index)
+        return (ContextDiffHunk(lines[start_index:index], before_hunk, after_hunk), index)
     @staticmethod
     def get_diff_at(lines, start_index, raise_if_malformed=False):
         return Diff._get_diff_at(ContextDiff, lines, start_index, raise_if_malformed)
     def __init__(self, lines, file_data, hunks):
         Diff.__init__(self, 'context', lines, file_data, hunks)
-    class Hunk(Diff.Hunk):
-        def __init__(self, lines, before, after):
-            Diff.Hunk.__init__(self, lines, before, after)
-        def _process_tws(self, fix=False):
-            bad_lines = list()
-            for index in range(self.after.offset + 1, self.after.offset + self.after.numlines):
-                if self.lines[index].startswith('+ ') or self.lines[index].startswith('! '):
-                    repl_line = self.lines[index][:2] + _trim_trailing_ws(self.lines[index][2:])
-                    after_count = index - (self.after.offset + 1)
-                    if len(repl_line) != len(self.lines[index]):
-                        bad_lines.append(str(self.after.start + after_count))
-                        if fix:
-                            self.lines[index] = repl_line
-                elif DEBUG and not self.lines[index].startswith('  '):
-                    raise Bug('Unexpected end of context diff hunk.')
-            return bad_lines
-        def get_diffstat_stats(self):
-            stats = DiffStat.Stats()
-            for index in range(self.before.offset + 1, self.before.offset + self.before.numlines):
-                if self.lines[index].startswith('- '):
-                    stats.incr('deleted')
-                elif self.lines[index].startswith('! '):
-                    stats.incr('modified')
-                elif DEBUG and not self.lines[index].startswith('  '):
-                    raise Bug('Unexpected end of context diff "before" hunk.')
-            for index in range(self.after.offset + 1, self.after.offset + self.after.numlines):
-                if self.lines[index].startswith('+ '):
-                    stats.incr('inserted')
-                elif self.lines[index].startswith('! '):
-                    stats.incr('modified')
-                elif DEBUG and not self.lines[index].startswith('  '):
-                    raise Bug('Unexpected end of context diff "after" hunk.')
-            return stats
-        def fix_trailing_whitespace(self):
-            return self._process_tws(fix=True)
-        def report_trailing_whitespace(self):
-            return self._process_tws(fix=False)
 
 Diff.subtypes.append(ContextDiff)
 
