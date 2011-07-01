@@ -48,6 +48,22 @@ class Failure:
     def __repr__(self):
         return 'Failure(%s)' % self.msg
 
+class BinaryDiff(patchlib.Diff):
+    def __init__(self, file_data):
+        Diff.__init__(self, 'binary', [], file_data, hunks=None)
+        if os.path.exists(file_data.after):
+            self.contents = open(file_data.after).read()
+        else:
+            self.contents = None
+    def __str__(self):
+        return 'Binary files "{0}" and "{1}" differ.\n'.format(self.file_data.before, self.file_data.after)
+    def fix_trailing_whitespace(self):
+        return []
+    def report_trailing_whitespace(self):
+        return []
+    def get_diffstat_stats(self):
+        return DiffStat.Stats()
+
 class FileData:
     '''Change data for a single file'''
     class Presence(object):
@@ -70,7 +86,9 @@ class FileData:
             self.timestamp = 0
         self.new_mode = self.old_mode
         self.scm_revision = None
-        self.binary = False
+    @property
+    def binary(self):
+        return isinstance(self.diff, BinaryDiff)
     def needs_refresh(self):
         '''Does this file need a refresh? (Given that it is not overshadowed.)'''
         if os.path.exists(self.name):
@@ -211,7 +229,7 @@ class PatchData:
             patch_ok = True
             if file_data.binary is not False:
                 if file_data.new_mode is not None:
-                    open(file_data.name, 'wb').write(file_data.binary)
+                    open(file_data.name, 'wb').write(file_data.diff.contents)
                 elif os.path.exists(file_data.name):
                     os.remove(file_data.name)
             elif file_data.diff:
@@ -319,18 +337,15 @@ class PatchData:
             fm_time_stamp = _PTS_ZERO
             fm_contents = ''
         if to_contents == fm_contents:
-            return runext.Result(0, '', '')
+            return None
         if to_contents.find('\000') != -1 or fm_contents.find('\000') != -1:
-            return runext.Result(2, 'Binary files "{0}" and "{1}" differ.\n'.format(fm_name_label, to_name_label), '')
+            return BinaryDiff(patchlib._PAIR(fm_name_label, to_name_label))
         diffgen = difflib.unified_diff(fm_contents.splitlines(True), to_contents.splitlines(True),
             fromfile=fm_name_label, tofile=to_name_label, fromfiledate=fm_time_stamp, tofiledate=to_time_stamp)
-        diff_text = ''.join([line for line in diffgen])
-        return runext.Result(1, diff_text, '')
+        return patchlib.Diff.parse_lines(list(diffgen))
     def get_diff_for_file(self, filename):
-        result = self.generate_diff_for_file(filename)
-        if result.ecode == 1:
-            return patchlib.Diff.parse_text(result.stdout)
-        return None
+        # TODO: add a git preamble
+        return self.generate_diff_for_file(filename)
     def do_refresh_file(self, filename):
         '''Refresh the named file in this patch'''
         assert is_writable()
@@ -346,18 +361,7 @@ class PatchData:
             return runext.Result(3, '', 'File has unresolved merge(s).\n')
         f_exists = os.path.exists(filename)
         if f_exists or os.path.exists(self.get_backup_file_name(filename)):
-            result = self.generate_diff_for_file(filename)
-            if result.ecode == 0:
-                file_data.diff = None
-                file_data.binary = False
-            elif result.ecode == 1:
-                file_data.diff = patchlib.Diff.parse_text(result.stdout)
-                file_data.binary = False
-            elif result.ecode == 2:
-                file_data.diff = None
-                file_data.binary = open(filename, 'rb').read() if f_exists else True
-            else:
-                assert False
+            file_data.diff = self.generate_diff_for_file(filename)
             if f_exists:
                 stat_data = os.stat(filename)
                 file_data.new_mode = stat_data.st_mode
@@ -365,12 +369,7 @@ class PatchData:
             else:
                 file_data.new_mode = None
                 file_data.timestamp = 0
-            if result.stderr:
-                assert result.ecode > 1
-                # ensure this file shows up as needing refresh
-                file_data.timestamp = -1
-                if result.ecode <= 2:
-                    result = runext.Result(3, result.stdout, result.stderr)
+            result = runext.Result(0, str(file_data.diff), '')
         else:
             file_data.diff = None
             file_data.new_mode = None
