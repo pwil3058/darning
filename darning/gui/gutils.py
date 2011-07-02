@@ -66,7 +66,7 @@ class RadioButtonFramedVBox(gtk.Frame):
                 return index
         return None
 
-class PopupUser:
+class PopupUser(object):
     def __init__(self):
         self._gtk_window = None
     def _get_gtk_window(self):

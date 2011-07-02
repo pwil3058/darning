@@ -106,7 +106,6 @@ class TextWidget(gtk.VBox):
         self.tws_index = 0
         self.view = TextWidget.View()
         self.pack_start(gutils.wrap_in_scrolled_window(self.view))
-        self._tws_nav_buttons_packed = False
         self._action_group = gtk.ActionGroup("diff_text")
         self._action_group.add_actions(
             [
@@ -129,6 +128,9 @@ class TextWidget(gtk.VBox):
                  "Scroll to last line with added trailing white space",
                  self._tws_nav_last_acb),
             ])
+        self.tws_nav_buttonbox = gutils.ActionHButtonBox([self._action_group],
+            ["tws_nav_first", "tws_nav_prev", "tws_nav_next", "tws_nav_last"])
+        self._tws_nav_buttons_packed = False
         self._save_file = None
         self.check_set_save_sensitive()
         self.tws_display = self.TwsLineCountDisplay()
@@ -142,11 +144,11 @@ class TextWidget(gtk.VBox):
     def set_contents(self):
         def update_for_tws_change(new_count):
             if self._tws_nav_buttons_packed and not new_count:
-                self.remove(self.view.tws_nav_buttonbox)
+                self.remove(self.tws_nav_buttonbox)
                 self.view.set_cursor_visible(False)
                 self._tws_nav_buttons_packed = False
             elif not self._tws_nav_buttons_packed and new_count:
-                self.pack_start(self.view.tws_nav_buttonbox, expand=False, fill=True)
+                self.pack_start(self.tws_nav_buttonbox, expand=False, fill=True)
                 self.view.set_cursor_visible(True)
                 self._tws_nav_buttons_packed = True
         text = self._get_diff_text()

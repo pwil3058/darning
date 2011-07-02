@@ -344,8 +344,13 @@ class PatchData:
             fromfile=fm_name_label, tofile=to_name_label, fromfiledate=fm_time_stamp, tofiledate=to_time_stamp)
         return patchlib.Diff.parse_lines(list(diffgen))
     def get_diff_for_file(self, filename):
+        assert is_readable()
+        assert filename in self.files
         # TODO: add a git preamble
-        return self.generate_diff_for_file(filename)
+        if self.is_applied():
+            return self.generate_diff_for_file(filename)
+        else:
+            return self.files[filename].diff
     def do_refresh_file(self, filename):
         '''Refresh the named file in this patch'''
         assert is_writable()
