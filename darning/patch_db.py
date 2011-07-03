@@ -310,6 +310,27 @@ class PatchData:
             self.files[filename].old_mode = old_mode
         else:
             self.files[filename].old_mode = None
+    def generate_diff_preamble_for_file(self, filename):
+        assert is_readable()
+        assert filename in self.files
+        file_data = self.files[filename]
+        if self.is_applied():
+            new_mode = os.stat(filename).st_mode if os.path.exists(filename) else None
+        else:
+            new_mode = file_data.new_mode
+        if file_data.old_mode is None:
+            lines = ['diff --git /dev/null {0}\n'.format(os.path.join('a', filename)), ]
+            if new_mode is not None:
+                lines.append('new file mode {0:07o}\n'.format(new_mode))
+        elif new_mode is None:
+            lines = ['diff --git {0} /dev/null\n'.format(os.path.join('a', filename)), ]
+            lines.append('deleted file mode {0:07o}\n'.format(file_data.old_mode))
+        else:
+            lines = ['diff --git {0} {1}\n'.format(os.path.join('a', filename), os.path.join('b', filename)), ]
+            if file_data.old_mode != new_mode:
+                lines.append('old mode {0:07o}\n'.format(file_data.old_mode))
+                lines.append('new mode {0:07o}\n'.format(new_mode))
+        return patchlib.Preamble.parse_lines(lines)
     def generate_diff_for_file(self, filename):
         assert is_readable()
         assert filename in self.files
@@ -337,7 +358,7 @@ class PatchData:
             fm_time_stamp = _PTS_ZERO
             fm_contents = ''
         if to_contents == fm_contents:
-            return None
+            return ''
         if to_contents.find('\000') != -1 or fm_contents.find('\000') != -1:
             return BinaryDiff(patchlib._PAIR(fm_name_label, to_name_label))
         diffgen = difflib.unified_diff(fm_contents.splitlines(True), to_contents.splitlines(True),
@@ -346,11 +367,9 @@ class PatchData:
     def get_diff_for_file(self, filename):
         assert is_readable()
         assert filename in self.files
-        # TODO: add a git preamble
-        if self.is_applied():
-            return self.generate_diff_for_file(filename)
-        else:
-            return self.files[filename].diff
+        preamble = self.generate_diff_preamble_for_file(filename)
+        diff = self.generate_diff_for_file(filename) if self.is_applied() else self.files[filename].diff
+        return patchlib.DiffPlus([preamble], diff)
     def do_refresh_file(self, filename):
         '''Refresh the named file in this patch'''
         assert is_writable()

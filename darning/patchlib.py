@@ -366,6 +366,7 @@ class GitPreamble(Preamble):
                     extras[match.group(1)] = match.group(2)
                     next_index += 1
                     found = True
+                    break
             if not found:
                 break
         return (GitPreamble(lines[index:next_index], _PAIR(file1, file2), extras), next_index)
@@ -452,6 +453,10 @@ class Preambles(list):
     def parse_text(text):
         '''Parse text and return a valid Preambles list or raise exception'''
         return DiffPlus.parse_lines(text.splitlines(True))
+    def __init__(self, preambles=None):
+        if preambles is not None:
+            for preamble in preambles:
+                self.append(preamble)
     def __str__(self):
         return ''.join([str(preamble) for preamble in self])
     def get_types(self):
@@ -821,7 +826,7 @@ class DiffPlus(object):
         '''Parse text and return a valid DiffPlus or raise exception'''
         return DiffPlus.parse_lines(text.splitlines(True))
     def __init__(self, preambles=None, diff=None):
-        self.preambles = Preambles() if preambles is None else preambles
+        self.preambles = preambles if isinstance(preambles, Preambles) else Preambles(preambles)
         self.diff = diff
         self.trailing_junk = _Lines()
         if DEBUG:
