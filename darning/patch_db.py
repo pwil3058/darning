@@ -310,12 +310,16 @@ class PatchData:
             self.files[filename].old_mode = old_mode
         else:
             self.files[filename].old_mode = None
-    def generate_diff_preamble_for_file(self, filename):
+    def generate_diff_preamble_for_file(self, filename, combined=False):
         assert is_readable()
         assert filename in self.files
         file_data = self.files[filename]
         if self.is_applied():
-            new_mode = os.stat(filename).st_mode if os.path.exists(filename) else None
+            olp = None if combined else self.get_overlapping_patch_for_file(filename)
+            if olp is not None:
+                new_mode = olp.files[filename].old_mode
+            else:
+                new_mode = os.stat(filename).st_mode if os.path.exists(filename) else None
         else:
             new_mode = file_data.new_mode
         if file_data.old_mode is None:
