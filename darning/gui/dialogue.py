@@ -55,6 +55,9 @@ class BusyIndicator:
         assert self._count >= 0
         if self._count == 0 and self.window:
             self.window.set_cursor(None)
+    @property
+    def is_busy(self):
+        return self._count > 0
 
 class BusyIndicatorUser:
     def __init__(self, busy_indicator):

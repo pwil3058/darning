@@ -21,6 +21,7 @@ import collections
 
 from darning import utils
 from darning import urlops
+from darning import patch_db
 
 from darning.gui import dialogue
 from darning.gui import gutils
@@ -400,8 +401,19 @@ def change_pgnd_acb(_arg):
             open_dialog.report_any_problems(result)
     open_dialog.destroy()
 
+_LAST_TABLE = []
+
 def auto_update_cb(_arg=None):
-    ws_event.notify_events(ws_event.AUTO_UPDATE)
+    global _LAST_TABLE
+    if dialogue.main_window is None or dialogue.main_window.is_busy:
+        return
+    dialogue.main_window.show_busy()
+    table = patch_db.get_combined_patch_file_table()
+    equal = table == _LAST_TABLE
+    if not equal:
+        ws_event.notify_events(ws_event.AUTO_UPDATE)
+        _LAST_TABLE = table
+    dialogue.main_window.unshow_busy()
 
 AUTO_UPDATE = gutils.RefreshController(
     toggle_data=gutils.RefreshController.ToggleData(
