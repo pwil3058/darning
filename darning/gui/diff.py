@@ -259,3 +259,26 @@ class ForFileDialog(dialogue.AmodalDialog):
         self.show_all()
     def _close_cb(self, dialog, response_id):
         dialog.destroy()
+
+class CombinedForFileDialog(dialogue.AmodalDialog):
+    class Widget(TextWidget):
+        def __init__(self, filename):
+            self.filename = filename
+            TextWidget.__init__(self)
+        def _get_diff_text(self):
+            diff = ifce.PM.get_file_combined_diff(self.filename)
+            return str(diff)
+    def __init__(self, filename):
+        title = 'combined diff: "{0}": {1}'.format(filename, os.getcwd())
+        flags = gtk.DIALOG_DESTROY_WITH_PARENT
+        dialogue.AmodalDialog.__init__(self, title, None, flags, ())
+        self.widget = self.Widget(filename)
+        self.vbox.pack_start(self.widget, expand=True, fill=True)
+        self.action_area.pack_end(self.widget.tws_display, expand=False, fill=False)
+        for button in self.widget.get_action_button_list(["diff_save", "diff_save_as", "diff_refresh"]).list:
+            self.action_area.pack_start(button)
+        self.add_buttons(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
+        self.connect("response", self._close_cb)
+        self.show_all()
+    def _close_cb(self, dialog, response_id):
+        dialog.destroy()

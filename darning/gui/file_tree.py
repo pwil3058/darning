@@ -567,7 +567,7 @@ class CombinedPatchFileTreeWidget(PatchFileTreeWidget):
             <placeholder name="selection_not_patched"/>
             <separator/>
             <placeholder name="unique_selection"/>
-              <menuitem action='patch_diff_selected_file'/>
+              <menuitem action='patch_combined_diff_selected_file'/>
             <separator/>
             <placeholder name="no_selection"/>
             <separator/>
@@ -581,4 +581,14 @@ class CombinedPatchFileTreeWidget(PatchFileTreeWidget):
         def __init__(self, patch=None):
             assert patch is None
             PatchFileTreeWidget.PatchFileTree.__init__(self, patch=None)
+            self.add_conditional_actions(actions.Condns.IN_PGND + actions.Condns.PMIC + actions.Condns.UNIQUE_SELN,
+                [
+                    ('patch_combined_diff_selected_file', icons.STOCK_DIFF, '_Diff', None,
+                     'Display the combined diff for selected file', self.combined_diff_selected_file_acb),
+                ])
             self.ui_manager.add_ui_from_string(self.UI_DESCR)
+        def combined_diff_selected_file_acb(self, _action):
+            filenames = self.get_selected_files()
+            assert len(filenames) == 1
+            dialog = diff.CombinedForFileDialog(filename=filenames[0])
+            dialog.show()

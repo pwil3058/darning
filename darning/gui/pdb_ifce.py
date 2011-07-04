@@ -122,6 +122,11 @@ def get_file_diff(filename, patchname):
         return None
     return patch_db.get_file_diff(filename, patchname)
 
+def get_file_combined_diff(filename):
+    if not patch_db.is_readable():
+        return None
+    return patch_db.get_file_combined_diff(filename)
+
 def get_patch_guards(patch):
     if not patch_db.is_readable():
         return ''

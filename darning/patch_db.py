@@ -335,11 +335,11 @@ class PatchData:
                 lines.append('old mode {0:07o}\n'.format(file_data.old_mode))
                 lines.append('new mode {0:07o}\n'.format(new_mode))
         return patchlib.Preamble.parse_lines(lines)
-    def generate_diff_for_file(self, filename):
+    def generate_diff_for_file(self, filename, combined=False):
         assert is_readable()
         assert filename in self.files
         assert self.is_applied()
-        olp = self.get_overlapping_patch_for_file(filename)
+        olp = None if combined else self.get_overlapping_patch_for_file(filename)
         to_file = filename if olp is None else olp.get_backup_file_name(filename)
         fm_file = self.get_backup_file_name(filename)
         fm_exists = os.path.exists(fm_file)
@@ -368,11 +368,11 @@ class PatchData:
         diffgen = difflib.unified_diff(fm_contents.splitlines(True), to_contents.splitlines(True),
             fromfile=fm_name_label, tofile=to_name_label, fromfiledate=fm_time_stamp, tofiledate=to_time_stamp)
         return patchlib.Diff.parse_lines(list(diffgen))
-    def get_diff_for_file(self, filename):
+    def get_diff_for_file(self, filename, combined=False):
         assert is_readable()
         assert filename in self.files
-        preamble = self.generate_diff_preamble_for_file(filename)
-        diff = self.generate_diff_for_file(filename) if self.is_applied() else self.files[filename].diff
+        preamble = self.generate_diff_preamble_for_file(filename, combined)
+        diff = self.generate_diff_for_file(filename, combined) if self.is_applied() else self.files[filename].diff
         return patchlib.DiffPlus([preamble], diff)
     def do_refresh_file(self, filename):
         '''Refresh the named file in this patch'''
@@ -984,6 +984,16 @@ def get_file_diff(filename, patchname):
     patch_index = get_patch_series_index(patchname)
     assert patch_index is not None
     return _DB.series[patch_index].get_diff_for_file(filename)
+
+def get_file_combined_diff(filename):
+    assert is_readable()
+    patch = None
+    for applied_patch in get_applied_patch_list():
+        if filename in applied_patch.files:
+            patch = applied_patch
+            break
+    assert patch is not None
+    return patch.get_diff_for_file(filename, True)
 
 def get_filelist_overlap_data(filenames, patchname=None):
     '''
