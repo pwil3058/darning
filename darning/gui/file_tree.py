@@ -366,7 +366,7 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
                 [
                     ('scm_files_menu_files', None, '_Files'),
                 ])
-            self.add_conditional_actions(actions.Condns.IN_PGND + actions.Condns.PMIC + actions.Condns.SELN,
+            self.add_conditional_actions(actions.Condns.IN_PGND_MUTABLE + actions.Condns.PMIC + actions.Condns.SELN,
                 [
                     ('scm_add_files_to_top_patch', gtk.STOCK_ADD, '_Add', None,
                      'Add the selected files to the top patch', self._add_selection_to_top_patch),
@@ -477,7 +477,7 @@ class PatchFileTreeWidget(gtk.VBox):
         def __init__(self, patch=None):
             self.patch = patch
             Tree.__init__(self, show_hidden=True, populate_all=True, auto_expand=True)
-            self.add_conditional_actions(actions.Condns.IN_PGND + actions.Condns.PMIC + actions.Condns.SELN,
+            self.add_conditional_actions(actions.Condns.IN_PGND_MUTABLE + actions.Condns.PMIC + actions.Condns.SELN,
                 [
                     ('patch_edit_files', gtk.STOCK_EDIT, '_Edit', None,
                      'Edit the selected file(s)', self.edit_selected_files_acb),
@@ -532,7 +532,7 @@ class TopPatchFileTreeWidget(PatchFileTreeWidget):
         def __init__(self, patch=None):
             assert patch is None
             PatchFileTreeWidget.PatchFileTree.__init__(self, patch=None)
-            self.add_conditional_actions(actions.Condns.IN_PGND + actions.Condns.PMIC + actions.Condns.SELN,
+            self.add_conditional_actions(actions.Condns.IN_PGND_MUTABLE + actions.Condns.PMIC + actions.Condns.SELN,
                 [
                     ('top_patch_drop_selected_files', gtk.STOCK_REMOVE, '_Drop', None,
                      'Drop/remove the selected files from the top patch', self._drop_selection_from_patch),

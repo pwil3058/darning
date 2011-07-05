@@ -366,3 +366,9 @@ def is_pushable():
     if not patch_db.is_readable():
         return False
     return patch_db.is_pushable()
+
+def is_readable():
+    return patch_db.is_readable()
+
+def is_writable():
+    return patch_db.is_writable()

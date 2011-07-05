@@ -408,7 +408,7 @@ def auto_update_cb(_arg=None):
     if dialogue.main_window is None or dialogue.main_window.is_busy:
         return
     dialogue.main_window.show_busy()
-    table = patch_db.get_combined_patch_file_table()
+    table = patch_db.get_combined_patch_file_table() if patch_db.is_readable() else []
     equal = table == _LAST_TABLE
     if not equal:
         ws_event.notify_events(ws_event.AUTO_UPDATE)

@@ -27,6 +27,7 @@ import atexit
 import time
 import re
 import difflib
+import errno
 
 from darning import scm_ifce
 from darning import runext
@@ -801,12 +802,35 @@ def is_writable():
         lock_pid = False
     return lock_pid and lock_pid == str(os.getpid())
 
+def _lock_db(dirpath=None):
+    '''Lock the database in the given (or current) directory'''
+    db_lock_file = _DB_LOCK_FILE if not dirpath else os.path.join(dirpath, _DB_LOCK_FILE)
+    try:
+        lf_fd = os.open(db_lock_file, os.O_WRONLY|os.O_EXCL|os.O_CREAT, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
+    except OSError as edata:
+        if edata.errno == errno.EEXIST:
+            return False
+        else:
+            return Failure('%s: %s' % (db_lock_file, edata.strerror))
+    if lf_fd == -1:
+        return Failure('%s: Unable to open' % db_lock_file)
+    os.write(lf_fd, str(os.getpid()))
+    os.close(lf_fd)
+    return True
+
+def _unlock_db(dirpath=None):
+    '''Unock the database in the given (or current) directory'''
+    db_lock_file = _DB_LOCK_FILE if not dirpath else os.path.join(dirpath, _DB_LOCK_FILE)
+    assert os.path.exists(db_lock_file)
+    os.remove(db_lock_file)
+
 def create_db(description, dirpath=None):
     '''Create a patch database in the current directory?'''
     def rollback():
         '''Undo steps that were completed before failure occured'''
-        if os.path.exists(db_file):
-            os.remove(db_file)
+        for filnm in [db_file, _DB_LOCK_FILE if not dirpath else os.path.join(dirpath, _DB_LOCK_FILE)]:
+            if os.path.exists(filnm):
+                os.remove(filnm)
         for dirnm in [bu_dir, db_dir]:
             if os.path.exists(dirnm):
                 os.rmdir(dirnm)
@@ -821,12 +845,15 @@ def create_db(description, dirpath=None):
         dir_mode = stat.S_IRWXU|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH
         os.mkdir(db_dir, dir_mode)
         os.mkdir(bu_dir, dir_mode)
+        lock_state = _lock_db(dirpath)
+        assert lock_state is True
         db_obj = DataBase(description, None)
         fobj = open(db_file, 'wb', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
         try:
             cPickle.dump(db_obj, fobj)
         finally:
             fobj.close()
+            _unlock_db()
     except OSError as edata:
         rollback()
         return Failure(edata.strerror)
@@ -842,22 +869,24 @@ def release_db():
     writeable = is_writable()
     _DB = None
     if writeable:
-        os.remove(_DB_LOCK_FILE)
+        _unlock_db()
 
 def load_db(lock=True):
     '''Load the database for access (read only unless lock is True)'''
     global _DB
     assert exists()
     assert not is_readable()
-    if lock:
-        try:
-            lf_fd = os.open(_DB_LOCK_FILE, os.O_WRONLY|os.O_EXCL|os.O_CREAT, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
-        except OSError as edata:
-            return Failure('%s: %s' % (_DB_LOCK_FILE, edata.strerror))
-        if lf_fd == -1:
-            return Failure('%s: Unable to open' % _DB_LOCK_FILE)
-        os.write(lf_fd, str(os.getpid()))
-        os.close(lf_fd)
+    while lock:
+        lock_state = _lock_db()
+        if isinstance(lock_state, Failure):
+            return lock_state
+        elif lock_state is False:
+            try:
+                holder = open(_DB_LOCK_FILE).read()
+            except OSError as edata:
+                if edata.errno == errno.ENOENT:
+                    continue
+        break
     fobj = open(_DB_FILE, 'rb')
     try:
         _DB = cPickle.load(fobj)
@@ -867,6 +896,8 @@ def load_db(lock=True):
         raise
     finally:
         fobj.close()
+    if lock and lock_state is not True:
+        return Failure('Database is read only. Lock held by: {0}'.format(holder))
     return True
 
 def dump_db():

@@ -148,7 +148,7 @@ class List(table.MapManagedTable):
                 ("pm_refresh_patch_list", gtk.STOCK_REFRESH, "Update Patch List", None,
                  "Refresh/update the patch list display", self._update_list_cb),
             ])
-        self.add_conditional_actions(Condns.SELN,
+        self.add_conditional_actions(Condns.SELN | Condns.IN_PGND_MUTABLE,
             [
                 ("pm_edit_patch_descr", gtk.STOCK_EDIT, "Description", None,
                  "Edit the selected patch's description", self.do_edit_description),
@@ -437,7 +437,7 @@ actions.add_class_indep_actions(actions.Condns.NOT_IN_PGND,
          "Create a patch series in the current directory", init_cwd_acb),
     ])
 
-actions.add_class_indep_actions(Condns.IN_PGND,
+actions.add_class_indep_actions(Condns.IN_PGND_MUTABLE,
     [
         ("patch_list_new_patch", icons.STOCK_NEW_PATCH, None, None,
          "Create a new patch", new_patch_acb),
@@ -445,19 +445,19 @@ actions.add_class_indep_actions(Condns.IN_PGND,
          "Select which guards are in force", select_guards_acb),
     ])
 
-actions.add_class_indep_actions(Condns.PUSH_POSSIBLE,
+actions.add_class_indep_actions(Condns.PUSH_POSSIBLE | Condns.IN_PGND_MUTABLE,
     [
         ("patch_list_push", icons.STOCK_PUSH_PATCH, "Push", None,
          "Apply the next unapplied patch", push_next_patch_acb),
     ])
 
-actions.add_class_indep_actions(Condns.POP_POSSIBLE,
+actions.add_class_indep_actions(Condns.POP_POSSIBLE | Condns.IN_PGND_MUTABLE,
     [
         ("patch_list_pop", icons.STOCK_POP_PATCH, "Pop", None,
          "Pop the top applied patch", pop_top_patch_acb),
     ])
 
-actions.add_class_indep_actions(Condns.PMIC,
+actions.add_class_indep_actions(Condns.PMIC | Condns.IN_PGND_MUTABLE,
     [
         ("patch_list_refresh_top_patch", icons.STOCK_REFRESH_PATCH, None, None,
          "Refresh the top patch", refresh_top_patch_acb),

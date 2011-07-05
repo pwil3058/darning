@@ -20,12 +20,12 @@ from darning.gui import ifce
 
 class Condns(int):
     DONT_CARE = 0
-    NCONDS = 9
-    NOT_IN_PGND, IN_PGND, \
+    NCONDS = 10
+    NOT_IN_PGND, IN_PGND, IN_PGND_MUTABLE, \
     NOT_IN_REPO, IN_REPO, \
     NO_SELN, SELN, UNIQUE_SELN, \
     NOT_PMIC, PMIC = [2 ** n for n in range(NCONDS)]
-    IN_PGND_CONDS = NOT_IN_PGND | IN_PGND
+    IN_PGND_CONDS = NOT_IN_PGND | IN_PGND | IN_PGND_MUTABLE
     IN_REPO_CONDS = NOT_IN_REPO | IN_REPO
     SELN_CONDNS = NO_SELN | SELN | UNIQUE_SELN
     PMIC_CONDNS = NOT_PMIC | PMIC
@@ -33,7 +33,14 @@ class Condns(int):
 class MaskedCondns(object):
     @staticmethod
     def get_in_pgnd_condns():
-        return MaskedCondns(Condns.IN_PGND if ifce.in_valid_pgnd else Condns.NOT_IN_PGND, Condns.IN_PGND_CONDS)
+        if ifce.in_valid_pgnd:
+            if ifce.pgnd_is_mutable:
+                conds = Condns.IN_PGND | Condns.IN_PGND_MUTABLE
+            else:
+                conds = Condns.IN_PGND
+        else:
+            conds = Condns.NOT_IN_PGND
+        return MaskedCondns(conds, Condns.IN_PGND_CONDS)
     @staticmethod
     def get_in_repo_condns():
         return MaskedCondns(Condns.IN_REPO if ifce.in_valid_repo else Condns.NOT_IN_REPO, Condns.IN_REPO_CONDS)
@@ -132,6 +139,9 @@ def _update_class_indep_cwd_cb(_arg=None):
     condns = MaskedCondns.get_in_pgnd_condns() | MaskedCondns.get_in_repo_condns()
     _CLASS_INDEP_AGS.set_sensitivity_for_condns(condns)
 
+def _update_class_indep_pgnd_cb(_arg=None):
+    _CLASS_INDEP_AGS.set_sensitivity_for_condns(MaskedCondns.get_in_pgnd_condns())
+
 def _update_class_indep_pmic_cb(_arg=None):
     _CLASS_INDEP_AGS.set_sensitivity_for_condns(MaskedCondns.get_pmic_condns())
 
@@ -150,6 +160,7 @@ def set_class_indep_sensitivity_for_condns(condns):
     _CLASS_INDEP_AGS.set_sensitivity_for_condns(condns)
 
 ws_event.add_notification_cb(ws_event.CHANGE_WD, _update_class_indep_cwd_cb)
+ws_event.add_notification_cb(ws_event.PGND_MOD, _update_class_indep_pgnd_cb)
 ws_event.add_notification_cb(ws_event.PATCH_PUSH|ws_event.PATCH_POP|ws_event.CHANGE_WD, _update_class_indep_pmic_cb)
 
 class AGandUIManager(ws_event.Listener):
@@ -163,6 +174,7 @@ class AGandUIManager(ws_event.Listener):
         if self.seln:
             self.seln.connect('changed', self.seln_condns_change_cb)
         self.add_notification_cb(ws_event.CHANGE_WD, self.cwd_condns_change_cb)
+        self.add_notification_cb(ws_event.PGND_MOD, self.pgnd_condns_change_cb)
         self.add_notification_cb(ws_event.PATCH_PUSH|ws_event.PATCH_POP|ws_event.CHANGE_WD, self.pmic_condns_change_cb)
         self.init_action_states()
     def seln_condns_change_cb(self, seln):
@@ -170,6 +182,8 @@ class AGandUIManager(ws_event.Listener):
     def cwd_condns_change_cb(self, _arg=None):
         condns = MaskedCondns.get_in_pgnd_condns() | MaskedCondns.get_in_repo_condns()
         self._action_groups.set_sensitivity_for_condns(condns)
+    def pgnd_condns_change_cb(self, _arg=None):
+        self._action_groups.set_sensitivity_for_condns(MaskedCondns.get_in_pgnd_condns())
     def pmic_condns_change_cb(self, _arg=None):
         self._action_groups.set_sensitivity_for_condns(MaskedCondns.get_pmic_condns())
     def set_sensitivity_for_condns(self, condns):

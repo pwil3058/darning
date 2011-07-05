@@ -15,6 +15,7 @@
 
 in_valid_repo = False
 in_valid_pgnd = False
+pgnd_is_mutable = False
 
 import os
 
@@ -30,15 +31,17 @@ from darning.gui.console import LOG
 TERM = terminal.Terminal() if terminal.AVAILABLE else None
 
 def init():
-    global in_valid_repo, in_valid_pgnd
+    global in_valid_repo, in_valid_pgnd, pgnd_is_mutable
     root, _ = PM.find_base_dir()
     result = cmd_result.Result(cmd_result.OK, "", "")
     if root:
         os.chdir(root)
         result = PM.open_db()
-        in_valid_pgnd = result.eflags == cmd_result.OK
+        in_valid_pgnd = PM.is_readable()
+        pgnd_is_mutable = PM.is_writable()
     else:
         in_valid_pgnd = False
+        pgnd_is_mutable = False
     SCM.reset_back_end()
     in_valid_repo = SCM.is_valid_repo()
     return result
@@ -47,7 +50,7 @@ def close():
     PM.close_db()
 
 def chdir(newdir=None):
-    global in_valid_repo, in_valid_pgnd
+    global in_valid_repo, in_valid_pgnd, pgnd_is_mutable
     old_wd = os.getcwd()
     retval = cmd_result.Result(cmd_result.OK, "", "")
     PM.close_db()
@@ -63,12 +66,14 @@ def chdir(newdir=None):
     if root:
         os.chdir(root)
         retval = PM.open_db()
-        in_valid_pgnd = retval.eflags == cmd_result.OK
+        in_valid_pgnd = PM.is_readable()
+        pgnd_is_mutable = PM.is_writable()
         if in_valid_pgnd:
             from darning.gui import config
             config.PgndPathTable.append_saved_pgnd(root)
     else:
         in_valid_pgnd = False
+        pgnd_is_mutable = False
     SCM.reset_back_end()
     in_valid_repo = SCM.is_valid_repo()
     ws_event.notify_events(ws_event.CHANGE_WD)
@@ -81,7 +86,7 @@ def chdir(newdir=None):
     return retval
 
 def new_playground(description, pgdir=None):
-    global in_valid_pgnd
+    global in_valid_pgnd, pgnd_is_mutable
     if pgdir is not None:
         result = chdir(pgdir)
         if result.eflags != cmd_result.OK:
@@ -92,7 +97,8 @@ def new_playground(description, pgdir=None):
     if result is not True:
         return cmd_result.Result(cmd_result.ERROR, '', str(result))
     retval = PM.open_db()
-    in_valid_pgnd = retval.eflags == cmd_result.OK
+    in_valid_pgnd = PM.is_readable()
+    pgnd_is_mutable = PM.is_writable()
     if in_valid_pgnd:
         from darning.gui import config
         config.PgndPathTable.append_saved_pgnd(os.getcwd())
