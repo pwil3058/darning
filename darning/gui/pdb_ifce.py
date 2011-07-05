@@ -32,7 +32,7 @@ def open_db():
     result = patch_db.load_db(lock=True)
     if result is True:
         return cmd_result.Result(cmd_result.OK, '', '')
-    return cmd_result.Result(cmd_result.ERROR, '', str(result))
+    return cmd_result.Result(cmd_result.ERROR, '', str(result) + '\n')
 
 def close_db():
     '''Close the patch database if it is open'''

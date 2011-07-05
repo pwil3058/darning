@@ -30,7 +30,7 @@ from darning.gui.console import LOG
 
 TERM = terminal.Terminal() if terminal.AVAILABLE else None
 
-def init():
+def init(log=False):
     global in_valid_repo, in_valid_pgnd, pgnd_is_mutable
     root, _ = PM.find_base_dir()
     result = cmd_result.Result(cmd_result.OK, "", "")
@@ -44,6 +44,11 @@ def init():
         pgnd_is_mutable = False
     SCM.reset_back_end()
     in_valid_repo = SCM.is_valid_repo()
+    if log or root:
+        LOG.start_cmd('gdarn {0}'.format(os.getcwd()))
+        LOG.append_stdout(result.stdout)
+        LOG.append_stderr(result.stderr)
+        LOG.end_cmd()
     return result
 
 def close():
@@ -81,8 +86,10 @@ def chdir(newdir=None):
     if not utils.samefile(new_wd, old_wd):
         if TERM:
             TERM.set_cwd(new_wd)
-        if LOG:
-            LOG.append_entry("New Playground: %s" % new_wd)
+    LOG.start_cmd("New Playground: %s" % new_wd)
+    LOG.append_stdout(retval.stdout)
+    LOG.append_stderr(retval.stderr)
+    LOG.end_cmd()
     return retval
 
 def new_playground(description, pgdir=None):

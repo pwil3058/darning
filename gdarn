@@ -90,7 +90,7 @@ if ARGS.playground:
         sys.exit(2)
 
 try:
-    dialogue.report_any_problems(ifce.init())
+    dialogue.report_any_problems(ifce.init(ARGS.playground is not None))
     open_dialog = None
     if not ifce.in_valid_pgnd and ARGS.playground is None:
         open_dialog = config.PgndOpenDialog()
