@@ -146,7 +146,7 @@ class Mercurial(object):
             if result.ecode != 0:
                 return []
             return [line[2:] for line in result.stdout.splitlines() if line[0] == Mercurial.FileStatus.UNRESOLVED]
-        cmd = ['hg', 'status', '-AC']
+        cmd = ['hg', 'status', '-AC', '.']
         result = runext.run_cmd(cmd)
         scm_file_db = Mercurial.FileDb(result.stdout.splitlines(), unresolved_file_list())
         scm_file_db.decorate_dirs()
