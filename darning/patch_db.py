@@ -792,63 +792,62 @@ def is_readable():
     '''Is the database open for reading?'''
     return exists() and _DB is not None
 
-def is_writable():
-    '''Is the databas modifiable?'''
-    if not is_readable():
-        return False
+def is_my_lock():
+    '''Am I the process holding the lock?'''
     try:
         lock_pid = open(_DB_LOCK_FILE).read()
     except IOError:
         lock_pid = False
     return lock_pid and lock_pid == str(os.getpid())
 
-def _lock_db(dirpath=None):
+def is_writable():
+    '''Is the databas modifiable?'''
+    if not is_readable():
+        return False
+    return is_my_lock()
+
+def _lock_db():
     '''Lock the database in the given (or current) directory'''
-    db_lock_file = _DB_LOCK_FILE if not dirpath else os.path.join(dirpath, _DB_LOCK_FILE)
     try:
-        lf_fd = os.open(db_lock_file, os.O_WRONLY|os.O_EXCL|os.O_CREAT, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
+        lf_fd = os.open(_DB_LOCK_FILE, os.O_WRONLY|os.O_EXCL|os.O_CREAT, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
     except OSError as edata:
         if edata.errno == errno.EEXIST:
             return False
         else:
-            return Failure('%s: %s' % (db_lock_file, edata.strerror))
+            return Failure('%s: %s' % (_DB_LOCK_FILE, edata.strerror))
     if lf_fd == -1:
-        return Failure('%s: Unable to open' % db_lock_file)
+        return Failure('%s: Unable to open' % _DB_LOCK_FILE)
     os.write(lf_fd, str(os.getpid()))
     os.close(lf_fd)
     return True
 
-def _unlock_db(dirpath=None):
+def _unlock_db():
     '''Unock the database in the given (or current) directory'''
-    db_lock_file = _DB_LOCK_FILE if not dirpath else os.path.join(dirpath, _DB_LOCK_FILE)
-    assert os.path.exists(db_lock_file)
-    os.remove(db_lock_file)
+    assert is_my_lock()
+    os.remove(_DB_LOCK_FILE)
 
-def create_db(description, dirpath=None):
+def create_db(description):
     '''Create a patch database in the current directory?'''
     def rollback():
         '''Undo steps that were completed before failure occured'''
-        for filnm in [db_file, _DB_LOCK_FILE if not dirpath else os.path.join(dirpath, _DB_LOCK_FILE)]:
+        for filnm in [_DB_FILE, _DB_LOCK_FILE ]:
             if os.path.exists(filnm):
                 os.remove(filnm)
-        for dirnm in [bu_dir, db_dir]:
+        for dirnm in [_BACKUPS_DIR, _DB_DIR]:
             if os.path.exists(dirnm):
                 os.rmdir(dirnm)
-    db_dir = _DB_DIR if not dirpath else os.path.join(dirpath, _DB_DIR)
-    bu_dir = _BACKUPS_DIR if not dirpath else os.path.join(dirpath, _BACKUPS_DIR)
-    db_file = _DB_FILE if not dirpath else os.path.join(dirpath, _DB_FILE)
-    if os.path.exists(db_dir):
-        if os.path.exists(bu_dir) and os.path.exists(db_file):
+    if os.path.exists(_DB_DIR):
+        if os.path.exists(_BACKUPS_DIR) and os.path.exists(_DB_FILE):
             return Failure('Database already exists')
         return Failure('Database directory exists')
     try:
         dir_mode = stat.S_IRWXU|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH
-        os.mkdir(db_dir, dir_mode)
-        os.mkdir(bu_dir, dir_mode)
-        lock_state = _lock_db(dirpath)
+        os.mkdir(_DB_DIR, dir_mode)
+        os.mkdir(_BACKUPS_DIR, dir_mode)
+        lock_state = _lock_db()
         assert lock_state is True
         db_obj = DataBase(description, None)
-        fobj = open(db_file, 'wb', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
+        fobj = open(_DB_FILE, 'wb', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
         try:
             cPickle.dump(db_obj, fobj)
         finally:
