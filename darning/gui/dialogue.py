@@ -15,6 +15,7 @@
 
 import gtk
 import pango
+import os
 
 from darning import cmd_result
 

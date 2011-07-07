@@ -147,6 +147,40 @@ class EntryWithHistory(gtk.Entry):
         self.clear_to_history()
         return text
 
+
+class MutableComboBoxEntry(gtk.ComboBoxEntry):
+    def __init__(self, entries=None):
+        self.saved_text = ''
+        gtk.ComboBoxEntry.__init__(self, gtk.ListStore(str))
+        self.entry_set = set()
+        for entry in entries if entries else []:
+            if entry not in self.entry_set:
+                self.append_text(entry)
+                self.entry_set.add(entry)
+        self.set_active(-1)
+        self.child.connect('changed', self.changed_cb)
+    def changed_cb(self, entry):
+        if self.get_active() == -1:
+            self.saved_text = entry.get_text()
+        else:
+            text = self.saved_text.rstrip()
+            # no duplicates, empty strings or strings starting with white space
+            if text and text[0] not in [' ', '\t'] and text not in self.entry_set:
+                self.entry_set.add(text)
+                self.prepend_text(text)
+            self.saved_text = ''
+        return
+    def get_text(self):
+        return self.child.get_text()
+    def set_text(self, text):
+        text = text.rstrip()
+        if text and text[0] not in [' ', '\t'] and text not in self.entry_set:
+            self.prepend_text(text)
+            self.set_active(0)
+            self.entry_set.add(text)
+        else:
+            self.child.set_text(text)
+
 class ActionButton(gtk.Button):
     def __init__(self, action, use_underline=True):
         label = action.get_property("label")
