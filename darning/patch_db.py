@@ -35,6 +35,9 @@ from darning import utils
 from darning import patchlib
 from darning import fsdb
 
+# A convenience tuple for sending an original and patched version of something
+_O_IP_PAIR = collections.namedtuple('_O_IP_PAIR', ['original_version', 'patched_version'])
+
 class Failure:
     '''Report failure'''
     def __init__(self, msg):
@@ -1187,3 +1190,13 @@ def do_select_guards(guards):
     assert is_writable()
     _DB.selected_guards = set(guards)
     dump_db()
+
+def get_extdiff_files_for(filename, patchname):
+    assert is_readable()
+    assert is_applied(patchname)
+    patch =  _DB.series[get_patch_series_index(patchname)]
+    assert filename in patch.files
+    assert patch.get_overlapping_patch_for_file(filename) is None
+    orig = patch.get_backup_file_name(filename)
+    return _O_IP_PAIR(original_version=orig, patched_version=filename)
+

@@ -496,6 +496,11 @@ class PatchFileTreeWidget(gtk.VBox):
                     ('patch_diff_selected_file', icons.STOCK_DIFF, '_Diff', None,
                      'Display the diff for selected file', self.diff_selected_file_acb),
                 ])
+            self.add_conditional_actions(actions.Condns.IN_PGND_MUTABLE + actions.Condns.PMIC + actions.Condns.UNIQUE_SELN,
+                [
+                    ('patch_extdiff_selected_file', icons.STOCK_DIFF, 'E_xDiff', None,
+                     'Launch external diff viewer for selected file', self.extdiff_selected_file_acb),
+                ])
             self.add_notification_cb(ws_event.CHECKOUT|ws_event.CHANGE_WD|ws_event.PATCH_PUSH|ws_event.PATCH_POP, self.repopulate)
             self.add_notification_cb(ws_event.FILE_CHANGES|ws_event.PATCH_REFRESH|ws_event.AUTO_UPDATE, self.update)
         def _get_file_db(self):
@@ -508,6 +513,11 @@ class PatchFileTreeWidget(gtk.VBox):
             assert len(filenames) == 1
             dialog = diff.ForFileDialog(filename=filenames[0], patchname=self.patch)
             dialog.show()
+        def extdiff_selected_file_acb(self, _action):
+            filenames = self.get_selected_files()
+            assert len(filenames) == 1
+            files = ifce.PM.get_extdiff_files_for(filename=filenames[0], patchname=self.patch)
+            dialogue.report_any_problems(diff.launch_external_diff(files.original_version, files.patched_version))
     def __init__(self, patch=None):
         gtk.VBox.__init__(self)
         self.tree = self.PatchFileTree(patch=patch)
@@ -530,6 +540,7 @@ class TopPatchFileTreeWidget(PatchFileTreeWidget):
             <separator/>
             <placeholder name="unique_selection"/>
               <menuitem action='patch_diff_selected_file'/>
+              <menuitem action='patch_extdiff_selected_file'/>
             <separator/>
             <placeholder name="no_selection"/>
             <separator/>

@@ -138,6 +138,13 @@ def get_top_applied_patch_for_file(filename):
         return None
     return patch_db.get_top_applied_patch_for_file(filename)
 
+def get_extdiff_files_for(filename, patchname):
+    if not patch_db.is_readable():
+        return None
+    if patchname is None:
+        patchname = patch_db.get_top_applied_patch_for_file(filename)
+    return patch_db.get_extdiff_files_for(filename, patchname)
+
 def do_create_new_patch(name, descr):
     if patch_db.patch_is_in_series(name):
         return cmd_result.Result(cmd_result.ERROR|cmd_result.SUGGEST_RENAME, '', '{0}: Already exists in database'.format(name))

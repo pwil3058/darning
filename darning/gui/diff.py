@@ -18,6 +18,10 @@ import gtk
 import pango
 import os
 
+from darning import options
+from darning import runext
+from darning import cmd_result
+
 from darning.gui import textview
 from darning.gui import dialogue
 from darning.gui import ifce
@@ -282,3 +286,15 @@ class CombinedForFileDialog(dialogue.AmodalDialog):
         self.show_all()
     def _close_cb(self, dialog, response_id):
         dialog.destroy()
+
+options.define('diff', 'extdiff', options.Defn(str, None, 'The name of external application for viewing diffs'))
+
+def launch_external_diff(file_a, file_b):
+    extdiff = options.get('diff', 'extdiff')
+    if not extdiff:
+        return cmd_result.Result(cmd_result.WARNING, '', 'No extenal diff viewer is defined.\n')
+    try:
+        runext.run_cmd_in_bgnd([extdiff, file_a, file_b])
+    except OSError as edata:
+        return cmd_result.Result(cmd_result.ERROR, '', 'Error lanuching external viewer "{0}": {1}\n'.format(extdiff, edata.strerror))
+    return cmd_result.Result(cmd_result.OK, '', '')
