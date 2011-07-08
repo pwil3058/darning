@@ -33,6 +33,7 @@ TERM = terminal.Terminal() if terminal.AVAILABLE else None
 
 def init(log=False):
     global in_valid_repo, in_valid_pgnd, pgnd_is_mutable
+    options.load_global_options()
     root, _ = PM.find_base_dir()
     result = cmd_result.Result(cmd_result.OK, "", "")
     if root:
@@ -43,6 +44,7 @@ def init(log=False):
     else:
         in_valid_pgnd = False
         pgnd_is_mutable = False
+    options.load_pgnd_options()
     SCM.reset_back_end()
     in_valid_repo = SCM.is_valid_repo()
     if log or root:
@@ -80,6 +82,7 @@ def chdir(newdir=None):
     else:
         in_valid_pgnd = False
         pgnd_is_mutable = False
+    options.reload_pgnd_options()
     SCM.reset_back_end()
     in_valid_repo = SCM.is_valid_repo()
     ws_event.notify_events(ws_event.CHANGE_WD)
