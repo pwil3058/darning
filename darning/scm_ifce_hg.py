@@ -129,9 +129,7 @@ class Mercurial(object):
         Get the subset of files which have uncommitted hg changes.  If files
         is None assume all files in current directory.
         '''
-        cmd = ['hg', 'status', '-mardn']
-        if files:
-            cmd += files
+        cmd = ['hg', 'status', '-mardn', files if files else '.']
         result = runext.run_cmd(cmd)
         assert result.ecode == 0
         return result.stdout.splitlines()
@@ -141,7 +139,7 @@ class Mercurial(object):
         Get the SCM view of the current directory
         '''
         def unresolved_file_list():
-            cmd = ['hg', 'resolve', '--list']
+            cmd = ['hg', 'resolve', '--list', '.']
             result = runext.run_cmd(cmd)
             if result.ecode != 0:
                 return []
