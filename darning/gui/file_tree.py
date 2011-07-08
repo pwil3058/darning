@@ -208,6 +208,7 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
         if parent_iter is not None:
             self.model.insert_place_holder_if_needed(parent_iter)
     def _update_dir(self, dirpath, parent_iter=None):
+        changed = False
         if parent_iter is None:
             child_iter = self.model.get_iter_first()
         else:
@@ -224,6 +225,7 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
                 child_iter = self.model.iter_next(child_iter)
             if child_iter is None:
                 dir_iter = self.model.append(parent_iter, row_tuple)
+                changed = True
                 if self._populate_all:
                     self._update_dir(os.path.join(dirpath, dirdata.name), dir_iter)
                     if self._auto_expand:
@@ -234,6 +236,7 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
             name = self.model.get_labelled_value(child_iter, 'name')
             if (not self.model.get_labelled_value(child_iter, 'is_dir')) or (name > dirdata.name):
                 dir_iter = self.model.insert_before(parent_iter, child_iter, row_tuple)
+                changed = True
                 if self._populate_all:
                     self._update_dir(os.path.join(dirpath, dirdata.name), dir_iter)
                     if self._auto_expand:
@@ -241,9 +244,10 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
                 else:
                     self.model.insert_place_holder(dir_iter)
                 continue
+            changed |= self.model.get_labelled_value(child_iter, 'icon') != row_tuple.icon
             self.model.update_iter_row_tuple(child_iter, row_tuple)
             if self._populate_all or self._row_expanded(child_iter):
-                self._update_dir(os.path.join(dirpath, name), child_iter)
+                changed |= self._update_dir(os.path.join(dirpath, name), child_iter)
             child_iter = self.model.iter_next(child_iter)
         while (child_iter is not None) and self.model.get_labelled_value(child_iter, 'is_dir'):
             dead_entries.append(child_iter)
@@ -255,19 +259,24 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
                 child_iter = self.model.iter_next(child_iter)
             if child_iter is None:
                 dummy = self.model.append(parent_iter, row_tuple)
+                changed = True
                 continue
             if self.model.get_labelled_value(child_iter, 'name') > filedata.name:
                 dummy = self.model.insert_before(parent_iter, child_iter, row_tuple)
+                changed = True
                 continue
+            changed |= self.model.get_labelled_value(child_iter, 'icon') != row_tuple.icon
             self.model.update_iter_row_tuple(child_iter, row_tuple)
             child_iter = self.model.iter_next(child_iter)
         while child_iter is not None:
             dead_entries.append(child_iter)
             child_iter = self.model.iter_next(child_iter)
+        changed |= len(dead_entries) > 0
         for dead_entry in dead_entries:
             self.model.recursive_remove(dead_entry)
         if parent_iter is not None:
             self.model.insert_place_holder_if_needed(parent_iter)
+        return changed
     def _get_file_db():
         assert False, '_get_file_db() must be defined in descendants'
     def repopulate(self, _arg=None):
