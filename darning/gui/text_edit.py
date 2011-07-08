@@ -104,15 +104,27 @@ class Widget(textview.Widget):
         self.ui_manager.add_ui_from_string(self.UI_DESCR)
     def _update_action_sensitivities(self):
         self.conditional_action_group.set_sensitive(self._save_file_name is not None)
+    @staticmethod
+    def _inform_user_data_problem():
+        dialogue.inform_user('Unable to determine user\'s data')
     def _insert_sign_off_acb(self, _action=None):
         data = ifce.get_author_name_and_email()
-        self.bfr.insert_at_cursor("Signed-off-by: %s\n" % data)
+        if data:
+            self.bfr.insert_at_cursor("Signed-off-by: %s\n" % data)
+        else:
+            self._inform_user_data_problem()
     def _insert_ack_acb(self, _action=None):
         data = ifce.get_author_name_and_email()
-        self.bfr.insert_at_cursor("Acked-by: %s\n" % data)
+        if data:
+            self.bfr.insert_at_cursor("Acked-by: %s\n" % data)
+        else:
+            self._inform_user_data_problem()
     def _insert_author_acb(self, _action=None):
         data = ifce.get_author_name_and_email()
-        self.bfr.insert_at_cursor("Author: %s\n" % data)
+        if data:
+            self.bfr.insert_at_cursor("Author: %s\n" % data)
+        else:
+            self._inform_user_data_problem()
     def _save_text_acb(self, _action=None):
         text = self.bfr.get_text(self.bfr.get_start_iter(), self.bfr.get_end_iter())
         result = self.set_text_in_db(text)

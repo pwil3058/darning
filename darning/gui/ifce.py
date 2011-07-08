@@ -22,6 +22,7 @@ import os
 from darning import scm_ifce as SCM
 from darning import cmd_result
 from darning import utils
+from darning import options
 
 from darning.gui import pdb_ifce as PM
 from darning.gui import ws_event
@@ -117,10 +118,19 @@ DEFAULT_EMAIL_VARS = ["GIT_AUTHOR_EMAIL", "EMAIL_ADDRESS"]
 
 def get_author_name_and_email():
     # Do some 'configuration' stuff here
-    name = utils.get_first_in_envar(DEFAULT_NAME_EVARS)
+    name = options.get('user', 'name')
     if not name:
-        name = "UNKNOWN"
-    email = utils.get_first_in_envar(DEFAULT_EMAIL_VARS)
+        name = utils.get_first_in_envar(DEFAULT_NAME_EVARS)
+    email = options.get('user', 'email')
     if not email:
-        email = "UNKNOWN"
-    return "%s <%s>" % (name, email)
+        email = utils.get_first_in_envar(DEFAULT_EMAIL_VARS)
+    if not email:
+        user = os.environ.get('LOGNAME', None)
+        host = os.environ.get('HOSTNAME', None)
+        email = '@'.join([user, host]) if user and host else None
+    if name and email:
+        return '{0} <{1}>'.format(name, email)
+    elif email:
+        return email
+    else:
+        return None
