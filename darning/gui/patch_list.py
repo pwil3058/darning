@@ -147,11 +147,11 @@ class List(table.MapManagedTable):
             [
                 ("pm_refresh_patch_list", gtk.STOCK_REFRESH, "Update Patch List", None,
                  "Refresh/update the patch list display", self._update_list_cb),
+                ("pm_edit_patch_descr", gtk.STOCK_EDIT, "Description", None,
+                 "Edit the selected patch's description", self.do_edit_description),
             ])
         self.add_conditional_actions(Condns.SELN | Condns.IN_PGND_MUTABLE,
             [
-                ("pm_edit_patch_descr", gtk.STOCK_EDIT, "Description", None,
-                 "Edit the selected patch's description", self.do_edit_description),
                 ("pm_set_patch_guards", icons.STOCK_PATCH_GUARD, None, None,
                  "Set guards on the selected patch", self.do_set_guards),
             ])
@@ -229,6 +229,7 @@ class PatchDescrEditDialog(dialogue.Dialog):
         '''
         def __init__(self, patch):
             text_edit.Widget.__init__(self)
+            self.view.set_editable(ifce.PM.is_writable())
             self._patch = patch
             self.load_text_fm_db()
             self.action_group.add_actions(
