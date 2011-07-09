@@ -82,6 +82,8 @@ ISO_2022_CODECS = ['iso-2022-jp', 'iso-2022-kr'] + \
 
 def make_utf8_compliant(text):
     '''Return a UTF-8 compliant version of text'''
+    if text is None:
+        return ''
     if is_utf8_compliant(text):
         return text
     for codec in ISO_8859_CODECS + ISO_2022_CODECS:

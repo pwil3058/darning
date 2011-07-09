@@ -66,6 +66,11 @@ def get_patch_description(patch):
         raise cmd_result.Failure('Database is unreadable')
     return patch_db.get_patch_description(patch)
 
+def get_series_description():
+    if not patch_db.is_readable():
+        raise cmd_result.Failure('Database is unreadable')
+    return patch_db.get_series_description()
+
 DECO_MAP = {
     None: fsdb.Deco(pango.STYLE_NORMAL, "black"),
     patch_db.FileData.Presence.ADDED: fsdb.Deco(pango.STYLE_NORMAL, "darkgreen"),
@@ -283,6 +288,13 @@ def do_set_patch_description(patch, text):
         return cmd_result.Result(cmd_result.ERROR, '', 'Database is not writable')
     patch_db.do_set_patch_description(patch, text)
     console.LOG.append_entry('set patch "{0}" description:\n"{1}"'.format(patch, text))
+    return cmd_result.Result(cmd_result.OK, '', '')
+
+def do_set_series_description(text):
+    if not patch_db.is_writable():
+        return cmd_result.Result(cmd_result.ERROR, '', 'Database is not writable')
+    patch_db.do_set_series_description(text)
+    console.LOG.append_entry('set series description:\n"{0}"'.format(text))
     return cmd_result.Result(cmd_result.OK, '', '')
 
 def do_set_patch_guards(patch, guards_str):

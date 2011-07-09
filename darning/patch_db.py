@@ -558,7 +558,7 @@ class PatchData:
 class DataBase:
     '''Storage for an ordered sequence/series of patches'''
     def __init__(self, description, host_scm=None):
-        self.description = description
+        self.description = description if description else ''
         self.selected_guards = set()
         self.series = list()
         self.kept_patches = dict()
@@ -1162,6 +1162,15 @@ def get_patch_description(name):
     patch_index = get_patch_series_index(name)
     assert patch_index is not None
     return _DB.series[patch_index].description
+
+def do_set_series_description(text):
+    assert is_writable()
+    _DB.description = text if text is not None else ''
+    dump_db()
+
+def get_series_description():
+    assert is_readable()
+    return _DB.description
 
 def get_patch_table_data():
     assert is_readable()

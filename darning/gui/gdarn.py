@@ -37,6 +37,7 @@ class Darning(gtk.Window, dialogue.BusyIndicator, actions.AGandUIManager):
               <menuitem action="config_change_playground"/>
               <menuitem action="config_new_playground"/>
               <menuitem action="config_init_cwd"/>
+              <menuitem action='patch_list_edit_series_descr'/>
               <menuitem action="actions_quit"/>
             </menu>
         </menubar>
