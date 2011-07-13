@@ -38,6 +38,7 @@ from darning import fsdb
 from darning import options
 
 options.define('pop', 'drop_added_tws', options.Defn(options.str_to_bool, True, _('Remove added trailing white space (TWS) from patch after pop')))
+options.define('push', 'drop_added_tws', options.Defn(options.str_to_bool, True, _('Remove added trailing white space (TWS) from patch before push')))
 
 # A convenience tuple for sending an original and patched version of something
 _O_IP_PAIR = collections.namedtuple('_O_IP_PAIR', ['original_version', 'patched_version'])
@@ -231,6 +232,7 @@ class PatchData:
         if len(self.files) == 0:
             return results
         patch_cmd = ['patch', '--merge', '--force', '-p1', '--batch',]
+        drop_atws = options.get('push', 'drop_added_tws')
         for file_data in self.files.values():
             self.do_cache_original(file_data.name, force)
             result = None
@@ -241,6 +243,8 @@ class PatchData:
                 elif os.path.exists(file_data.name):
                     os.remove(file_data.name)
             elif file_data.diff:
+                if drop_atws:
+                    file_data.diff.fix_trailing_whitespace()
                 result = runext.run_cmd(patch_cmd + [file_data.name], str(file_data.diff))
                 patch_ok = result.ecode == 0
             file_exists = os.path.exists(file_data.name)
