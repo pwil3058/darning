@@ -22,14 +22,14 @@ from darning.cli import msg
 
 PARSER = cli_args.SUB_CMD_PARSER.add_parser(
     'add',
-    description='Add nominated file(s) to the top (or nominated) patch.',
+    description=_('Add nominated file(s) to the top (or nominated) patch.'),
 )
 
-cli_args.add_patch_option(PARSER, helptext='the name of the patch to add the file(s) to.')
+cli_args.add_patch_option(PARSER, helptext=_('the name of the patch to add the file(s) to.'))
 
-cli_args.add_force_option(PARSER, helptext='incorporate uncommitted/unrefreshed changes to named files into the top (or nominated) patch.')
+cli_args.add_force_option(PARSER, helptext=_('incorporate uncommitted/unrefreshed changes to named files into the top (or nominated) patch.'))
 
-cli_args.add_files_argument(PARSER, helptext='the file(s) to be added.')
+cli_args.add_files_argument(PARSER, helptext=_('the file(s) to be added.'))
 
 def run_add(args):
     '''Execute the "add" sub command using the supplied args'''
@@ -37,9 +37,9 @@ def run_add(args):
     if not args.opt_patch:
         args.opt_patch = patch_db.get_top_patch_name()
         if not args.opt_patch:
-            return msg.Error('No patches applied')
+            return msg.Error(_('No patches applied'))
     elif not patch_db.patch_is_in_series(args.opt_patch):
-        return msg.Error('patch "{0}" is unknown', args.opt_patch)
+        return msg.Error(_('patch "{0}" is unknown'), args.opt_patch)
     is_ok = True
     if args.opt_force:
         ol_report = msg.Info
@@ -49,27 +49,27 @@ def run_add(args):
     overlaps = patch_db.get_filelist_overlap_data(args.filenames, args.opt_patch)
     if len(overlaps.uncommitted) > 0:
         is_ok = False
-        ol_report('The following (overlapped) files have uncommitted SCM changes:')
+        ol_report(_('The following (overlapped) files have uncommitted SCM changes:'))
         for filename in sorted(overlaps.uncommitted):
             ol_report('\t{0}', db_utils.rel_subdir(filename))
     if len(overlaps.unrefreshed) > 0:
         is_ok = False
-        ol_report('The following (overlapped) files have unrefreshed changes (in an applied patch):')
+        ol_report(_('The following (overlapped) files have unrefreshed changes (in an applied patch):'))
         for filename in sorted(overlaps.unrefreshed):
-            ol_report('\t{0} : in patch "{1}"', db_utils.rel_subdir(filename), db_utils.rel_subdir(overlaps.unrefreshed[filename]))
+            ol_report(_('\t{0} : in patch "{1}"'), db_utils.rel_subdir(filename), db_utils.rel_subdir(overlaps.unrefreshed[filename]))
     if not is_ok:
         if args.opt_force:
-            msg.Info('Uncommited/unrefreshed changes incorporated into patch "{0}".', args.opt_patch)
+            msg.Info(_('Uncommited/unrefreshed changes incorporated into patch "{0}".'), args.opt_patch)
         else:
-            return msg.Error('Aborting')
+            return msg.Error(_('Aborting'))
     already_in_patch = set(patch_db.get_filenames_in_patch(args.opt_patch, args.filenames))
     for filename in args.filenames:
         if filename not in already_in_patch:
             patch_db.add_file_to_patch(args.opt_patch, filename, force=args.opt_force)
             already_in_patch.add(filename)
-            msg.Info('file "{0}" added to patch "{1}".', db_utils.rel_subdir(filename), args.opt_patch)
+            msg.Info(_('file "{0}" added to patch "{1}".'), db_utils.rel_subdir(filename), args.opt_patch)
         else:
-            msg.Warn('file "{0}" already in patch "{1}". Ignored.', db_utils.rel_subdir(filename), args.opt_patch)
+            msg.Warn(_('file "{0}" already in patch "{1}". Ignored.'), db_utils.rel_subdir(filename), args.opt_patch)
     return msg.OK
 
 PARSER.set_defaults(run_cmd=run_add)

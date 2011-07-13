@@ -111,7 +111,7 @@ class AliasPathTable(table.Table):
             selection_mode=gtk.SELECTION_SINGLE,
             columns=[
                 table.Table.View.Column(
-                    title='Alias',
+                    title=_('Alias'),
                     properties={'expand': False, 'resizable' : True},
                     cells=[
                         table.Table.View.Cell(
@@ -127,7 +127,7 @@ class AliasPathTable(table.Table):
                     ],
                 ),
                 table.Table.View.Column(
-                    title='Path',
+                    title=_('Path'),
                     properties={'expand': False, 'resizable' : True},
                     cells=[
                         table.Table.View.Cell(
@@ -189,7 +189,7 @@ class PgndPathTable(AliasPathTable):
 
 class PathSelectDialog(dialogue.Dialog):
     def __init__(self, create_table, label, parent=None):
-        dialogue.Dialog.__init__(self, title="gdarn: Select %s" % label, parent=parent,
+        dialogue.Dialog.__init__(self, title=_('gdarn: Select {0}').format(label), parent=parent,
                                  flags=gtk.DIALOG_MODAL|gtk.DIALOG_DESTROY_WITH_PARENT,
                                  buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
                                           gtk.STOCK_OK, gtk.RESPONSE_OK)
@@ -204,7 +204,7 @@ class PathSelectDialog(dialogue.Dialog):
         self._path.child.set_width_chars(32)
         self._path.child.connect("activate", self._path_cb)
         hbox.pack_start(self._path, expand=True, fill=True)
-        self._browse_button = gtk.Button(label="_Browse")
+        self._browse_button = gtk.Button(label=_('_Browse'))
         self._browse_button.connect("clicked", self._browse_cb)
         hbox.pack_start(self._browse_button, expand=False, fill=False)
         self.vbox.pack_start(hbox, expand=False, fill=False)
@@ -218,7 +218,7 @@ class PathSelectDialog(dialogue.Dialog):
     def _path_cb(self, entry=None):
         self.response(gtk.RESPONSE_OK)
     def _browse_cb(self, button=None):
-        dirname = dialogue.ask_dir_name("gdarn: Browse for Directory", existing=True, parent=self)
+        dirname = dialogue.ask_dir_name(_('gdarn: Browse for Directory'), existing=True, parent=self)
         if dirname:
             self._path.set_text(utils.path_rel_home(dirname))
     def get_path(self):
@@ -227,7 +227,7 @@ class PathSelectDialog(dialogue.Dialog):
 class PgndOpenDialog(PathSelectDialog):
     def __init__(self, parent=None):
         PathSelectDialog.__init__(self, create_table=PgndPathTable,
-            label="Playground/Directory", parent=parent)
+            label=_('Playground/Directory'), parent=parent)
 
 # Manage external editors
 
@@ -322,7 +322,7 @@ class EditorAllocationTable(table.Table):
             selection_mode=gtk.SELECTION_MULTIPLE,
             columns=[
                 table.Table.View.Column(
-                    title='File Pattern(s)',
+                    title=_('File Pattern(s)'),
                     properties={'expand' : True},
                     cells=[
                         table.Table.View.Cell(
@@ -338,7 +338,7 @@ class EditorAllocationTable(table.Table):
                     ],
                 ),
                 table.Table.View.Column(
-                    title='Editor Command',
+                    title=_('Editor Command'),
                     properties={'expand' : True},
                     cells=[
                         table.Table.View.Cell(
@@ -367,7 +367,7 @@ class EditorAllocationTable(table.Table):
 
 class EditorAllocationDialog(dialogue.Dialog):
     def __init__(self, edeff=EDITOR_GLOB_FILE_NAME, parent=None):
-        dialogue.Dialog.__init__(self, title='gdarn: Editor Allocation', parent=parent,
+        dialogue.Dialog.__init__(self, title=_('gdarn: Editor Allocation'), parent=parent,
                                  flags=gtk.DIALOG_DESTROY_WITH_PARENT,
                                  buttons=(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE,
                                           gtk.STOCK_OK, gtk.RESPONSE_OK)
@@ -416,8 +416,8 @@ def auto_update_cb(_arg=None):
 AUTO_UPDATE = gutils.RefreshController(
     toggle_data=gutils.RefreshController.ToggleData(
         name='config_auto_update',
-        label='Auto Update',
-        tooltip='Enable/disable automatic updating of displayed data',
+        label=_('Auto Update'),
+        tooltip=_('Enable/disable automatic updating of displayed data'),
         stock_id=gtk.STOCK_REFRESH
     ),
     function=auto_update_cb, is_on=True, interval=20000
@@ -425,11 +425,11 @@ AUTO_UPDATE = gutils.RefreshController(
 
 actions.add_class_indep_actions(actions.Condns.DONT_CARE,
     [
-        ("config_menu", None, "_Configuration"),
-        ("config_change_playground", gtk.STOCK_OPEN, "_Open", "",
-         "Change current playground", change_pgnd_acb),
-        ("config_allocate_editors", gtk.STOCK_PREFERENCES, "_Editor Allocation", "",
-         "Allocate editors to file types", editor_allocation_acb),
+        ("config_menu", None, _('_Configuration')),
+        ("config_change_playground", gtk.STOCK_OPEN, _('_Open'), "",
+         _('Change current playground'), change_pgnd_acb),
+        ("config_allocate_editors", gtk.STOCK_PREFERENCES, _('_Editor Allocation'), "",
+         _('Allocate editors to file types'), editor_allocation_acb),
     ])
 
 actions.add_class_indep_action(actions.Condns.DONT_CARE, AUTO_UPDATE.toggle_action)

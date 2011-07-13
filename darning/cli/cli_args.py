@@ -21,9 +21,11 @@ mechanism for sub commands to add their components.
 import argparse
 import collections
 
+from darning import i18n
+
 import darning.version
 
-PARSER = argparse.ArgumentParser(description='Manage stacked patches')
+PARSER = argparse.ArgumentParser(description=_('Manage stacked patches'))
 
 PARSER.add_argument(
     '--version',
@@ -31,7 +33,7 @@ PARSER.add_argument(
     version=darning.version.VERSION
 )
 
-SUB_CMD_PARSER = PARSER.add_subparsers(title='commands')
+SUB_CMD_PARSER = PARSER.add_subparsers(title=_('commands'))
 
 # There doesn't seem to be a way to easily change the help messages
 # in argparse arguments incorporated using the "parents" mechanism so
@@ -42,7 +44,7 @@ def add_descr_option(parser, helptext):
         '--descr',
         help=helptext,
         dest='opt_description',
-        metavar='text',
+        metavar=_('text'),
     )
 
 def add_patch_option(parser, helptext):
@@ -50,7 +52,7 @@ def add_patch_option(parser, helptext):
         '-P', '--patch',
         help=helptext,
         dest='opt_patch',
-        metavar='patch',
+        metavar=_('patch'),
     )
 
 def add_force_option(parser, helptext):
@@ -74,5 +76,5 @@ def add_files_argument(parser, helptext):
         'filenames',
         help=helptext,
         nargs='+',
-        metavar='file',
+        metavar=_('file'),
     )

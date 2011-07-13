@@ -53,7 +53,7 @@ def gen_strip_level_function(level):
         try:
             return path.split(os.sep, level)[level]
         except IndexError:
-            raise TooMayStripLevels('Strip level too large', path, level)
+            raise TooMayStripLevels(_('Strip level too large'), path, level)
     level = int(level)
     if level == 0:
         return lambda path: path
@@ -305,7 +305,7 @@ class Preamble(_Lines):
         '''Parse list of lines and return a valid Preamble or raise exception'''
         preamble, index = Preamble.get_preamble_at(lines, 0, raise_if_malformed=True)
         if not preamble or index < len(lines):
-            raise ParseError('Not a valid preamble.')
+            raise ParseError(_('Not a valid preamble.'))
         return preamble
     @staticmethod
     def parse_text(text):
@@ -447,7 +447,7 @@ class Preambles(list):
         '''Parse list of lines and return a valid Preambles list or raise exception'''
         preambles, index = Preambles.get_preambles_at(lines, 0, raise_if_malformed=True)
         if not preambles or index < len(lines):
-            raise ParseError('Not a valid preamble list.')
+            raise ParseError(_('Not a valid preamble list.'))
         return preambles
     @staticmethod
     def parse_text(text):
@@ -531,7 +531,7 @@ class Diff(object):
         after_file_data, index = subtype.get_after_file_data_at(lines, index)
         if not after_file_data:
             if raise_if_malformed:
-                raise ParseError('Missing unified diff after file data.', index)
+                raise ParseError(_('Missing unified diff after file data.'), index)
             else:
                 return (None, start_index)
         while index < len(lines):
@@ -541,7 +541,7 @@ class Diff(object):
             hunks.append(hunk)
         if len(hunks) == 0:
             if raise_if_malformed:
-                raise ParseError('Expected unified diff hunks not found.', index)
+                raise ParseError(_('Expected unified diff hunks not found.'), index)
             else:
                 return (None, start_index)
         return (subtype(lines[start_index:start_index + 2], _PAIR(before_file_data, after_file_data), hunks), index)
@@ -557,7 +557,7 @@ class Diff(object):
         '''Parse list of lines and return a valid Diff or raise exception'''
         diff, index = Diff.get_diff_at(lines, 0, raise_if_malformed=True)
         if not diff or index < len(lines):
-            raise ParseError('Not a valid diff.')
+            raise ParseError(_('Not a valid diff.'))
         return diff
     @staticmethod
     def parse_text(text):
@@ -666,10 +666,10 @@ class UnifiedDiff(Diff):
                     before_count += 1
                     after_count += 1
                 else:
-                    raise ParseError('Unexpected end of unified diff hunk.', index)
+                    raise ParseError(_('Unexpected end of unified diff hunk.'), index)
                 index += 1
         except IndexError:
-            raise ParseError('Unexpected end of patch text.')
+            raise ParseError(_('Unexpected end of patch text.'))
         before_chunk = _CHUNK(int(match.group(1)), before_length)
         after_chunk = _CHUNK(int(match.group(4)), after_length)
         return (UnifiedDiffHunk(lines[start_index:index], before_chunk, after_chunk), index)
@@ -775,16 +775,16 @@ class ContextDiff(Diff):
                 after_start_index = index
                 after_chunk, index = ContextDiff._get_after_chunk_at(lines, index)
                 if after_chunk is None:
-                    raise ParseError('Failed to find context diff "after" hunk.', index)
+                    raise ParseError(_('Failed to find context diff "after" hunk.'), index)
             while after_count < after_chunk.length:
                 if not (lines[index].startswith('! ') or lines[index].startswith('+ ') or lines[index].startswith('  ')):
                     if after_count == 0:
                         break
-                    raise ParseError('Unexpected end of context diff hunk.', index)
+                    raise ParseError(_('Unexpected end of context diff hunk.'), index)
                 after_count += 1
                 index += 1
         except IndexError:
-            raise ParseError('Unexpected end of patch text.')
+            raise ParseError(_('Unexpected end of patch text.'))
         before_hunk = _HUNK(before_start_index - start_index, before_chunk.start, before_chunk.length, after_start_index - before_start_index)
         after_hunk = _HUNK(after_start_index - start_index, after_chunk.start, after_chunk.length, index - after_start_index)
         return (ContextDiffHunk(lines[start_index:index], before_hunk, after_hunk), index)
@@ -819,7 +819,7 @@ class DiffPlus(object):
         '''Parse list of lines and return a valid DiffPlus or raise exception'''
         diff_plus, index = DiffPlus.get_diff_plus_at(lines, 0, raise_if_malformed=True)
         if not diff_plus or index < len(lines):
-            raise ParseError('Not a valid (optionally preambled) diff.')
+            raise ParseError(_('Not a valid (optionally preambled) diff.'))
         return diff_plus
     @staticmethod
     def parse_text(text):

@@ -268,7 +268,7 @@ class TimeOutController():
             self.toggle_action.set_active(active)
         self.restart_cycle()
 
-TOC_DEFAULT_REFRESH_TD = TimeOutController.ToggleData("auto_refresh_toggle", "Auto _Refresh", "Turn data auto refresh on/off", gtk.STOCK_REFRESH)
+TOC_DEFAULT_REFRESH_TD = TimeOutController.ToggleData("auto_refresh_toggle", _('Auto _Refresh'), _('Turn data auto refresh on/off'), gtk.STOCK_REFRESH)
 
 class RefreshController(TimeOutController):
     def __init__(self, toggle_data=None, function=None, is_on=True, interval=10000):
@@ -276,7 +276,7 @@ class RefreshController(TimeOutController):
             toggle_data = TOC_DEFAULT_REFRESH_TD
         TimeOutController.__init__(self, toggle_data, function=function, is_on=is_on, interval=interval)
 
-TOC_DEFAULT_SAVE_TD = TimeOutController.ToggleData("auto_save_toggle", "Auto _Save", "Turn data auto save on/off", gtk.STOCK_SAVE)
+TOC_DEFAULT_SAVE_TD = TimeOutController.ToggleData("auto_save_toggle", _('Auto _Save'), _('Turn data auto save on/off'), gtk.STOCK_SAVE)
 
 class SaveController(TimeOutController):
     def __init__(self, toggle_data=None, function=None, is_on=True, interval=10000):

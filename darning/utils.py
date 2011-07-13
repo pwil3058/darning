@@ -71,7 +71,7 @@ def turn_off_write(mode):
 
 def is_utf8_compliant(text):
     try:
-        _ = text.decode('utf-8')
+        _dummy= text.decode('utf-8')
     except UnicodeError:
         return False
     return True

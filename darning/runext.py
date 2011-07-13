@@ -46,9 +46,9 @@ def run_cmd_in_bgnd(cmd):
         """Callback to clean up after background tasks complete"""
         try:
             if os.name == 'nt' or os.name == 'dos':
-                rpid, _ = os.waitpid(pid, 0)
+                rpid, _dummy= os.waitpid(pid, 0)
             else:
-                rpid, _ = os.waitpid(pid, os.WNOHANG)
+                rpid, _dummy= os.waitpid(pid, os.WNOHANG)
             return rpid != pid
         except OSError:
             return False

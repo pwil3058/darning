@@ -21,22 +21,26 @@ import os
 import sys
 import gtk
 
+from darning import i18n
+
+_BUG_TRACK_URL = 'http://sourceforge.net/tracker/?group_id=386122&amp;atid=1604800'
+_DISCUSSION_GRP = 'darning-discussion@lists.sourceforge.net'
 _REPORT_REQUEST_MSG = \
-'''<b>Please report this problem by either:
-  submitting a bug report at &lt;http://sourceforge.net/tracker/?group_id=386122&amp;atid=1604800&gt;
+_('''<b>Please report this problem by either:
+  submitting a bug report at &lt;{url}&gt;
 or:
-  e-mailing &lt;darning-discussion@lists.sourceforge.net&gt;
+  e-mailing &lt;{grp}&gt;
 and including a copy of the details below this message.
 
 Thank you.</b>
-'''
+''').format(url=_BUG_TRACK_URL, grp=_DISCUSSION_GRP)
 
 def report_exception(exc_data, parent=None):
     def copy_cb(tview):
         tview.get_buffer().copy_clipboard(gtk.clipboard_get())
     import traceback
     msg = ''.join(traceback.format_exception(exc_data[0], exc_data[1], exc_data[2]))
-    dialog = gtk.Dialog(title='darning: Unhandled Exception',
+    dialog = gtk.Dialog(title=_('darning: Unhandled Exception'),
                         parent=parent, flags=gtk.DIALOG_MODAL|gtk.DIALOG_DESTROY_WITH_PARENT,
                         buttons=(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE))
     icon = gtk.Image()
@@ -71,12 +75,12 @@ except Exception:
     report_exception(sys.exc_info())
     sys.exit(3)
 
-PARSER = argparse.ArgumentParser(description='GUI to manage stacked patches')
+PARSER = argparse.ArgumentParser(description=_('GUI to manage stacked patches'))
 
 PARSER.add_argument(
     'playground',
-    help='Directory where patches are to be managed',
-    metavar='dir',
+    help=_('Directory where patches are to be managed'),
+    metavar=_('dir'),
     nargs='?'
 )
 

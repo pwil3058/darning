@@ -34,7 +34,7 @@ TERM = terminal.Terminal() if terminal.AVAILABLE else None
 def init(log=False):
     global in_valid_repo, in_valid_pgnd, pgnd_is_mutable
     options.load_global_options()
-    root, _ = PM.find_base_dir()
+    root, _dummy= PM.find_base_dir()
     result = cmd_result.Result(cmd_result.OK, "", "")
     if root:
         os.chdir(root)
@@ -70,7 +70,7 @@ def chdir(newdir=None):
             ecode = errno.errorcode[err.errno]
             emsg = err.strerror
             retval = cmd_result.Result(cmd_result.ERROR, '', '%s: "%s" :%s' % (ecode, newdir, emsg))
-    root, _ = PM.find_base_dir()
+    root, _dummy = PM.find_base_dir()
     if root:
         os.chdir(root)
         retval = PM.open_db()
@@ -90,7 +90,7 @@ def chdir(newdir=None):
     if not utils.samefile(new_wd, old_wd):
         if TERM:
             TERM.set_cwd(new_wd)
-    LOG.start_cmd("New Playground: %s" % new_wd)
+    LOG.start_cmd(_('New Playground: {0}').format(new_wd))
     LOG.append_stdout(retval.stdout)
     LOG.append_stderr(retval.stderr)
     LOG.end_cmd()
@@ -103,7 +103,7 @@ def new_playground(description, pgdir=None):
         if result.eflags != cmd_result.OK:
             return result
     if in_valid_pgnd:
-        return cmd_result.Result(cmd_result.WARNING, '', 'Already initialized')
+        return cmd_result.Result(cmd_result.WARNING, '', _('Already initialized'))
     result = PM.do_initialization(description)
     if result is not True:
         return cmd_result.Result(cmd_result.ERROR, '', str(result))

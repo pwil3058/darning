@@ -22,12 +22,12 @@ from darning.cli import msg
 
 PARSER = cli_args.SUB_CMD_PARSER.add_parser(
     'refresh',
-    description='Refresh the top (or nominated) patch.',
+    description=_('Refresh the top (or nominated) patch.'),
 )
 
-cli_args.add_patch_option(PARSER, helptext='the name of the patch to be refreshed.')
+cli_args.add_patch_option(PARSER, helptext=_('the name of the patch to be refreshed.'))
 
-cli_args.add_verbose_option(PARSER, helptext='display diff output.')
+cli_args.add_verbose_option(PARSER, helptext=_('display diff output.'))
 
 def run_refresh(args):
     '''Execute the "refresh" sub command using the supplied args'''
@@ -35,16 +35,16 @@ def run_refresh(args):
     if not args.opt_patch:
         args.opt_patch = patch_db.get_top_patch_name()
         if not args.opt_patch:
-            return msg.Error('No patches applied')
+            return msg.Error(_('No patches applied'))
     elif not patch_db.patch_is_in_series(args.opt_patch):
-        return msg.Error('patch "{0}" is unknown', args.opt_patch)
+        return msg.Error(_('patch "{0}" is unknown'), args.opt_patch)
     results = patch_db.do_refresh_patch(args.opt_patch)
     highest_ecode = 0
     for filename in results:
         result = results[filename]
         highest_ecode = highest_ecode if result.ecode < highest_ecode else result.ecode
         if args.opt_verbose:
-            msg.Info('Refreshing: {0}'.format(filename))
+            msg.Info(_('Refreshing: {0}'), filename)
             for line in result.stdout.splitlines(False):
                 msg.Info(line)
         if result.ecode in [0, 1]:
@@ -60,7 +60,7 @@ def run_refresh(args):
                 else:
                     msg.Error(line)
     if highest_ecode > 2:
-        return msg.Error('Patch "{0}" requires another refresh after issues are resolved.', args.opt_patch)
-    return msg.Info('Patch "{0}" refreshed.', args.opt_patch)
+        return msg.Error(_('Patch "{0}" requires another refresh after issues are resolved.'), args.opt_patch)
+    return msg.Info(_('Patch "{0}" refreshed.'), args.opt_patch)
 
 PARSER.set_defaults(run_cmd=run_refresh)

@@ -22,7 +22,7 @@ from darning.cli import msg
 
 PARSER = cli_args.SUB_CMD_PARSER.add_parser(
     'pop',
-    description='Unapply the top patch.',
+    description=_('Unapply the top patch.'),
 )
 
 def run_pop(args):
@@ -30,18 +30,18 @@ def run_pop(args):
     db_utils.open_db(modifiable=True)
     top_patch = patch_db.get_top_patch_name()
     if not top_patch:
-        return msg.Error('No patches applied')
+        return msg.Error(_('No patches applied'))
     if patch_db.top_patch_needs_refresh():
-        return msg.Error('Top patch ("{0}") needs to be refreshed', top_patch)
+        return msg.Error(_('Top patch ("{0}") needs to be refreshed'), top_patch)
     result = patch_db.unapply_top_patch()
     if result is not True:
-        return msg.Error('{0}: top patch is now "{1}"', result, patch_db.get_top_patch_name())
+        return msg.Error(_('{0}: top patch is now "{1}"'), result, patch_db.get_top_patch_name())
     else:
         top_patch = patch_db.get_top_patch_name()
         if top_patch is None:
-            return msg.Info('There are now no patches applied')
+            return msg.Info(_('There are now no patches applied'))
         else:
-            return msg.Info('Patch "{1}" is now on top', top_patch)
+            return msg.Info(_('Patch "{1}" is now on top'), top_patch)
     return msg.OK
 
 PARSER.set_defaults(run_cmd=run_pop)

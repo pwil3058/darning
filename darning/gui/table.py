@@ -51,22 +51,22 @@ class Table(gtk.VBox):
             self.action_groups[key] = gtk.ActionGroup(key)
         self.action_groups[ALWAYS_ON].add_actions(
             [
-                ('table_add_row', gtk.STOCK_ADD, '_Add', None,
-                 'Add a new entry to the table', self._add_row_acb),
+                ('table_add_row', gtk.STOCK_ADD, _('_Add'), None,
+                 _('Add a new entry to the table'), self._add_row_acb),
             ])
         self.action_groups[MODIFIED].add_actions(
             [
-                ('table_undo_changes', gtk.STOCK_UNDO, '_Undo', None,
-                 'Undo unapplied changes', self._undo_changes_acb),
-                ('table_apply_changes', gtk.STOCK_APPLY, '_Apply', None,
-                 'Apply outstanding changes', self._apply_changes_acb),
+                ('table_undo_changes', gtk.STOCK_UNDO, _('_Undo'), None,
+                 _('Undo unapplied changes'), self._undo_changes_acb),
+                ('table_apply_changes', gtk.STOCK_APPLY, _('_Apply'), None,
+                 _('Apply outstanding changes'), self._apply_changes_acb),
             ])
         self.action_groups[SELECTION].add_actions(
             [
-                ('table_delete_selection', gtk.STOCK_DELETE, '_Delete', None,
-                 'Delete selected row(s)', self._delete_selection_acb),
-                ('table_insert_row', icons.STOCK_INSERT, '_Insert', None,
-                 'Insert a new entry before the selected row(s)', self._insert_row_acb),
+                ('table_delete_selection', gtk.STOCK_DELETE, _('_Delete'), None,
+                 _('Delete selected row(s)'), self._delete_selection_acb),
+                ('table_insert_row', icons.STOCK_INSERT, _('_Insert'), None,
+                 _('Insert a new entry before the selected row(s)'), self._insert_row_acb),
             ])
         self._modified = False
         self.model.connect('row-inserted', self._row_inserted_cb)
@@ -258,8 +258,8 @@ class MapManagedTable(TableWithAGandUI, gutils.MappedManager):
         self._needs_refresh = True
         self.add_conditional_actions(actions.Condns.IN_REPO,
             [
-                ("table_refresh_contents", gtk.STOCK_REFRESH, "Refresh", None,
-                 "Refresh the tables contents", self._refresh_contents_acb),
+                ("table_refresh_contents", gtk.STOCK_REFRESH, _('Refresh'), None,
+                 _('Refresh the tables contents'), self._refresh_contents_acb),
             ])
         from darning.gui import ws_event
         self.add_notification_cb(ws_event.CHANGE_WD, self.reset_contents_if_mapped)

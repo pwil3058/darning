@@ -32,7 +32,7 @@ def open_db(modifiable):
     global BASE_DIR, SUB_DIR, SUB_DIR_DOWN
     BASE_DIR, SUB_DIR = patch_db.find_base_dir()
     if BASE_DIR is None:
-        sys.exit(msg.Error('could not find a "darning" database'))
+        sys.exit(msg.Error(_('could not find a "darning" database')))
     if SUB_DIR is not None:
         SUB_DIR_DOWN = os.path.join(*['..'] * len(SUBDIR.split(os.sep)))
     os.chdir(BASE_DIR)

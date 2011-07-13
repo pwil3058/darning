@@ -32,7 +32,7 @@ class TextWidget(gtk.VBox):
         STATES = [gtk.STATE_NORMAL, gtk.STATE_ACTIVE, gtk.STATE_PRELIGHT, gtk.STATE_INSENSITIVE]
         def __init__(self):
             gtk.HBox.__init__(self)
-            self.pack_start(gtk.Label("Added TWS lines:"), expand=False, fill=False)
+            self.pack_start(gtk.Label(_('Added TWS lines:')), expand=False, fill=False)
             self._entry = gtk.Entry()
             self._entry.set_width_chars(1)
             self._entry.set_text(str(0))
@@ -113,23 +113,23 @@ class TextWidget(gtk.VBox):
         self._action_group = gtk.ActionGroup("diff_text")
         self._action_group.add_actions(
             [
-                ("diff_save", gtk.STOCK_SAVE, "_Save", None,
-                 "Save the diff to previously nominated file", self._save_acb),
-                ("diff_save_as", gtk.STOCK_SAVE_AS, "Save _as", None,
-                 "Save the diff to a nominated file", self._save_as_acb),
-                ("diff_refresh", gtk.STOCK_REFRESH, "_Refresh", None,
-                 "Refresh contents of the diff", self._refresh_acb),
-                ("tws_nav_first", gtk.STOCK_GOTO_TOP, "_First", None,
-                 "Scroll to first line with added trailing white space",
+                ("diff_save", gtk.STOCK_SAVE, _('_Save'), None,
+                 _('Save the diff to previously nominated file'), self._save_acb),
+                ("diff_save_as", gtk.STOCK_SAVE_AS, _('Save _as'), None,
+                 _('Save the diff to a nominated file'), self._save_as_acb),
+                ("diff_refresh", gtk.STOCK_REFRESH, _('_Refresh'), None,
+                 _('Refresh contents of the diff'), self._refresh_acb),
+                ("tws_nav_first", gtk.STOCK_GOTO_TOP, _('_First'), None,
+                 _('Scroll to first line with added trailing white space'),
                  self._tws_nav_first_acb),
-                ("tws_nav_prev", gtk.STOCK_GO_UP, "_Prev", None,
-                 "Scroll to previous line with added trailing white space",
+                ("tws_nav_prev", gtk.STOCK_GO_UP, _('_Prev'), None,
+                 _('Scroll to previous line with added trailing white space'),
                  self._tws_nav_prev_acb),
-                ("tws_nav_next", gtk.STOCK_GO_DOWN, "_Next", None,
-                 "Scroll to next line with added trailing white space",
+                ("tws_nav_next", gtk.STOCK_GO_DOWN, _('_Next'), None,
+                 _('Scroll to next line with added trailing white space'),
                  self._tws_nav_next_acb),
-                ("tws_nav_last", gtk.STOCK_GOTO_BOTTOM, "_Last", None,
-                 "Scroll to last line with added trailing white space",
+                ("tws_nav_last", gtk.STOCK_GOTO_BOTTOM, _('_Last'), None,
+                 _('Scroll to last line with added trailing white space'),
                  self._tws_nav_last_acb),
             ])
         self.tws_nav_buttonbox = gutils.ActionHButtonBox([self._action_group],
@@ -219,7 +219,7 @@ class TextWidget(gtk.VBox):
             suggestion = self._save_file
         else:
             suggestion = os.getcwd()
-        self._save_file = dialogue.ask_file_name("Save as ...", suggestion=suggestion, existing=False)
+        self._save_file = dialogue.ask_file_name(_('Save as ...'), suggestion=suggestion, existing=False)
         self._save_to_file()
     def get_action_button_box(self, a_name_list):
         return gutils.ActionHButtonBox([self._action_group], action_name_list=a_name_list)
@@ -250,7 +250,7 @@ class ForFileDialog(dialogue.AmodalDialog):
         if patchname is None:
             patchname = ifce.PM.get_top_applied_patch_for_file(filename)
         assert patchname is not None
-        title = 'diff: "{0}" in "{1}": {2}'.format(filename, patchname, os.getcwd())
+        title = _('diff: "{0}" in "{1}": {2}').format(filename, patchname, os.getcwd())
         flags = gtk.DIALOG_DESTROY_WITH_PARENT
         dialogue.AmodalDialog.__init__(self, title, None, flags, ())
         self.widget = self.Widget(filename, patchname)
@@ -273,7 +273,7 @@ class CombinedForFileDialog(dialogue.AmodalDialog):
             diff = ifce.PM.get_file_combined_diff(self.filename)
             return str(diff)
     def __init__(self, filename):
-        title = 'combined diff: "{0}": {1}'.format(filename, os.getcwd())
+        title = _('combined diff: "{0}": {1}').format(filename, os.getcwd())
         flags = gtk.DIALOG_DESTROY_WITH_PARENT
         dialogue.AmodalDialog.__init__(self, title, None, flags, ())
         self.widget = self.Widget(filename)
@@ -287,14 +287,14 @@ class CombinedForFileDialog(dialogue.AmodalDialog):
     def _close_cb(self, dialog, response_id):
         dialog.destroy()
 
-options.define('diff', 'extdiff', options.Defn(str, None, 'The name of external application for viewing diffs'))
+options.define('diff', 'extdiff', options.Defn(str, None, _('The name of external application for viewing diffs')))
 
 def launch_external_diff(file_a, file_b):
     extdiff = options.get('diff', 'extdiff')
     if not extdiff:
-        return cmd_result.Result(cmd_result.WARNING, '', 'No extenal diff viewer is defined.\n')
+        return cmd_result.Result(cmd_result.WARNING, '', _('No extenal diff viewer is defined.\n'))
     try:
         runext.run_cmd_in_bgnd([extdiff, file_a, file_b])
     except OSError as edata:
-        return cmd_result.Result(cmd_result.ERROR, '', 'Error lanuching external viewer "{0}": {1}\n'.format(extdiff, edata.strerror))
+        return cmd_result.Result(cmd_result.ERROR, '', _('Error lanuching external viewer "{0}": {1}\n').format(extdiff, edata.strerror))
     return cmd_result.Result(cmd_result.OK, '', '')

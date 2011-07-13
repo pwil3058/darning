@@ -25,29 +25,29 @@ from darning.cli import msg
 
 PARSER = cli_args.SUB_CMD_PARSER.add_parser(
     'import',
-    description='''Import an external patch and place it in the series
+    description=_('''Import an external patch and place it in the series
         after the current top patch. Unless otherwise specified the
-        name of the imported file will be used as the patch name.''',
+        name of the imported file will be used as the patch name.'''),
 )
 
 PARSER.add_argument(
     '--as',
-    help='the name to be assigned to the imported patch.',
+    help=_('the name to be assigned to the imported patch.'),
     dest = 'patchname',
-    metavar = 'patch',
+    metavar=_('patch'),
 )
 
 PARSER.add_argument(
     '-p',
-    help='the number of path components to be stripped from file paths.',
+    help=_('the number of path components to be stripped from file paths.'),
     dest = 'opt_strip_level',
-    metavar = 'strip_level',
+    metavar=_('strip_level'),
     choices = ['0', '1'],
 )
 
 PARSER.add_argument(
     'patchfile',
-    help='the name of the patch file to be imported.',
+    help=_('the name of the patch file to be imported.'),
 )
 
 def run_import(args):
@@ -56,14 +56,14 @@ def run_import(args):
     if not args.patchname:
         args.patchname = os.path.basename(args.patchfile)
     if patch_db.patch_is_in_series(args.patchname):
-        return msg.Error('patch "{0}" already exists', args.patchname)
+        return msg.Error(_('patch "{0}" already exists'), args.patchname)
     try:
         epatch = patchlib.Patch.parse_text(open(args.patchfile).read())
     except patchlib.ParseError as edata:
         if edata.lineno is None:
             return msg.Error(edata.message)
         else:
-            return msg.Error('{0}: Line:{1}.', edata.message, edata.lineno)
+            return msg.Error(_('{0}: Line:{1}.'), edata.message, edata.lineno)
     except IOError as edata:
         if edata.filename is None:
             return msg.Error(edata.strerror)
@@ -72,15 +72,15 @@ def run_import(args):
     if args.opt_strip_level is None:
         args.opt_strip_level = epatch.estimate_strip_level()
         if args.opt_strip_level is None:
-            return msg.Error('Strip level auto detection failed.  Please use -p option.')
+            return msg.Error(_('Strip level auto detection failed.  Please use -p option.'))
     epatch.set_strip_level(int(args.opt_strip_level))
     patch_db.import_patch(epatch, args.patchname)
     warn = patch_db.top_patch_needs_refresh()
     if warn:
         old_top = patch_db.get_top_patch_name()
-    msg.Info('Imported "{0}" as patch "{1}".', args.patchfile, args.patchname)
+    msg.Info(_('Imported "{0}" as patch "{1}".'), args.patchfile, args.patchname)
     if warn:
-        msg.Warn('Previous top patch ("{0}") needs refreshing.', old_top)
+        msg.Warn(_('Previous top patch ("{0}") needs refreshing.'), old_top)
     return msg.OK
 
 PARSER.set_defaults(run_cmd=run_import)

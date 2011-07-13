@@ -18,6 +18,8 @@
 
 import sys
 
+from darning import i18n
+
 from darning.cli import cli_args
 import darning.cli
 

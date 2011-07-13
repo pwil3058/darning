@@ -222,7 +222,7 @@ class AGandUIManager(ws_event.Listener):
 
 add_class_indep_actions(Condns.DONT_CARE,
     [
-        ("actions_playground_menu", None, "_Playground"),
-        ("actions_quit", gtk.STOCK_QUIT, "_Quit", "",
-         "Quit", gtk.main_quit),
+        ("actions_playground_menu", None, _('_Playground')),
+        ("actions_quit", gtk.STOCK_QUIT, _('_Quit'), "",
+         _('Quit'), gtk.main_quit),
     ])

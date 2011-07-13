@@ -21,10 +21,10 @@ from darning.cli import msg
 
 PARSER = cli_args.SUB_CMD_PARSER.add_parser(
     'init',
-    description='Create a new patch database.',
+    description=_('Create a new patch database.'),
 )
 
-cli_args.add_descr_option(PARSER, helptext='a message to describe the purpose of the patches to be managed.')
+cli_args.add_descr_option(PARSER, helptext=_('a message to describe the purpose of the patches to be managed.'))
 
 def run_init(args):
     '''Execute the "init" sub command using the supplied args'''

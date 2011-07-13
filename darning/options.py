@@ -35,7 +35,7 @@ def load_global_options():
     try:
         GLOBAL_OPTIONS.read(_GLOBAL_CFG_FILE)
     except configparser.ParsingError as edata:
-        return cmd_result.Result(cmd_result.ERROR, '', 'Error reading global options: {0}\n'.format(str(edata)))
+        return cmd_result.Result(cmd_result.ERROR, '', _('Error reading global options: {0}\n').format(str(edata)))
     return cmd_result.Result(cmd_result.OK, '', '')
 
 def reload_global_options():
@@ -44,7 +44,7 @@ def reload_global_options():
     try:
         new_version.read(_GLOBAL_CFG_FILE)
     except configparser.ParsingError as edata:
-        return cmd_result.Result(cmd_result.ERROR, '', 'Error reading global options: {0}\n'.format(str(edata)))
+        return cmd_result.Result(cmd_result.ERROR, '', _('Error reading global options: {0}\n').format(str(edata)))
     GLOBAL_OPTIONS = new_version
     return cmd_result.Result(cmd_result.OK, '', '')
 
@@ -57,7 +57,7 @@ def load_pgnd_options():
     try:
         PGND_OPTIONS.read(_PGND_CFG_FILE)
     except configparser.ParsingError as edata:
-        return cmd_result.Result(cmd_result.ERROR, '', 'Error reading playground options: {0}\n'.format(str(edata)))
+        return cmd_result.Result(cmd_result.ERROR, '', _('Error reading playground options: {0}\n').format(str(edata)))
     return cmd_result.Result(cmd_result.OK, '', '')
 
 def reload_pgnd_options():
@@ -66,7 +66,7 @@ def reload_pgnd_options():
     try:
         new_version.read(_PGND_CFG_FILE)
     except configparser.ParsingError as edata:
-        return cmd_result.Result(cmd_result.ERROR, '', 'Error reading playground options: {0}\n'.format(str(edata)))
+        return cmd_result.Result(cmd_result.ERROR, '', _('Error reading playground options: {0}\n').format(str(edata)))
     PGND_OPTIONS = new_version
     return cmd_result.Result(cmd_result.OK, '', '')
 
@@ -95,5 +95,5 @@ def get(section, oname):
     else:
         return DEFINITIONS[section][oname].default
 
-define('user', 'name', Defn(str, None, 'User\'s display name e.g. Fred Bloggs'))
-define('user', 'email', Defn(str, None, 'User\'s email address e.g. fred@bloggs.com'))
+define('user', 'name', Defn(str, None, _('User\'s display name e.g. Fred Bloggs')))
+define('user', 'email', Defn(str, None, _('User\'s email address e.g. fred@bloggs.com')))

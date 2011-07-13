@@ -106,10 +106,10 @@ class MessageDialog(Dialog):
         gtk.MESSAGE_ERROR: gtk.STOCK_DIALOG_ERROR,
     }
     labels = {
-        gtk.MESSAGE_INFO: 'FYI',
-        gtk.MESSAGE_WARNING: 'Warning',
-        gtk.MESSAGE_QUESTION: 'Question',
-        gtk.MESSAGE_ERROR: 'Error',
+        gtk.MESSAGE_INFO: _('FYI'),
+        gtk.MESSAGE_WARNING: _('Warning'),
+        gtk.MESSAGE_QUESTION: _('Question'),
+        gtk.MESSAGE_ERROR: _('Error'),
     }
     @staticmethod
     def copy_cb(tview):
@@ -207,9 +207,9 @@ def _form_question(result, clarification):
 def ask_force_refresh_or_cancel(result, clarification=None, parent=None):
     buttons = (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL)
     if result.eflags & cmd_result.SUGGEST_REFRESH:
-        buttons += ("_Refresh and Retry", Response.REFRESH)
+        buttons += (_('_Refresh and Retry'), Response.REFRESH)
     if result.eflags & cmd_result.SUGGEST_FORCE:
-        buttons += ("_Force", Response.FORCE)
+        buttons += (_('_Force'), Response.FORCE)
     question = _form_question(result, clarification)
     return ask_question(question, parent, buttons)
 

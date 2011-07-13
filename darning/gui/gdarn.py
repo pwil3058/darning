@@ -86,8 +86,8 @@ class Darning(gtk.Window, dialogue.BusyIndicator, actions.AGandUIManager):
         phpane = gtk.HPaned()
         nbook = gtk.Notebook()
         nbook.set_size_request(280, 280)
-        nbook.append_page(file_tree.TopPatchFileTreeWidget(), gtk.Label('Top Patch Files'))
-        nbook.append_page(file_tree.CombinedPatchFileTreeWidget(), gtk.Label('Combined Patch Files'))
+        nbook.append_page(file_tree.TopPatchFileTreeWidget(), gtk.Label(_('Top Patch Files')))
+        nbook.append_page(file_tree.CombinedPatchFileTreeWidget(), gtk.Label(_('Combined Patch Files')))
         phpane.add1(nbook)
         plist = patch_list.List()
         plist.set_size_request(280, 280)
@@ -95,8 +95,8 @@ class Darning(gtk.Window, dialogue.BusyIndicator, actions.AGandUIManager):
         hpane.add2(phpane)
         if ifce.TERM:
             nbook = gtk.Notebook()
-            nbook.append_page(console.LOG, gtk.Label("Transaction Log"))
-            nbook.append_page(ifce.TERM, gtk.Label("Terminal"))
+            nbook.append_page(console.LOG, gtk.Label(_('Transaction Log')))
+            nbook.append_page(ifce.TERM, gtk.Label(_('Terminal')))
             vpane.add2(nbook)
         else:
             vpane.add2(console.LOG)

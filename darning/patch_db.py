@@ -29,6 +29,7 @@ import re
 import difflib
 import errno
 
+from darning import i18n
 from darning import scm_ifce
 from darning import runext
 from darning import utils
@@ -50,7 +51,7 @@ class Failure:
     def __str__(self):
         return self.msg
     def __repr__(self):
-        return 'Failure(%s)' % self.msg
+        return _('Failure({0})').format(self.msg)
 
 class BinaryDiff(patchlib.Diff):
     def __init__(self, file_data):
@@ -60,7 +61,7 @@ class BinaryDiff(patchlib.Diff):
         else:
             self.contents = None
     def __str__(self):
-        return 'Binary files "{0}" and "{1}" differ.\n'.format(self.file_data.before, self.file_data.after)
+        return _('Binary files "{0}" and "{1}" differ.\n').format(self.file_data.before, self.file_data.after)
     def fix_trailing_whitespace(self):
         return []
     def report_trailing_whitespace(self):
@@ -253,9 +254,9 @@ class PatchData:
                 file_data.timestamp = 0
             if not patch_ok:
                 if result is None:
-                    result = runext.Result(1, '', 'Needs update.\n')
+                    result = runext.Result(1, '', _('Needs update.\n'))
                 else:
-                    result = runext.Result(max(result.ecode, 1), result.stdout, result.stderr + 'Needs update.\n')
+                    result = runext.Result(max(result.ecode, 1), result.stdout, result.stderr + _('Needs update.\n'))
             if result is not None:
                 results[file_data.name] = result
             dump_db()
@@ -390,7 +391,7 @@ class PatchData:
             # ensure this file shows up as needing refresh
             file_data.timestamp = -1
             dump_db()
-            return runext.Result(3, '', 'File has unresolved merge(s).\n')
+            return runext.Result(3, '', _('File has unresolved merge(s).\n'))
         f_exists = os.path.exists(filename)
         if f_exists or os.path.exists(self.get_backup_file_name(filename)):
             file_data.diff = self.generate_diff_for_file(filename)
@@ -407,7 +408,7 @@ class PatchData:
             file_data.new_mode = None
             file_data.timestamp = 0
             file_data.scm_revision = scm_ifce.get_revision(filename=file_data.name)
-            result = runext.Result(0, '', 'File "{0}" does not exist\n'.format(filename))
+            result = runext.Result(0, '', _('File "{0}" does not exist\n').format(filename))
         dump_db()
         return result
     def do_unapply(self):
@@ -819,7 +820,7 @@ def _lock_db():
         else:
             return Failure('%s: %s' % (_DB_LOCK_FILE, edata.strerror))
     if lf_fd == -1:
-        return Failure('%s: Unable to open' % _DB_LOCK_FILE)
+        return Failure(_('{0}: Unable to open').format(_DB_LOCK_FILE))
     os.write(lf_fd, str(os.getpid()))
     os.close(lf_fd)
     return True
@@ -841,8 +842,8 @@ def create_db(description):
                 os.rmdir(dirnm)
     if os.path.exists(_DB_DIR):
         if os.path.exists(_BACKUPS_DIR) and os.path.exists(_DB_FILE):
-            return Failure('Database already exists')
-        return Failure('Database directory exists')
+            return Failure(_('Database already exists'))
+        return Failure(_('Database directory exists'))
     try:
         dir_mode = stat.S_IRWXU|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH
         os.mkdir(_DB_DIR, dir_mode)
@@ -899,7 +900,7 @@ def load_db(lock=True):
     finally:
         fobj.close()
     if lock and lock_state is not True:
-        return Failure('Database is read only. Lock held by: {0}'.format(holder))
+        return Failure(_('Database is read only. Lock held by: {0}').format(holder))
     return True
 
 def dump_db():
@@ -1054,7 +1055,7 @@ def apply_patch(force=False):
     assert is_writable()
     next_index = _get_next_patch_index()
     if next_index is None:
-        return (False, 'There are no pushable patches available')
+        return (False, _('There are no pushable patches available'))
     return (True, _DB.series[next_index].do_apply(force))
 
 def get_top_applied_patch_for_file(filename):

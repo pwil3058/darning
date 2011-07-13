@@ -30,7 +30,7 @@ def Info(template, *args):
 
 def Warn(template, *args):
     '''Print an message to stderr and return OK'''
-    sys.stderr.write('Warning: ')
+    sys.stderr.write(_('Warning: '))
     if len(args) == 0:
         sys.stderr.write(template + '\n')
     else:
@@ -39,7 +39,7 @@ def Warn(template, *args):
 
 def Error(template, *args):
     '''Print an message to stderr and return ERROR'''
-    sys.stderr.write('Error: ')
+    sys.stderr.write(_('Error: '))
     if len(args) == 0:
         sys.stderr.write(str(template) + '\n')
     else:

@@ -69,7 +69,7 @@ class List(table.MapManagedTable):
             selection_mode=gtk.SELECTION_SINGLE,
             columns=[
                 table.MapManagedTable.View.Column(
-                    title='Patch List',
+                    title=_('Patch List'),
                     properties={'expand': False, 'resizable' : True},
                     cells=[
                         table.MapManagedTable.View.Cell(
@@ -142,21 +142,21 @@ class List(table.MapManagedTable):
                                        scroll_bar=True,
                                        busy_indicator=busy_indicator,
                                        size_req=None)
-        self.add_conditional_action(Condns.DONT_CARE, gtk.Action("menu_patch_list", "Patch _List", None, None))
+        self.add_conditional_action(Condns.DONT_CARE, gtk.Action("menu_patch_list", _('Patch _List'), None, None))
         self.add_conditional_actions(Condns.IN_PGND,
             [
-                ("pm_refresh_patch_list", gtk.STOCK_REFRESH, "Update Patch List", None,
-                 "Refresh/update the patch list display", self._update_list_cb),
+                ("pm_refresh_patch_list", gtk.STOCK_REFRESH, _('Update Patch List'), None,
+                 _('Refresh/update the patch list display'), self._update_list_cb),
             ])
         self.add_conditional_actions(Condns.SELN | Condns.IN_PGND,
             [
-                ("pm_edit_patch_descr", gtk.STOCK_EDIT, "Description", None,
-                 "Edit the selected patch's description", self.do_edit_description),
+                ("pm_edit_patch_descr", gtk.STOCK_EDIT, _('Description'), None,
+                 _('Edit the selected patch\'s description'), self.do_edit_description),
             ])
         self.add_conditional_actions(Condns.SELN | Condns.IN_PGND_MUTABLE,
             [
                 ("pm_set_patch_guards", icons.STOCK_PATCH_GUARD, None, None,
-                 "Set guards on the selected patch", self.do_set_guards),
+                 _('Set guards on the selected patch'), self.do_set_guards),
             ])
         self.ui_manager.add_ui_from_string(self.UI_DESCR)
         self.header.lhs.pack_start(self.ui_manager.get_widget('/patch_list_menubar'), expand=True, fill=True)
@@ -197,7 +197,7 @@ class List(table.MapManagedTable):
     def do_set_guards(self, _action=None):
         patch = self.get_selected_patch()
         cguards = ' '.join(ifce.PM.get_patch_guards(patch))
-        dialog = dialogue.ReadTextDialog("Set Guards: %s" % patch, "Guards:", cguards)
+        dialog = dialogue.ReadTextDialog(_('Set Guards: {0}').format(patch), _('Guards:'), cguards)
         while True:
             response = dialog.run()
             if response == gtk.RESPONSE_OK:
@@ -237,7 +237,7 @@ class PatchDescrEditDialog(dialogue.Dialog):
             self.load_text_fm_db()
             self.action_group.add_actions(
                 [
-                    ("load_menu", None, "_File"),
+                    ("load_menu", None, _('_File')),
                 ])
         def get_text_fm_db(self):
             return ifce.PM.get_patch_description(self._patch)
@@ -245,7 +245,7 @@ class PatchDescrEditDialog(dialogue.Dialog):
             return ifce.PM.do_set_patch_description(self._patch, text)
     def __init__(self, patch, parent=None):
         flags = ~gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT
-        title = 'Patch: {0} : {1} -- gdarn'.format(patch, utils.path_rel_home(os.getcwd()))
+        title = _('Patch: {0} : {1} -- gdarn').format(patch, utils.path_rel_home(os.getcwd()))
         dialogue.Dialog.__init__(self, title, parent, flags, None)
         if not parent:
             self.set_icon_from_file(icons.APP_ICON_FILE)
@@ -270,7 +270,7 @@ class PatchDescrEditDialog(dialogue.Dialog):
     def _handle_response_cb(self, dialog, response_id):
         if response_id == gtk.RESPONSE_CLOSE:
             if self.edit_descr_widget.view.get_buffer().get_modified():
-                qtn = '\n'.join(["Unsaved changes to summary will be lost.", "Close anyway?"])
+                qtn = '\n'.join([_('Unsaved changes to summary will be lost.'), _('Close anyway?')])
                 if dialogue.ask_yes_no(qtn):
                     self.destroy()
             else:
@@ -299,7 +299,7 @@ class SeriesDescrEditDialog(dialogue.Dialog):
             self.load_text_fm_db()
             self.action_group.add_actions(
                 [
-                    ("load_menu", None, "_File"),
+                    ("load_menu", None, _('_File')),
                 ])
         def get_text_fm_db(self):
             return ifce.PM.get_series_description()
@@ -307,7 +307,7 @@ class SeriesDescrEditDialog(dialogue.Dialog):
             return ifce.PM.do_set_series_description(text)
     def __init__(self, parent=None):
         flags = ~gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT
-        title = 'Series Description: {0} -- gdarn'.format(utils.path_rel_home(os.getcwd()))
+        title = _('Series Description: {0} -- gdarn').format(utils.path_rel_home(os.getcwd()))
         dialogue.Dialog.__init__(self, title, parent, flags, None)
         if not parent:
             self.set_icon_from_file(icons.APP_ICON_FILE)
@@ -332,7 +332,7 @@ class SeriesDescrEditDialog(dialogue.Dialog):
     def _handle_response_cb(self, dialog, response_id):
         if response_id == gtk.RESPONSE_CLOSE:
             if self.edit_descr_widget.view.get_buffer().get_modified():
-                qtn = '\n'.join(["Unsaved changes to summary will be lost.", "Close anyway?"])
+                qtn = '\n'.join([_('Unsaved changes to summary will be lost.'), _('Close anyway?')])
                 if dialogue.ask_yes_no(qtn):
                     self.destroy()
             else:
@@ -359,11 +359,11 @@ class NewSeriesDescrDialog(dialogue.Dialog):
             text_edit.Widget.__init__(self)
             self.action_group.add_actions(
                 [
-                    ("load_menu", None, "_File"),
+                    ("load_menu", None, _('_File')),
                 ])
     def __init__(self, parent=None):
         flags = gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT
-        title = 'Patch Series Description: %s -- gdarn' % utils.path_rel_home(os.getcwd())
+        title = _('Patch Series Description: %s -- gdarn') % utils.path_rel_home(os.getcwd())
         dialogue.Dialog.__init__(self, title, parent, flags,
                                  (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
                                   gtk.STOCK_OK, gtk.RESPONSE_OK))
@@ -388,9 +388,9 @@ class NewSeriesDescrDialog(dialogue.Dialog):
 class NewPatchDescrDialog(NewSeriesDescrDialog):
     def __init__(self, parent=None):
         NewSeriesDescrDialog.__init__(self, parent=parent)
-        self.set_title('New Patch Description: %s -- gdarn' % utils.path_rel_home(os.getcwd()))
+        self.set_title(_('New Patch Description: {0} -- gdarn').format(utils.path_rel_home(os.getcwd())))
         self.hbox = gtk.HBox()
-        self.hbox.pack_start(gtk.Label('New Patch Name:'), fill=False, expand=False)
+        self.hbox.pack_start(gtk.Label(_('New Patch Name:')), fill=False, expand=False)
         self.new_name_entry = gtk.Entry()
         self.new_name_entry.set_width_chars(32)
         self.hbox.pack_start(self.new_name_entry)
@@ -407,7 +407,7 @@ def _update_class_indep_pushable_cb(_arg=None):
 ws_event.add_notification_cb(ws_event.CHANGE_WD|ws_event.PATCH_CHANGES, _update_class_indep_pushable_cb)
 
 def new_playground_acb(_arg):
-    newpg = dialogue.ask_dir_name("Select/create playground ..")
+    newpg = dialogue.ask_dir_name(_('Select/create playground ..'))
     if newpg is not None:
         dlg = NewSeriesDescrDialog(parent=dialogue.main_window)
         if dlg.run() == gtk.RESPONSE_OK:
@@ -478,7 +478,7 @@ def refresh_top_patch_acb(_arg):
 
 def select_guards_acb(_arg):
     cselected_guards = ' '.join(ifce.PM.get_selected_guards())
-    dialog = dialogue.ReadTextDialog('Select Guards: {0}'.format(os.getcwd()), 'Guards:', cselected_guards)
+    dialog = dialogue.ReadTextDialog(_('Select Guards: {0}').format(os.getcwd()), _('Guards:'), cselected_guards)
     while True:
         response = dialog.run()
         if response == gtk.RESPONSE_OK:
@@ -496,44 +496,44 @@ def select_guards_acb(_arg):
 
 actions.add_class_indep_actions(actions.Condns.DONT_CARE,
     [
-        ("config_new_playground", icons.STOCK_NEW_PLAYGROUND, "_New", "",
-         "Create a new intitialized playground", new_playground_acb),
+        ("config_new_playground", icons.STOCK_NEW_PLAYGROUND, _('_New'), "",
+         _('Create a new intitialized playground'), new_playground_acb),
     ])
 
 actions.add_class_indep_actions(actions.Condns.NOT_IN_PGND,
     [
-        ("config_init_cwd", icons.STOCK_INIT, "_Initialize", "",
-         "Create a patch series in the current directory", init_cwd_acb),
+        ("config_init_cwd", icons.STOCK_INIT, _('_Initialize'), "",
+         _('Create a patch series in the current directory'), init_cwd_acb),
     ])
 
 actions.add_class_indep_actions(Condns.IN_PGND_MUTABLE,
     [
         ("patch_list_new_patch", icons.STOCK_NEW_PATCH, None, None,
-         "Create a new patch", new_patch_acb),
+         _('Create a new patch'), new_patch_acb),
         ("patch_list_select_guards", icons.STOCK_PATCH_GUARD_SELECT, None, None,
-         "Select which guards are in force", select_guards_acb),
+         _('Select which guards are in force'), select_guards_acb),
     ])
 
 actions.add_class_indep_actions(Condns.IN_PGND,
     [
-        ("patch_list_edit_series_descr", gtk.STOCK_EDIT, "Description", None,
-         "Edit the serie's description", edit_series_description_acb),
+        ("patch_list_edit_series_descr", gtk.STOCK_EDIT, _('Description'), None,
+         _('Edit the series\' description'), edit_series_description_acb),
     ])
 
 actions.add_class_indep_actions(Condns.PUSH_POSSIBLE | Condns.IN_PGND_MUTABLE,
     [
-        ("patch_list_push", icons.STOCK_PUSH_PATCH, "Push", None,
-         "Apply the next unapplied patch", push_next_patch_acb),
+        ("patch_list_push", icons.STOCK_PUSH_PATCH, _('Push'), None,
+         _('Apply the next unapplied patch'), push_next_patch_acb),
     ])
 
 actions.add_class_indep_actions(Condns.POP_POSSIBLE | Condns.IN_PGND_MUTABLE,
     [
-        ("patch_list_pop", icons.STOCK_POP_PATCH, "Pop", None,
-         "Pop the top applied patch", pop_top_patch_acb),
+        ("patch_list_pop", icons.STOCK_POP_PATCH, _('Pop'), None,
+         _('Pop the top applied patch'), pop_top_patch_acb),
     ])
 
 actions.add_class_indep_actions(Condns.PMIC | Condns.IN_PGND_MUTABLE,
     [
         ("patch_list_refresh_top_patch", icons.STOCK_REFRESH_PATCH, None, None,
-         "Refresh the top patch", refresh_top_patch_acb),
+         _('Refresh the top patch'), refresh_top_patch_acb),
     ])

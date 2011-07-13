@@ -22,10 +22,10 @@ from darning.cli import msg
 
 PARSER = cli_args.SUB_CMD_PARSER.add_parser(
     'push',
-    description='Apply the next patch in the series.',
+    description=_('Apply the next patch in the series.'),
 )
 
-cli_args.add_force_option(PARSER, helptext='incorporate uncommitted/unrefreshed changes to overlapped files into the pushed patch.')
+cli_args.add_force_option(PARSER, helptext=_('incorporate uncommitted/unrefreshed changes to overlapped files into the pushed patch.'))
 
 def run_push(args):
     '''Execute the "push" sub command using the supplied args'''
@@ -33,9 +33,9 @@ def run_push(args):
     if not patch_db.is_pushable():
         top_patch = patch_db.get_top_patch_name()
         if top_patch:
-            return msg.Error('no pushable patches. "{0}" is on top.', top_patch)
+            return msg.Error(_('no pushable patches. "{0}" is on top.'), top_patch)
         else:
-            return msg.Error('no pushable patches.')
+            return msg.Error(_('no pushable patches.'))
     is_ok = True
     if args.opt_force:
         ol_report = msg.Info
@@ -44,19 +44,19 @@ def run_push(args):
     overlaps = patch_db.get_next_patch_overlap_data()
     if len(overlaps.uncommitted) > 0:
         is_ok = False
-        ol_report('The following (overlapped) files have uncommitted SCM changes:')
+        ol_report(_('The following (overlapped) files have uncommitted SCM changes:'))
         for filename in sorted(overlaps.uncommitted):
             ol_report('\t{0}', filename)
     if len(overlaps.unrefreshed) > 0:
         is_ok = False
-        ol_report('The following (overlapped) files have unrefreshed changes (in an applied patch):')
+        ol_report(_('The following (overlapped) files have unrefreshed changes (in an applied patch):'))
         for filename in sorted(overlaps.unrefreshed):
-            ol_report('\t{0} : in patch "{1}"', filename, overlaps.unrefreshed[filename])
+            ol_report(_('\t{0} : in patch "{1}"'), filename, overlaps.unrefreshed[filename])
     if not is_ok:
         if args.opt_force:
-            msg.Info('Uncommited/unrefreshed changes incorporated into pushed patch.')
+            msg.Info(_('Uncommited/unrefreshed changes incorporated into pushed patch.'))
         else:
-            return msg.Error('Aborting')
+            return msg.Error(_('Aborting'))
     _db_ok, results = patch_db.apply_patch(force=args.opt_force)
     highest_ecode = 0
     for filename in results:
@@ -70,11 +70,11 @@ def run_push(args):
         else:
             for line in result.stderr.splitlines(False):
                 msg.Error(line)
-    msg.Info('Patch "{0}" is now on top.', patch_db.get_top_patch_name())
+    msg.Info(_('Patch "{0}" is now on top.'), patch_db.get_top_patch_name())
     if highest_ecode > 1:
-        return msg.Error('A refresh is required after issues are resolved.')
+        return msg.Error(_('A refresh is required after issues are resolved.'))
     if highest_ecode > 0:
-        return msg.Error('A refresh is required.')
+        return msg.Error(_('A refresh is required.'))
     return msg.OK
 
 PARSER.set_defaults(run_cmd=run_push)
