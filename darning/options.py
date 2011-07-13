@@ -72,7 +72,7 @@ def reload_pgnd_options():
 
 class DuplicateDefn(Exception): pass
 
-Defn = collections.namedtuple('Defn', ['type', 'default', 'help'])
+Defn = collections.namedtuple('Defn', ['str_to_val', 'default', 'help'])
 
 DEFINITIONS = {}
 
@@ -84,16 +84,25 @@ def define(section, oname, odefn):
     else:
         DEFINITIONS[section][oname] = odefn
 
+def str_to_bool(string):
+    lowstr = string.lower()
+    if lowstr in ['true', 'yes', 'on', '1']:
+        return True
+    elif lowstr in ['false', 'no', 'off', '0']:
+        return False
+    else:
+        return None
+
 def get(section, oname):
     # This should cause an exception if section:oname is not known
     # which is what we want
-    otype = DEFINITIONS[section][oname].type
+    str_to_val = DEFINITIONS[section][oname].str_to_val
+    value = None
     if PGND_OPTIONS.has_option(section, oname):
-        return otype(PGND_OPTIONS.get(section, oname))
+        value = str_to_val(PGND_OPTIONS.get(section, oname))
     elif GLOBAL_OPTIONS.has_option(section, oname):
-        return otype(GLOBAL_OPTIONS.get(section, oname))
-    else:
-        return DEFINITIONS[section][oname].default
+        value = str_to_val(GLOBAL_OPTIONS.get(section, oname))
+    return value if value is not None else DEFINITIONS[section][oname].default
 
 define('user', 'name', Defn(str, None, _('User\'s display name e.g. Fred Bloggs')))
 define('user', 'email', Defn(str, None, _('User\'s email address e.g. fred@bloggs.com')))

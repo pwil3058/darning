@@ -35,6 +35,9 @@ from darning import runext
 from darning import utils
 from darning import patchlib
 from darning import fsdb
+from darning import options
+
+options.define('pop', 'drop_added_tws', options.Defn(options.str_to_bool, True, _('Remove added trailing white space (TWS) from patch after pop')))
 
 # A convenience tuple for sending an original and patched version of something
 _O_IP_PAIR = collections.namedtuple('_O_IP_PAIR', ['original_version', 'patched_version'])
@@ -417,6 +420,7 @@ class PatchData:
         assert self.is_applied()
         assert not self.needs_refresh()
         assert not self.is_overlapped()
+        drop_atws = options.get('pop', 'drop_added_tws')
         for file_data in self.files.values():
             if os.path.exists(file_data.name):
                 os.remove(file_data.name)
@@ -424,6 +428,8 @@ class PatchData:
             if os.path.exists(corig_f_path):
                 os.chmod(corig_f_path, file_data.old_mode)
                 shutil.move(corig_f_path, file_data.name)
+            if drop_atws and file_data.diff:
+                file_data.diff.fix_trailing_whitespace()
         shutil.rmtree(self.get_cached_original_dir_path())
         return True
     def do_refresh(self):
