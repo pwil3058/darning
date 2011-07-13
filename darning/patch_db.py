@@ -179,11 +179,11 @@ class PatchData:
         self.files[filename] = FileData(filename)
         overlapped_by = self.get_overlapping_patch_for_file(filename)
         if overlapped_by is None:
-            self.do_back_up_file(filename, force)
+            self.do_cache_original(filename, force)
         else:
-            overlapping_bu_f_name = overlapped_by.get_backup_file_name(filename)
-            if os.path.exists(overlapping_bu_f_name):
-                os.link(overlapping_bu_f_name, self.get_backup_file_name(filename))
+            overlapping_corig_f_path = overlapped_by.get_cached_original_file_path(filename)
+            if os.path.exists(overlapping_corig_f_path):
+                os.link(overlapping_corig_f_path, self.get_cached_original_file_path(filename))
                 self.files[filename].old_mode = overlapped_by.files[filename].old_mode
             else:
                 self.files[filename].old_mode = None
@@ -197,22 +197,22 @@ class PatchData:
             del self.files[filename]
             dump_db()
             return
-        bu_f_name = self.get_backup_file_name(filename)
+        corig_f_path = self.get_cached_original_file_path(filename)
         overlapped_by = self.get_overlapping_patch_for_file(filename)
         if overlapped_by is None:
             if os.path.exists(filename):
                 os.remove(filename)
-            if os.path.exists(bu_f_name):
-                os.chmod(bu_f_name, self.files[filename].old_mode)
-                shutil.move(bu_f_name, filename)
+            if os.path.exists(corig_f_path):
+                os.chmod(corig_f_path, self.files[filename].old_mode)
+                shutil.move(corig_f_path, filename)
         else:
-            overlapping_bu_f_name = overlapped_by.get_backup_file_name(filename)
-            if os.path.exists(bu_f_name):
-                shutil.move(bu_f_name, overlapping_bu_f_name)
+            overlapping_corig_f_path = overlapped_by.get_cached_original_file_path(filename)
+            if os.path.exists(corig_f_path):
+                shutil.move(corig_f_path, overlapping_corig_f_path)
                 overlapped_by.files[filename].old_mode = self.files[filename].old_mode
             else:
-                if os.path.exists(overlapping_bu_f_name):
-                    os.remove(overlapping_bu_f_name)
+                if os.path.exists(overlapping_corig_f_path):
+                    os.remove(overlapping_corig_f_path)
                 overlapped_by.files[filename].old_mode = None
             # Make sure that the overlapping file gets refreshed
             overlapped_by.files[filename].timestamp = 0
@@ -223,13 +223,13 @@ class PatchData:
         assert is_writable()
         assert not self.is_applied()
         assert force or _total_overlap_count(get_patch_overlap_data(self.name)) == 0
-        os.mkdir(self.get_backup_dir_name())
+        os.mkdir(self.get_cached_original_dir_path())
         results = {}
         if len(self.files) == 0:
             return results
         patch_cmd = ['patch', '--merge', '--force', '-p1', '--batch',]
         for file_data in self.files.values():
-            self.do_back_up_file(file_data.name, force)
+            self.do_cache_original(file_data.name, force)
             result = None
             patch_ok = True
             if file_data.binary is not False:
@@ -264,19 +264,19 @@ class PatchData:
     def copy_refreshed_version_to(self, filename, target_name):
         file_data = self.files[filename]
         if not file_data.needs_refresh():
-            if os.path.exists(bu_f_name):
+            if os.path.exists(corig_f_path):
                 utils.ensure_file_dir_exists(target_name)
                 shutil.copy2(filename, target_name)
             return
-        bu_f_name = self.get_backup_file_name(filename)
+        corig_f_path = self.get_cached_original_file_path(filename)
         if file_data.binary is not False:
-            if os.path.exists(bu_f_name):
+            if os.path.exists(corig_f_path):
                 utils.ensure_file_dir_exists(target_name)
-                shutil.copy2(bu_f_name, target_name)
+                shutil.copy2(corig_f_path, target_name)
             return
-        if os.path.exists(bu_f_name):
+        if os.path.exists(corig_f_path):
             utils.ensure_file_dir_exists(target_name)
-            shutil.copy2(bu_f_name, target_name)
+            shutil.copy2(corig_f_path, target_name)
         elif file_data.diff:
             utils.ensure_file_dir_exists(target_name)
             with open(target_name, 'w') as fobj:
@@ -284,34 +284,34 @@ class PatchData:
         if file_data.diff:
             patch_cmd = ['patch', '--merge', '--force', '-p1', '--batch', target_name]
             runext.run_cmd(patch_cmd, str(file_data.diff))
-    def do_back_up_file(self, filename, force):
-        '''Back up the named file for this patch'''
+    def do_cache_original(self, filename, force):
+        '''Cache the original of the named file for this patch'''
         # "force" argument is supplied to allow shortcutting SCM check
         # which can be expensive
         assert is_writable()
         assert filename in self.files
         assert self.is_applied()
         assert self.get_overlapping_patch_for_file(filename) is None
-        bu_f_name = self.get_backup_file_name(filename)
+        corig_f_path = self.get_cached_original_file_path(filename)
         olpatch = self.get_unrefreshed_overlapped_patch_for_file(filename) if not force else None
         if olpatch:
-            olpatch.copy_refreshed_version_to(filename, bu_f_name)
+            olpatch.copy_refreshed_version_to(filename, corig_f_path)
             self.files[filename].timestamp = 0
         elif force and scm_ifce.has_uncommitted_change(filename):
-            scm_ifce.copy_clean_version_to(filename, bu_f_name)
+            scm_ifce.copy_clean_version_to(filename, corig_f_path)
             self.files[filename].timestamp = 0
         elif os.path.exists(filename):
             # We'll try to preserve links when we pop patches
             # so we move the file to the cached originals' directory and then make
             # a copy (without links) in the working directory
-            utils.ensure_file_dir_exists(bu_f_name)
-            shutil.move(filename, bu_f_name)
-            shutil.copy2(bu_f_name, filename)
-        if os.path.exists(bu_f_name):
+            utils.ensure_file_dir_exists(corig_f_path)
+            shutil.move(filename, corig_f_path)
+            shutil.copy2(corig_f_path, filename)
+        if os.path.exists(corig_f_path):
             # We need this so that we need to reset it on pop
-            old_mode = os.stat(bu_f_name).st_mode
-            # Make the backup read only to prevent accidental change
-            os.chmod(bu_f_name, utils.turn_off_write(old_mode))
+            old_mode = os.stat(corig_f_path).st_mode
+            # Make the cached original read only to prevent accidental change
+            os.chmod(corig_f_path, utils.turn_off_write(old_mode))
             self.files[filename].old_mode = old_mode
         else:
             self.files[filename].old_mode = None
@@ -345,8 +345,8 @@ class PatchData:
         assert filename in self.files
         assert self.is_applied()
         olp = None if combined else self.get_overlapping_patch_for_file(filename)
-        to_file = filename if olp is None else olp.get_backup_file_name(filename)
-        fm_file = self.get_backup_file_name(filename)
+        to_file = filename if olp is None else olp.get_cached_original_file_path(filename)
+        fm_file = self.get_cached_original_file_path(filename)
         fm_exists = os.path.exists(fm_file)
         if os.path.exists(to_file):
             to_name_label = os.path.join('b' if fm_exists else 'a', filename)
@@ -393,7 +393,7 @@ class PatchData:
             dump_db()
             return runext.Result(3, '', _('File has unresolved merge(s).\n'))
         f_exists = os.path.exists(filename)
-        if f_exists or os.path.exists(self.get_backup_file_name(filename)):
+        if f_exists or os.path.exists(self.get_cached_original_file_path(filename)):
             file_data.diff = self.generate_diff_for_file(filename)
             if f_exists:
                 stat_data = os.stat(filename)
@@ -420,11 +420,11 @@ class PatchData:
         for file_data in self.files.values():
             if os.path.exists(file_data.name):
                 os.remove(file_data.name)
-            bu_f_name = self.get_backup_file_name(file_data.name)
-            if os.path.exists(bu_f_name):
-                os.chmod(bu_f_name, file_data.old_mode)
-                shutil.move(bu_f_name, file_data.name)
-        shutil.rmtree(self.get_backup_dir_name())
+            corig_f_path = self.get_cached_original_file_path(file_data.name)
+            if os.path.exists(corig_f_path):
+                os.chmod(corig_f_path, file_data.old_mode)
+                shutil.move(corig_f_path, file_data.name)
+        shutil.rmtree(self.get_cached_original_dir_path())
         return True
     def do_refresh(self):
         '''Refresh the patch'''
@@ -434,11 +434,11 @@ class PatchData:
         for filename in self.files:
             results[filename] = self.do_refresh_file(filename)
         return results
-    def get_backup_dir_name(self):
-        '''Return the name of the backup directory for this patch'''
+    def get_cached_original_dir_path(self):
+        '''Return the path of the cached originals' directory for this patch'''
         return os.path.join(_ORIGINALS_DIR, self.name)
-    def get_backup_file_name(self, filename):
-        '''Return the name of the backup directory for the named file in this patch'''
+    def get_cached_original_file_path(self, filename):
+        '''Return the path of the cached original for the named file in this patch'''
         return os.path.join(_ORIGINALS_DIR, self.name, filename)
     def get_filenames(self, filenames=None):
         '''
@@ -522,7 +522,7 @@ class PatchData:
         return PatchTable.Row(name=self.name, state=state, pos_guards=self.pos_guards, neg_guards=self.neg_guards)
     def is_applied(self):
         '''Is this patch applied?'''
-        return os.path.isdir(self.get_backup_dir_name())
+        return os.path.isdir(self.get_cached_original_dir_path())
     def is_blocked_by_guard(self):
         '''Is the this patch blocked from being applied by any guards?'''
         if (self.pos_guards & _DB.selected_guards) != self.pos_guards:
@@ -1207,6 +1207,6 @@ def get_extdiff_files_for(filename, patchname):
     patch =  _DB.series[get_patch_series_index(patchname)]
     assert filename in patch.files
     assert patch.get_overlapping_patch_for_file(filename) is None
-    orig = patch.get_backup_file_name(filename)
+    orig = patch.get_cached_original_file_path(filename)
     return _O_IP_PAIR(original_version=orig, patched_version=filename)
 
