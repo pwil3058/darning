@@ -302,7 +302,7 @@ class PatchData:
             self.files[filename].timestamp = 0
         elif os.path.exists(filename):
             # We'll try to preserve links when we pop patches
-            # so we move the file to the backups directory and then make
+            # so we move the file to the cached originals' directory and then make
             # a copy (without links) in the working directory
             utils.ensure_file_dir_exists(bu_f_name)
             shutil.move(filename, bu_f_name)
@@ -436,10 +436,10 @@ class PatchData:
         return results
     def get_backup_dir_name(self):
         '''Return the name of the backup directory for this patch'''
-        return os.path.join(_BACKUPS_DIR, self.name)
+        return os.path.join(_ORIGINALS_DIR, self.name)
     def get_backup_file_name(self, filename):
         '''Return the name of the backup directory for the named file in this patch'''
-        return os.path.join(_BACKUPS_DIR, self.name, filename)
+        return os.path.join(_ORIGINALS_DIR, self.name, filename)
     def get_filenames(self, filenames=None):
         '''
         Return the names of the files in this patch.
@@ -767,7 +767,7 @@ class DataBase:
         return None
 
 _DB_DIR = '.darning.dbd'
-_BACKUPS_DIR = os.path.join(_DB_DIR, 'backups')
+_ORIGINALS_DIR = os.path.join(_DB_DIR, 'orig')
 _DB_FILE = os.path.join(_DB_DIR, 'database')
 _DB_LOCK_FILE = os.path.join(_DB_DIR, 'lock')
 _DB = None
@@ -837,17 +837,17 @@ def create_db(description):
         for filnm in [_DB_FILE, _DB_LOCK_FILE ]:
             if os.path.exists(filnm):
                 os.remove(filnm)
-        for dirnm in [_BACKUPS_DIR, _DB_DIR]:
+        for dirnm in [_ORIGINALS_DIR, _DB_DIR]:
             if os.path.exists(dirnm):
                 os.rmdir(dirnm)
     if os.path.exists(_DB_DIR):
-        if os.path.exists(_BACKUPS_DIR) and os.path.exists(_DB_FILE):
+        if os.path.exists(_ORIGINALS_DIR) and os.path.exists(_DB_FILE):
             return Failure(_('Database already exists'))
         return Failure(_('Database directory exists'))
     try:
         dir_mode = stat.S_IRWXU|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH
         os.mkdir(_DB_DIR, dir_mode)
-        os.mkdir(_BACKUPS_DIR, dir_mode)
+        os.mkdir(_ORIGINALS_DIR, dir_mode)
         lock_state = _lock_db()
         assert lock_state is True
         db_obj = DataBase(description, None)
@@ -921,8 +921,8 @@ def _get_applied_patch_names_set():
     '''Get the set of applied patches' names'''
     def isdir(item):
         '''Is item a directory?'''
-        return os.path.isdir(os.path.join(_BACKUPS_DIR, item))
-    return set([item for item in os.listdir(_BACKUPS_DIR) if isdir(item)])
+        return os.path.isdir(os.path.join(_ORIGINALS_DIR, item))
+    return set([item for item in os.listdir(_ORIGINALS_DIR) if isdir(item)])
 
 def get_applied_patch_name_list():
     '''Get an ordered list of applied patch names'''
