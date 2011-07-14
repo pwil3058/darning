@@ -33,6 +33,9 @@ def unshow_busy():
     if main_window is not None:
         main_window.unshow_busy()
 
+def is_busy():
+    return main_window is None or main_window.is_busy
+
 def init(window):
     global main_window
     main_window = window

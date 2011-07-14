@@ -403,15 +403,15 @@ _LAST_TABLE = []
 
 def auto_update_cb(_arg=None):
     global _LAST_TABLE
-    if dialogue.main_window is None or dialogue.main_window.is_busy:
+    if dialogue.is_busy:
         return
-    dialogue.main_window.show_busy()
+    dialogue.show_busy()
     table = patch_db.get_combined_patch_file_table() if patch_db.is_readable() else []
     equal = table == _LAST_TABLE
     if not equal:
         ws_event.notify_events(ws_event.AUTO_UPDATE)
         _LAST_TABLE = table
-    dialogue.main_window.unshow_busy()
+    dialogue.unshow_busy()
 
 AUTO_UPDATE = gutils.RefreshController(
     toggle_data=gutils.RefreshController.ToggleData(
