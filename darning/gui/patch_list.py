@@ -457,18 +457,34 @@ def push_next_patch_acb(_arg):
                 force = True
             elif resp == dialogue.Response.REFRESH:
                 refresh_tried = True
+                dialogue.show_busy()
                 file_list = ifce.PM.get_filenames_in_next_patch()
                 result = ifce.PM.do_refresh_overlapped_files(file_list)
+                dialogue.unshow_busy()
                 dialogue.report_any_problems(result)
             continue
         dialogue.report_any_problems(result)
         break
 
 def pop_top_patch_acb(_arg):
-    dialogue.show_busy()
-    result = ifce.PM.do_pop_top_patch()
-    dialogue.unshow_busy()
-    dialogue.report_any_problems(result)
+    refresh_tried = False
+    while True:
+        dialogue.show_busy()
+        result = ifce.PM.do_pop_top_patch()
+        dialogue.unshow_busy()
+        if not refresh_tried and result.eflags & cmd_result.SUGGEST_REFRESH != 0:
+            resp = dialogue.ask_force_refresh_or_cancel(result, clarification=None)
+            if resp == gtk.RESPONSE_CANCEL:
+                break
+            elif resp == dialogue.Response.REFRESH:
+                refresh_tried = True
+                dialogue.show_busy()
+                result = ifce.PM.do_refresh_patch()
+                dialogue.unshow_busy()
+                dialogue.report_any_problems(result)
+            continue
+        dialogue.report_any_problems(result)
+        break
 
 def refresh_top_patch_acb(_arg):
     dialogue.show_busy()
