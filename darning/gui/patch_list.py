@@ -100,6 +100,9 @@ class List(table.MapManagedTable):
     <ui>
       <menubar name="patch_list_menubar">
         <menu name="patch_list_menu" action="menu_patch_list">
+          <menuitem action="patch_list_push_all"/>
+          <menuitem action="patch_list_pop_all"/>
+          <separator/>
           <menuitem action="pm_refresh_patch_list"/>
         </menu>
       </menubar>
@@ -452,7 +455,7 @@ def push_next_patch_acb(_arg):
         if not force and result.eflags & cmd_result.SUGGEST_FORCE_OR_REFRESH != 0:
             resp = dialogue.ask_force_refresh_or_cancel(result, clarification=None)
             if resp == gtk.RESPONSE_CANCEL:
-                break
+                return False
             elif resp == dialogue.Response.FORCE:
                 force = True
             elif resp == dialogue.Response.REFRESH:
@@ -465,6 +468,7 @@ def push_next_patch_acb(_arg):
             continue
         dialogue.report_any_problems(result)
         break
+    return cmd_result.is_ok(result)
 
 def pop_top_patch_acb(_arg):
     refresh_tried = False
@@ -475,7 +479,7 @@ def pop_top_patch_acb(_arg):
         if not refresh_tried and result.eflags & cmd_result.SUGGEST_REFRESH != 0:
             resp = dialogue.ask_force_refresh_or_cancel(result, clarification=None)
             if resp == gtk.RESPONSE_CANCEL:
-                break
+                return False
             elif resp == dialogue.Response.REFRESH:
                 refresh_tried = True
                 dialogue.show_busy()
@@ -485,6 +489,17 @@ def pop_top_patch_acb(_arg):
             continue
         dialogue.report_any_problems(result)
         break
+    return cmd_result.is_ok(result)
+
+def pop_all_patches_acb(_arg=None):
+    while ifce.PM.is_poppable():
+        if not pop_top_patch_acb(None):
+            break
+
+def push_all_patches_acb(_arg=None):
+    while ifce.PM.is_pushable():
+        if not push_next_patch_acb(None):
+            break
 
 def refresh_top_patch_acb(_arg):
     dialogue.show_busy()
@@ -540,12 +555,16 @@ actions.add_class_indep_actions(Condns.PUSH_POSSIBLE | Condns.IN_PGND_MUTABLE,
     [
         ("patch_list_push", icons.STOCK_PUSH_PATCH, _('Push'), None,
          _('Apply the next unapplied patch'), push_next_patch_acb),
+        ("patch_list_push_all", icons.STOCK_PUSH_PATCH, _('Push All'), None,
+         _('Apply all unguarded unapplied patches.'), push_all_patches_acb),
     ])
 
 actions.add_class_indep_actions(Condns.POP_POSSIBLE | Condns.IN_PGND_MUTABLE,
     [
         ("patch_list_pop", icons.STOCK_POP_PATCH, _('Pop'), None,
          _('Pop the top applied patch'), pop_top_patch_acb),
+        ("patch_list_pop_all", icons.STOCK_POP_PATCH, _('Pop All'), None,
+         _('Pop all applied patches'), pop_all_patches_acb),
     ])
 
 actions.add_class_indep_actions(Condns.PMIC | Condns.IN_PGND_MUTABLE,

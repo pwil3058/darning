@@ -386,6 +386,9 @@ def is_pushable():
         return False
     return patch_db.is_pushable()
 
+def is_poppable():
+    return get_in_progress()
+
 def is_readable():
     return patch_db.is_readable()
 
