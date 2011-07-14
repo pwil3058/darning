@@ -31,11 +31,15 @@ from darning.gui import dialogue
 from darning.gui import text_edit
 
 class Condns(actions.Condns):
-    _NEXTRACONDS = 3
+    _NEXTRACONDS = 5
     POP_POSSIBLE = actions.Condns.PMIC
-    APPLIED, \
-    UNAPPLIED, \
+    APPLIED_TOP, \
+    APPLIED_NOT_TOP, \
+    UNAPPLIED_BLOCKED, \
+    UNAPPLIED_NOT_BLOCKED, \
     PUSH_POSSIBLE = [2 ** (n + actions.Condns.NCONDS) for n in range(_NEXTRACONDS)]
+    APPLIED = APPLIED_TOP | APPLIED_NOT_TOP
+    UNAPPLIED = UNAPPLIED_BLOCKED | UNAPPLIED_NOT_BLOCKED
     APPLIED_CONDNS = APPLIED | UNAPPLIED
 
 class MaskedCondns(actions.MaskedCondns):
@@ -44,7 +48,13 @@ class MaskedCondns(actions.MaskedCondns):
         model, model_iter = seln.get_selected()
         if model_iter is None:
             return actions.MaskedCondns(Condns.DONT_CARE, Condns.APPLIED_CONDNS)
-        cond = Condns.APPLIED if model.get_patch_is_applied(model_iter) else Condns.UNAPPLIED
+        patchname = model.get_patch_name(model_iter)
+        if model.get_patch_is_applied(model_iter):
+            cond = Condns.APPLIED_TOP if ifce.PM.is_top_applied_patch(patchname) else Condns.APPLIED_NOT_TOP
+        elif ifce.PM.is_blocked_by_guard(patchname):
+            cond = Condns.UNAPPLIED_BLOCKED
+        else:
+            cond = Condns.UNAPPLIED_NOT_BLOCKED
         return actions.MaskedCondns(cond, Condns.APPLIED_CONDNS)
     @staticmethod
     def get_pushable_condns():
@@ -108,6 +118,7 @@ class List(table.MapManagedTable):
       </menubar>
       <popup name="patches_popup">
         <placeholder name="applied">
+          <menuitem action="patch_list_pop_to"/>
         </placeholder>
         <separator/>
         <placeholder name="applied_indifferent">
@@ -116,6 +127,7 @@ class List(table.MapManagedTable):
         </placeholder>
         <separator/>
         <placeholder name="unapplied">
+          <menuitem action="patch_list_push_to"/>
         </placeholder>
       </popup>
     </ui>
@@ -160,6 +172,16 @@ class List(table.MapManagedTable):
             [
                 ("pm_set_patch_guards", icons.STOCK_PATCH_GUARD, None, None,
                  _('Set guards on the selected patch'), self.do_set_guards),
+            ])
+        self.add_conditional_actions(Condns.PUSH_POSSIBLE | Condns.IN_PGND_MUTABLE | Condns.UNAPPLIED_NOT_BLOCKED,
+            [
+                ("patch_list_push_to", icons.STOCK_PUSH_PATCH, _('Push To'), None,
+                 _('Apply all unguarded unapplied patches up to the selected patch.'), self.do_push_patches_to),
+            ])
+        self.add_conditional_actions(Condns.POP_POSSIBLE | Condns.IN_PGND_MUTABLE | Condns.APPLIED_NOT_TOP,
+            [
+                ("patch_list_pop_to", icons.STOCK_POP_PATCH, _('Pop To'), None,
+                 _('Apply all applied patches down to the selected patch.'), self.do_pop_patches_to),
             ])
         self.ui_manager.add_ui_from_string(self.UI_DESCR)
         self.header.lhs.pack_start(self.ui_manager.get_widget('/patch_list_menubar'), expand=True, fill=True)
@@ -215,6 +237,16 @@ class List(table.MapManagedTable):
             else:
                 dialog.destroy()
             break
+    def do_push_patches_to(self, action=None):
+        patchname = self.get_selected_patch()
+        while ifce.PM.is_pushable() and not ifce.PM.is_top_applied_patch(patchname):
+            if not push_next_patch_acb(None):
+                break
+    def do_pop_patches_to(self, action=None):
+        patchname = self.get_selected_patch()
+        while ifce.PM.is_poppable() and not ifce.PM.is_top_applied_patch(patchname):
+            if not pop_top_patch_acb(None):
+                break
 
 class PatchDescrEditDialog(dialogue.Dialog):
     class Widget(text_edit.Widget):

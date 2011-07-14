@@ -389,6 +389,16 @@ def is_pushable():
 def is_poppable():
     return get_in_progress()
 
+def is_top_applied_patch(patchname):
+    if not patch_db.is_readable():
+        return False
+    return patch_db.is_top_applied_patch(patchname)
+
+def is_blocked_by_guard(patchname):
+    if not patch_db.is_readable():
+        return False
+    return patch_db.is_blocked_by_guard(patchname)
+
 def is_readable():
     return patch_db.is_readable()
 
