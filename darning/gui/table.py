@@ -202,7 +202,7 @@ class TableWithAGandUI(gtk.VBox, actions.AGandUIManager, dialogue.BusyIndicatorU
             middle_iter = self.model.get_row_with_key_value(key_value=middle_key)
             if middle_iter is not None:
                 middle = self.model.get_path(middle_iter)
-            self.view.scroll_to_cell(middle, use_align=True, row_align=align)
+                self.view.scroll_to_cell(middle, use_align=True, row_align=align)
         self.unshow_busy()
     def get_contents(self):
         return self.model.get_contents()

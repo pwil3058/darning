@@ -143,6 +143,11 @@ def get_top_applied_patch_for_file(filename):
         return None
     return patch_db.get_top_applied_patch_for_file(filename)
 
+def get_kept_patch_names():
+    if not patch_db.is_readable():
+        return []
+    return patch_db.get_kept_patch_names()
+
 def get_extdiff_files_for(filename, patchname):
     if not patch_db.is_readable():
         return None
@@ -157,6 +162,19 @@ def do_create_new_patch(name, descr):
     console.LOG.append_entry(_('new patch "{0}"\n"{1}"').format(name, descr))
     patch_db.apply_patch()
     ws_event.notify_events(ws_event.PATCH_CREATE|ws_event.PATCH_PUSH)
+    return cmd_result.Result(cmd_result.OK, '', '')
+
+def do_restore_patch(patchname, as_patchname=''):
+    if not as_patchname:
+        as_patchname = patchname
+    if patch_db.patch_is_in_series(as_patchname):
+        return cmd_result.Result(cmd_result.ERROR|cmd_result.SUGGEST_RENAME, '', _('{0}: Already exists in database').format(name))
+    patch_db.do_restore_patch(patchname, as_patchname)
+    if patchname == as_patchname:
+        console.LOG.append_entry(_('restore patch "{0}"').format(patchname))
+    else:
+        console.LOG.append_entry(_('restore patch "{0}" as "{1}"').format(patchname, as_patchname))
+    ws_event.notify_events(ws_event.PATCH_CREATE)
     return cmd_result.Result(cmd_result.OK, '', '')
 
 def do_push_next_patch(force=False):
@@ -282,6 +300,13 @@ def do_refresh_patch(name=None):
         eflags = cmd_result.WARNING if (highest_ecode > 0 and msg) else cmd_result.OK
     ws_event.notify_events(ws_event.PATCH_REFRESH)
     return cmd_result.Result(eflags, '', msg)
+
+def do_remove_patch(patchname):
+    console.LOG.start_cmd('remove patch: {0}'.format(patchname))
+    patch_db.do_remove_patch(patchname)
+    console.LOG.end_cmd()
+    ws_event.notify_events(ws_event.PATCH_DELETE)
+    return cmd_result.Result(cmd_result.OK, '', '')
 
 def do_set_patch_description(patch, text):
     if not patch_db.is_writable():

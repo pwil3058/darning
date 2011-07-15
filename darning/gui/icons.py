@@ -60,7 +60,7 @@ _STOCK_ITEMS_OWN_PNG = [
     (STOCK_DIFF, _('Diff'), 0, 0, None),
     (STOCK_FINISH_PATCH, _('Finish'), 0, 0, None),
     (STOCK_FOLD_PATCH, _('Fold'), 0, 0, None),
-    (STOCK_IMPORT_PATCH, _('Import)'), 0, 0, None),
+    (STOCK_IMPORT_PATCH, _('Import'), 0, 0, None),
     (STOCK_MERGE, _('Merge'), 0, 0, None),
     (STOCK_NEW_PATCH, _('New'), 0, 0, None),
     (STOCK_PATCH_GUARD, _('Guard'), 0, 0, None),

@@ -39,6 +39,7 @@ from darning import options
 
 options.define('pop', 'drop_added_tws', options.Defn(options.str_to_bool, True, _('Remove added trailing white space (TWS) from patch after pop')))
 options.define('push', 'drop_added_tws', options.Defn(options.str_to_bool, True, _('Remove added trailing white space (TWS) from patch before push')))
+options.define('remove', 'keep_patch_backup', options.Defn(options.str_to_bool, True, _('Keep back up copies of removed patches.  Facilitates restoration at a later time.')))
 
 # A convenience tuple for sending an original and patched version of something
 _O_IP_PAIR = collections.namedtuple('_O_IP_PAIR', ['original_version', 'patched_version'])
@@ -927,6 +928,11 @@ def get_patch_series_names():
     assert is_readable()
     return [patch.name for patch in _DB.series]
 
+def get_kept_patch_names():
+    '''Get a list of names for patches that have been kept on removal'''
+    assert is_readable()
+    return [kept_patch_name for kept_patch_name in sorted(_DB.kept_patches)]
+
 def _get_applied_patch_names_set():
     '''Get the set of applied patches' names'''
     def isdir(item):
@@ -1160,6 +1166,21 @@ def do_refresh_patch(name):
     patch_index = get_patch_series_index(name)
     assert patch_index is not None
     return _DB.series[patch_index].do_refresh()
+
+def do_remove_patch(patchname):
+    '''Remove the named patch from the series'''
+    assert is_writable()
+    assert get_patch_series_index(patchname) is not None
+    assert not is_applied(patchname)
+    keep = options.get('remove', 'keep_patch_backup')
+    _DB.do_remove_patch(patchname, keep=keep)
+
+def do_restore_patch(patchname, as_patchname):
+    '''Restore the named patch from back up with the specified name'''
+    assert is_writable()
+    assert not as_patchname or get_patch_series_index(as_patchname) is None
+    assert as_patchname or get_patch_series_index(patchname) is None
+    _DB.do_restore_patch(patchname, as_patchname)
 
 def do_set_patch_description(name, text):
     assert is_writable()

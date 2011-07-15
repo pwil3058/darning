@@ -29,18 +29,21 @@ from darning.gui import table
 from darning.gui import icons
 from darning.gui import dialogue
 from darning.gui import text_edit
+from darning.gui import gutils
 
 class Condns(actions.Condns):
     _NEXTRACONDS = 5
     POP_POSSIBLE = actions.Condns.PMIC
-    APPLIED_TOP, \
-    APPLIED_NOT_TOP, \
-    UNAPPLIED_BLOCKED, \
-    UNAPPLIED_NOT_BLOCKED, \
+    APPLIED, \
+    UNAPPLIED, \
+    APPLIED_FLAG, \
+    APPLIED_NOT_FLAG, \
     PUSH_POSSIBLE = [2 ** (n + actions.Condns.NCONDS) for n in range(_NEXTRACONDS)]
-    APPLIED = APPLIED_TOP | APPLIED_NOT_TOP
-    UNAPPLIED = UNAPPLIED_BLOCKED | UNAPPLIED_NOT_BLOCKED
-    APPLIED_CONDNS = APPLIED | UNAPPLIED
+    APPLIED_TOP = APPLIED | APPLIED_FLAG
+    APPLIED_NOT_TOP = APPLIED | APPLIED_NOT_FLAG
+    UNAPPLIED_BLOCKED = UNAPPLIED | APPLIED_FLAG
+    UNAPPLIED_NOT_BLOCKED = UNAPPLIED | APPLIED_NOT_FLAG
+    APPLIED_CONDNS = APPLIED | UNAPPLIED | APPLIED_FLAG | APPLIED_NOT_FLAG
 
 class MaskedCondns(actions.MaskedCondns):
     @staticmethod
@@ -112,6 +115,7 @@ class List(table.MapManagedTable):
         <menu name="patch_list_menu" action="menu_patch_list">
           <menuitem action="patch_list_push_all"/>
           <menuitem action="patch_list_pop_all"/>
+          <menuitem action="patch_list_restore_patch"/>
           <separator/>
           <menuitem action="pm_refresh_patch_list"/>
         </menu>
@@ -127,6 +131,7 @@ class List(table.MapManagedTable):
         </placeholder>
         <separator/>
         <placeholder name="unapplied">
+          <menuitem action="patch_list_remove"/>
           <menuitem action="patch_list_push_to"/>
         </placeholder>
       </popup>
@@ -163,22 +168,27 @@ class List(table.MapManagedTable):
                 ("pm_refresh_patch_list", gtk.STOCK_REFRESH, _('Update Patch List'), None,
                  _('Refresh/update the patch list display'), self._update_list_cb),
             ])
-        self.add_conditional_actions(Condns.SELN | Condns.IN_PGND,
+        self.add_conditional_actions(Condns.UNIQUE_SELN | Condns.IN_PGND,
             [
                 ("pm_edit_patch_descr", gtk.STOCK_EDIT, _('Description'), None,
                  _('Edit the selected patch\'s description'), self.do_edit_description),
             ])
-        self.add_conditional_actions(Condns.SELN | Condns.IN_PGND_MUTABLE,
+        self.add_conditional_actions(Condns.UNIQUE_SELN | Condns.IN_PGND_MUTABLE,
             [
                 ("pm_set_patch_guards", icons.STOCK_PATCH_GUARD, None, None,
                  _('Set guards on the selected patch'), self.do_set_guards),
             ])
-        self.add_conditional_actions(Condns.PUSH_POSSIBLE | Condns.IN_PGND_MUTABLE | Condns.UNAPPLIED_NOT_BLOCKED,
+        self.add_conditional_actions(Condns.UNIQUE_SELN | Condns.PUSH_POSSIBLE | Condns.IN_PGND_MUTABLE | Condns.UNAPPLIED_NOT_BLOCKED,
             [
                 ("patch_list_push_to", icons.STOCK_PUSH_PATCH, _('Push To'), None,
                  _('Apply all unguarded unapplied patches up to the selected patch.'), self.do_push_patches_to),
             ])
-        self.add_conditional_actions(Condns.POP_POSSIBLE | Condns.IN_PGND_MUTABLE | Condns.APPLIED_NOT_TOP,
+        self.add_conditional_actions(Condns.UNIQUE_SELN | Condns.IN_PGND_MUTABLE | Condns.UNAPPLIED,
+            [
+                ("patch_list_remove", gtk.STOCK_DELETE, _('Remove'), None,
+                 _('Remove the selected patch from the series.'), self.do_remove),
+            ])
+        self.add_conditional_actions(Condns.UNIQUE_SELN | Condns.POP_POSSIBLE | Condns.IN_PGND_MUTABLE | Condns.APPLIED_NOT_TOP,
             [
                 ("patch_list_pop_to", icons.STOCK_POP_PATCH, _('Pop To'), None,
                  _('Apply all applied patches down to the selected patch.'), self.do_pop_patches_to),
@@ -247,6 +257,10 @@ class List(table.MapManagedTable):
         while ifce.PM.is_poppable() and not ifce.PM.is_top_applied_patch(patchname):
             if not pop_top_patch_acb(None):
                 break
+    def do_remove(self, action=None):
+        patchname = self.get_selected_patch()
+        result = ifce.PM.do_remove_patch(patchname)
+        dialogue.report_any_problems(result)
 
 class PatchDescrEditDialog(dialogue.Dialog):
     class Widget(text_edit.Widget):
@@ -435,6 +449,103 @@ class NewPatchDescrDialog(NewSeriesDescrDialog):
     def get_new_patch_name(self):
         return self.new_name_entry.get_text()
 
+class RestorePatchDialog(dialogue.Dialog):
+    _KEYVAL_ESCAPE = gtk.gdk.keyval_from_name('Escape')
+    class Table(table.Table):
+        class View(table.Table.View):
+            class Model(table.Table.View.Model):
+                Row = collections.namedtuple('Row', ['PatchName'])
+                types = Row(PatchName=gobject.TYPE_STRING)
+            template = table.Table.View.Template(
+                properties={
+                    'enable-grid-lines' : False,
+                    'reorderable' : False,
+                    'rules_hint' : False,
+                    'headers-visible' : False,
+                },
+                selection_mode=gtk.SELECTION_SINGLE,
+                columns=[
+                    table.Table.View.Column(
+                        title=_('Patch Name'),
+                        properties={'expand': False, 'resizable' : True},
+                        cells=[
+                            table.Table.View.Cell(
+                                creator=table.Table.View.CellCreator(
+                                    function=gtk.CellRendererText,
+                                    expand=False,
+                                    start=True
+                                ),
+                                properties={'editable' : False},
+                                renderer=None,
+                                attributes = {'text' : Model.col_index('PatchName')}
+                            ),
+                        ],
+                    ),
+                ]
+            )
+        def __init__(self):
+            table.Table.__init__(self, size_req=(480, 160))
+            self.connect("key_press_event", self._key_press_cb)
+            self.connect('button_press_event', self._handle_button_press_cb)
+            self.set_contents()
+        def get_selected_patch(self):
+            data = self.get_selected_data_by_label(['PatchName'])
+            if not data:
+                return False
+            return data[0]
+        def _handle_button_press_cb(self, widget, event):
+            if event.type == gtk.gdk.BUTTON_PRESS:
+                if event.button == 2:
+                    self.seln.unselect_all()
+                    return True
+            return False
+        def _key_press_cb(self, widget, event):
+            if event.keyval == _KEYVAL_ESCAPE:
+                self.seln.unselect_all()
+                return True
+            return False
+        @staticmethod
+        def _fetch_contents():
+            return [[name] for name in ifce.PM.get_kept_patch_names()]
+    def __init__(self, parent):
+        dialogue.Dialog.__init__(self, title=_('gdarn: Restore Patch'), parent=parent,
+                                 flags=gtk.DIALOG_MODAL|gtk.DIALOG_DESTROY_WITH_PARENT,
+                                 buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+                                          gtk.STOCK_OK, gtk.RESPONSE_OK)
+                                )
+        self.kept_patch_table = self.Table()
+        self.vbox.pack_start(self.kept_patch_table)
+        #
+        hbox = gtk.HBox()
+        hbox.pack_start(gtk.Label("Restore Patch:"), expand=False)
+        self.rpatch_name = gtk.Entry()
+        self.rpatch_name.set_editable(False)
+        self.rpatch_name.set_width_chars(32)
+        hbox.pack_start(self.rpatch_name, expand=True, fill=True)
+        self.vbox.pack_start(hbox, expand=False, fill=False)
+        #
+        hbox = gtk.HBox()
+        hbox.pack_start(gtk.Label("As Patch:"), expand=False)
+        self.as_name = gutils.MutableComboBoxEntry()
+        self.as_name.child.set_width_chars(32)
+        self.as_name.child.connect("activate", self._as_name_cb)
+        hbox.pack_start(self.as_name, expand=True, fill=True)
+        self.vbox.pack_start(hbox, expand=False, fill=False)
+        #
+        self.show_all()
+        self.kept_patch_table.seln.unselect_all()
+        self.kept_patch_table.seln.connect("changed", self._selection_cb)
+    def _selection_cb(self, _selection=None):
+        rpatch = self.kept_patch_table.get_selected_patch()
+        if rpatch:
+            self.rpatch_name.set_text(rpatch[0])
+    def _as_name_cb(self, entry=None):
+        self.response(gtk.RESPONSE_OK)
+    def get_restore_patch_name(self):
+        return self.rpatch_name.get_text()
+    def get_as_name(self):
+        return self.as_name.get_text()
+
 def _update_class_indep_pushable_cb(_arg=None):
     condns = MaskedCondns.get_pushable_condns()
     actions.set_class_indep_sensitivity_for_condns(condns)
@@ -469,6 +580,17 @@ def new_patch_acb(_arg):
     while dlg.run() == gtk.RESPONSE_OK:
         dlg.show_busy()
         result = ifce.PM.do_create_new_patch(dlg.get_new_patch_name(), dlg.get_descr())
+        dlg.unshow_busy()
+        dialogue.report_any_problems(result)
+        if not (result.eflags & cmd_result.SUGGEST_RENAME):
+            break
+    dlg.destroy()
+
+def restore_patch_acb(_arg):
+    dlg = RestorePatchDialog(parent=dialogue.main_window)
+    while dlg.run() == gtk.RESPONSE_OK:
+        dlg.show_busy()
+        result = ifce.PM.do_restore_patch(dlg.get_restore_patch_name(), dlg.get_as_name())
         dlg.unshow_busy()
         dialogue.report_any_problems(result)
         if not (result.eflags & cmd_result.SUGGEST_RENAME):
@@ -573,6 +695,8 @@ actions.add_class_indep_actions(Condns.IN_PGND_MUTABLE,
     [
         ("patch_list_new_patch", icons.STOCK_NEW_PATCH, None, None,
          _('Create a new patch'), new_patch_acb),
+        ("patch_list_restore_patch", icons.STOCK_IMPORT_PATCH, _('Restore Patch'), None,
+         _('Restore a previously removed patch behind the top applied patch'), restore_patch_acb),
         ("patch_list_select_guards", icons.STOCK_PATCH_GUARD_SELECT, None, None,
          _('Select which guards are in force'), select_guards_acb),
     ])
