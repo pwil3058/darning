@@ -41,7 +41,7 @@ def close_db():
 
 def do_initialization(description):
     '''Create a patch database in the current directory'''
-    console.LOG.start_cmd(_('initialize {0}\n"{1}"').format(os.getcwd(), description))
+    console.LOG.start_cmd(_('initialize {0}\n"{1}"\n').format(os.getcwd(), description))
     result = patch_db.create_db(description)
     if not result:
         console.LOG.append_stderr(str(result))
@@ -159,7 +159,7 @@ def do_create_new_patch(patchname, descr):
     if patch_db.patch_is_in_series(patchname):
         return cmd_result.Result(cmd_result.ERROR|cmd_result.SUGGEST_RENAME, _('{0}: Already exists in database').format(patchname))
     patch_db.do_create_new_patch(patchname, descr)
-    console.LOG.append_entry(_('new patch "{0}"\n"{1}"').format(patchname, descr))
+    console.LOG.append_entry(_('new patch "{0}"\n"{1}"\n').format(patchname, descr))
     patch_db.apply_patch()
     ws_event.notify_events(ws_event.PATCH_CREATE|ws_event.PATCH_PUSH)
     return cmd_result.Result(cmd_result.OK, '')
@@ -171,14 +171,14 @@ def do_restore_patch(patchname, as_patchname=''):
         return cmd_result.Result(cmd_result.ERROR|cmd_result.SUGGEST_RENAME, _('{0}: Already exists in database').format(as_patchname))
     patch_db.do_restore_patch(patchname, as_patchname)
     if patchname == as_patchname:
-        console.LOG.append_entry(_('restore patch "{0}"').format(patchname))
+        console.LOG.append_entry(_('restore patch "{0}"\n').format(patchname))
     else:
-        console.LOG.append_entry(_('restore patch "{0}" as "{1}"').format(patchname, as_patchname))
+        console.LOG.append_entry(_('restore patch "{0}" as "{1}"\n').format(patchname, as_patchname))
     ws_event.notify_events(ws_event.PATCH_CREATE)
     return cmd_result.Result(cmd_result.OK, '')
 
 def do_push_next_patch(force=False):
-    console.LOG.start_cmd('push')
+    console.LOG.start_cmd('push\n')
     eflags = cmd_result.OK
     msg = ''
     overlaps = patch_db.get_next_patch_overlap_data()
@@ -233,7 +233,7 @@ def do_pop_top_patch():
         top_patch = patch_db.get_top_patch_name()
         ws_event.notify_events(ws_event.PATCH_REFRESH)
         return cmd_result.Result(cmd_result.ERROR_SUGGEST_REFRESH, _('Top patch ("{0}") needs to be refreshed\n').format(top_patch))
-    console.LOG.start_cmd('pop')
+    console.LOG.start_cmd('pop\n')
     result = patch_db.unapply_top_patch()
     if result is not True:
         stderr = _('{0}: top patch is now "{1}"').format(result, patch_db.get_top_patch_name())
@@ -253,7 +253,7 @@ def do_pop_top_patch():
     return cmd_result.Result(eflags, stderr)
 
 def do_refresh_overlapped_files(file_list):
-    console.LOG.start_cmd('refresh --files {0}'.format(utils.file_list_to_string(file_list)))
+    console.LOG.start_cmd('refresh --files {0}\n'.format(utils.file_list_to_string(file_list)))
     results = patch_db.do_refresh_overlapped_files(file_list)
     highest_ecode = max([result.ecode for result in results.values()]) if results else 0
     msg = ''
@@ -281,7 +281,7 @@ def do_refresh_overlapped_files(file_list):
 def do_refresh_patch(patchname=None):
     if patchname is None:
         patchname = patch_db.get_top_patch_name()
-    console.LOG.start_cmd('refresh {0}'.format(patchname))
+    console.LOG.start_cmd('refresh {0}\n'.format(patchname))
     results = patch_db.do_refresh_patch(patchname)
     highest_ecode = max([result.ecode for result in results.values()]) if results else 0
     msg = ''
@@ -302,7 +302,7 @@ def do_refresh_patch(patchname=None):
     return cmd_result.Result(eflags, msg)
 
 def do_remove_patch(patchname):
-    console.LOG.start_cmd('remove patch: {0}'.format(patchname))
+    console.LOG.start_cmd('remove patch: {0}\n'.format(patchname))
     patch_db.do_remove_patch(patchname)
     console.LOG.end_cmd()
     ws_event.notify_events(ws_event.PATCH_DELETE)
@@ -312,14 +312,14 @@ def do_set_patch_description(patch, text):
     if not patch_db.is_writable():
         return cmd_result.Result(cmd_result.ERROR, _('Database is not writable'))
     patch_db.do_set_patch_description(patch, text)
-    console.LOG.append_entry(_('set patch "{0}" description:\n"{1}"').format(patch, text))
+    console.LOG.append_entry(_('set patch "{0}" description:\n"{1}"\n').format(patch, text))
     return cmd_result.Result(cmd_result.OK, '')
 
 def do_set_series_description(text):
     if not patch_db.is_writable():
         return cmd_result.Result(cmd_result.ERROR, _('Database is not writable'))
     patch_db.do_set_series_description(text)
-    console.LOG.append_entry(_('set series description:\n"{0}"').format(text))
+    console.LOG.append_entry(_('set series description:\n"{0}"\n').format(text))
     return cmd_result.Result(cmd_result.OK, '')
 
 def do_set_patch_guards(patch, guards_str):
@@ -347,10 +347,10 @@ def do_select_guards(guards_str):
 
 def do_add_files_to_patch(file_list, patch=None, force=False):
     if patch is None:
-        console.LOG.start_cmd('add {0}'.format(utils.file_list_to_string(file_list)))
+        console.LOG.start_cmd('add {0}\n'.format(utils.file_list_to_string(file_list)))
         patch = patch_db.get_top_patch_name()
     else:
-        console.LOG.start_cmd('add --patch={0} {1}'.format(patch, utils.file_list_to_string(file_list)))
+        console.LOG.start_cmd('add --patch={0} {1}\n'.format(patch, utils.file_list_to_string(file_list)))
     for already_in_patch in patch_db.get_filepaths_in_patch(patch, file_list):
         file_list.remove(already_in_patch)
         console.LOG.append_stdout(_('File "{0}" already in patch "{1}". Ignored.\n').format(already_in_patch, patch))
@@ -395,10 +395,10 @@ def do_add_files_to_patch(file_list, patch=None, force=False):
 
 def do_drop_files_from_patch(file_list, patch=None):
     if patch is None:
-        console.LOG.start_cmd('drop {0}'.format(utils.file_list_to_string(file_list)))
+        console.LOG.start_cmd('drop {0}\n'.format(utils.file_list_to_string(file_list)))
         patch = patch_db.get_top_patch_name()
     else:
-        console.LOG.start_cmd(_('drop --patch={0} {1}').format(patch, utils.file_list_to_string(file_list)))
+        console.LOG.start_cmd(_('drop --patch={0} {1}\n').format(patch, utils.file_list_to_string(file_list)))
     for filepath in file_list:
         patch_db.do_drop_file_fm_patch(patch, filepath)
         console.LOG.append_stdout(_('File "{0}" dropped from patch "{1}".\n').format(filepath, patch))

@@ -41,7 +41,7 @@ class ConsoleLog(textview.Widget):
         self.view and self.view.scroll_to_mark(self._eobuf, 0.001)
     def start_cmd(self, cmd):
         self._append_tagged_text("%s: " % time.strftime("%Y-%m-%d %H:%M:%S"), self.bold_tag)
-        self._append_tagged_text(cmd + os.linesep, self.cmd_tag)
+        self._append_tagged_text(cmd, self.cmd_tag)
     def append_stdin(self, msg):
         self._append_tagged_text(msg, self.stdin_tag)
     def append_stdout(self, msg):
@@ -53,6 +53,6 @@ class ConsoleLog(textview.Widget):
     def append_entry(self, msg):
         self._append_tagged_text("%s: " % time.strftime("%Y-%m-%d %H:%M:%S"), self.bold_tag)
         self._append_tagged_text(msg, self.cmd_tag)
-        self._append_tagged_text(os.linesep + "% ", self.bold_tag)
+        self._append_tagged_text("% ", self.bold_tag)
 
 LOG = ConsoleLog()

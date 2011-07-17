@@ -48,7 +48,7 @@ def init(log=False):
     SCM.reset_back_end()
     in_valid_repo = SCM.is_valid_repo()
     if log or root:
-        LOG.start_cmd('gdarn {0}'.format(os.getcwd()))
+        LOG.start_cmd('gdarn {0}\n'.format(os.getcwd()))
         LOG.append_stderr(result.stderr)
         LOG.end_cmd()
     return result
@@ -89,7 +89,7 @@ def chdir(newdir=None):
     if not utils.samefile(new_wd, old_wd):
         if TERM:
             TERM.set_cwd(new_wd)
-    LOG.start_cmd(_('New Playground: {0}').format(new_wd))
+    LOG.start_cmd(_('New Playground: {0}\n').format(new_wd))
     LOG.append_stderr(retval.stderr)
     LOG.end_cmd()
     return retval
