@@ -31,8 +31,8 @@ from darning.gui import console
 def open_db():
     result = patch_db.load_db(lock=True)
     if result is True:
-        return cmd_result.Result(cmd_result.OK, '', '')
-    return cmd_result.Result(cmd_result.ERROR, '', str(result) + '\n')
+        return cmd_result.Result(cmd_result.OK, '')
+    return cmd_result.Result(cmd_result.ERROR, str(result) + '\n')
 
 def close_db():
     '''Close the patch database if it is open'''
@@ -155,27 +155,27 @@ def get_extdiff_files_for(filepath, patchname):
         patchname = patch_db.get_top_applied_patch_for_file(filepath)
     return patch_db.get_extdiff_files_for(filepath, patchname)
 
-def do_create_new_patch(name, descr):
-    if patch_db.patch_is_in_series(name):
-        return cmd_result.Result(cmd_result.ERROR|cmd_result.SUGGEST_RENAME, '', _('{0}: Already exists in database').format(name))
-    patch_db.do_create_new_patch(name, descr)
-    console.LOG.append_entry(_('new patch "{0}"\n"{1}"').format(name, descr))
+def do_create_new_patch(patchname, descr):
+    if patch_db.patch_is_in_series(patchname):
+        return cmd_result.Result(cmd_result.ERROR|cmd_result.SUGGEST_RENAME, _('{0}: Already exists in database').format(patchname))
+    patch_db.do_create_new_patch(patchname, descr)
+    console.LOG.append_entry(_('new patch "{0}"\n"{1}"').format(patchname, descr))
     patch_db.apply_patch()
     ws_event.notify_events(ws_event.PATCH_CREATE|ws_event.PATCH_PUSH)
-    return cmd_result.Result(cmd_result.OK, '', '')
+    return cmd_result.Result(cmd_result.OK, '')
 
 def do_restore_patch(patchname, as_patchname=''):
     if not as_patchname:
         as_patchname = patchname
     if patch_db.patch_is_in_series(as_patchname):
-        return cmd_result.Result(cmd_result.ERROR|cmd_result.SUGGEST_RENAME, '', _('{0}: Already exists in database').format(name))
+        return cmd_result.Result(cmd_result.ERROR|cmd_result.SUGGEST_RENAME, _('{0}: Already exists in database').format(as_patchname))
     patch_db.do_restore_patch(patchname, as_patchname)
     if patchname == as_patchname:
         console.LOG.append_entry(_('restore patch "{0}"').format(patchname))
     else:
         console.LOG.append_entry(_('restore patch "{0}" as "{1}"').format(patchname, as_patchname))
     ws_event.notify_events(ws_event.PATCH_CREATE)
-    return cmd_result.Result(cmd_result.OK, '', '')
+    return cmd_result.Result(cmd_result.OK, '')
 
 def do_push_next_patch(force=False):
     console.LOG.start_cmd('push')
@@ -207,7 +207,7 @@ def do_push_next_patch(force=False):
     if eflags != cmd_result.OK:
         console.LOG.append_stderr(msg)
         console.LOG.end_cmd()
-        return cmd_result.Result(eflags, '', msg)
+        return cmd_result.Result(eflags, msg)
     _db_ok, results = patch_db.apply_patch(force)
     highest_ecode = max([result.ecode for result in results.values()]) if results else 0
     for filepath in results:
@@ -226,13 +226,13 @@ def do_push_next_patch(force=False):
     console.LOG.append_stderr(msg)
     console.LOG.end_cmd()
     ws_event.notify_events(ws_event.PATCH_PUSH)
-    return cmd_result.Result(eflags, '', msg)
+    return cmd_result.Result(eflags, msg)
 
 def do_pop_top_patch():
     if patch_db.top_patch_needs_refresh():
         top_patch = patch_db.get_top_patch_name()
         ws_event.notify_events(ws_event.PATCH_REFRESH)
-        return cmd_result.Result(cmd_result.ERROR_SUGGEST_REFRESH, '', _('Top patch ("{0}") needs to be refreshed\n').format(top_patch))
+        return cmd_result.Result(cmd_result.ERROR_SUGGEST_REFRESH, _('Top patch ("{0}") needs to be refreshed\n').format(top_patch))
     console.LOG.start_cmd('pop')
     result = patch_db.unapply_top_patch()
     if result is not True:
@@ -250,7 +250,7 @@ def do_pop_top_patch():
         stderr = ''
         eflags = cmd_result.OK
     ws_event.notify_events(ws_event.PATCH_POP)
-    return cmd_result.Result(eflags, '', stderr)
+    return cmd_result.Result(eflags, stderr)
 
 def do_refresh_overlapped_files(file_list):
     console.LOG.start_cmd('refresh --files {0}'.format(utils.file_list_to_string(file_list)))
@@ -276,13 +276,13 @@ def do_refresh_overlapped_files(file_list):
     else:
         eflags = cmd_result.OK if highest_ecode == 0 else cmd_result.WARNING
     ws_event.notify_events(ws_event.PATCH_REFRESH)
-    return cmd_result.Result(eflags, '', msg)
+    return cmd_result.Result(eflags, msg)
 
-def do_refresh_patch(name=None):
-    if name is None:
-        name = patch_db.get_top_patch_name()
-    console.LOG.start_cmd('refresh {0}'.format(name))
-    results = patch_db.do_refresh_patch(name)
+def do_refresh_patch(patchname=None):
+    if patchname is None:
+        patchname = patch_db.get_top_patch_name()
+    console.LOG.start_cmd('refresh {0}'.format(patchname))
+    results = patch_db.do_refresh_patch(patchname)
     highest_ecode = max([result.ecode for result in results.values()]) if results else 0
     msg = ''
     for filepath in results:
@@ -295,55 +295,55 @@ def do_refresh_patch(name=None):
     console.LOG.end_cmd()
     if highest_ecode > 2:
         eflags = cmd_result.ERROR
-        msg += _('\nPatch "{0}" requires another refresh after issues are resolved.').format(name)
+        msg += _('\nPatch "{0}" requires another refresh after issues are resolved.').format(patchname)
     else:
         eflags = cmd_result.WARNING if (highest_ecode > 0 and msg) else cmd_result.OK
     ws_event.notify_events(ws_event.PATCH_REFRESH)
-    return cmd_result.Result(eflags, '', msg)
+    return cmd_result.Result(eflags, msg)
 
 def do_remove_patch(patchname):
     console.LOG.start_cmd('remove patch: {0}'.format(patchname))
     patch_db.do_remove_patch(patchname)
     console.LOG.end_cmd()
     ws_event.notify_events(ws_event.PATCH_DELETE)
-    return cmd_result.Result(cmd_result.OK, '', '')
+    return cmd_result.Result(cmd_result.OK, '')
 
 def do_set_patch_description(patch, text):
     if not patch_db.is_writable():
-        return cmd_result.Result(cmd_result.ERROR, '', _('Database is not writable'))
+        return cmd_result.Result(cmd_result.ERROR, _('Database is not writable'))
     patch_db.do_set_patch_description(patch, text)
     console.LOG.append_entry(_('set patch "{0}" description:\n"{1}"').format(patch, text))
-    return cmd_result.Result(cmd_result.OK, '', '')
+    return cmd_result.Result(cmd_result.OK, '')
 
 def do_set_series_description(text):
     if not patch_db.is_writable():
-        return cmd_result.Result(cmd_result.ERROR, '', _('Database is not writable'))
+        return cmd_result.Result(cmd_result.ERROR, _('Database is not writable'))
     patch_db.do_set_series_description(text)
     console.LOG.append_entry(_('set series description:\n"{0}"').format(text))
-    return cmd_result.Result(cmd_result.OK, '', '')
+    return cmd_result.Result(cmd_result.OK, '')
 
 def do_set_patch_guards(patch, guards_str):
     if not patch_db.is_writable():
-        return cmd_result.Result(cmd_result.ERROR, '', _('Database is not writable'))
+        return cmd_result.Result(cmd_result.ERROR, _('Database is not writable'))
     guards_list = guards_str.split()
     pos_guards = [grd[1:] for grd in guards_list if grd.startswith('+')]
     neg_guards = [grd[1:] for grd in guards_list if grd.startswith('-')]
     if len(guards_list) != (len(pos_guards) + len(neg_guards)):
-        return cmd_result.Result(cmd_result.ERROR|cmd_result.SUGGEST_EDIT, '', _('Guards must start with "+" or "-" and contain no whitespace.'))
+        return cmd_result.Result(cmd_result.ERROR|cmd_result.SUGGEST_EDIT, _('Guards must start with "+" or "-" and contain no whitespace.'))
     patch_db.do_set_patch_guards(patch, patch_db.PatchData.Guards(positive=pos_guards, negative=neg_guards))
     ws_event.notify_events(ws_event.PATCH_MODIFY)
-    return cmd_result.Result(cmd_result.OK, '', '')
+    return cmd_result.Result(cmd_result.OK, '')
 
 def do_select_guards(guards_str):
     if not patch_db.is_writable():
-        return cmd_result.Result(cmd_result.ERROR, '', _('Database is not writable'))
+        return cmd_result.Result(cmd_result.ERROR, _('Database is not writable'))
     guards_list = guards_str.split()
     for guard in guards_list:
         if guard.startswith('+') or guard.startswith('-'):
-            return cmd_result.Result(cmd_result.ERROR|cmd_result.SUGGEST_EDIT, '', _('Guard names may not start with "+" or "-".\n'))
+            return cmd_result.Result(cmd_result.ERROR|cmd_result.SUGGEST_EDIT, _('Guard names may not start with "+" or "-".\n'))
     patch_db.do_select_guards(guards_list)
     ws_event.notify_events(ws_event.PATCH_MODIFY)
-    return cmd_result.Result(cmd_result.OK, '', '')
+    return cmd_result.Result(cmd_result.OK, '')
 
 def do_add_files_to_patch(file_list, patch=None, force=False):
     if patch is None:
@@ -382,7 +382,7 @@ def do_add_files_to_patch(file_list, patch=None, force=False):
     if eflags is not cmd_result.OK:
         console.LOG.append_stderr(msg)
         console.LOG.end_cmd()
-        return cmd_result.Result(eflags, '', msg)
+        return cmd_result.Result(eflags, msg)
     for filepath in file_list:
         patch_db.add_file_to_patch(patch, filepath, force=force)
         console.LOG.append_stdout(_('File "{0}" added to patch "{1}".\n').format(filepath, patch))
@@ -391,7 +391,7 @@ def do_add_files_to_patch(file_list, patch=None, force=False):
         ws_event.notify_events(ws_event.FILE_ADD|ws_event.PATCH_REFRESH)
     else:
         ws_event.notify_events(ws_event.FILE_ADD)
-    return cmd_result.Result(eflags, '', '')
+    return cmd_result.Result(eflags, '')
 
 def do_drop_files_from_patch(file_list, patch=None):
     if patch is None:
@@ -404,7 +404,7 @@ def do_drop_files_from_patch(file_list, patch=None):
         console.LOG.append_stdout(_('File "{0}" dropped from patch "{1}".\n').format(filepath, patch))
     console.LOG.end_cmd()
     ws_event.notify_events(ws_event.FILE_DEL)
-    return cmd_result.Result(cmd_result.OK, '', '')
+    return cmd_result.Result(cmd_result.OK, '')
 
 def is_pushable():
     if not patch_db.is_readable():

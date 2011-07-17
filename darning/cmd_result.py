@@ -19,7 +19,7 @@ External command return values
 
 import collections
 
-Result = collections.namedtuple('Result', ['eflags', 'stdout', 'stderr'])
+Result = collections.namedtuple('Result', ['eflags', 'msg'])
 
 # N.B. WARNING is at bit 9 so that 8 bits are available for important
 # flags that we hope hg can be modified to use
@@ -75,17 +75,7 @@ def suggests_force(res):
         return (res & SUGGEST_FORCE) == SUGGEST_FORCE
 
 def turn_off_flags(result, flags):
-    return Result(result.eflags & ~flags, result.stdout, result.stderr)
-
-def map_cmd_result(result, ignore_err_re=None):
-    if result.eflags == 0:
-        if result.stderr and not (ignore_err_re and ignore_err_re.match(result.stderr)):
-            outres = WARNING
-        else:
-            outres = OK
-    else:
-        outres = ERROR
-    return Result(outres, result.stdout, result.stderr)
+    return Result(result.eflags & ~flags, result.msg)
 
 class Failure(Exception):
     def __init__(self, result):

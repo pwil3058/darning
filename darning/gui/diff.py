@@ -178,7 +178,7 @@ class TextWidget(gtk.VBox):
             fobj = open(self._save_file, 'w')
         except IOError as edata:
             strerror = edata[1]
-            dialogue.report_any_problems(cmd_result.Result(cmd_result.ERROR, "", strerror))
+            dialogue.report_any_problems(cmd_result.Result(cmd_result.ERROR, strerror))
             self.check_set_save_sensitive()
             return
         text = self.bfr.get_text(self.bfr.get_start_iter(), self.bfr.get_end_iter())
@@ -292,9 +292,9 @@ options.define('diff', 'extdiff', options.Defn(str, None, _('The name of externa
 def launch_external_diff(file_a, file_b):
     extdiff = options.get('diff', 'extdiff')
     if not extdiff:
-        return cmd_result.Result(cmd_result.WARNING, '', _('No extenal diff viewer is defined.\n'))
+        return cmd_result.Result(cmd_result.WARNING, _('No extenal diff viewer is defined.\n'))
     try:
         runext.run_cmd_in_bgnd([extdiff, file_a, file_b])
     except OSError as edata:
-        return cmd_result.Result(cmd_result.ERROR, '', _('Error lanuching external viewer "{0}": {1}\n').format(extdiff, edata.strerror))
-    return cmd_result.Result(cmd_result.OK, '', '')
+        return cmd_result.Result(cmd_result.ERROR, _('Error lanuching external viewer "{0}": {1}\n').format(extdiff, edata.strerror))
+    return cmd_result.Result(cmd_result.OK, '')

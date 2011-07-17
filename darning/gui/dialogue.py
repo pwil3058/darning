@@ -196,12 +196,15 @@ class Response(object):
     MERGE = 9
 
 def _form_question(result, clarification):
-    if result.stdout:
-        qtn = result.stdout
-        if result.stderr:
-            qtn += '\n' + result.stderr
+    if isinstance(result, cmd_result.Result):
+        qtn = result.msg
     else:
-        qtn = result.stderr
+        if result.stdout:
+            qtn = result.stdout
+            if result.stderr:
+                qtn += '\n' + result.stderr
+        else:
+            qtn = result.stderr
     if clarification:
         return qtn + '\n' + clarification
     else:

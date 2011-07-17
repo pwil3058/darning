@@ -35,7 +35,7 @@ def init(log=False):
     global in_valid_repo, in_valid_pgnd, pgnd_is_mutable
     options.load_global_options()
     root, _dummy= PM.find_base_dir()
-    result = cmd_result.Result(cmd_result.OK, "", "")
+    result = cmd_result.Result(cmd_result.OK, "")
     if root:
         os.chdir(root)
         result = PM.open_db()
@@ -49,7 +49,6 @@ def init(log=False):
     in_valid_repo = SCM.is_valid_repo()
     if log or root:
         LOG.start_cmd('gdarn {0}'.format(os.getcwd()))
-        LOG.append_stdout(result.stdout)
         LOG.append_stderr(result.stderr)
         LOG.end_cmd()
     return result
@@ -60,7 +59,7 @@ def close():
 def chdir(newdir=None):
     global in_valid_repo, in_valid_pgnd, pgnd_is_mutable
     old_wd = os.getcwd()
-    retval = cmd_result.Result(cmd_result.OK, "", "")
+    retval = cmd_result.Result(cmd_result.OK, "")
     PM.close_db()
     if newdir:
         try:
@@ -69,7 +68,7 @@ def chdir(newdir=None):
             import errno
             ecode = errno.errorcode[err.errno]
             emsg = err.strerror
-            retval = cmd_result.Result(cmd_result.ERROR, '', '%s: "%s" :%s' % (ecode, newdir, emsg))
+            retval = cmd_result.Result(cmd_result.ERROR, '%s: "%s" :%s' % (ecode, newdir, emsg))
     root, _dummy = PM.find_base_dir()
     if root:
         os.chdir(root)
@@ -91,7 +90,6 @@ def chdir(newdir=None):
         if TERM:
             TERM.set_cwd(new_wd)
     LOG.start_cmd(_('New Playground: {0}').format(new_wd))
-    LOG.append_stdout(retval.stdout)
     LOG.append_stderr(retval.stderr)
     LOG.end_cmd()
     return retval
@@ -103,10 +101,10 @@ def new_playground(description, pgdir=None):
         if result.eflags != cmd_result.OK:
             return result
     if in_valid_pgnd:
-        return cmd_result.Result(cmd_result.WARNING, '', _('Already initialized'))
+        return cmd_result.Result(cmd_result.WARNING, _('Already initialized'))
     result = PM.do_initialization(description)
     if result is not True:
-        return cmd_result.Result(cmd_result.ERROR, '', str(result))
+        return cmd_result.Result(cmd_result.ERROR, str(result))
     retval = PM.open_db()
     in_valid_pgnd = PM.is_readable()
     pgnd_is_mutable = PM.is_writable()
