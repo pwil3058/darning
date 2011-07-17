@@ -49,7 +49,7 @@ def init(log=False):
     in_valid_repo = SCM.is_valid_repo()
     if log or root:
         LOG.start_cmd('gdarn {0}\n'.format(os.getcwd()))
-        LOG.append_stderr(result.stderr)
+        LOG.append_stderr(result.msg)
         LOG.end_cmd()
     return result
 
@@ -90,7 +90,7 @@ def chdir(newdir=None):
         if TERM:
             TERM.set_cwd(new_wd)
     LOG.start_cmd(_('New Playground: {0}\n').format(new_wd))
-    LOG.append_stderr(retval.stderr)
+    LOG.append_stderr(retval.msg)
     LOG.end_cmd()
     return retval
 
