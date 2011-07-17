@@ -418,9 +418,9 @@ class IndexPreamble(Preamble):
         match = IndexPreamble.FILE_RCE.match(lines[index])
         if not match:
             return (None, index)
-        filename = match.group(2) if match.group(2) else match.group(3)
+        filepath = match.group(2) if match.group(2) else match.group(3)
         next_index = index + (2 if (index + 1) < len(lines) and IndexPreamble.SEP_RCE.match(lines[index + 1]) else 1)
-        return (IndexPreamble(lines[index:next_index], filename), next_index)
+        return (IndexPreamble(lines[index:next_index], filepath), next_index)
     def __init__(self, lines, file_data, extras=None):
         Preamble.__init__(self, 'index', lines=lines, file_data=file_data, extras=extras)
     def get_file_path(self, strip_level=0):
@@ -516,8 +516,8 @@ class Diff(object):
         match = cre.match(lines[index])
         if not match:
             return (None, index)
-        filename = match.group(2) if match.group(2) else match.group(3)
-        return (_FILE_AND_TS(filename, match.group(4)), index + 1)
+        filepath = match.group(2) if match.group(2) else match.group(3)
+        return (_FILE_AND_TS(filepath, match.group(4)), index + 1)
     @staticmethod
     def _get_diff_at(subtype, lines, start_index, raise_if_malformed=False):
         '''generic function that works for unified and context diffs'''

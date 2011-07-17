@@ -45,31 +45,31 @@ def run_add(args):
         ol_report = msg.Info
     else:
         ol_report = msg.Error
-    db_utils.prepend_subdir(args.filenames)
-    overlaps = patch_db.get_filelist_overlap_data(args.filenames, args.opt_patch)
+    db_utils.prepend_subdir(args.filepaths)
+    overlaps = patch_db.get_filelist_overlap_data(args.filepaths, args.opt_patch)
     if len(overlaps.uncommitted) > 0:
         is_ok = False
         ol_report(_('The following (overlapped) files have uncommitted SCM changes:'))
-        for filename in sorted(overlaps.uncommitted):
-            ol_report('\t{0}', db_utils.rel_subdir(filename))
+        for filepath in sorted(overlaps.uncommitted):
+            ol_report('\t{0}', db_utils.rel_subdir(filepath))
     if len(overlaps.unrefreshed) > 0:
         is_ok = False
         ol_report(_('The following (overlapped) files have unrefreshed changes (in an applied patch):'))
-        for filename in sorted(overlaps.unrefreshed):
-            ol_report(_('\t{0} : in patch "{1}"'), db_utils.rel_subdir(filename), db_utils.rel_subdir(overlaps.unrefreshed[filename]))
+        for filepath in sorted(overlaps.unrefreshed):
+            ol_report(_('\t{0} : in patch "{1}"'), db_utils.rel_subdir(filepath), db_utils.rel_subdir(overlaps.unrefreshed[filepath]))
     if not is_ok:
         if args.opt_force:
             msg.Info(_('Uncommited/unrefreshed changes incorporated into patch "{0}".'), args.opt_patch)
         else:
             return msg.Error(_('Aborting'))
-    already_in_patch = set(patch_db.get_filenames_in_patch(args.opt_patch, args.filenames))
-    for filename in args.filenames:
-        if filename not in already_in_patch:
-            patch_db.add_file_to_patch(args.opt_patch, filename, force=args.opt_force)
-            already_in_patch.add(filename)
-            msg.Info(_('file "{0}" added to patch "{1}".'), db_utils.rel_subdir(filename), args.opt_patch)
+    already_in_patch = set(patch_db.get_filepaths_in_patch(args.opt_patch, args.filepaths))
+    for filepath in args.filepaths:
+        if filepath not in already_in_patch:
+            patch_db.add_file_to_patch(args.opt_patch, filepath, force=args.opt_force)
+            already_in_patch.add(filepath)
+            msg.Info(_('file "{0}" added to patch "{1}".'), db_utils.rel_subdir(filepath), args.opt_patch)
         else:
-            msg.Warn(_('file "{0}" already in patch "{1}". Ignored.'), db_utils.rel_subdir(filename), args.opt_patch)
+            msg.Warn(_('file "{0}" already in patch "{1}". Ignored.'), db_utils.rel_subdir(filepath), args.opt_patch)
     return msg.OK
 
 PARSER.set_defaults(run_cmd=run_add)

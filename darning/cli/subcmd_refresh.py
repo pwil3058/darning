@@ -40,23 +40,23 @@ def run_refresh(args):
         return msg.Error(_('patch "{0}" is unknown'), args.opt_patch)
     results = patch_db.do_refresh_patch(args.opt_patch)
     highest_ecode = 0
-    for filename in results:
-        result = results[filename]
+    for filepath in results:
+        result = results[filepath]
         highest_ecode = highest_ecode if result.ecode < highest_ecode else result.ecode
         if args.opt_verbose:
-            msg.Info(_('Refreshing: {0}'), filename)
+            msg.Info(_('Refreshing: {0}'), filepath)
             for line in result.stdout.splitlines(False):
                 msg.Info(line)
         if result.ecode in [0, 1]:
             for line in result.stderr.splitlines(False):
                 if not args.opt_verbose:
-                    msg.Warn('{0}: {1}', filename, line)
+                    msg.Warn('{0}: {1}', filepath, line)
                 else:
                     msg.Warn(line)
         else:
             for line in result.stderr.splitlines(False):
                 if not args.opt_verbose:
-                    msg.Error('{0}: {1}', filename, line)
+                    msg.Error('{0}: {1}', filepath, line)
                 else:
                     msg.Error(line)
     if highest_ecode > 2:

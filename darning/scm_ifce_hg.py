@@ -80,16 +80,16 @@ class Mercurial(object):
             while index < lfile_list:
                 item = file_list[index]
                 index += 1
-                filename = item[2:]
+                filepath = item[2:]
                 status = item[0]
                 origin = None
                 if status == Mercurial.FileStatus.ADDED and index < lfile_list:
                     if file_list[index][0] == Mercurial.FileStatus.ORIGIN:
                         origin = file_list[index][2:]
                         index += 1
-                elif filename in unresolved_file_list:
+                elif filepath in unresolved_file_list:
                     status = Mercurial.FileStatus.UNRESOLVED
-                parts = fsdb.split_path(filename)
+                parts = fsdb.split_path(filepath)
                 self.base_dir.add_file(parts, status, origin)
     @staticmethod
     def is_valid_repo():
@@ -103,26 +103,26 @@ class Mercurial(object):
                 raise
         return result.ecode == 0 and result.stdout
     @staticmethod
-    def get_revision(filename=None):
+    def get_revision(filepath=None):
         '''
         Return the SCM revision for the named file or the whole playground
-        if the filename is None
+        if the filepath is None
         '''
         cmd = ['hg', 'log', '-l', '1', '--follow', '--template', '"{node}"']
-        if filename:
-            cmd.append(filename)
+        if filepath:
+            cmd.append(filepath)
         result = runext.run_cmd(cmd)
         assert result.ecode == 0
         return result.stdout
     @staticmethod
-    def has_uncommitted_change(filename):
+    def has_uncommitted_change(filepath):
         '''
         Does the SCM have uncommitted changes for the named file?
         '''
-        cmd = ['hg', 'status', '-cuin', filename]
+        cmd = ['hg', 'status', '-cuin', filepath]
         result = runext.run_cmd(cmd)
         assert result.ecode == 0
-        return result.stdout.strip() != filename
+        return result.stdout.strip() != filepath
     @staticmethod
     def get_files_with_uncommitted_changes(files=None):
         '''
@@ -162,11 +162,11 @@ class Mercurial(object):
         '''
         return status == Mercurial.FileStatus.CLEAN
     @staticmethod
-    def copy_clean_version_to(filename, target_name):
+    def copy_clean_version_to(filepath, target_name):
         '''
         Copy a clean version of the named file to the specified target
         '''
-        result = runext.run_cmd(['hg', 'cat', filename])
+        result = runext.run_cmd(['hg', 'cat', filepath])
         assert result.ecode == 0
         if result.stdout:
             utils.ensure_file_dir_exists(target_name)

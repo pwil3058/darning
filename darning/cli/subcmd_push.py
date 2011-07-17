@@ -45,13 +45,13 @@ def run_push(args):
     if len(overlaps.uncommitted) > 0:
         is_ok = False
         ol_report(_('The following (overlapped) files have uncommitted SCM changes:'))
-        for filename in sorted(overlaps.uncommitted):
-            ol_report('\t{0}', filename)
+        for filepath in sorted(overlaps.uncommitted):
+            ol_report('\t{0}', filepath)
     if len(overlaps.unrefreshed) > 0:
         is_ok = False
         ol_report(_('The following (overlapped) files have unrefreshed changes (in an applied patch):'))
-        for filename in sorted(overlaps.unrefreshed):
-            ol_report(_('\t{0} : in patch "{1}"'), filename, overlaps.unrefreshed[filename])
+        for filepath in sorted(overlaps.unrefreshed):
+            ol_report(_('\t{0} : in patch "{1}"'), filepath, overlaps.unrefreshed[filepath])
     if not is_ok:
         if args.opt_force:
             msg.Info(_('Uncommited/unrefreshed changes incorporated into pushed patch.'))
@@ -59,8 +59,8 @@ def run_push(args):
             return msg.Error(_('Aborting'))
     _db_ok, results = patch_db.apply_patch(force=args.opt_force)
     highest_ecode = 0
-    for filename in results:
-        result = results[filename]
+    for filepath in results:
+        result = results[filepath]
         highest_ecode = highest_ecode if result.ecode < highest_ecode else result.ecode
         for line in result.stdout.splitlines(False):
             msg.Info(line)

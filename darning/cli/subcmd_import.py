@@ -65,16 +65,16 @@ def run_import(args):
         else:
             return msg.Error(_('{0}: Line:{1}.'), edata.message, edata.lineno)
     except IOError as edata:
-        if edata.filename is None:
+        if edata.filepath is None:
             return msg.Error(edata.strerror)
         else:
-            return msg.Error('{0}: {1}.', edata.strerror, edata.filename)
+            return msg.Error('{0}: {1}.', edata.strerror, edata.filepath)
     if args.opt_strip_level is None:
         args.opt_strip_level = epatch.estimate_strip_level()
         if args.opt_strip_level is None:
             return msg.Error(_('Strip level auto detection failed.  Please use -p option.'))
     epatch.set_strip_level(int(args.opt_strip_level))
-    patch_db.import_patch(epatch, args.patchname)
+    patch_db.do_import_patch(epatch, args.patchname)
     warn = patch_db.top_patch_needs_refresh()
     if warn:
         old_top = patch_db.get_top_patch_name()

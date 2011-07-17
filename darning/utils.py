@@ -48,12 +48,12 @@ def file_list_to_string(file_list):
     return ' '.join(mod_file_list)
 
 # handle the fact os.path.samefile is not available on all operating systems
-def samefile(filename1, filename2):
+def samefile(filepath1, filepath2):
     """Return whether the given paths refer to the same file or not."""
     try:
-        return os.path.samefile(filename1, filename2)
+        return os.path.samefile(filepath1, filepath2)
     except AttributeError:
-        return os.path.abspath(filename1) == os.path.abspath(filename2)
+        return os.path.abspath(filepath1) == os.path.abspath(filepath2)
 
 def get_first_in_envar(envar_list):
     for envar in envar_list:
@@ -100,17 +100,17 @@ def files_in_dir(dirname, recurse=True, relative=False):
         def onerror(exception):
             raise exception
         files = []
-        for basedir, dirnames, filenames in os.walk(dirname, onerror=onerror):
+        for basedir, dirnames, filepaths in os.walk(dirname, onerror=onerror):
             if relative:
                 basedir = '' if basedir == dirname else os.path.relpath(basedir, dirname)
-            files += [os.path.join(basedir, entry) for entry in filenames]
+            files += [os.path.join(basedir, entry) for entry in filepaths]
         return files
     elif relative:
         return [entry for entry in os.listdir(dirname) if not os.path.isdir(entry)]
     else:
         return [os.path.join(dirname, entry) for entry in os.listdir(dirname) if not os.path.isdir(entry)]
 
-def ensure_file_dir_exists(filename):
-    file_dir = os.path.dirname(filename)
+def ensure_file_dir_exists(filepath):
+    file_dir = os.path.dirname(filepath)
     if not os.path.exists(file_dir):
         os.makedirs(file_dir)

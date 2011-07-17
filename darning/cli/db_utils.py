@@ -43,13 +43,13 @@ def open_db(modifiable):
     atexit.register(patch_db.release_db)
     return True
 
-def prepend_subdir(filenames):
+def prepend_subdir(filepaths):
     if SUB_DIR is not None:
-        for findex in range(len(filenames)):
-            filenames[findex] = os.path.join(SUB_DIR, filenames[findex])
+        for findex in range(len(filepaths)):
+            filepaths[findex] = os.path.join(SUB_DIR, filepaths[findex])
 
-def rel_subdir(filename):
+def rel_subdir(filepath):
     if SUB_DIR_DOWN is None:
-        return filename
+        return filepath
     else:
-        return os.path.join(SUB_DIR_DOWN, filename)
+        return os.path.join(SUB_DIR_DOWN, filepath)

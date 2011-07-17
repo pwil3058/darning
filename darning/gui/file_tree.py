@@ -509,14 +509,14 @@ class PatchFileTreeWidget(gtk.VBox):
             file_list = self.get_expanded_file_list(self.get_selected_files())
             text_edit.edit_files_extern(file_list)
         def diff_selected_file_acb(self, _action):
-            filenames = self.get_selected_files()
-            assert len(filenames) == 1
-            dialog = diff.ForFileDialog(filename=filenames[0], patchname=self.patch)
+            filepaths = self.get_selected_files()
+            assert len(filepaths) == 1
+            dialog = diff.ForFileDialog(filepath=filepaths[0], patchname=self.patch)
             dialog.show()
         def extdiff_selected_file_acb(self, _action):
-            filenames = self.get_selected_files()
-            assert len(filenames) == 1
-            files = ifce.PM.get_extdiff_files_for(filename=filenames[0], patchname=self.patch)
+            filepaths = self.get_selected_files()
+            assert len(filepaths) == 1
+            files = ifce.PM.get_extdiff_files_for(filepath=filepaths[0], patchname=self.patch)
             dialogue.report_any_problems(diff.launch_external_diff(files.original_version, files.patched_version))
     def __init__(self, patch=None):
         gtk.VBox.__init__(self)
@@ -608,7 +608,7 @@ class CombinedPatchFileTreeWidget(PatchFileTreeWidget):
                 ])
             self.ui_manager.add_ui_from_string(self.UI_DESCR)
         def combined_diff_selected_file_acb(self, _action):
-            filenames = self.get_selected_files()
-            assert len(filenames) == 1
-            dialog = diff.CombinedForFileDialog(filename=filenames[0])
+            filepaths = self.get_selected_files()
+            assert len(filepaths) == 1
+            dialog = diff.CombinedForFileDialog(filepath=filepaths[0])
             dialog.show()

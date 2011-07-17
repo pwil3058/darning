@@ -615,7 +615,7 @@ def push_next_patch_acb(_arg):
             elif resp == dialogue.Response.REFRESH:
                 refresh_tried = True
                 dialogue.show_busy()
-                file_list = ifce.PM.get_filenames_in_next_patch()
+                file_list = ifce.PM.get_filepaths_in_next_patch()
                 result = ifce.PM.do_refresh_overlapped_files(file_list)
                 dialogue.unshow_busy()
                 dialogue.report_any_problems(result)

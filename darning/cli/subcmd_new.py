@@ -38,7 +38,7 @@ def run_new(args):
     db_utils.open_db(modifiable=True)
     if patch_db.patch_is_in_series(args.patchname):
         return msg.Error(_('patch "{0}" already exists'), args.patchname)
-    patch_db.create_new_patch(args.patchname, args.opt_description)
+    patch_db.do_create_new_patch(args.patchname, args.opt_description)
     warn = patch_db.top_patch_needs_refresh()
     if warn:
         old_top = patch_db.get_top_patch_name()

@@ -38,22 +38,22 @@ def is_valid_repo():
     '''Is the currend working directory in a valid repository?'''
     return _CURRENT_BACK_END is not None
 
-def get_revision(filename=None):
+def get_revision(filepath=None):
     '''
     Return the SCM revision for the named file or the whole playground
-    if the filename is None
+    if the filepath is None
     '''
     if _CURRENT_BACK_END is None:
         return None
-    return _CURRENT_BACK_END.get_revision(filename)
+    return _CURRENT_BACK_END.get_revision(filepath)
 
-def has_uncommitted_change(filename):
+def has_uncommitted_change(filepath):
     '''
     Does the SCM have uncommitted changes for the named file?
     '''
     if _CURRENT_BACK_END is None:
         return False
-    return _CURRENT_BACK_END.has_uncommitted_change(filename)
+    return _CURRENT_BACK_END.has_uncommitted_change(filepath)
 
 def get_files_with_uncommitted_changes(files=None):
     '''
@@ -99,9 +99,9 @@ def is_clean(status):
         return False
     return _CURRENT_BACK_END.is_clean(status)
 
-def copy_clean_version_to(filename, target_name):
+def copy_clean_version_to(filepath, target_name):
     '''
     Copy a clean version of the named file to the specified target
     '''
     assert _CURRENT_BACK_END is not None
-    return _CURRENT_BACK_END.copy_clean_version_to(filename, target_name)
+    return _CURRENT_BACK_END.copy_clean_version_to(filepath, target_name)

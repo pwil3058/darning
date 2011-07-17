@@ -112,25 +112,25 @@ def get_combined_patch_file_db():
         return fsdb.NullFileDb()
     return FileDb(patch_db.get_combined_patch_file_table())
 
-def get_filenames_in_next_patch(filenames=None):
+def get_filepaths_in_next_patch(filepaths=None):
     '''
     Return the names of the files in the next patch (to be applied).
-    If filenames is not None restrict the returned list to names that
-    are also in filenames.
+    If filepaths is not None restrict the returned list to names that
+    are also in filepaths.
     '''
     if not patch_db.is_readable():
         return []
-    return patch_db.get_filenames_in_next_patch(filenames=filenames)
+    return patch_db.get_filepaths_in_next_patch(filepaths=filepaths)
 
-def get_file_diff(filename, patchname):
+def get_file_diff(filepath, patchname):
     if not patch_db.is_readable():
         return None
-    return patch_db.get_file_diff(filename, patchname)
+    return patch_db.get_file_diff(filepath, patchname)
 
-def get_file_combined_diff(filename):
+def get_file_combined_diff(filepath):
     if not patch_db.is_readable():
         return None
-    return patch_db.get_file_combined_diff(filename)
+    return patch_db.get_file_combined_diff(filepath)
 
 def get_patch_guards(patch):
     if not patch_db.is_readable():
@@ -138,27 +138,27 @@ def get_patch_guards(patch):
     guards = patch_db.get_patch_guards(patch)
     return ['+' + grd for grd in guards.positive] + ['-' + grd for grd in guards.negative]
 
-def get_top_applied_patch_for_file(filename):
+def get_top_applied_patch_for_file(filepath):
     if not patch_db.is_readable():
         return None
-    return patch_db.get_top_applied_patch_for_file(filename)
+    return patch_db.get_top_applied_patch_for_file(filepath)
 
 def get_kept_patch_names():
     if not patch_db.is_readable():
         return []
     return patch_db.get_kept_patch_names()
 
-def get_extdiff_files_for(filename, patchname):
+def get_extdiff_files_for(filepath, patchname):
     if not patch_db.is_readable():
         return None
     if patchname is None:
-        patchname = patch_db.get_top_applied_patch_for_file(filename)
-    return patch_db.get_extdiff_files_for(filename, patchname)
+        patchname = patch_db.get_top_applied_patch_for_file(filepath)
+    return patch_db.get_extdiff_files_for(filepath, patchname)
 
 def do_create_new_patch(name, descr):
     if patch_db.patch_is_in_series(name):
         return cmd_result.Result(cmd_result.ERROR|cmd_result.SUGGEST_RENAME, '', _('{0}: Already exists in database').format(name))
-    patch_db.create_new_patch(name, descr)
+    patch_db.do_create_new_patch(name, descr)
     console.LOG.append_entry(_('new patch "{0}"\n"{1}"').format(name, descr))
     patch_db.apply_patch()
     ws_event.notify_events(ws_event.PATCH_CREATE|ws_event.PATCH_PUSH)
@@ -185,33 +185,33 @@ def do_push_next_patch(force=False):
     if len(overlaps.uncommitted) > 0:
         if force:
             console.LOG.append_stderr(_('Uncommitted SCM changes in the following files:\n'))
-            for filename in sorted(overlaps.uncommitted):
-                console.LOG.append_stderr('\t{0}\n'.format(filename))
+            for filepath in sorted(overlaps.uncommitted):
+                console.LOG.append_stderr('\t{0}\n'.format(filepath))
             console.LOG.append_stderr(_('have been incorporated.\n'))
         else:
             eflags = cmd_result.ERROR_SUGGEST_FORCE
             msg += _('The following (overlapped) files have uncommitted SCM changes:\n')
-            for filename in sorted(overlaps.uncommitted):
-                msg += '\t{0}\n'.format(filename)
+            for filepath in sorted(overlaps.uncommitted):
+                msg += '\t{0}\n'.format(filepath)
     if len(overlaps.unrefreshed) > 0:
         if force:
             console.LOG.append_stderr(_('Unrefreshed changes changes in the following files:\n'))
-            for filename in sorted(overlaps.unrefreshed):
-                console.LOG.append_stderr('\t{0}\n'.format(filename))
+            for filepath in sorted(overlaps.unrefreshed):
+                console.LOG.append_stderr('\t{0}\n'.format(filepath))
             console.LOG.append_stderr(_('have been incorporated.\n'))
         else:
             eflags = cmd_result.ERROR_SUGGEST_FORCE_OR_REFRESH
             msg += _('The following (overlapped) files have unrefreshed changes (in an applied patch):\n')
-            for filename in sorted(overlaps.unrefreshed):
-                msg += _('\t{0} : in patch "{1}"\n').format(filename, overlaps.unrefreshed[filename])
+            for filepath in sorted(overlaps.unrefreshed):
+                msg += _('\t{0} : in patch "{1}"\n').format(filepath, overlaps.unrefreshed[filepath])
     if eflags != cmd_result.OK:
         console.LOG.append_stderr(msg)
         console.LOG.end_cmd()
         return cmd_result.Result(eflags, '', msg)
     _db_ok, results = patch_db.apply_patch(force)
     highest_ecode = max([result.ecode for result in results.values()]) if results else 0
-    for filename in results:
-        result = results[filename]
+    for filepath in results:
+        result = results[filepath]
         console.LOG.append_stdout(result.stdout)
         console.LOG.append_stderr(result.stderr)
         if result.ecode:
@@ -258,21 +258,21 @@ def do_refresh_overlapped_files(file_list):
     highest_ecode = max([result.ecode for result in results.values()]) if results else 0
     msg = ''
     failed_files = []
-    for filename in results:
-        result = results[filename]
-        console.LOG.append_stdout(_('Refreshing: {0}\n').format(filename))
+    for filepath in results:
+        result = results[filepath]
+        console.LOG.append_stdout(_('Refreshing: {0}\n').format(filepath))
         console.LOG.append_stdout(result.stdout)
         console.LOG.append_stderr(result.stderr)
         for line in result.stderr.splitlines(False):
-            msg += _('{0}: {1}\n').format(filename, line)
+            msg += _('{0}: {1}\n').format(filepath, line)
         if result.ecode > 2:
-            failed_files.append(filename)
+            failed_files.append(filepath)
     console.LOG.end_cmd()
     if highest_ecode > 2:
         eflags = cmd_result.ERROR
         msg += _('\nThe following files require another refresh after issues are resolved:\n')
-        for filename in failed_files:
-            msg += '\t{0}\n'.format(filename)
+        for filepath in failed_files:
+            msg += '\t{0}\n'.format(filepath)
     else:
         eflags = cmd_result.OK if highest_ecode == 0 else cmd_result.WARNING
     ws_event.notify_events(ws_event.PATCH_REFRESH)
@@ -285,13 +285,13 @@ def do_refresh_patch(name=None):
     results = patch_db.do_refresh_patch(name)
     highest_ecode = max([result.ecode for result in results.values()]) if results else 0
     msg = ''
-    for filename in results:
-        result = results[filename]
-        console.LOG.append_stdout(_('Refreshing: {0}\n').format(filename))
+    for filepath in results:
+        result = results[filepath]
+        console.LOG.append_stdout(_('Refreshing: {0}\n').format(filepath))
         console.LOG.append_stdout(result.stdout)
         console.LOG.append_stderr(result.stderr)
         for line in result.stderr.splitlines(False):
-            msg += '{0}: {1}\n'.format(filename, line)
+            msg += '{0}: {1}\n'.format(filepath, line)
     console.LOG.end_cmd()
     if highest_ecode > 2:
         eflags = cmd_result.ERROR
@@ -351,7 +351,7 @@ def do_add_files_to_patch(file_list, patch=None, force=False):
         patch = patch_db.get_top_patch_name()
     else:
         console.LOG.start_cmd('add --patch={0} {1}'.format(patch, utils.file_list_to_string(file_list)))
-    for already_in_patch in patch_db.get_filenames_in_patch(patch, file_list):
+    for already_in_patch in patch_db.get_filepaths_in_patch(patch, file_list):
         file_list.remove(already_in_patch)
         console.LOG.append_stdout(_('File "{0}" already in patch "{1}". Ignored.\n').format(already_in_patch, patch))
     eflags = cmd_result.OK
@@ -360,32 +360,32 @@ def do_add_files_to_patch(file_list, patch=None, force=False):
     if len(overlaps.uncommitted) > 0:
         if force:
             console.LOG.append_stderr(_('Uncommitted SCM changes in the following files:\n'))
-            for filename in sorted(overlaps.uncommitted):
-                console.LOG.append_stderr('\t{0}\n'.format(filename))
+            for filepath in sorted(overlaps.uncommitted):
+                console.LOG.append_stderr('\t{0}\n'.format(filepath))
             console.LOG.append_stderr(_('have been incorporated.\n'))
         else:
             eflags = cmd_result.ERROR_SUGGEST_FORCE
             msg += _('The following files have uncommitted SCM changes:\n')
-            for filename in sorted(overlaps.uncommitted):
-                msg += '\t{0}\n'.format(filename)
+            for filepath in sorted(overlaps.uncommitted):
+                msg += '\t{0}\n'.format(filepath)
     if len(overlaps.unrefreshed) > 0:
         if force:
             console.LOG.append_stderr(_('Unrefreshed changes changes in the following files:\n'))
-            for filename in sorted(overlaps.unrefreshed):
-                console.LOG.append_stderr('\t{0}\n'.format(filename))
+            for filepath in sorted(overlaps.unrefreshed):
+                console.LOG.append_stderr('\t{0}\n'.format(filepath))
             console.LOG.append_stderr(_('have been incorporated.\n'))
         else:
             eflags = cmd_result.ERROR_SUGGEST_FORCE_OR_REFRESH
             msg += _('The following files have unrefreshed changes (in an applied patch):\n')
-            for filename in sorted(overlaps.unrefreshed):
-                msg += _('\t{0} : in patch "{1}"\n').format(filename, overlaps.unrefreshed[filename])
+            for filepath in sorted(overlaps.unrefreshed):
+                msg += _('\t{0} : in patch "{1}"\n').format(filepath, overlaps.unrefreshed[filepath])
     if eflags is not cmd_result.OK:
         console.LOG.append_stderr(msg)
         console.LOG.end_cmd()
         return cmd_result.Result(eflags, '', msg)
-    for filename in file_list:
-        patch_db.add_file_to_patch(patch, filename, force=force)
-        console.LOG.append_stdout(_('File "{0}" added to patch "{1}".\n').format(filename, patch))
+    for filepath in file_list:
+        patch_db.add_file_to_patch(patch, filepath, force=force)
+        console.LOG.append_stdout(_('File "{0}" added to patch "{1}".\n').format(filepath, patch))
     console.LOG.end_cmd()
     if force:
         ws_event.notify_events(ws_event.FILE_ADD|ws_event.PATCH_REFRESH)
@@ -399,9 +399,9 @@ def do_drop_files_from_patch(file_list, patch=None):
         patch = patch_db.get_top_patch_name()
     else:
         console.LOG.start_cmd(_('drop --patch={0} {1}').format(patch, utils.file_list_to_string(file_list)))
-    for filename in file_list:
-        patch_db.do_drop_file_fm_patch(patch, filename)
-        console.LOG.append_stdout(_('File "{0}" dropped from patch "{1}".\n').format(filename, patch))
+    for filepath in file_list:
+        patch_db.do_drop_file_fm_patch(patch, filepath)
+        console.LOG.append_stdout(_('File "{0}" dropped from patch "{1}".\n').format(filepath, patch))
     console.LOG.end_cmd()
     ws_event.notify_events(ws_event.FILE_DEL)
     return cmd_result.Result(cmd_result.OK, '', '')

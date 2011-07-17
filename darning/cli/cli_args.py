@@ -73,7 +73,7 @@ def add_verbose_option(parser, helptext):
 
 def add_files_argument(parser, helptext):
     parser.add_argument(
-        'filenames',
+        'filepaths',
         help=helptext,
         nargs='+',
         metavar=_('file'),

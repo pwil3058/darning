@@ -239,21 +239,21 @@ class TextWidget(gtk.VBox):
 
 class ForFileDialog(dialogue.AmodalDialog):
     class Widget(TextWidget):
-        def __init__(self, filename, patchname=None):
-            self.filename = filename
+        def __init__(self, filepath, patchname=None):
+            self.filepath = filepath
             self.patchname = patchname
             TextWidget.__init__(self)
         def _get_diff_text(self):
-            diff = ifce.PM.get_file_diff(self.filename, self.patchname)
+            diff = ifce.PM.get_file_diff(self.filepath, self.patchname)
             return str(diff)
-    def __init__(self, filename, patchname):
+    def __init__(self, filepath, patchname):
         if patchname is None:
-            patchname = ifce.PM.get_top_applied_patch_for_file(filename)
+            patchname = ifce.PM.get_top_applied_patch_for_file(filepath)
         assert patchname is not None
-        title = _('diff: "{0}" in "{1}": {2}').format(filename, patchname, os.getcwd())
+        title = _('diff: "{0}" in "{1}": {2}').format(filepath, patchname, os.getcwd())
         flags = gtk.DIALOG_DESTROY_WITH_PARENT
         dialogue.AmodalDialog.__init__(self, title, None, flags, ())
-        self.widget = self.Widget(filename, patchname)
+        self.widget = self.Widget(filepath, patchname)
         self.vbox.pack_start(self.widget, expand=True, fill=True)
         self.action_area.pack_end(self.widget.tws_display, expand=False, fill=False)
         for button in self.widget.get_action_button_list(["diff_save", "diff_save_as", "diff_refresh"]).list:
@@ -266,17 +266,17 @@ class ForFileDialog(dialogue.AmodalDialog):
 
 class CombinedForFileDialog(dialogue.AmodalDialog):
     class Widget(TextWidget):
-        def __init__(self, filename):
-            self.filename = filename
+        def __init__(self, filepath):
+            self.filepath = filepath
             TextWidget.__init__(self)
         def _get_diff_text(self):
-            diff = ifce.PM.get_file_combined_diff(self.filename)
+            diff = ifce.PM.get_file_combined_diff(self.filepath)
             return str(diff)
-    def __init__(self, filename):
-        title = _('combined diff: "{0}": {1}').format(filename, os.getcwd())
+    def __init__(self, filepath):
+        title = _('combined diff: "{0}": {1}').format(filepath, os.getcwd())
         flags = gtk.DIALOG_DESTROY_WITH_PARENT
         dialogue.AmodalDialog.__init__(self, title, None, flags, ())
-        self.widget = self.Widget(filename)
+        self.widget = self.Widget(filepath)
         self.vbox.pack_start(self.widget, expand=True, fill=True)
         self.action_area.pack_end(self.widget.tws_display, expand=False, fill=False)
         for button in self.widget.get_action_button_list(["diff_save", "diff_save_as", "diff_refresh"]).list:

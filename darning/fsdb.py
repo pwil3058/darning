@@ -37,8 +37,8 @@ class NullFileDb:
 class OsFileDb:
     def __init__(self):
         pass
-    def _is_not_hidden_file(self, filename):
-        return filename[0] != '.'
+    def _is_not_hidden_file(self, filepath):
+        return filepath[0] != '.'
     def dir_contents(self, dirpath, show_hidden=False):
         files = []
         dirs = []
