@@ -23,33 +23,28 @@ import atexit
 
 from darning import patch_db
 from darning import scm_ifce
-from darning.cli import msg
-
-BASE_DIR = SUB_DIR = SUB_DIR_DOWN = None
 
 def open_db(modifiable):
     '''Change directory to the base direcory and open the database'''
-    global BASE_DIR, SUB_DIR, SUB_DIR_DOWN
-    BASE_DIR, SUB_DIR = patch_db.find_base_dir()
-    if BASE_DIR is None:
-        sys.exit(msg.Error(_('could not find a "darning" database')))
-    if SUB_DIR is not None:
-        SUB_DIR_DOWN = os.path.join(*['..'] * len(SUBDIR.split(os.sep)))
-    os.chdir(BASE_DIR)
+    BASE_DIR = patch_db.find_base_dir(remember_sub_dir=True)
+    if BASE_DIR:
+        os.chdir(BASE_DIR)
+    else:
+        sys.exit(_('Valid database NOT found.\n'))
     scm_ifce.reset_back_end()
     result = patch_db.load_db(modifiable)
     if not result:
-        sys.exit(msg.Error(result))
+        sys.exit(str(result))
     atexit.register(patch_db.release_db)
     return True
 
-def prepend_subdir(filepaths):
-    if SUB_DIR is not None:
-        for findex in range(len(filepaths)):
-            filepaths[findex] = os.path.join(SUB_DIR, filepaths[findex])
+class Context(object):
+    def __init__(self, stdout, stderr):
+        self.stdout = stdout
+        self.stderr = stderr
 
-def rel_subdir(filepath):
-    if SUB_DIR_DOWN is None:
-        return filepath
+def get_report_context(verbose=True):
+    if verbose:
+        return Context(sys.stdout, sys.stderr)
     else:
-        return os.path.join(SUB_DIR_DOWN, filepath)
+        return Context(open('/dev/null', 'w'), sys.stderr)

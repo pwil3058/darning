@@ -18,7 +18,6 @@
 from darning import patch_db
 from darning.cli import cli_args
 from darning.cli import db_utils
-from darning.cli import msg
 
 PARSER = cli_args.SUB_CMD_PARSER.add_parser(
     'refresh',
@@ -32,35 +31,6 @@ cli_args.add_verbose_option(PARSER, helptext=_('display diff output.'))
 def run_refresh(args):
     '''Execute the "refresh" sub command using the supplied args'''
     db_utils.open_db(modifiable=True)
-    if not args.opt_patch:
-        args.opt_patch = patch_db.get_top_patch_name()
-        if not args.opt_patch:
-            return msg.Error(_('No patches applied'))
-    elif not patch_db.patch_is_in_series(args.opt_patch):
-        return msg.Error(_('patch "{0}" is unknown'), args.opt_patch)
-    results = patch_db.do_refresh_patch(args.opt_patch)
-    highest_ecode = 0
-    for filepath in results:
-        result = results[filepath]
-        highest_ecode = highest_ecode if result.ecode < highest_ecode else result.ecode
-        if args.opt_verbose:
-            msg.Info(_('Refreshing: {0}'), filepath)
-            for line in result.stdout.splitlines(False):
-                msg.Info(line)
-        if result.ecode in [0, 1]:
-            for line in result.stderr.splitlines(False):
-                if not args.opt_verbose:
-                    msg.Warn('{0}: {1}', filepath, line)
-                else:
-                    msg.Warn(line)
-        else:
-            for line in result.stderr.splitlines(False):
-                if not args.opt_verbose:
-                    msg.Error('{0}: {1}', filepath, line)
-                else:
-                    msg.Error(line)
-    if highest_ecode > 2:
-        return msg.Error(_('Patch "{0}" requires another refresh after issues are resolved.'), args.opt_patch)
-    return msg.Info(_('Patch "{0}" refreshed.'), args.opt_patch)
+    return patch_db.do_refresh_patch(db_utils.get_report_context(verbose=args.opt_verbose), args.opt_patch)
 
 PARSER.set_defaults(run_cmd=run_refresh)

@@ -241,7 +241,7 @@ def ask_file_name(prompt, suggestion=None, existing=True, parent=None):
                 dialog.set_current_name(basename)
     response = dialog.run()
     if response == gtk.RESPONSE_OK:
-        new_file_name = dialog.get_filepath()
+        new_file_name = dialog.get_filename()
     else:
         new_file_name = None
     dialog.destroy()
@@ -267,7 +267,7 @@ def ask_dir_name(prompt, suggestion=None, existing=True, parent=None):
                 dialog.set_current_folder(dirname)
     response = dialog.run()
     if response == gtk.RESPONSE_OK:
-        new_dir_name = dialog.get_filepath()
+        new_dir_name = dialog.get_filename()
     else:
         new_dir_name = None
     dialog.destroy()
@@ -283,7 +283,10 @@ def inform_user(msg, parent=None, problem_type=gtk.MESSAGE_INFO):
 
 def report_any_problems(result, parent=None):
     if cmd_result.is_ok(result):
-        return
+        if result[-1]:
+            problem_type=gtk.MESSAGE_INFO
+        else:
+            return
     elif cmd_result.is_warning(result):
         problem_type = gtk.MESSAGE_WARNING
     else:

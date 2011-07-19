@@ -34,7 +34,7 @@ TERM = terminal.Terminal() if terminal.AVAILABLE else None
 def init(log=False):
     global in_valid_repo, in_valid_pgnd, pgnd_is_mutable
     options.load_global_options()
-    root, _dummy= PM.find_base_dir()
+    root = PM.find_base_dir(remember_sub_dir=False)
     result = cmd_result.Result(cmd_result.OK, "")
     if root:
         os.chdir(root)
@@ -69,7 +69,7 @@ def chdir(newdir=None):
             ecode = errno.errorcode[err.errno]
             emsg = err.strerror
             retval = cmd_result.Result(cmd_result.ERROR, '%s: "%s" :%s' % (ecode, newdir, emsg))
-    root, _dummy = PM.find_base_dir()
+    root = PM.find_base_dir(remember_sub_dir=False)
     if root:
         os.chdir(root)
         retval = PM.open_db()
@@ -103,8 +103,8 @@ def new_playground(description, pgdir=None):
     if in_valid_pgnd:
         return cmd_result.Result(cmd_result.WARNING, _('Already initialized'))
     result = PM.do_initialization(description)
-    if result is not True:
-        return cmd_result.Result(cmd_result.ERROR, str(result))
+    if result.eflags != cmd_result.OK:
+        return result
     retval = PM.open_db()
     in_valid_pgnd = PM.is_readable()
     pgnd_is_mutable = PM.is_writable()

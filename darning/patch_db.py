@@ -32,6 +32,7 @@ import errno
 from darning import i18n
 from darning import scm_ifce
 from darning import runext
+from darning import cmd_result
 from darning import utils
 from darning import patchlib
 from darning import fsdb
@@ -223,52 +224,6 @@ class PatchData:
             overlapped_by.files[filepath].timestamp = 0
         del self.files[filepath]
         dump_db()
-    def do_apply(self, force=False):
-        '''Apply this patch'''
-        assert is_writable()
-        assert not self.is_applied()
-        assert force or _total_overlap_count(get_patch_overlap_data(self.name)) == 0
-        os.mkdir(self.get_cached_original_dir_path())
-        results = {}
-        if len(self.files) == 0:
-            return results
-        patch_cmd = ['patch', '--merge', '--force', '-p1', '--batch',]
-        drop_atws = options.get('push', 'drop_added_tws')
-        for file_data in self.files.values():
-            self.do_cache_original(file_data.path, force)
-            result = None
-            patch_ok = True
-            if file_data.binary is not False:
-                if file_data.new_mode is not None:
-                    open(file_data.path, 'wb').write(file_data.diff.contents)
-                elif os.path.exists(file_data.path):
-                    os.remove(file_data.path)
-            elif file_data.diff:
-                if drop_atws:
-                    file_data.diff.fix_trailing_whitespace()
-                result = runext.run_cmd(patch_cmd + [file_data.path], str(file_data.diff))
-                patch_ok = result.ecode == 0
-            file_exists = os.path.exists(file_data.path)
-            if file_exists:
-                if file_data.new_mode is not None:
-                    os.chmod(file_data.path, file_data.new_mode)
-            else:
-                # A non None new_mode means that the file existed when
-                # the diff was made so a refresh will be required
-                patch_ok = patch_ok and file_data.new_mode is None
-            if os.path.exists(file_data.path) and patch_ok:
-                file_data.timestamp = os.path.getmtime(file_data.path)
-            else:
-                file_data.timestamp = 0
-            if not patch_ok:
-                if result is None:
-                    result = runext.Result(1, '', _('Needs update.\n'))
-                else:
-                    result = runext.Result(max(result.ecode, 1), result.stdout, result.stderr + _('Needs update.\n'))
-            if result is not None:
-                results[file_data.path] = result
-            dump_db()
-        return results
     def copy_refreshed_version_to(self, filepath, target_name):
         file_data = self.files[filepath]
         if not file_data.needs_refresh():
@@ -387,7 +342,7 @@ class PatchData:
         preamble = self.generate_diff_preamble_for_file(filepath, combined)
         diff = self.generate_diff_for_file(filepath, combined) if self.is_applied() else self.files[filepath].diff
         return patchlib.DiffPlus([preamble], diff)
-    def do_refresh_file(self, filepath):
+    def do_refresh_file(self, rctx, filepath):
         '''Refresh the named file in this patch'''
         assert is_writable()
         assert filepath in self.files
@@ -399,7 +354,8 @@ class PatchData:
             # ensure this file shows up as needing refresh
             file_data.timestamp = -1
             dump_db()
-            return runext.Result(3, '', _('File has unresolved merge(s).\n'))
+            rctx.stderr.write(_('"{0}": file has unresolved merge(s).\n').format(rel_subdir(filepath)))
+            return cmd_result.ERROR
         f_exists = os.path.exists(filepath)
         if f_exists or os.path.exists(self.get_cached_original_file_path(filepath)):
             file_data.diff = self.generate_diff_for_file(filepath)
@@ -407,44 +363,20 @@ class PatchData:
                 stat_data = os.stat(filepath)
                 file_data.new_mode = stat_data.st_mode
                 file_data.timestamp = stat_data.st_mtime
+                if file_data.old_mode is not None and file_data.old_mode != file_data.new_mode:
+                    rctx.stdout.write(_('"{0}": mode {1:07o} -> {2:07o}.\n').format(rel_subdir(filepath), file_data.old_mode, file_data.new_mode))
             else:
                 file_data.new_mode = None
                 file_data.timestamp = 0
-            result = runext.Result(0, str(file_data.diff), '')
+            rctx.stdout.write(str(file_data.diff))
         else:
             file_data.diff = None
             file_data.new_mode = None
             file_data.timestamp = 0
             file_data.scm_revision = scm_ifce.get_revision(filepath=file_data.path)
-            result = runext.Result(0, '', _('File "{0}" does not exist\n').format(filepath))
+            rctx.stdout.write(_('"{0}": file does not exist\n').format(rel_subdir(filepath)))
         dump_db()
-        return result
-    def do_unapply(self):
-        '''Unapply this patch'''
-        assert is_writable()
-        assert self.is_applied()
-        assert not self.needs_refresh()
-        assert not self.is_overlapped()
-        drop_atws = options.get('pop', 'drop_added_tws')
-        for file_data in self.files.values():
-            if os.path.exists(file_data.path):
-                os.remove(file_data.path)
-            corig_f_path = self.get_cached_original_file_path(file_data.path)
-            if os.path.exists(corig_f_path):
-                os.chmod(corig_f_path, file_data.old_mode)
-                shutil.move(corig_f_path, file_data.path)
-            if drop_atws and file_data.diff:
-                file_data.diff.fix_trailing_whitespace()
-        shutil.rmtree(self.get_cached_original_dir_path())
-        return True
-    def do_refresh(self):
-        '''Refresh the patch'''
-        assert is_writable()
-        assert self.is_applied()
-        results = {}
-        for filepath in self.files:
-            results[filepath] = self.do_refresh_file(filepath)
-        return results
+        return cmd_result.OK
     def get_cached_original_dir_path(self):
         '''Return the path of the cached originals' directory for this patch'''
         return os.path.join(_ORIGINALS_DIR, self.name)
@@ -581,22 +513,32 @@ _ORIGINALS_DIR = os.path.join(_DB_DIR, 'orig')
 _DB_FILE = os.path.join(_DB_DIR, 'database')
 _DB_LOCK_FILE = os.path.join(_DB_DIR, 'lock')
 _DB = None
+_SUB_DIR = None
 
-def find_base_dir(dirpath=None):
+def rel_subdir(filepath):
+    return filepath if _SUB_DIR is None else os.path.relpath(filepath, SUBDIR)
+
+def prepend_subdir(filepaths):
+    if _SUB_DIR is not None:
+        for findex in range(len(filepaths)):
+            filepaths[findex] = os.path.join(_SUB_DIR, filepaths[findex])
+
+def find_base_dir(remember_sub_dir=False):
     '''Find the nearest directory above that contains a database'''
-    if dirpath is None:
-        dirpath = os.getcwd()
+    global _SUB_DIR
+    dirpath = os.getcwd()
     subdir_parts = []
     while True:
         if os.path.isdir(os.path.join(dirpath, _DB_DIR)):
-            subdir = None if not subdir_parts else os.path.join(*subdir_parts)
-            return dirpath, subdir
+            _SUB_DIR = None if not subdir_parts else os.path.join(*subdir_parts)
+            return dirpath
         else:
             dirpath, basename = os.path.split(dirpath)
             if not basename:
                 break
-            subdir_parts.insert(0, basename)
-    return None, None
+            if remember_sub_dir:
+                subdir_parts.insert(0, basename)
+    return None
 
 def exists():
     '''Does the current directory contain a patch database?'''
@@ -640,7 +582,7 @@ def _unlock_db():
     assert is_my_lock()
     os.remove(_DB_LOCK_FILE)
 
-def create_db(description):
+def do_create_db(rctx, description):
     '''Create a patch database in the current directory?'''
     def rollback():
         '''Undo steps that were completed before failure occured'''
@@ -650,10 +592,16 @@ def create_db(description):
         for dirnm in [_ORIGINALS_DIR, _DB_DIR]:
             if os.path.exists(dirnm):
                 os.rmdir(dirnm)
-    if os.path.exists(_DB_DIR):
+    root = find_base_dir(remember_sub_dir=False)
+    if root is not None:
+        rctx.stderr.write(_('Inside existing playground: {0}.\n').format(os.path.relpath(root)))
+        return cmd_result.ERROR
+    elif os.path.exists(_DB_DIR):
         if os.path.exists(_ORIGINALS_DIR) and os.path.exists(_DB_FILE):
-            return Failure(_('Database already exists'))
-        return Failure(_('Database directory exists'))
+            rctx.stderr.write(_('Database already exists.\n'))
+        else:
+            rctx.stderr.write(_('Database directory exists.\n'))
+        return cmd_result.ERROR
     try:
         dir_mode = stat.S_IRWXU|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH
         os.mkdir(_DB_DIR, dir_mode)
@@ -669,11 +617,12 @@ def create_db(description):
             _unlock_db()
     except OSError as edata:
         rollback()
-        return Failure(edata.strerror)
+        rctx.stderr.write(edata.strerror)
+        return cmd_result.ERROR
     except Exception:
         rollback()
         raise
-    return True
+    return cmd_result.OK
 
 def release_db():
     '''Release access to the database'''
@@ -886,18 +835,30 @@ def _insert_patch(patch, after=None):
     _DB.series.insert(index, patch)
     dump_db()
 
-def do_create_new_patch(patchname, description):
+def do_create_new_patch(rctx, patchname, description):
     '''Create a new patch with the given name and description (after the top patch)'''
     assert is_writable()
-    assert get_patch_series_index(patchname) is None
+    if get_patch_series_index(patchname) is not None:
+        rctx.stderr.write(_('patch "{0}" already exists\n').format(patchname))
+        return cmd_result.ERROR|cmd_result.SUGGEST_RENAME
     patch = PatchData(patchname, description)
     _insert_patch(patch)
     dump_db()
+    warn = top_patch_needs_refresh()
+    if warn:
+        old_top = get_top_patch_name()
+    # Ignore result of apply as it cannot fail
+    do_apply_next_patch(rctx)
+    if warn:
+        rctx.stderr.write(_('Previous top patch ("{0}") needs refreshing.\n').format(old_top))
+    return cmd_result.OK
 
-def do_import_patch(epatch, patchname):
+def do_import_patch(rctx, epatch, patchname):
     '''Import an external patch with the given name (after the top patch)'''
     assert is_writable()
-    assert get_patch_series_index(patchname) is None
+    if patch_is_in_series(patchname):
+        rctx.stderr.write(_('patch "{0}" already exists').format(patchname))
+        return cmd_result.ERROR | cmd_result.SUGGEST_RENAME
     descr = utils.make_utf8_compliant(epatch.get_description())
     patch = PatchData(patchname, descr)
     for diff_plus in epatch.diff_pluses:
@@ -912,7 +873,8 @@ def do_import_patch(epatch, patchname):
                         break
                 break
     _insert_patch(patch)
-    _dump_db()
+    dump_db()
+    return cmd_result.OK
 
 def top_patch_needs_refresh():
     '''Does the top applied patch need a refresh?'''
@@ -1006,13 +968,92 @@ def get_next_patch_overlap_data():
         return OverlapData(unrefreshed = {}, uncommitted = [])
     return get_overlap_data(_DB.series[next_index].get_filepaths())
 
-def apply_patch(force=False):
+def do_apply_next_patch(rctx, force=False):
     '''Apply the next patch in the series'''
     assert is_writable()
     next_index = _get_next_patch_index()
     if next_index is None:
-        return (False, _('There are no pushable patches available'))
-    return (True, _DB.series[next_index].do_apply(force))
+        top_patch = get_top_patch_name()
+        if top_patch:
+            rctx.stderr.write(_('No pushable patches. "{0}" is on top.\n').format(top_patch))
+        else:
+            rctx.stderr.write(_('No pushable patches.\n'))
+        return cmd_result.ERROR
+    next_patch = _DB.series[next_index]
+    overlaps = get_overlap_data(next_patch.get_filepaths())
+    ol_report = rctx.stdout.write if force else rctx.stderr.write
+    esug = 0
+    if len(overlaps.uncommitted) > 0:
+        esug |= cmd_result.SUGGEST_FORCE
+        ol_report(_('The following (overlapped) files have uncommitted SCM changes:\n'))
+        for filepath in sorted(overlaps.uncommitted):
+            ol_report('\t{0}\n'.format(rel_subdir(filepath)))
+    if len(overlaps.unrefreshed) > 0:
+        esug |= cmd_result.SUGGEST_FORCE_OR_REFRESH
+        ol_report(_('The following (overlapped) files have unrefreshed changes (in an applied patch):\n'))
+        for filepath in sorted(overlaps.unrefreshed):
+            ol_report(_('\t{0} : in patch "{1}"\n').format(rel_subdir(filepath), overlaps.unrefreshed[filepath]))
+    if esug:
+        if force:
+            ol_report(_('Uncommited/unrefreshed changes incorporated into pushed patch.\n'))
+        else:
+            rctx.stderr.write(_('Aborted\n'))
+            return cmd_result.ERROR | esug
+    os.mkdir(next_patch.get_cached_original_dir_path())
+    if len(next_patch.files) == 0:
+        return cmd_result.OK
+    patch_cmd = ['patch', '--merge', '--force', '-p1', '--batch', '--quiet']
+    drop_atws = options.get('push', 'drop_added_tws')
+    biggest_ecode = 0
+    for file_data in next_patch.files.values():
+        next_patch.do_cache_original(file_data.path, force)
+        patch_ok = True
+        if file_data.binary is not False:
+            rctx.stdout.write(_('Processing binary file "{0}".\n').format(rel_subdir(file_data.path)))
+            if file_data.new_mode is not None:
+                open(file_data.path, 'wb').write(file_data.diff.contents)
+            elif os.path.exists(file_data.path):
+                os.remove(file_data.path)
+        elif file_data.diff:
+            rctx.stdout.write(_('Patching file "{0}".\n').format(rel_subdir(file_data.path)))
+            if drop_atws:
+                aws_lines = file_data.diff.fix_trailing_whitespace()
+                if aws_lines:
+                    rctx.stdout.write(_('"{0}": added trailing white space at line(s) {{{1}}}: removed before application.\n').format(rel_subdir(file_data.path), ', '.join([str(line) for line in aws_lines])))
+            else:
+                aws_lines = file_data.diff.report_trailing_whitespace()
+                if aws_lines:
+                    rctx.stderr.write(_('"{0}": added trailing white space at line(s) {{{1}}}.\n').format(rel_subdir(file_data.path), ', '.join([str(line) for line in aws_lines])))
+            result = runext.run_cmd(patch_cmd + [file_data.path], str(file_data.diff))
+            rctx.stdout.write(result.stdout)
+            rctx.stderr.write(result.stderr)
+            biggest_ecode = max(biggest_ecode, result.ecode)
+            patch_ok = result.ecode == 0
+        else:
+            rctx.stdout.write(_('Processing file "{0}".\n').format(rel_subdir(file_data.path)))
+        file_exists = os.path.exists(file_data.path)
+        if file_exists:
+            if file_data.new_mode is not None:
+                os.chmod(file_data.path, file_data.new_mode)
+            file_data.timestamp = os.path.getmtime(file_data.path) if patch_ok else 0
+        else:
+            # A non None new_mode means that the file existed when
+            # the diff was made so a refresh will be required
+            if file_data.new_mode is not None:
+                biggest_ecode = max(biggest_ecode, 1)
+                rctx.stderr.write(_('Expected file not found.\n'))
+            file_data.timestamp = 0
+        if os.path.exists(file_data.path) and patch_ok:
+            file_data.timestamp = os.path.getmtime(file_data.path)
+        else:
+            file_data.timestamp = 0
+        dump_db()
+    if biggest_ecode > 1:
+        rctx.stderr.write(_('A refresh is required after issues are resolved.\n'))
+    elif biggest_ecode > 0:
+        rctx.stderr.write(_('A refresh is required.\n'))
+    rctx.stdout.write(_('Patch "{0}" is now on top\n').format(next_patch.name))
+    return cmd_result.OK
 
 def get_top_applied_patch_for_file(filepath):
     assert is_readable()
@@ -1044,13 +1085,41 @@ def is_patch_pushable(patchname):
     assert is_readable()
     return get_patch(patchname).is_pushable()
 
-def unapply_top_patch():
+def do_unapply_top_patch(rctx):
     '''Unapply the top applied patch'''
     assert is_writable()
-    assert not top_patch_needs_refresh()
     top_patch_index = get_series_index_for_top()
-    assert top_patch_index is not None
-    return _DB.series[top_patch_index].do_unapply()
+    if top_patch_index is None:
+        rctx.stderr.write(_('No patches applied.\n'))
+        return cmd_result.ERROR
+    top_patch = _DB.series[top_patch_index]
+    if top_patch.needs_refresh():
+        rctx.stderr.write(_('Top patch ("{0}") needs to be refreshed.\n').format(top_patch.name))
+        return cmd_result.ERROR_SUGGEST_REFRESH
+    drop_atws = options.get('pop', 'drop_added_tws')
+    for file_data in top_patch.files.values():
+        if os.path.exists(file_data.path):
+            os.remove(file_data.path)
+        corig_f_path = top_patch.get_cached_original_file_path(file_data.path)
+        if os.path.exists(corig_f_path):
+            os.chmod(corig_f_path, file_data.old_mode)
+            shutil.move(corig_f_path, file_data.path)
+        if file_data.diff:
+            if drop_atws:
+                aws_lines = file_data.diff.fix_trailing_whitespace()
+                if aws_lines:
+                    rctx.stdout.write(_('"{0}": adds trailing white space at line(s) {{{1}}}: removed.\n').format(rel_subdir(file_data.path), ', '.join([str(line) for line in aws_lines])))
+            else:
+                aws_lines = file_data.diff.report_trailing_whitespace()
+                if aws_lines:
+                    rctx.stderr.write(_('"{0}": adds trailing white space at line(s) {{{1}}}.\n').format(rel_subdir(file_data.path), ', '.join([str(line) for line in aws_lines])))
+    shutil.rmtree(top_patch.get_cached_original_dir_path())
+    new_top_patch_name = get_top_patch_name()
+    if new_top_patch_name is None:
+        rctx.stdout.write(_('There are now no patches applied.\n'))
+    else:
+         rctx.stdout.write(_('Patch "{0}" is now on top.\n').format(new_top_patch_name))
+    return cmd_result.OK
 
 def get_filepaths_in_patch(patchname, filepaths=None):
     '''
@@ -1074,14 +1143,44 @@ def get_filepaths_in_next_patch(filepaths=None):
     assert patch_index is not None
     return _DB.series[patch_index].get_filepaths(filepaths)
 
-def add_file_to_patch(patchname, filepath, force=False):
-    '''Add the named file to the named patch'''
-    assert is_writable()
+def do_add_files_to_patch(rctx, patchname, filepaths, force=False):
+    '''Add the named files to the named patch'''
+    if not patchname:
+        patchname = get_top_patch_name()
+        if not patchname:
+            rctx.stderr.write(_('No patches applied'))
+            return cmd_result.ERROR
     patch_index = get_patch_series_index(patchname)
-    assert patch_index is not None
+    if patch_index is None:
+        rctx.stderr.write(_('patch "{0}" is unknown').format(patchname))
+        return cmd_result.ERROR
     patch = _DB.series[patch_index]
-    assert filepath not in patch.files
-    return patch.do_add_file(filepath, force=force)
+    prepend_subdir(filepaths)
+    overlaps = get_filelist_overlap_data(filepaths, patch.name)
+    if not force and len(overlaps.uncommitted) > 0 or len(overlaps.unrefreshed) > 0:
+        for rfilepath in [rel_subdir(filepath) for filepath in sorted(overlaps.uncommitted)]:
+            rctx.stderr.write(_('{0}: file has uncommitted SCM changes.\n').format(rfilepath))
+        for filepath in sorted(overlaps.unrefreshed):
+            rfilepath = rel_subdir(filepath)
+            opatch = overlaps.unrefreshed[filepath]
+            rctx.stderr.write(_('{0}: file has unrefreshed changes in (applied) "{1}".\n').format(rfilepath, opatch))
+        rctx.stderr.write(_('Aborted.\n'))
+        return cmd_result.ERROR_SUGGEST_FORCE_OR_REFRESH if len(overlaps.unrefreshed) > 0 else cmd_result.ERROR_SUGGEST_FORCE
+    already_in_patch = set(patch.get_filepaths(filepaths))
+    for filepath in filepaths:
+        if filepath in already_in_patch:
+            rctx.stderr.write(_('{0}: file already in patch "{1}". Ignored.\n').format(rel_subdir(filepath), patch.name))
+            continue
+        patch.do_add_file(filepath, force=force)
+        already_in_patch.add(filepath)
+        rfilepath = rel_subdir(filepath)
+        if filepath in overlaps.uncommitted:
+            rctx.stderr.write(_('{0}: file added to patch "{1}". Uncommited SCM changes have been incorporated.\n'), rfilepath, patch.name)
+        elif filepath in overlaps.unrefreshed:
+            rctx.stderr.write(_('{0}: file added to patch "{1}". Unrefeshed changes in patch "{2}" incorporated.\n'), rfilepath, patch.name, overlaps.unrefreshed[filename])
+        else:
+            rctx.stderr.write(_('{0}: file added to patch "{1}".\n'), rfilepath, patch.name)
+    return cmd_result.OK
 
 def do_drop_file_fm_patch(patchname, filepath):
     '''Drop the named file from the named patch'''
@@ -1091,6 +1190,25 @@ def do_drop_file_fm_patch(patchname, filepath):
     patch = _DB.series[patch_index]
     assert filepath in patch.files
     return patch.do_drop_file(filepath)
+
+def do_drop_files_from_patch(rctx, patchname, filepaths):
+    '''Drop the named file from the named patch'''
+    assert is_writable()
+    patch_index = get_patch_series_index(patchname)
+    if patch_index is None:
+        rctx.stderr.write(_('patch "{0}" is unknown').format(patchname))
+        return cmd_result.ERROR
+    patch = _DB.series[patch_index]
+    prepend_subdir(filepaths)
+    for filepath in filepaths:
+        if filepath in patch.files:
+            patch.do_drop_file_fm_patch(filepath)
+            rctx.stdout.write(_('{0}: file dropped from patch "{1}".\n').format(rel_subdir(filepath), patch.name))
+        else:
+            rctx.stderr.write(_('{0}: file not in patch "{1}": ignored.\n').format(rel_subdir(filepath), patch.name))
+    console.LOG.end_cmd()
+    ws_event.notify_events(ws_event.FILE_DEL)
+    return cmd_result.OK
 
 def do_duplicate_patch(patchname, as_patchname, newdescription):
     '''Create a duplicate of the named patch with a new name and new description (after the top patch)'''
@@ -1104,7 +1222,7 @@ def do_duplicate_patch(patchname, as_patchname, newdescription):
     _insert_patch(newpatch)
     _dump_db()
 
-def do_refresh_overlapped_files(file_list):
+def do_refresh_overlapped_files(rctx, file_list):
     '''Refresh any files in the list which are in an applied patch
     (within the topmost such patch).'''
     assert is_writable()
@@ -1112,25 +1230,51 @@ def do_refresh_overlapped_files(file_list):
     applied_patches = get_applied_patch_list()
     assert len(applied_patches) > 0
     file_set = set(file_list)
-    results = {}
+    eflags = 0
     for applied_patch in reversed(applied_patches):
         for file_name in applied_patch.files:
             if file_name in file_set:
-                results[file_name] = applied_patch.do_refresh_file(file_name)
+                eflags |= applied_patch.do_refresh_file(rctx, file_name)
                 file_set.remove(file_name)
                 if len(file_set) == 0:
                     break
         if len(file_set) == 0:
             break
-    return results
+    return eflags
 
-def do_refresh_patch(patchname):
+def do_refresh_patch(rctx, patchname=None):
     '''Refresh the named patch'''
     assert is_writable()
-    assert is_applied(patchname)
-    patch_index = get_patch_series_index(patchname)
-    assert patch_index is not None
-    return _DB.series[patch_index].do_refresh()
+    if patchname:
+        patch_index = get_patch_series_index(patchname)
+        if patch_index is None:
+            rctx.stderr.write(_('Patch "{0}" is not known\n').format(patchname))
+            return cmd_result.ERROR | cmd_result.SUGGEST_RENAME
+        if not is_applied(patchname):
+            rctx.stderr.write(_('Patch "{0}" is not applied\n').format(patchname))
+            return cmd_result.ERROR
+        patch = _DB.series[patch_index]
+        is_top = patch_index == get_series_index_for_top()
+    else:
+        is_top = True
+        patch_index = get_series_index_for_top()
+        if patch_index is None:
+            rctx.stderr.write(_('No patches applied\n'))
+            return cmd_result.ERROR
+    patch = _DB.series[patch_index]
+    eflags = 0
+    for filepath in patch.files:
+        if not is_top:
+            olap_patch = patch.get_overlapping_patch_for_file(filepath)
+            if olap_patch:
+                rctx.stderr.write(_('"{0}: overlapped by patch "{1}": skipped\n').format(rel_subdir(filepath), olap_patch.name))
+                continue
+        eflags |= patch.do_refresh_file(rctx, filepath)
+    if eflags > 0:
+        rctx.stderr.write(_('Patch "{0}" requires another refresh after issues are resolved.\n').format(patch.name))
+    else:
+        rctx.stdout.write(_('Patch "{0}" refreshed.\n').format(patch.name))
+    return eflags
 
 def do_remove_patch(patchname):
     '''Remove the named patch from the series'''

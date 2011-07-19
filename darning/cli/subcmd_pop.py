@@ -18,7 +18,6 @@
 from darning import patch_db
 from darning.cli import cli_args
 from darning.cli import db_utils
-from darning.cli import msg
 
 PARSER = cli_args.SUB_CMD_PARSER.add_parser(
     'pop',
@@ -28,20 +27,6 @@ PARSER = cli_args.SUB_CMD_PARSER.add_parser(
 def run_pop(args):
     '''Execute the "pop" sub command using the supplied args'''
     db_utils.open_db(modifiable=True)
-    top_patch = patch_db.get_top_patch_name()
-    if not top_patch:
-        return msg.Error(_('No patches applied'))
-    if patch_db.top_patch_needs_refresh():
-        return msg.Error(_('Top patch ("{0}") needs to be refreshed'), top_patch)
-    result = patch_db.unapply_top_patch()
-    if result is not True:
-        return msg.Error(_('{0}: top patch is now "{1}"'), result, patch_db.get_top_patch_name())
-    else:
-        top_patch = patch_db.get_top_patch_name()
-        if top_patch is None:
-            return msg.Info(_('There are now no patches applied'))
-        else:
-            return msg.Info(_('Patch "{1}" is now on top'), top_patch)
-    return msg.OK
+    return patch_db.do_unapply_top_patch(db_utils.get_report_context(verbose=True))
 
 PARSER.set_defaults(run_cmd=run_pop)

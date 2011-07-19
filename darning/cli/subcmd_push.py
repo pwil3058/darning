@@ -18,7 +18,6 @@
 from darning import patch_db
 from darning.cli import cli_args
 from darning.cli import db_utils
-from darning.cli import msg
 
 PARSER = cli_args.SUB_CMD_PARSER.add_parser(
     'push',
@@ -30,51 +29,6 @@ cli_args.add_force_option(PARSER, helptext=_('incorporate uncommitted/unrefreshe
 def run_push(args):
     '''Execute the "push" sub command using the supplied args'''
     db_utils.open_db(modifiable=True)
-    if not patch_db.is_pushable():
-        top_patch = patch_db.get_top_patch_name()
-        if top_patch:
-            return msg.Error(_('no pushable patches. "{0}" is on top.'), top_patch)
-        else:
-            return msg.Error(_('no pushable patches.'))
-    is_ok = True
-    if args.opt_force:
-        ol_report = msg.Info
-    else:
-        ol_report = msg.Error
-    overlaps = patch_db.get_next_patch_overlap_data()
-    if len(overlaps.uncommitted) > 0:
-        is_ok = False
-        ol_report(_('The following (overlapped) files have uncommitted SCM changes:'))
-        for filepath in sorted(overlaps.uncommitted):
-            ol_report('\t{0}', filepath)
-    if len(overlaps.unrefreshed) > 0:
-        is_ok = False
-        ol_report(_('The following (overlapped) files have unrefreshed changes (in an applied patch):'))
-        for filepath in sorted(overlaps.unrefreshed):
-            ol_report(_('\t{0} : in patch "{1}"'), filepath, overlaps.unrefreshed[filepath])
-    if not is_ok:
-        if args.opt_force:
-            msg.Info(_('Uncommited/unrefreshed changes incorporated into pushed patch.'))
-        else:
-            return msg.Error(_('Aborting'))
-    _db_ok, results = patch_db.apply_patch(force=args.opt_force)
-    highest_ecode = 0
-    for filepath in results:
-        result = results[filepath]
-        highest_ecode = highest_ecode if result.ecode < highest_ecode else result.ecode
-        for line in result.stdout.splitlines(False):
-            msg.Info(line)
-        if result.ecode == 0:
-            for line in result.stderr.splitlines(False):
-                msg.Warn(line)
-        else:
-            for line in result.stderr.splitlines(False):
-                msg.Error(line)
-    msg.Info(_('Patch "{0}" is now on top.'), patch_db.get_top_patch_name())
-    if highest_ecode > 1:
-        return msg.Error(_('A refresh is required after issues are resolved.'))
-    if highest_ecode > 0:
-        return msg.Error(_('A refresh is required.'))
-    return msg.OK
+    return patch_db.do_apply_next_patch(db_utils.get_report_context(verbose=True), force=args.opt_force)
 
 PARSER.set_defaults(run_cmd=run_push)

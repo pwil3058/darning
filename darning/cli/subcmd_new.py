@@ -18,7 +18,6 @@
 from darning import patch_db
 from darning.cli import cli_args
 from darning.cli import db_utils
-from darning.cli import msg
 
 PARSER = cli_args.SUB_CMD_PARSER.add_parser(
     'new',
@@ -36,16 +35,6 @@ PARSER.add_argument(
 def run_new(args):
     '''Execute the "new" sub command using the supplied args'''
     db_utils.open_db(modifiable=True)
-    if patch_db.patch_is_in_series(args.patchname):
-        return msg.Error(_('patch "{0}" already exists'), args.patchname)
-    patch_db.do_create_new_patch(args.patchname, args.opt_description)
-    warn = patch_db.top_patch_needs_refresh()
-    if warn:
-        old_top = patch_db.get_top_patch_name()
-    patch_db.apply_patch()
-    msg.Info(_('Patch "{0}" is now on top.'), patch_db.get_top_patch_name())
-    if warn:
-        msg.Warn(_('Previous top patch ("{0}") needs refreshing.'), old_top)
-    return msg.OK
+    return patch_db.do_create_new_patch(db_utils.get_report_context(verbose=True), args.patchname, args.opt_description)
 
 PARSER.set_defaults(run_cmd=run_new)

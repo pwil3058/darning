@@ -19,9 +19,10 @@ import os
 
 from darning import patch_db
 from darning import patchlib
+from darning import cmd_result
+
 from darning.cli import cli_args
 from darning.cli import db_utils
-from darning.cli import msg
 
 PARSER = cli_args.SUB_CMD_PARSER.add_parser(
     'import',
@@ -53,34 +54,38 @@ PARSER.add_argument(
 def run_import(args):
     '''Execute the "import" sub command using the supplied args'''
     db_utils.open_db(modifiable=True)
+    rctx = db_utils.get_report_context(verbose=True)
     if not args.patchname:
         args.patchname = os.path.basename(args.patchfile)
-    if patch_db.patch_is_in_series(args.patchname):
-        return msg.Error(_('patch "{0}" already exists'), args.patchname)
     try:
         epatch = patchlib.Patch.parse_text(open(args.patchfile).read())
     except patchlib.ParseError as edata:
         if edata.lineno is None:
-            return msg.Error(edata.message)
+            rctx.stderr.write(_('Parse Error: {0}.\n').format(edata.message))
         else:
-            return msg.Error(_('{0}: Line:{1}.'), edata.message, edata.lineno)
+            rctx.stderr.write(_('Parse Error: {0}: {1}.\n').format(edata.lineno, edata.message))
+        return cmd_result.ERROR
     except IOError as edata:
         if edata.filepath is None:
-            return msg.Error(edata.strerror)
+            rctx.stderr.write(_('IO Error: {0}.\n').format(edata.strerror))
         else:
-            return msg.Error('{0}: {1}.', edata.strerror, edata.filepath)
+            rctx.stderr.write(_('IO Error: {0}: {1}.\n').format(edata.strerror, edata.filepath))
+        return cmd_result.ERROR
     if args.opt_strip_level is None:
         args.opt_strip_level = epatch.estimate_strip_level()
         if args.opt_strip_level is None:
-            return msg.Error(_('Strip level auto detection failed.  Please use -p option.'))
+            rctx.stderr.write(_('Strip level auto detection failed.  Please use -p option.'))
+            return cmd_result.ERROR
     epatch.set_strip_level(int(args.opt_strip_level))
-    patch_db.do_import_patch(epatch, args.patchname)
+    eflags = patch_db.do_import_patch(rctx, epatch, args.patchname)
+    if eflags != cmd_result.OK:
+        return eflags
     warn = patch_db.top_patch_needs_refresh()
     if warn:
         old_top = patch_db.get_top_patch_name()
-    msg.Info(_('Imported "{0}" as patch "{1}".'), args.patchfile, args.patchname)
+    rctx.stdout.write(_('Imported "{0}" as patch "{1}".\n').format(args.patchfile, args.patchname))
     if warn:
-        msg.Warn(_('Previous top patch ("{0}") needs refreshing.'), old_top)
-    return msg.OK
+        rctx.stderr.write(_('Previous top patch ("{0}") needs refreshing.\n').format(old_top))
+    return cmd_result.OK
 
 PARSER.set_defaults(run_cmd=run_import)

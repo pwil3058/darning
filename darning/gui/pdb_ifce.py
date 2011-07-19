@@ -28,6 +28,30 @@ from darning.patch_db import find_base_dir
 from darning.gui import ws_event
 from darning.gui import console
 
+class Context(object):
+    class OutFile(object):
+        @staticmethod
+        def write(text):
+            console.LOG.append_stdout(text)
+    class ErrFile(object):
+        def __init__(self):
+            self.text = ''
+        def write(self, text):
+            self.text += text
+            console.LOG.append_stderr(text)
+    def __init__(self):
+        self.stdout = self.OutFile()
+        self.stderr = self.ErrFile()
+    @staticmethod
+    def rel_subdir(filepath):
+        return filepath
+    @staticmethod
+    def prepend_subdir(filepaths):
+        pass
+    @property
+    def message(self):
+        return self.stderr.text
+
 def open_db():
     result = patch_db.load_db(lock=True)
     if result is True:
@@ -41,12 +65,12 @@ def close_db():
 
 def do_initialization(description):
     '''Create a patch database in the current directory'''
-    console.LOG.start_cmd(_('initialize {0}\n"{1}"\n').format(os.getcwd(), description))
-    result = patch_db.create_db(description)
-    if not result:
-        console.LOG.append_stderr(str(result))
+    rctx = Context()
+    console.LOG.start_cmd(_('initialize {0}\n').format(os.getcwd()))
+    console.LOG.append_stdin('"{0}"\n'.format(description))
+    eflags = patch_db.do_create_db(rctx, description)
     console.LOG.end_cmd()
-    return result
+    return cmd_result.Result(eflags, rctx.message)
 
 def get_in_progress():
     return patch_db.is_readable() and patch_db.get_top_patch_name() is not None
@@ -156,13 +180,14 @@ def get_extdiff_files_for(filepath, patchname):
     return patch_db.get_extdiff_files_for(filepath, patchname)
 
 def do_create_new_patch(patchname, descr):
-    if patch_db.patch_is_in_series(patchname):
-        return cmd_result.Result(cmd_result.ERROR|cmd_result.SUGGEST_RENAME, _('{0}: Already exists in database').format(patchname))
-    patch_db.do_create_new_patch(patchname, descr)
-    console.LOG.append_entry(_('new patch "{0}"\n"{1}"\n').format(patchname, descr))
-    patch_db.apply_patch()
-    ws_event.notify_events(ws_event.PATCH_CREATE|ws_event.PATCH_PUSH)
-    return cmd_result.Result(cmd_result.OK, '')
+    rctx = Context()
+    console.LOG.start_cmd(_('new patch "{0}"\n').format(patchname))
+    console.LOG.append_stdin('"{0}"\n'.format(descr))
+    eflags = patch_db.do_create_new_patch(rctx, patchname, descr)
+    console.LOG.end_cmd()
+    if cmd_result.is_less_than_error(eflags):
+        ws_event.notify_events(ws_event.PATCH_CREATE|ws_event.PATCH_PUSH)
+    return cmd_result.Result(eflags, rctx.message)
 
 def do_restore_patch(patchname, as_patchname=''):
     if not as_patchname:
@@ -178,128 +203,41 @@ def do_restore_patch(patchname, as_patchname=''):
     return cmd_result.Result(cmd_result.OK, '')
 
 def do_push_next_patch(force=False):
+    rctx = Context()
     console.LOG.start_cmd('push\n')
-    eflags = cmd_result.OK
-    msg = ''
-    overlaps = patch_db.get_next_patch_overlap_data()
-    if len(overlaps.uncommitted) > 0:
-        if force:
-            console.LOG.append_stderr(_('Uncommitted SCM changes in the following files:\n'))
-            for filepath in sorted(overlaps.uncommitted):
-                console.LOG.append_stderr('\t{0}\n'.format(filepath))
-            console.LOG.append_stderr(_('have been incorporated.\n'))
-        else:
-            eflags = cmd_result.ERROR_SUGGEST_FORCE
-            msg += _('The following (overlapped) files have uncommitted SCM changes:\n')
-            for filepath in sorted(overlaps.uncommitted):
-                msg += '\t{0}\n'.format(filepath)
-    if len(overlaps.unrefreshed) > 0:
-        if force:
-            console.LOG.append_stderr(_('Unrefreshed changes changes in the following files:\n'))
-            for filepath in sorted(overlaps.unrefreshed):
-                console.LOG.append_stderr('\t{0}\n'.format(filepath))
-            console.LOG.append_stderr(_('have been incorporated.\n'))
-        else:
-            eflags = cmd_result.ERROR_SUGGEST_FORCE_OR_REFRESH
-            msg += _('The following (overlapped) files have unrefreshed changes (in an applied patch):\n')
-            for filepath in sorted(overlaps.unrefreshed):
-                msg += _('\t{0} : in patch "{1}"\n').format(filepath, overlaps.unrefreshed[filepath])
-    if eflags != cmd_result.OK:
-        console.LOG.append_stderr(msg)
-        console.LOG.end_cmd()
-        return cmd_result.Result(eflags, msg)
-    _db_ok, results = patch_db.apply_patch(force)
-    highest_ecode = max([result.ecode for result in results.values()]) if results else 0
-    for filepath in results:
-        result = results[filepath]
-        console.LOG.append_stdout(result.stdout)
-        console.LOG.append_stderr(result.stderr)
-        if result.ecode:
-            msg += result.stdout + result.stderr
-    console.LOG.append_stdout(_('Patch "{0}" is now on top\n').format(patch_db.get_top_patch_name()))
-    if highest_ecode > 1:
-        eflags = cmd_result.ERROR
-        msg = _('A refresh is required after issues are resolved.\n')
-    elif highest_ecode > 0:
-        eflags = cmd_result.WARNING
-        msg = _('A refresh is required.\n')
-    console.LOG.append_stderr(msg)
+    eflags = patch_db.do_apply_next_patch(rctx, force=force)
     console.LOG.end_cmd()
-    ws_event.notify_events(ws_event.PATCH_PUSH)
-    return cmd_result.Result(eflags, msg)
+    if cmd_result.is_less_than_error(eflags):
+        ws_event.notify_events(ws_event.PATCH_PUSH)
+    return cmd_result.Result(eflags, rctx.message)
 
 def do_pop_top_patch():
-    if patch_db.top_patch_needs_refresh():
-        top_patch = patch_db.get_top_patch_name()
-        ws_event.notify_events(ws_event.PATCH_REFRESH)
-        return cmd_result.Result(cmd_result.ERROR_SUGGEST_REFRESH, _('Top patch ("{0}") needs to be refreshed\n').format(top_patch))
+    rctx = Context()
     console.LOG.start_cmd('pop\n')
-    result = patch_db.unapply_top_patch()
-    if result is not True:
-        stderr = _('{0}: top patch is now "{1}"').format(result, patch_db.get_top_patch_name())
-        console.LOG.append_stderr(stderr)
-        console.LOG.end_cmd()
-        eflags = cmd_result.ERROR
-    else:
-        top_patch = patch_db.get_top_patch_name()
-        if top_patch is None:
-            console.LOG.append_stdout(_('There are now no patches applied\n'))
-        else:
-            console.LOG.append_stdout(_('Patch "{0}" is now on top\n').format(top_patch))
-        console.LOG.end_cmd()
-        stderr = ''
-        eflags = cmd_result.OK
-    ws_event.notify_events(ws_event.PATCH_POP)
-    return cmd_result.Result(eflags, stderr)
+    eflags = patch_db.do_unapply_top_patch(rctx)
+    console.LOG.end_cmd()
+    if cmd_result.is_less_than_error(eflags):
+        ws_event.notify_events(ws_event.PATCH_POP)
+    return cmd_result.Result(eflags, rctx.message)
 
 def do_refresh_overlapped_files(file_list):
+    rctx = Context()
     console.LOG.start_cmd('refresh --files {0}\n'.format(utils.file_list_to_string(file_list)))
-    results = patch_db.do_refresh_overlapped_files(file_list)
-    highest_ecode = max([result.ecode for result in results.values()]) if results else 0
-    msg = ''
-    failed_files = []
-    for filepath in results:
-        result = results[filepath]
-        console.LOG.append_stdout(_('Refreshing: {0}\n').format(filepath))
-        console.LOG.append_stdout(result.stdout)
-        console.LOG.append_stderr(result.stderr)
-        for line in result.stderr.splitlines(False):
-            msg += _('{0}: {1}\n').format(filepath, line)
-        if result.ecode > 2:
-            failed_files.append(filepath)
+    eflags = patch_db.do_refresh_overlapped_files(rctx, file_list)
     console.LOG.end_cmd()
-    if highest_ecode > 2:
-        eflags = cmd_result.ERROR
-        msg += _('\nThe following files require another refresh after issues are resolved:\n')
-        for filepath in failed_files:
-            msg += '\t{0}\n'.format(filepath)
-    else:
-        eflags = cmd_result.OK if highest_ecode == 0 else cmd_result.WARNING
     ws_event.notify_events(ws_event.PATCH_REFRESH)
-    return cmd_result.Result(eflags, msg)
+    return cmd_result.Result(eflags, rctx.message)
 
 def do_refresh_patch(patchname=None):
+    rctx = Context()
     if patchname is None:
-        patchname = patch_db.get_top_patch_name()
-    console.LOG.start_cmd('refresh {0}\n'.format(patchname))
-    results = patch_db.do_refresh_patch(patchname)
-    highest_ecode = max([result.ecode for result in results.values()]) if results else 0
-    msg = ''
-    for filepath in results:
-        result = results[filepath]
-        console.LOG.append_stdout(_('Refreshing: {0}\n').format(filepath))
-        console.LOG.append_stdout(result.stdout)
-        console.LOG.append_stderr(result.stderr)
-        for line in result.stderr.splitlines(False):
-            msg += '{0}: {1}\n'.format(filepath, line)
-    console.LOG.end_cmd()
-    if highest_ecode > 2:
-        eflags = cmd_result.ERROR
-        msg += _('\nPatch "{0}" requires another refresh after issues are resolved.').format(patchname)
+        console.LOG.start_cmd('refresh\n')
     else:
-        eflags = cmd_result.WARNING if (highest_ecode > 0 and msg) else cmd_result.OK
+        console.LOG.start_cmd('refresh {0}\n'.format(patchname))
+    eflags = patch_db.do_refresh_patch(rctx, patchname)
+    console.LOG.end_cmd()
     ws_event.notify_events(ws_event.PATCH_REFRESH)
-    return cmd_result.Result(eflags, msg)
+    return cmd_result.Result(eflags, rctx.message)
 
 def do_remove_patch(patchname):
     console.LOG.start_cmd('remove patch: {0}\n'.format(patchname))
@@ -345,53 +283,20 @@ def do_select_guards(guards_str):
     ws_event.notify_events(ws_event.PATCH_MODIFY)
     return cmd_result.Result(cmd_result.OK, '')
 
-def do_add_files_to_patch(file_list, patch=None, force=False):
-    if patch is None:
-        console.LOG.start_cmd('add {0}\n'.format(utils.file_list_to_string(file_list)))
-        patch = patch_db.get_top_patch_name()
+def do_add_files_to_patch(filepaths, patchname=None, force=False):
+    rctx = Context()
+    if patchname is None:
+        console.LOG.start_cmd('add {0}\n'.format(utils.file_list_to_string(filepaths)))
     else:
-        console.LOG.start_cmd('add --patch={0} {1}\n'.format(patch, utils.file_list_to_string(file_list)))
-    for already_in_patch in patch_db.get_filepaths_in_patch(patch, file_list):
-        file_list.remove(already_in_patch)
-        console.LOG.append_stdout(_('File "{0}" already in patch "{1}". Ignored.\n').format(already_in_patch, patch))
-    eflags = cmd_result.OK
-    msg = ''
-    overlaps = patch_db.get_filelist_overlap_data(file_list, patch)
-    if len(overlaps.uncommitted) > 0:
-        if force:
-            console.LOG.append_stderr(_('Uncommitted SCM changes in the following files:\n'))
-            for filepath in sorted(overlaps.uncommitted):
-                console.LOG.append_stderr('\t{0}\n'.format(filepath))
-            console.LOG.append_stderr(_('have been incorporated.\n'))
-        else:
-            eflags = cmd_result.ERROR_SUGGEST_FORCE
-            msg += _('The following files have uncommitted SCM changes:\n')
-            for filepath in sorted(overlaps.uncommitted):
-                msg += '\t{0}\n'.format(filepath)
-    if len(overlaps.unrefreshed) > 0:
-        if force:
-            console.LOG.append_stderr(_('Unrefreshed changes changes in the following files:\n'))
-            for filepath in sorted(overlaps.unrefreshed):
-                console.LOG.append_stderr('\t{0}\n'.format(filepath))
-            console.LOG.append_stderr(_('have been incorporated.\n'))
-        else:
-            eflags = cmd_result.ERROR_SUGGEST_FORCE_OR_REFRESH
-            msg += _('The following files have unrefreshed changes (in an applied patch):\n')
-            for filepath in sorted(overlaps.unrefreshed):
-                msg += _('\t{0} : in patch "{1}"\n').format(filepath, overlaps.unrefreshed[filepath])
-    if eflags is not cmd_result.OK:
-        console.LOG.append_stderr(msg)
-        console.LOG.end_cmd()
-        return cmd_result.Result(eflags, msg)
-    for filepath in file_list:
-        patch_db.add_file_to_patch(patch, filepath, force=force)
-        console.LOG.append_stdout(_('File "{0}" added to patch "{1}".\n').format(filepath, patch))
+        console.LOG.start_cmd('add --patch={0} {1}\n'.format(patchname, utils.file_list_to_string(filepaths)))
+    eflags = patch_db.do_add_files_to_patch(rctx, patchname, filepaths, force=force)
     console.LOG.end_cmd()
-    if force:
-        ws_event.notify_events(ws_event.FILE_ADD|ws_event.PATCH_REFRESH)
-    else:
-        ws_event.notify_events(ws_event.FILE_ADD)
-    return cmd_result.Result(eflags, '')
+    if cmd_result.is_less_than_error(eflags):
+        if force:
+            ws_event.notify_events(ws_event.FILE_ADD|ws_event.PATCH_REFRESH)
+        else:
+            ws_event.notify_events(ws_event.FILE_ADD)
+    return cmd_result.Result(eflags, rctx.message)
 
 def do_drop_files_from_patch(file_list, patch=None):
     if patch is None:
