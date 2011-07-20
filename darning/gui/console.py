@@ -42,17 +42,29 @@ class ConsoleLog(textview.Widget):
     def start_cmd(self, cmd):
         self._append_tagged_text("%s: " % time.strftime("%Y-%m-%d %H:%M:%S"), self.bold_tag)
         self._append_tagged_text(cmd, self.cmd_tag)
+        while gtk.events_pending():
+            gtk.main_iteration(False)
     def append_stdin(self, msg):
         self._append_tagged_text(msg, self.stdin_tag)
+        while gtk.events_pending():
+            gtk.main_iteration(False)
     def append_stdout(self, msg):
         self._append_tagged_text(msg, self.stdout_tag)
+        while gtk.events_pending():
+            gtk.main_iteration(False)
     def append_stderr(self, msg):
         self._append_tagged_text(msg, self.stderr_tag)
+        while gtk.events_pending():
+            gtk.main_iteration(False)
     def end_cmd(self):
         self._append_tagged_text("% ", self.bold_tag)
+        while gtk.events_pending():
+            gtk.main_iteration(False)
     def append_entry(self, msg):
         self._append_tagged_text("%s: " % time.strftime("%Y-%m-%d %H:%M:%S"), self.bold_tag)
         self._append_tagged_text(msg, self.cmd_tag)
         self._append_tagged_text("% ", self.bold_tag)
+        while gtk.events_pending():
+            gtk.main_iteration(False)
 
 LOG = ConsoleLog()
