@@ -131,12 +131,14 @@ class Widget(textview.Widget):
         if result.eflags:
             dialogue.report_any_problems(result)
         else:
-            self.bfr.set_modified(False)
-    def load_text_fm_db(self):
+            # get the tidied up version of the text
+            self.load_text_fm_db(False)
+    def load_text_fm_db(self, clear_digest=True):
         try:
             self.set_contents(self.get_text_fm_db())
             self.bfr.set_modified(False)
-            self._save_file_digest = None
+            if clear_digest:
+                self._save_file_digest = None
         except cmd_result.Failure as failure:
             dialogue.report_failure(failure)
     def _ok_to_overwrite_summary(self):

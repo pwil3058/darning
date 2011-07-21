@@ -116,7 +116,7 @@ class FileData:
         if self.old_mode is None:
             return FileData.Presence.ADDED
         elif self.new_mode is None:
-            return FileData.Presence.DELETED
+            return FileData.Presence.REMOVED
         else:
             return FileData.Presence.EXTANT
 
@@ -167,33 +167,11 @@ class PatchData:
     Guards = collections.namedtuple('Guards', ['positive', 'negative'])
     def __init__(self, name, description):
         self.name = name
-        self.description = description if description is not None else ''
+        self.description = _tidy_text(description) if description is not None else ''
         self.files = dict()
         self.pos_guards = set()
         self.neg_guards = set()
         self.scm_revision = None
-    def do_add_file(self, filepath, force=False):
-        '''Add the named file to this patch'''
-        assert is_writable()
-        assert filepath not in self.files
-        if not self.is_applied():
-            # not much to do here
-            self.files[filepath] = FileData(filepath)
-            dump_db()
-            return
-        assert force or not self.file_overlaps_uncommitted_or_unrefreshed(filepath)
-        self.files[filepath] = FileData(filepath)
-        overlapped_by = self.get_overlapping_patch_for_file(filepath)
-        if overlapped_by is None:
-            self.do_cache_original(filepath, force)
-        else:
-            overlapping_corig_f_path = overlapped_by.get_cached_original_file_path(filepath)
-            if os.path.exists(overlapping_corig_f_path):
-                os.link(overlapping_corig_f_path, self.get_cached_original_file_path(filepath))
-                self.files[filepath].old_mode = overlapped_by.files[filepath].old_mode
-            else:
-                self.files[filepath].old_mode = None
-        dump_db()
     def do_drop_file(self, filepath):
         '''Drop the named file from this patch'''
         assert is_writable()
@@ -247,7 +225,7 @@ class PatchData:
         if file_data.diff:
             patch_cmd = ['patch', '--merge', '--force', '-p1', '--batch', target_name]
             runext.run_cmd(patch_cmd, str(file_data.diff))
-    def do_cache_original(self, filepath, force):
+    def do_cache_original(self, filepath, olurpatch=None, scm_has_uncommitted_changes=False):
         '''Cache the original of the named file for this patch'''
         # "force" argument is supplied to allow shortcutting SCM check
         # which can be expensive
@@ -255,12 +233,12 @@ class PatchData:
         assert filepath in self.files
         assert self.is_applied()
         assert self.get_overlapping_patch_for_file(filepath) is None
+        assert not (olurpatch and scm_has_uncommitted_changes)
         corig_f_path = self.get_cached_original_file_path(filepath)
-        olpatch = self.get_unrefreshed_overlapped_patch_for_file(filepath) if not force else None
-        if olpatch:
-            olpatch.copy_refreshed_version_to(filepath, corig_f_path)
+        if olurpatch:
+            olurpatch.copy_refreshed_version_to(filepath, corig_f_path)
             self.files[filepath].timestamp = 0
-        elif force and scm_ifce.has_uncommitted_change(filepath):
+        elif scm_has_uncommitted_changes:
             scm_ifce.copy_clean_version_to(filepath, corig_f_path)
             self.files[filepath].timestamp = 0
         elif os.path.exists(filepath):
@@ -502,7 +480,7 @@ class PatchData:
 class DataBase:
     '''Storage for an ordered sequence/series of patches'''
     def __init__(self, description, host_scm=None):
-        self.description = description if description else ''
+        self.description = _tidy_text(description) if description else ''
         self.selected_guards = set()
         self.series = list()
         self.kept_patches = dict()
@@ -862,18 +840,24 @@ def do_import_patch(rctx, epatch, patchname):
     descr = utils.make_utf8_compliant(epatch.get_description())
     patch = PatchData(patchname, descr)
     for diff_plus in epatch.diff_pluses:
-        path = diff_plus.get_file_path(epatch.num_strip_levels)
-        patch.do_add_file(path)
-        patch.files[path].diff = diff_plus.diff
+        file_data = FileData(diff_plus.get_file_path(epatch.num_strip_levels))
+        file_data.diff = diff_plus.diff
         for preamble in diff_plus.preambles:
             if preamble.preamble_type == 'git':
                 for key in ['new mode', 'new file mode']:
                     if key in preamble.extras:
-                        patch.files[path].new_mode = int(preamble.extras[key], 8)
+                        file_data.new_mode = int(preamble.extras[key], 8)
                         break
                 break
+        patch.files[file_data.path] = file_data
+        rctx.stdout.write(_('{0}: file added to patch "{1}".\n').format(file_data.path, patchname))
     _insert_patch(patch)
     dump_db()
+    top_patchname = get_top_patch_name()
+    if top_patchname:
+        rctx.stdout.write(_('{0}: patch inserted after patch "{1}".\n').format(patchname, top_patchname))
+    else:
+        rctx.stdout.write(_('{0}: patch inserted at start of series.\n').format(patchname))
     return cmd_result.OK
 
 def top_patch_needs_refresh():
@@ -968,6 +952,17 @@ def get_next_patch_overlap_data():
         return OverlapData(unrefreshed = {}, uncommitted = [])
     return get_overlap_data(_DB.series[next_index].get_filepaths())
 
+def _report_overlap_and_abort(rctx, overlaps):
+    for filepath in sorted(overlaps.uncommitted):
+        rfilepath = rel_subdir(filepath)
+        rctx.stderr.write(_('{0}: file has uncommitted SCM changes.\n').format(rfilepath))
+    for filepath in sorted(overlaps.unrefreshed):
+        rfilepath = rel_subdir(filepath)
+        opatch = overlaps.unrefreshed[filepath]
+        rctx.stderr.write(_('{0}: file has unrefreshed changes in (applied) "{1}".\n').format(rfilepath, opatch))
+    rctx.stderr.write(_('Aborted.\n'))
+    return cmd_result.ERROR_SUGGEST_FORCE_OR_REFRESH if len(overlaps.unrefreshed) > 0 else cmd_result.ERROR_SUGGEST_FORCE
+
 def do_apply_next_patch(rctx, force=False):
     '''Apply the next patch in the series'''
     assert is_writable()
@@ -981,24 +976,8 @@ def do_apply_next_patch(rctx, force=False):
         return cmd_result.ERROR
     next_patch = _DB.series[next_index]
     overlaps = get_overlap_data(next_patch.get_filepaths())
-    ol_report = rctx.stdout.write if force else rctx.stderr.write
-    esug = 0
-    if len(overlaps.uncommitted) > 0:
-        esug |= cmd_result.SUGGEST_FORCE
-        ol_report(_('The following (overlapped) files have uncommitted SCM changes:\n'))
-        for filepath in sorted(overlaps.uncommitted):
-            ol_report('\t{0}\n'.format(rel_subdir(filepath)))
-    if len(overlaps.unrefreshed) > 0:
-        esug |= cmd_result.SUGGEST_FORCE_OR_REFRESH
-        ol_report(_('The following (overlapped) files have unrefreshed changes (in an applied patch):\n'))
-        for filepath in sorted(overlaps.unrefreshed):
-            ol_report(_('\t{0} : in patch "{1}"\n').format(rel_subdir(filepath), overlaps.unrefreshed[filepath]))
-    if esug:
-        if force:
-            ol_report(_('Uncommited/unrefreshed changes incorporated into pushed patch.\n'))
-        else:
-            rctx.stderr.write(_('Aborted\n'))
-            return cmd_result.ERROR | esug
+    if not force and _total_overlap_count(overlaps) > 0:
+        return _report_overlap_and_abort(rctx, overlaps)
     os.mkdir(next_patch.get_cached_original_dir_path())
     if len(next_patch.files) == 0:
         return cmd_result.OK
@@ -1006,7 +985,9 @@ def do_apply_next_patch(rctx, force=False):
     drop_atws = options.get('push', 'drop_added_tws')
     biggest_ecode = 0
     for file_data in next_patch.files.values():
-        next_patch.do_cache_original(file_data.path, force)
+        olurpatch = overlaps.unrefreshed.get(file_data.path, None)
+        scm_has_uncommitted_changes = file_data.path in overlaps.uncommitted
+        next_patch.do_cache_original(file_data.path, olurpatch, scm_has_uncommitted_changes)
         patch_ok = True
         if file_data.binary is not False:
             rctx.stdout.write(_('Processing binary file "{0}".\n').format(rel_subdir(file_data.path)))
@@ -1047,6 +1028,10 @@ def do_apply_next_patch(rctx, force=False):
             file_data.timestamp = os.path.getmtime(file_data.path)
         else:
             file_data.timestamp = 0
+        if olurpatch:
+            rctx.stdout.write(_('Unrefreshed changes incorporated.\n'))
+        elif scm_has_uncommitted_changes:
+            rctx.stdout.write(_('Uncommited changes incorporated.\n'))
         dump_db()
     if biggest_ecode > 1:
         rctx.stderr.write(_('A refresh is required after issues are resolved.\n'))
@@ -1143,84 +1128,96 @@ def get_filepaths_in_next_patch(filepaths=None):
     assert patch_index is not None
     return _DB.series[patch_index].get_filepaths(filepaths)
 
+def _get_patch(rctx, patchname):
+    if not patchname:
+        patch_index = get_series_index_for_top()
+        if patch_index is None:
+            rctx.stderr.write(_('No patches applied'))
+    else:
+        patch_index = get_patch_series_index(patchname)
+        if patch_index is None:
+            rctx.stderr.write(_('{0}: patch is NOT known').format(patchname))
+    return  _DB.series[patch_index] if patch_index is not None else None
+
 def do_add_files_to_patch(rctx, patchname, filepaths, force=False):
     '''Add the named files to the named patch'''
-    if not patchname:
-        patchname = get_top_patch_name()
-        if not patchname:
-            rctx.stderr.write(_('No patches applied'))
-            return cmd_result.ERROR
-    patch_index = get_patch_series_index(patchname)
-    if patch_index is None:
-        rctx.stderr.write(_('patch "{0}" is unknown').format(patchname))
+    patch = _get_patch(rctx, patchname)
+    if patch is None:
         return cmd_result.ERROR
-    patch = _DB.series[patch_index]
     prepend_subdir(filepaths)
-    overlaps = get_filelist_overlap_data(filepaths, patch.name)
-    if not force and len(overlaps.uncommitted) > 0 or len(overlaps.unrefreshed) > 0:
-        for rfilepath in [rel_subdir(filepath) for filepath in sorted(overlaps.uncommitted)]:
-            rctx.stderr.write(_('{0}: file has uncommitted SCM changes.\n').format(rfilepath))
-        for filepath in sorted(overlaps.unrefreshed):
-            rfilepath = rel_subdir(filepath)
-            opatch = overlaps.unrefreshed[filepath]
-            rctx.stderr.write(_('{0}: file has unrefreshed changes in (applied) "{1}".\n').format(rfilepath, opatch))
-        rctx.stderr.write(_('Aborted.\n'))
-        return cmd_result.ERROR_SUGGEST_FORCE_OR_REFRESH if len(overlaps.unrefreshed) > 0 else cmd_result.ERROR_SUGGEST_FORCE
+    patch_is_applied = patch.is_applied()
+    if patch_is_applied:
+        overlaps = get_filelist_overlap_data(filepaths, patch.name)
+        if not force and _total_overlap_count(overlaps) > 0:
+            return _report_overlap_and_abort(rctx, overlaps)
+    else:
+        overlaps = OverlapData([], [])
     already_in_patch = set(patch.get_filepaths(filepaths))
     for filepath in filepaths:
         if filepath in already_in_patch:
             rctx.stderr.write(_('{0}: file already in patch "{1}". Ignored.\n').format(rel_subdir(filepath), patch.name))
             continue
-        patch.do_add_file(filepath, force=force)
         already_in_patch.add(filepath)
         rfilepath = rel_subdir(filepath)
-        if filepath in overlaps.uncommitted:
-            rctx.stderr.write(_('{0}: file added to patch "{1}". Uncommited SCM changes have been incorporated.\n'), rfilepath, patch.name)
-        elif filepath in overlaps.unrefreshed:
-            rctx.stderr.write(_('{0}: file added to patch "{1}". Unrefeshed changes in patch "{2}" incorporated.\n'), rfilepath, patch.name, overlaps.unrefreshed[filename])
+        overlapped_by = patch.get_overlapping_patch_for_file(filepath) if patch_is_applied else None
+        patch.files[filepath] = FileData(filepath)
+        if overlapped_by is None:
+            if filepath in overlaps.uncommitted:
+                patch.do_cache_original(filepath, None, True)
+                rctx.stderr.write(_('{0}: file added to patch "{1}". Uncommited SCM changes have been incorporated.\n').format(rfilepath, patch.name))
+            elif filepath in overlaps.unrefreshed:
+                patch.do_cache_original(filepath, overlaps.unrefreshed[filepath], False)
+                rctx.stderr.write(_('{0}: file added to patch "{1}". Unrefeshed changes in patch "{2}" incorporated.\n').format(rfilepath, patch.name, overlaps.unrefreshed[filepath]))
+            else:
+                patch.do_cache_original(filepath, None, False)
+                rctx.stdout.write(_('{0}: file added to patch "{1}".\n').format(rfilepath, patch.name))
         else:
-            rctx.stderr.write(_('{0}: file added to patch "{1}".\n'), rfilepath, patch.name)
+            overlapping_corig_f_path = overlapped_by.get_cached_original_file_path(filepath)
+            if os.path.exists(overlapping_corig_f_path):
+                os.link(overlapping_corig_f_path, patch.get_cached_original_file_path(filepath))
+                patch.files[filepath].old_mode = overlapped_by.files[filepath].old_mode
+            else:
+                patch.files[filepath].old_mode = None
+            rctx.stderr.write(_('{0}: (overlapped) file added to patch "{1}".\n').format(rfilepath, patch.name))
+        dump_db() # do this now to minimize problems if interrupted
     return cmd_result.OK
 
-def do_drop_file_fm_patch(patchname, filepath):
+def do_drop_files_fm_patch(rctx, patchname, filepaths):
     '''Drop the named file from the named patch'''
     assert is_writable()
-    patch_index = get_patch_series_index(patchname)
-    assert patch_index is not None
-    patch = _DB.series[patch_index]
-    assert filepath in patch.files
-    return patch.do_drop_file(filepath)
-
-def do_drop_files_from_patch(rctx, patchname, filepaths):
-    '''Drop the named file from the named patch'''
-    assert is_writable()
-    patch_index = get_patch_series_index(patchname)
-    if patch_index is None:
-        rctx.stderr.write(_('patch "{0}" is unknown').format(patchname))
+    patch = _get_patch(rctx, patchname)
+    if patch is None:
         return cmd_result.ERROR
-    patch = _DB.series[patch_index]
     prepend_subdir(filepaths)
     for filepath in filepaths:
         if filepath in patch.files:
-            patch.do_drop_file_fm_patch(filepath)
+            patch.do_drop_file(filepath)
             rctx.stdout.write(_('{0}: file dropped from patch "{1}".\n').format(rel_subdir(filepath), patch.name))
         else:
             rctx.stderr.write(_('{0}: file not in patch "{1}": ignored.\n').format(rel_subdir(filepath), patch.name))
-    console.LOG.end_cmd()
-    ws_event.notify_events(ws_event.FILE_DEL)
     return cmd_result.OK
 
-def do_duplicate_patch(patchname, as_patchname, newdescription):
+def do_duplicate_patch(rctx, patchname, as_patchname, newdescription):
     '''Create a duplicate of the named patch with a new name and new description (after the top patch)'''
     assert is_writable()
-    assert get_series_index(as_patchname) is None
-    patch = get_patch(patchname)
-    assert patch is not None and not patch.needs_refresh()
+    patch = _get_patch(rctx, patchname)
+    if patch is None:
+        return cmd_result.ERROR
+    if patch.needs_refresh():
+        rctx.stderr.write(_('{0}: patch needs refresh.\n').format(patch.name))
+        rctx.stderr.write(_('Aborted.\n'))
+        return cmd_result.ERROR_SUGGEST_REFRESH
+    if patch_is_in_series(as_patchname):
+        rctx.stderr.write(_('{0}: patch already in series.\n').format(as_patchname))
+        rctx.stderr.write(_('Aborted.\n'))
+        return cmd_result.ERROR | cmd_result.SUGGEST_RENAME
     newpatch = copy.deepcopy(patch)
     newpatch.name = as_patchname
-    newpatch.description = newdescription
+    newpatch.description = _tidy_text(newdescription)
     _insert_patch(newpatch)
-    _dump_db()
+    dump_db()
+    rctx.stdout.write(_('{0}: patch duplicated as "{1}"\n').format(patch.name, as_patchname))
+    return cmd_result.OK
 
 def do_refresh_overlapped_files(rctx, file_list):
     '''Refresh any files in the list which are in an applied patch
@@ -1243,25 +1240,15 @@ def do_refresh_overlapped_files(rctx, file_list):
     return eflags
 
 def do_refresh_patch(rctx, patchname=None):
-    '''Refresh the named patch'''
+    '''Refresh the named (or top applied) patch'''
     assert is_writable()
-    if patchname:
-        patch_index = get_patch_series_index(patchname)
-        if patch_index is None:
-            rctx.stderr.write(_('Patch "{0}" is not known\n').format(patchname))
-            return cmd_result.ERROR | cmd_result.SUGGEST_RENAME
-        if not is_applied(patchname):
-            rctx.stderr.write(_('Patch "{0}" is not applied\n').format(patchname))
-            return cmd_result.ERROR
-        patch = _DB.series[patch_index]
-        is_top = patch_index == get_series_index_for_top()
-    else:
-        is_top = True
-        patch_index = get_series_index_for_top()
-        if patch_index is None:
-            rctx.stderr.write(_('No patches applied\n'))
-            return cmd_result.ERROR
-    patch = _DB.series[patch_index]
+    patch = _get_patch(rctx, patchname)
+    if patch is None:
+        return cmd_result.ERROR
+    if not patch.is_applied():
+        rctx.stderr.write(_('Patch "{0}" is not applied\n').format(patchname))
+        return cmd_result.ERROR
+    is_top = is_top_applied_patch(patch.name)
     eflags = 0
     for filepath in patch.files:
         if not is_top:
@@ -1276,38 +1263,60 @@ def do_refresh_patch(rctx, patchname=None):
         rctx.stdout.write(_('Patch "{0}" refreshed.\n').format(patch.name))
     return eflags
 
-def do_remove_patch(patchname):
+def do_remove_patch(rctx, patchname):
     '''Remove the named patch from the series'''
     assert is_writable()
-    assert get_patch_series_index(patchname) is not None
-    assert not is_applied(patchname)
-    patch = get_patch(patchname)
-    assert patch is not None
-    assert not patch.is_applied()
+    assert patchname
+    patch = _get_patch(rctx, patchname)
+    if patch is None:
+        return cmd_result.ERROR
+    if patch.is_applied():
+        rctx.stderr,write(_('{0}: patch is applied and cannot be removed\n').format(patchname))
     if options.get('remove', 'keep_patch_backup'):
         _DB.kept_patches[patch.name] = patch
     _DB.series.remove(patch)
     dump_db()
+    return cmd_result.OK
 
-def do_restore_patch(patchname, as_patchname):
+def do_restore_patch(rctx, patchname, as_patchname):
     '''Restore the named patch from back up with the specified name'''
     assert is_writable()
-    assert not as_patchname or get_patch_series_index(as_patchname) is None
-    assert as_patchname or get_patch_series_index(patchname) is None
-    assert patchname in _DB.kept_patches
+    if not patchname in _DB.kept_patches:
+        rctx.stderr.write(_('{0}: is NOT available for restoration\n').format(patchname))
+        return cmd_result.ERROR|cmd_result.SUGGEST_RENAME
+    if patch_is_in_series(as_patchname):
+        rctx.stderr.write(_('{0}: Already exists in database\n').format(as_patchname))
+        return cmd_result.ERROR|cmd_result.SUGGEST_RENAME
     patch = _DB.kept_patches[patchname]
     if as_patchname:
         patch.name = as_patchname
     _insert_patch(patch)
     del _DB.kept_patches[patchname]
     dump_db()
+    return cmd_result.OK
 
-def do_set_patch_description(patchname, text):
+def _tidy_text(text):
+    '''Return the given text with any trailing white space removed.
+    Also ensure there is a new line at the end of the lastline.'''
+    tidy_text = ''
+    for line in text.splitlines():
+        tidy_text += re.sub('[ \t]+$', '', line) + '\n'
+    return tidy_text
+
+def do_set_patch_description(rctx, patchname, text):
     assert is_writable()
-    patch_index = get_patch_series_index(patchname)
-    assert patch_index is not None
-    _DB.series[patch_index].description = text if text is not None else ''
+    patch = _get_patch(rctx, patchname)
+    if not patch:
+        return cmd_result.ERROR
+    old_description = patch.description
+    if text:
+        text = _tidy_text(text)
+    patch.description = text if text is not None else ''
     dump_db()
+    if old_description != patch.description:
+        change_lines = difflib.ndiff(old_description.splitlines(True), patch.description.splitlines(True))
+        rctx.stdout.write(''.join(change_lines))
+    return cmd_result.OK
 
 def get_patch_description(patchname):
     assert is_readable()
@@ -1315,10 +1324,17 @@ def get_patch_description(patchname):
     assert patch_index is not None
     return _DB.series[patch_index].description
 
-def do_set_series_description(text):
+def do_set_series_description(rctx, text):
     assert is_writable()
+    old_description = _DB.description
+    if text:
+        text = _tidy_text(text)
     _DB.description = text if text is not None else ''
     dump_db()
+    if old_description != _DB.description:
+        change_lines = difflib.ndiff(old_description.splitlines(True), _DB.description.splitlines(True))
+        rctx.stdout.write(''.join(change_lines))
+    return cmd_result.OK
 
 def get_series_description():
     assert is_readable()
@@ -1339,18 +1355,44 @@ def get_patch_guards(patchname):
     patch_data = _DB.series[patch_index]
     return PatchData.Guards(positive=patch_data.pos_guards, negative=patch_data.neg_guards)
 
-def do_set_patch_guards(patchname, guards):
+def do_set_patch_guards(rctx, patchname, guards):
     assert is_writable()
-    patch_index = get_patch_series_index(patchname)
-    assert patch_index is not None
-    _DB.series[patch_index].pos_guards = set(guards.positive)
-    _DB.series[patch_index].neg_guards = set(guards.negative)
+    patch = _get_patch(rctx, patchname)
+    if not patch:
+        return cmd_result.ERROR
+    patch.pos_guards = set(guards.positive)
+    patch.neg_guards = set(guards.negative)
     dump_db()
+    rctx.stdout.write(_('{0}: patch positive guards = {{{1}}}\n').format(patchname, ', '.join(sorted(patch.pos_guards))))
+    rctx.stdout.write(_('{0}: patch negative guards = {{{1}}}\n').format(patchname, ', '.join(sorted(patch.neg_guards))))
+    return cmd_result.OK
 
-def do_select_guards(guards):
+def do_set_patch_guards_fm_str(rctx, patchname, guards_str):
     assert is_writable()
+    guards_list = guards_str.split()
+    pos_guards = [grd[1:] for grd in guards_list if grd.startswith('+')]
+    neg_guards = [grd[1:] for grd in guards_list if grd.startswith('-')]
+    if len(guards_list) != (len(pos_guards) + len(neg_guards)):
+        rctx.stderr.write(_('Guards must start with "+" or "-" and contain no whitespace.\n'))
+        rctx.stderr.write( _('Aborted.\n'))
+        return cmd_result.ERROR | cmd_result.SUGGEST_EDIT
+    guards = PatchData.Guards(positive=pos_guards, negative=neg_guards)
+    return do_set_patch_guards(rctx, patchname, guards)
+
+def do_select_guards(rctx, guards):
+    assert is_writable()
+    bad_guard_count = 0
+    for guard in guards:
+        if guard.startswith('+') or guard.startswith('-'):
+            rctx.stderr.write(_('{0}: guard names may NOT begin with "+" or "-".\n').format(guard))
+            bad_guard_count += 1
+    if bad_guard_count > 0:
+        rctx.stderr.write(_('Aborted.\n'))
+        return cmd_result.ERROR|cmd_result.SUGGEST_EDIT
     _DB.selected_guards = set(guards)
     dump_db()
+    rctx.stdout.write(_('{{{0}}}: is now the set of selected guards.\n').format(', '.join(sorted(_DB.selected_guards))))
+    return cmd_result.OK
 
 def get_extdiff_files_for(filepath, patchname):
     assert is_readable()

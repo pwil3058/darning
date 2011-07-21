@@ -128,6 +128,7 @@ class List(table.MapManagedTable):
         <placeholder name="applied_indifferent">
           <menuitem action="pm_edit_patch_descr"/>
           <menuitem action="pm_set_patch_guards"/>
+          <menuitem action="patch_list_duplicate"/>
         </placeholder>
         <separator/>
         <placeholder name="unapplied">
@@ -177,6 +178,8 @@ class List(table.MapManagedTable):
             [
                 ("pm_set_patch_guards", icons.STOCK_PATCH_GUARD, None, None,
                  _('Set guards on the selected patch'), self.do_set_guards),
+                ("patch_list_duplicate", gtk.STOCK_COPY, _('Duplicate'), None,
+                 _('Duplicate the selected patch after the top applied patch'), self.do_duplicate),
             ])
         self.add_conditional_actions(Condns.UNIQUE_SELN | Condns.PUSH_POSSIBLE | Condns.IN_PGND_MUTABLE | Condns.UNAPPLIED_NOT_BLOCKED,
             [
@@ -261,6 +264,35 @@ class List(table.MapManagedTable):
         patchname = self.get_selected_patch()
         result = ifce.PM.do_remove_patch(patchname)
         dialogue.report_any_problems(result)
+    def do_duplicate(self, action=None):
+        patchname = self.get_selected_patch()
+        description = ifce.PM.get_patch_description(patchname)
+        dialog = DuplicatePatchDialog(patchname, description, parent=dialogue.main_window)
+        refresh_tried = False
+        while True:
+            response = dialog.run()
+            if response == gtk.RESPONSE_OK:
+                as_patchname = dialog.get_new_patch_name()
+                newdescription = dialog.get_descr()
+                dialog.show_busy()
+                result = ifce.PM.do_duplicate_patch(patchname, as_patchname, newdescription)
+                dialog.unshow_busy()
+                if not refresh_tried and result.eflags & cmd_result.SUGGEST_REFRESH != 0:
+                    resp = dialogue.ask_force_refresh_or_cancel(result, clarification=None)
+                    if resp == gtk.RESPONSE_CANCEL:
+                        break
+                    elif resp == dialogue.Response.REFRESH:
+                        refresh_tried = True
+                        dialogue.show_busy()
+                        result = ifce.PM.do_refresh_patch()
+                        dialogue.unshow_busy()
+                        dialogue.report_any_problems(result)
+                    continue
+                dialogue.report_any_problems(result)
+                if result.eflags & cmd_result.SUGGEST_RENAME:
+                    continue
+            break
+        dialog.destroy()
 
 class PatchDescrEditDialog(dialogue.Dialog):
     class Widget(text_edit.Widget):
@@ -434,15 +466,32 @@ class NewSeriesDescrDialog(dialogue.Dialog):
     def get_descr(self):
         return self.edit_descr_widget.get_contents()
 
-class NewPatchDescrDialog(NewSeriesDescrDialog):
+class NewPatchDialog(NewSeriesDescrDialog):
     def __init__(self, parent=None):
         NewSeriesDescrDialog.__init__(self, parent=parent)
-        self.set_title(_('New Patch Description: {0} -- gdarn').format(utils.path_rel_home(os.getcwd())))
+        self.set_title(_('New Patch: {0} -- gdarn').format(utils.path_rel_home(os.getcwd())))
         self.hbox = gtk.HBox()
         self.hbox.pack_start(gtk.Label(_('New Patch Name:')), fill=False, expand=False)
         self.new_name_entry = gtk.Entry()
         self.new_name_entry.set_width_chars(32)
         self.hbox.pack_start(self.new_name_entry)
+        self.hbox.show_all()
+        self.vbox.pack_start(self.hbox)
+        self.vbox.reorder_child(self.hbox, 0)
+    def get_new_patch_name(self):
+        return self.new_name_entry.get_text()
+
+class DuplicatePatchDialog(NewSeriesDescrDialog):
+    def __init__(self, patchname, olddescr, parent=None):
+        NewSeriesDescrDialog.__init__(self, parent=parent)
+        self.set_title(_('Duplicate Patch: {0}: {1} -- gdarn').format(patchname, utils.path_rel_home(os.getcwd())))
+        self.hbox = gtk.HBox()
+        self.hbox.pack_start(gtk.Label(_('Duplicate Patch Name:')), fill=False, expand=False)
+        self.new_name_entry = gtk.Entry()
+        self.new_name_entry.set_width_chars(32)
+        self.new_name_entry.set_text(patchname + 'duplicate')
+        self.hbox.pack_start(self.new_name_entry)
+        self.edit_descr_widget.set_contents(olddescr)
         self.hbox.show_all()
         self.vbox.pack_start(self.hbox)
         self.vbox.reorder_child(self.hbox, 0)
@@ -576,7 +625,7 @@ def init_cwd_acb(_arg):
     dlg.destroy()
 
 def new_patch_acb(_arg):
-    dlg = NewPatchDescrDialog(parent=dialogue.main_window)
+    dlg = NewPatchDialog(parent=dialogue.main_window)
     while dlg.run() == gtk.RESPONSE_OK:
         dlg.show_busy()
         result = ifce.PM.do_create_new_patch(dlg.get_new_patch_name(), dlg.get_descr())

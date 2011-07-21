@@ -190,17 +190,17 @@ def do_create_new_patch(patchname, descr):
     return cmd_result.Result(eflags, rctx.message)
 
 def do_restore_patch(patchname, as_patchname=''):
+    rctx = Context()
     if not as_patchname:
         as_patchname = patchname
-    if patch_db.patch_is_in_series(as_patchname):
-        return cmd_result.Result(cmd_result.ERROR|cmd_result.SUGGEST_RENAME, _('{0}: Already exists in database').format(as_patchname))
-    patch_db.do_restore_patch(patchname, as_patchname)
-    if patchname == as_patchname:
-        console.LOG.append_entry(_('restore patch "{0}"\n').format(patchname))
+        console.LOG.start_cmd(_('restore "{0}"\n').format(patchname))
     else:
-        console.LOG.append_entry(_('restore patch "{0}" as "{1}"\n').format(patchname, as_patchname))
-    ws_event.notify_events(ws_event.PATCH_CREATE)
-    return cmd_result.Result(cmd_result.OK, '')
+        console.LOG.start_cmd(_('restore "{0}" as "{1}"\n').format(patchname, as_patchname))
+    eflags = patch_db.do_restore_patch(rctx, patchname, as_patchname)
+    console.LOG.end_cmd()
+    if cmd_result.is_less_than_error(eflags):
+        ws_event.notify_events(ws_event.PATCH_CREATE)
+    return cmd_result.Result(eflags, rctx.message)
 
 def do_push_next_patch(force=False):
     rctx = Context()
@@ -240,48 +240,47 @@ def do_refresh_patch(patchname=None):
     return cmd_result.Result(eflags, rctx.message)
 
 def do_remove_patch(patchname):
+    rctx = Context()
     console.LOG.start_cmd('remove patch: {0}\n'.format(patchname))
-    patch_db.do_remove_patch(patchname)
+    eflags =patch_db.do_remove_patch(rctx, patchname)
     console.LOG.end_cmd()
     ws_event.notify_events(ws_event.PATCH_DELETE)
-    return cmd_result.Result(cmd_result.OK, '')
+    return cmd_result.Result(eflags, rctx.message)
 
-def do_set_patch_description(patch, text):
-    if not patch_db.is_writable():
-        return cmd_result.Result(cmd_result.ERROR, _('Database is not writable'))
-    patch_db.do_set_patch_description(patch, text)
-    console.LOG.append_entry(_('set patch "{0}" description:\n"{1}"\n').format(patch, text))
-    return cmd_result.Result(cmd_result.OK, '')
+def do_set_patch_description(patchname, text):
+    rctx = Context()
+    console.LOG.start_cmd('set patch description: {0}\n'.format(patchname))
+    console.LOG.append_stdin(_('"{0}"\n').format(text))
+    eflags = patch_db.do_set_patch_description(rctx, patchname, text)
+    console.LOG.end_cmd()
+    ws_event.notify_events(ws_event.PATCH_MODIFY)
+    return cmd_result.Result(eflags, rctx.message)
 
 def do_set_series_description(text):
-    if not patch_db.is_writable():
-        return cmd_result.Result(cmd_result.ERROR, _('Database is not writable'))
-    patch_db.do_set_series_description(text)
-    console.LOG.append_entry(_('set series description:\n"{0}"\n').format(text))
-    return cmd_result.Result(cmd_result.OK, '')
+    rctx = Context()
+    console.LOG.start_cmd(_('set series description\n'))
+    console.LOG.append_stdin(_('"{0}"\n').format(text))
+    eflags = patch_db.do_set_series_description(rctx, text)
+    console.LOG.end_cmd()
+    return cmd_result.Result(eflags, rctx.message)
 
-def do_set_patch_guards(patch, guards_str):
-    if not patch_db.is_writable():
-        return cmd_result.Result(cmd_result.ERROR, _('Database is not writable'))
-    guards_list = guards_str.split()
-    pos_guards = [grd[1:] for grd in guards_list if grd.startswith('+')]
-    neg_guards = [grd[1:] for grd in guards_list if grd.startswith('-')]
-    if len(guards_list) != (len(pos_guards) + len(neg_guards)):
-        return cmd_result.Result(cmd_result.ERROR|cmd_result.SUGGEST_EDIT, _('Guards must start with "+" or "-" and contain no whitespace.'))
-    patch_db.do_set_patch_guards(patch, patch_db.PatchData.Guards(positive=pos_guards, negative=neg_guards))
-    ws_event.notify_events(ws_event.PATCH_MODIFY)
-    return cmd_result.Result(cmd_result.OK, '')
+def do_set_patch_guards(patchname, guards_str):
+    rctx = Context()
+    console.LOG.start_cmd(_('set guards "{0}" {1}\n').format(patchname, guards_str))
+    eflags = patch_db.do_set_patch_guards_fm_str(rctx, patchname, guards_str)
+    console.LOG.end_cmd()
+    if cmd_result.is_less_than_error(eflags):
+        ws_event.notify_events(ws_event.PATCH_MODIFY)
+    return cmd_result.Result(eflags, rctx.message)
 
 def do_select_guards(guards_str):
-    if not patch_db.is_writable():
-        return cmd_result.Result(cmd_result.ERROR, _('Database is not writable'))
-    guards_list = guards_str.split()
-    for guard in guards_list:
-        if guard.startswith('+') or guard.startswith('-'):
-            return cmd_result.Result(cmd_result.ERROR|cmd_result.SUGGEST_EDIT, _('Guard names may not start with "+" or "-".\n'))
-    patch_db.do_select_guards(guards_list)
-    ws_event.notify_events(ws_event.PATCH_MODIFY)
-    return cmd_result.Result(cmd_result.OK, '')
+    rctx = Context()
+    console.LOG.start_cmd(_('select {0}\n').format(guards_str))
+    eflags = patch_db.do_select_guards(rctx, guards_str.split())
+    console.LOG.end_cmd()
+    if cmd_result.is_less_than_error(eflags):
+        ws_event.notify_events(ws_event.PATCH_MODIFY)
+    return cmd_result.Result(eflags, rctx.message)
 
 def do_add_files_to_patch(filepaths, patchname=None, force=False):
     rctx = Context()
@@ -298,18 +297,27 @@ def do_add_files_to_patch(filepaths, patchname=None, force=False):
             ws_event.notify_events(ws_event.FILE_ADD)
     return cmd_result.Result(eflags, rctx.message)
 
-def do_drop_files_from_patch(file_list, patch=None):
+def do_drop_files_from_patch(filepaths, patch=None):
+    rctx = Context()
     if patch is None:
-        console.LOG.start_cmd('drop {0}\n'.format(utils.file_list_to_string(file_list)))
-        patch = patch_db.get_top_patch_name()
+        console.LOG.start_cmd('drop {0}\n'.format(utils.file_list_to_string(filepaths)))
     else:
-        console.LOG.start_cmd(_('drop --patch={0} {1}\n').format(patch, utils.file_list_to_string(file_list)))
-    for filepath in file_list:
-        patch_db.do_drop_file_fm_patch(patch, filepath)
-        console.LOG.append_stdout(_('File "{0}" dropped from patch "{1}".\n').format(filepath, patch))
+        console.LOG.start_cmd(_('drop --patch={0} {1}\n').format(patch, utils.file_list_to_string(filepaths)))
+    eflags = patch_db.do_drop_files_fm_patch(rctx, patch, filepaths)
     console.LOG.end_cmd()
-    ws_event.notify_events(ws_event.FILE_DEL)
-    return cmd_result.Result(cmd_result.OK, '')
+    if cmd_result.is_less_than_error(eflags):
+        ws_event.notify_events(ws_event.FILE_DEL|ws_event.PATCH_MODIFY)
+    return cmd_result.Result(eflags, rctx.message)
+
+def do_duplicate_patch(patchname, as_patchname, newdescription):
+    rctx = Context()
+    console.LOG.start_cmd(_('duplicate patch "{0}" as "{1}"\n').format(patchname, as_patchname))
+    console.LOG.append_stdin('"{0}"\n'.format(newdescription))
+    eflags = patch_db.do_duplicate_patch(rctx, patchname, as_patchname, newdescription)
+    console.LOG.end_cmd()
+    if cmd_result.is_less_than_error(eflags):
+        ws_event.notify_events(ws_event.PATCH_CREATE)
+    return cmd_result.Result(eflags, rctx.message)
 
 def is_pushable():
     if not patch_db.is_readable():
