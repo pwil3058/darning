@@ -29,6 +29,7 @@ cli_args.add_force_option(PARSER, helptext=_('incorporate uncommitted/unrefreshe
 def run_push(args):
     '''Execute the "push" sub command using the supplied args'''
     db_utils.open_db(modifiable=True)
-    return patch_db.do_apply_next_patch(db_utils.get_report_context(verbose=True), force=args.opt_force)
+    db_utils.set_report_context(verbose=True)
+    return patch_db.do_apply_next_patch(force=args.opt_force)
 
 PARSER.set_defaults(run_cmd=run_push)

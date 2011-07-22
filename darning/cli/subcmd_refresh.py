@@ -31,6 +31,7 @@ cli_args.add_verbose_option(PARSER, helptext=_('display diff output.'))
 def run_refresh(args):
     '''Execute the "refresh" sub command using the supplied args'''
     db_utils.open_db(modifiable=True)
-    return patch_db.do_refresh_patch(db_utils.get_report_context(verbose=args.opt_verbose), args.opt_patch)
+    db_utils.set_report_context(verbose=args.opt_verbose)
+    return patch_db.do_refresh_patch(args.opt_patch)
 
 PARSER.set_defaults(run_cmd=run_refresh)

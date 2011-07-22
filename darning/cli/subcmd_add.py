@@ -34,6 +34,7 @@ cli_args.add_files_argument(PARSER, helptext=_('the file(s) to be added.'))
 def run_add(args):
     '''Execute the "add" sub command using the supplied args'''
     db_utils.open_db(modifiable=True)
-    return patch_db.do_add_files_to_patch(db_utils.get_report_context(verbose=True), args.opt_patch, args.filepaths, force=args.opt_force)
+    db_utils.set_report_context(verbose=True)
+    return patch_db.do_add_files_to_patch(args.opt_patch, args.filepaths, force=args.opt_force)
 
 PARSER.set_defaults(run_cmd=run_add)

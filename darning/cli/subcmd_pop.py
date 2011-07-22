@@ -27,6 +27,7 @@ PARSER = cli_args.SUB_CMD_PARSER.add_parser(
 def run_pop(args):
     '''Execute the "pop" sub command using the supplied args'''
     db_utils.open_db(modifiable=True)
-    return patch_db.do_unapply_top_patch(db_utils.get_report_context(verbose=True))
+    db_utils.set_report_context(verbose=True)
+    return patch_db.do_unapply_top_patch()
 
 PARSER.set_defaults(run_cmd=run_pop)

@@ -28,7 +28,7 @@ from darning.patch_db import find_base_dir
 from darning.gui import ws_event
 from darning.gui import console
 
-class Context(object):
+class Context(patch_db.ReportContext):
     class OutFile(object):
         @staticmethod
         def write(text):
@@ -40,17 +40,15 @@ class Context(object):
             self.text += text
             console.LOG.append_stderr(text)
     def __init__(self):
-        self.stdout = self.OutFile()
-        self.stderr = self.ErrFile()
-    @staticmethod
-    def rel_subdir(filepath):
-        return filepath
-    @staticmethod
-    def prepend_subdir(filepaths):
-        pass
+        patch_db.ReportContext.__init__(self, self.OutFile(), self.ErrFile())
     @property
     def message(self):
         return self.stderr.text
+    def reset(self):
+        self.stdout = self.OutFile()
+        self.stderr = self.ErrFile()
+
+patch_db.RCTX = Context()
 
 def open_db():
     result = patch_db.load_db(lock=True)
@@ -65,12 +63,12 @@ def close_db():
 
 def do_initialization(description):
     '''Create a patch database in the current directory'''
-    rctx = Context()
+    patch_db.RCTX.reset()
     console.LOG.start_cmd(_('initialize {0}\n').format(os.getcwd()))
     console.LOG.append_stdin('"{0}"\n'.format(description))
-    eflags = patch_db.do_create_db(rctx, description)
+    eflags = patch_db.do_create_db(description)
     console.LOG.end_cmd()
-    return cmd_result.Result(eflags, rctx.message)
+    return cmd_result.Result(eflags, patch_db.RCTX.message)
 
 def get_in_progress():
     return patch_db.is_readable() and patch_db.get_top_patch_name() is not None
@@ -180,144 +178,144 @@ def get_extdiff_files_for(filepath, patchname):
     return patch_db.get_extdiff_files_for(filepath, patchname)
 
 def do_create_new_patch(patchname, descr):
-    rctx = Context()
+    patch_db.RCTX.reset()
     console.LOG.start_cmd(_('new patch "{0}"\n').format(patchname))
     console.LOG.append_stdin('"{0}"\n'.format(descr))
-    eflags = patch_db.do_create_new_patch(rctx, patchname, descr)
+    eflags = patch_db.do_create_new_patch(patchname, descr)
     console.LOG.end_cmd()
     if cmd_result.is_less_than_error(eflags):
         ws_event.notify_events(ws_event.PATCH_CREATE|ws_event.PATCH_PUSH)
-    return cmd_result.Result(eflags, rctx.message)
+    return cmd_result.Result(eflags, patch_db.RCTX.message)
 
 def do_restore_patch(patchname, as_patchname=''):
-    rctx = Context()
+    patch_db.RCTX.reset()
     if not as_patchname:
         as_patchname = patchname
         console.LOG.start_cmd(_('restore "{0}"\n').format(patchname))
     else:
         console.LOG.start_cmd(_('restore "{0}" as "{1}"\n').format(patchname, as_patchname))
-    eflags = patch_db.do_restore_patch(rctx, patchname, as_patchname)
+    eflags = patch_db.do_restore_patch(patchname, as_patchname)
     console.LOG.end_cmd()
     if cmd_result.is_less_than_error(eflags):
         ws_event.notify_events(ws_event.PATCH_CREATE)
-    return cmd_result.Result(eflags, rctx.message)
+    return cmd_result.Result(eflags, patch_db.RCTX.message)
 
 def do_push_next_patch(force=False):
-    rctx = Context()
+    patch_db.RCTX.reset()
     console.LOG.start_cmd('push\n')
-    eflags = patch_db.do_apply_next_patch(rctx, force=force)
+    eflags = patch_db.do_apply_next_patch(force=force)
     console.LOG.end_cmd()
     if cmd_result.is_less_than_error(eflags):
         ws_event.notify_events(ws_event.PATCH_PUSH)
-    return cmd_result.Result(eflags, rctx.message)
+    return cmd_result.Result(eflags, patch_db.RCTX.message)
 
 def do_pop_top_patch():
-    rctx = Context()
+    patch_db.RCTX.reset()
     console.LOG.start_cmd('pop\n')
-    eflags = patch_db.do_unapply_top_patch(rctx)
+    eflags = patch_db.do_unapply_top_patch()
     console.LOG.end_cmd()
     if cmd_result.is_less_than_error(eflags):
         ws_event.notify_events(ws_event.PATCH_POP)
-    return cmd_result.Result(eflags, rctx.message)
+    return cmd_result.Result(eflags, patch_db.RCTX.message)
 
 def do_refresh_overlapped_files(file_list):
-    rctx = Context()
+    patch_db.RCTX.reset()
     console.LOG.start_cmd('refresh --files {0}\n'.format(utils.file_list_to_string(file_list)))
-    eflags = patch_db.do_refresh_overlapped_files(rctx, file_list)
+    eflags = patch_db.do_refresh_overlapped_files(file_list)
     console.LOG.end_cmd()
     ws_event.notify_events(ws_event.PATCH_REFRESH)
-    return cmd_result.Result(eflags, rctx.message)
+    return cmd_result.Result(eflags, patch_db.RCTX.message)
 
 def do_refresh_patch(patchname=None):
-    rctx = Context()
+    patch_db.RCTX.reset()
     if patchname is None:
         console.LOG.start_cmd('refresh\n')
     else:
         console.LOG.start_cmd('refresh {0}\n'.format(patchname))
-    eflags = patch_db.do_refresh_patch(rctx, patchname)
+    eflags = patch_db.do_refresh_patch(patchname)
     console.LOG.end_cmd()
     ws_event.notify_events(ws_event.PATCH_REFRESH)
-    return cmd_result.Result(eflags, rctx.message)
+    return cmd_result.Result(eflags, patch_db.RCTX.message)
 
 def do_remove_patch(patchname):
-    rctx = Context()
+    patch_db.RCTX.reset()
     console.LOG.start_cmd('remove patch: {0}\n'.format(patchname))
-    eflags =patch_db.do_remove_patch(rctx, patchname)
+    eflags =patch_db.do_remove_patch(patchname)
     console.LOG.end_cmd()
     ws_event.notify_events(ws_event.PATCH_DELETE)
-    return cmd_result.Result(eflags, rctx.message)
+    return cmd_result.Result(eflags, patch_db.RCTX.message)
 
 def do_set_patch_description(patchname, text):
-    rctx = Context()
+    patch_db.RCTX.reset()
     console.LOG.start_cmd('set patch description: {0}\n'.format(patchname))
     console.LOG.append_stdin(_('"{0}"\n').format(text))
-    eflags = patch_db.do_set_patch_description(rctx, patchname, text)
+    eflags = patch_db.do_set_patch_description(patchname, text)
     console.LOG.end_cmd()
     ws_event.notify_events(ws_event.PATCH_MODIFY)
-    return cmd_result.Result(eflags, rctx.message)
+    return cmd_result.Result(eflags, patch_db.RCTX.message)
 
 def do_set_series_description(text):
-    rctx = Context()
+    patch_db.RCTX.reset()
     console.LOG.start_cmd(_('set series description\n'))
     console.LOG.append_stdin(_('"{0}"\n').format(text))
-    eflags = patch_db.do_set_series_description(rctx, text)
+    eflags = patch_db.do_set_series_description(text)
     console.LOG.end_cmd()
-    return cmd_result.Result(eflags, rctx.message)
+    return cmd_result.Result(eflags, patch_db.RCTX.message)
 
 def do_set_patch_guards(patchname, guards_str):
-    rctx = Context()
+    patch_db.RCTX.reset()
     console.LOG.start_cmd(_('set guards "{0}" {1}\n').format(patchname, guards_str))
-    eflags = patch_db.do_set_patch_guards_fm_str(rctx, patchname, guards_str)
+    eflags = patch_db.do_set_patch_guards_fm_str(patchname, guards_str)
     console.LOG.end_cmd()
     if cmd_result.is_less_than_error(eflags):
         ws_event.notify_events(ws_event.PATCH_MODIFY)
-    return cmd_result.Result(eflags, rctx.message)
+    return cmd_result.Result(eflags, patch_db.RCTX.message)
 
 def do_select_guards(guards_str):
-    rctx = Context()
+    patch_db.RCTX.reset()
     console.LOG.start_cmd(_('select {0}\n').format(guards_str))
-    eflags = patch_db.do_select_guards(rctx, guards_str.split())
+    eflags = patch_db.do_select_guards(guards_str.split())
     console.LOG.end_cmd()
     if cmd_result.is_less_than_error(eflags):
         ws_event.notify_events(ws_event.PATCH_MODIFY)
-    return cmd_result.Result(eflags, rctx.message)
+    return cmd_result.Result(eflags, patch_db.RCTX.message)
 
 def do_add_files_to_patch(filepaths, patchname=None, force=False):
-    rctx = Context()
+    patch_db.RCTX.reset()
     if patchname is None:
         console.LOG.start_cmd('add {0}\n'.format(utils.file_list_to_string(filepaths)))
     else:
         console.LOG.start_cmd('add --patch={0} {1}\n'.format(patchname, utils.file_list_to_string(filepaths)))
-    eflags = patch_db.do_add_files_to_patch(rctx, patchname, filepaths, force=force)
+    eflags = patch_db.do_add_files_to_patch(patchname, filepaths, force=force)
     console.LOG.end_cmd()
     if cmd_result.is_less_than_error(eflags):
         if force:
             ws_event.notify_events(ws_event.FILE_ADD|ws_event.PATCH_REFRESH)
         else:
             ws_event.notify_events(ws_event.FILE_ADD)
-    return cmd_result.Result(eflags, rctx.message)
+    return cmd_result.Result(eflags, patch_db.RCTX.message)
 
 def do_drop_files_from_patch(filepaths, patch=None):
-    rctx = Context()
+    patch_db.RCTX.reset()
     if patch is None:
         console.LOG.start_cmd('drop {0}\n'.format(utils.file_list_to_string(filepaths)))
     else:
         console.LOG.start_cmd(_('drop --patch={0} {1}\n').format(patch, utils.file_list_to_string(filepaths)))
-    eflags = patch_db.do_drop_files_fm_patch(rctx, patch, filepaths)
+    eflags = patch_db.do_drop_files_fm_patch(patch, filepaths)
     console.LOG.end_cmd()
     if cmd_result.is_less_than_error(eflags):
         ws_event.notify_events(ws_event.FILE_DEL|ws_event.PATCH_MODIFY)
-    return cmd_result.Result(eflags, rctx.message)
+    return cmd_result.Result(eflags, patch_db.RCTX.message)
 
 def do_duplicate_patch(patchname, as_patchname, newdescription):
-    rctx = Context()
+    patch_db.RCTX.reset()
     console.LOG.start_cmd(_('duplicate patch "{0}" as "{1}"\n').format(patchname, as_patchname))
     console.LOG.append_stdin('"{0}"\n'.format(newdescription))
-    eflags = patch_db.do_duplicate_patch(rctx, patchname, as_patchname, newdescription)
+    eflags = patch_db.do_duplicate_patch(patchname, as_patchname, newdescription)
     console.LOG.end_cmd()
     if cmd_result.is_less_than_error(eflags):
         ws_event.notify_events(ws_event.PATCH_CREATE)
-    return cmd_result.Result(eflags, rctx.message)
+    return cmd_result.Result(eflags, patch_db.RCTX.message)
 
 def is_pushable():
     if not patch_db.is_readable():

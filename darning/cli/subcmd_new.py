@@ -35,6 +35,7 @@ PARSER.add_argument(
 def run_new(args):
     '''Execute the "new" sub command using the supplied args'''
     db_utils.open_db(modifiable=True)
-    return patch_db.do_create_new_patch(db_utils.get_report_context(verbose=True), args.patchname, args.opt_description)
+    db_utils.set_report_context(verbose=True)
+    return patch_db.do_create_new_patch(args.patchname, args.opt_description)
 
 PARSER.set_defaults(run_cmd=run_new)

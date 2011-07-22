@@ -28,6 +28,7 @@ cli_args.add_descr_option(PARSER, helptext=_('a message to describe the purpose 
 
 def run_init(args):
     '''Execute the "init" sub command using the supplied args'''
-    return patch_db.do_create_db(db_utils.get_report_context(verbose=True), description=args.opt_description)
+    db_utils.set_report_context(verbose=True)
+    return patch_db.do_create_db(description=args.opt_description)
 
 PARSER.set_defaults(run_cmd=run_init)

@@ -43,8 +43,8 @@ class Context(object):
         self.stdout = stdout
         self.stderr = stderr
 
-def get_report_context(verbose=True):
+def set_report_context(verbose=True):
     if verbose:
-        return Context(sys.stdout, sys.stderr)
+        patch_db.RCTX = Context(sys.stdout, sys.stderr)
     else:
-        return Context(open('/dev/null', 'w'), sys.stderr)
+        patch_db.RCTX = Context(open('/dev/null', 'w'), sys.stderr)
