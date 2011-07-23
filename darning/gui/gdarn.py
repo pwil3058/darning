@@ -54,6 +54,7 @@ class Darning(gtk.Window, dialogue.BusyIndicator, actions.AGandUIManager):
             <toolitem name="Pop" action="patch_list_pop"/>
             <separator/>
             <toolitem name="New" action="patch_list_new_patch"/>
+            <toolitem name="Import" action="patch_list_import_patch"/>
             <toolitem name="Select" action="patch_list_select_guards"/>
         </toolbar>
     </ui>

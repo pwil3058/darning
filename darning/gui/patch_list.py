@@ -20,6 +20,7 @@ import os
 
 from darning import utils
 from darning import cmd_result
+from darning import patchlib
 from darning.patch_db import PatchState
 
 from darning.gui import ifce
@@ -29,6 +30,7 @@ from darning.gui import table
 from darning.gui import icons
 from darning.gui import dialogue
 from darning.gui import text_edit
+from darning.gui import textview
 from darning.gui import gutils
 
 class Condns(actions.Condns):
@@ -489,7 +491,7 @@ class DuplicatePatchDialog(NewSeriesDescrDialog):
         self.hbox.pack_start(gtk.Label(_('Duplicate Patch Name:')), fill=False, expand=False)
         self.new_name_entry = gtk.Entry()
         self.new_name_entry.set_width_chars(32)
-        self.new_name_entry.set_text(patchname + 'duplicate')
+        self.new_name_entry.set_text(patchname + '.duplicate')
         self.hbox.pack_start(self.new_name_entry)
         self.edit_descr_widget.set_contents(olddescr)
         self.hbox.show_all()
@@ -497,6 +499,60 @@ class DuplicatePatchDialog(NewSeriesDescrDialog):
         self.vbox.reorder_child(self.hbox, 0)
     def get_new_patch_name(self):
         return self.new_name_entry.get_text()
+
+class ImportPatchDialog(dialogue.Dialog):
+    def __init__(self, epatch, parent=None):
+        flags = ~gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT
+        title = _('Import Patch: {0} : {1} -- gdarn').format(epatch.source_file_path, utils.path_rel_home(os.getcwd()))
+        dialogue.Dialog.__init__(self, title, parent, flags, None)
+        if not parent:
+            self.set_icon_from_file(icons.APP_ICON_FILE)
+        self.epatch = epatch
+        #
+        patch_file_name = os.path.basename(epatch.source_file_path)
+        hbox = gtk.HBox()
+        hbox.pack_start(gtk.Label(_("As Patch:")), expand=False)
+        self.as_name = gutils.MutableComboBoxEntry()
+        self.as_name.child.set_width_chars(32)
+        self.as_name.set_text(patch_file_name)
+        hbox.pack_start(self.as_name, expand=True, fill=True)
+        self.vbox.pack_start(hbox, expand=False, fill=False)
+        #
+        hbox = gtk.HBox()
+        hbox.pack_start(gtk.Label(_("Files: Strip Level:")), expand=False)
+        est_strip_level = self.epatch.estimate_strip_level()
+        self.strip_level_buttons = [gtk.RadioButton(group=None, label='0')]
+        self.strip_level_buttons.append(gtk.RadioButton(group=self.strip_level_buttons[0], label='1'))
+        for strip_level_button in self.strip_level_buttons:
+            strip_level_button.connect("toggled", self._strip_level_toggle_cb)
+            hbox.pack_start(strip_level_button, expand=False, fill=False)
+        self.vbox.pack_start(hbox, expand=False, fill=False)
+        #
+        self.file_list_widget = textview.Widget()
+        self.strip_level_buttons[1 if est_strip_level is None else est_strip_level].set_active(True)
+        self.vbox.pack_start(self.file_list_widget, expand=True, fill=True)
+        self.show_all()
+        self.add_button(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL)
+        self.add_button(gtk.STOCK_OK, gtk.RESPONSE_OK)
+        self.set_focus_child(self.as_name)
+    def get_strip_level(self):
+        for strip_level in [0, 1]:
+            if self.strip_level_buttons[strip_level].get_active():
+                return strip_level
+        return None
+    def get_as_name(self):
+        return self.as_name.get_text()
+    def update_file_list(self):
+        strip_level = self.get_strip_level()
+        try:
+            filepaths = self.epatch.get_file_paths(strip_level)
+            self.file_list_widget.set_contents('\n'.join(filepaths))
+        except:
+            if strip_level == 0:
+                return
+            self.strip_level_buttons[0].set_active(True)
+    def _strip_level_toggle_cb(self, _widget, _arg=None):
+        self.update_file_list()
 
 class RestorePatchDialog(dialogue.Dialog):
     _KEYVAL_ESCAPE = gtk.gdk.keyval_from_name('Escape')
@@ -566,7 +622,7 @@ class RestorePatchDialog(dialogue.Dialog):
         self.vbox.pack_start(self.kept_patch_table)
         #
         hbox = gtk.HBox()
-        hbox.pack_start(gtk.Label("Restore Patch:"), expand=False)
+        hbox.pack_start(gtk.Label(_("Restore Patch:")), expand=False)
         self.rpatch_name = gtk.Entry()
         self.rpatch_name.set_editable(False)
         self.rpatch_name.set_width_chars(32)
@@ -574,7 +630,7 @@ class RestorePatchDialog(dialogue.Dialog):
         self.vbox.pack_start(hbox, expand=False, fill=False)
         #
         hbox = gtk.HBox()
-        hbox.pack_start(gtk.Label("As Patch:"), expand=False)
+        hbox.pack_start(gtk.Label(_("As Patch:")), expand=False)
         self.as_name = gutils.MutableComboBoxEntry()
         self.as_name.child.set_width_chars(32)
         self.as_name.child.connect("activate", self._as_name_cb)
@@ -640,6 +696,27 @@ def restore_patch_acb(_arg):
     while dlg.run() == gtk.RESPONSE_OK:
         dlg.show_busy()
         result = ifce.PM.do_restore_patch(dlg.get_restore_patch_name(), dlg.get_as_name())
+        dlg.unshow_busy()
+        dialogue.report_any_problems(result)
+        if not (result.eflags & cmd_result.SUGGEST_RENAME):
+            break
+    dlg.destroy()
+
+def import_patch_acb(_arg):
+    patch_file = dialogue.ask_file_name(_('Select patch file to be imported'))
+    if patch_file is None:
+        return
+    try:
+        epatch = patchlib.Patch.parse_text_file(patch_file)
+    except patchlib.ParseError as edata:
+        result = cmd_result.Result(cmd_result.ERROR, '{0}: {1}: {2}\n'.format(patch_file, edata.lineno, edata.message))
+        dialogue.report_any_problems(result)
+        return
+    dlg = ImportPatchDialog(epatch, parent=dialogue.main_window)
+    while dlg.run() == gtk.RESPONSE_OK:
+        epatch.set_strip_level(dlg.get_strip_level())
+        dlg.show_busy()
+        result = ifce.PM.do_import_patch(epatch, dlg.get_as_name())
         dlg.unshow_busy()
         dialogue.report_any_problems(result)
         if not (result.eflags & cmd_result.SUGGEST_RENAME):
@@ -746,6 +823,8 @@ actions.add_class_indep_actions(Condns.IN_PGND_MUTABLE,
          _('Create a new patch'), new_patch_acb),
         ("patch_list_restore_patch", icons.STOCK_IMPORT_PATCH, _('Restore Patch'), None,
          _('Restore a previously removed patch behind the top applied patch'), restore_patch_acb),
+        ("patch_list_import_patch", icons.STOCK_IMPORT_PATCH, None, None,
+         _('Import an external patch behind the top applied patch'), import_patch_acb),
         ("patch_list_select_guards", icons.STOCK_PATCH_GUARD_SELECT, None, None,
          _('Select which guards are in force'), select_guards_acb),
     ])

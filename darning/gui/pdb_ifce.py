@@ -317,6 +317,15 @@ def do_duplicate_patch(patchname, as_patchname, newdescription):
         ws_event.notify_events(ws_event.PATCH_CREATE)
     return cmd_result.Result(eflags, patch_db.RCTX.message)
 
+def do_import_patch(epatch, as_patchname):
+    patch_db.RCTX.reset()
+    console.LOG.start_cmd(_('import "{0}" as "{1}"\n').format(epatch.source_file_path, as_patchname))
+    eflags = patch_db.do_import_patch(epatch, as_patchname)
+    console.LOG.end_cmd()
+    if cmd_result.is_less_than_error(eflags):
+        ws_event.notify_events(ws_event.PATCH_CREATE)
+    return cmd_result.Result(eflags, patch_db.RCTX.message)
+
 def is_pushable():
     if not patch_db.is_readable():
         return False

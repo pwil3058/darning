@@ -266,6 +266,20 @@ def _file_path_fm_pair(pair, strip=lambda x: x):
         return strip(before)
     return None
 
+def _file_data_consistent_with_strip_one(pair):
+    strip = gen_strip_level_function(1)
+    get_path = lambda x: x if isinstance(x, str) else x.path
+    before = get_path(pair.before)
+    if not _is_non_null(before):
+        return None
+    after = get_path(pair.after)
+    if not _is_non_null(after):
+        return None
+    try:
+        return strip(before) == strip(after)
+    except TooMayStripLevels:
+        return False
+
 class FilePathPlus(object):
     ADDED = '+'
     EXTANT = ' '
@@ -889,7 +903,14 @@ class Patch(object):
     def parse_text(text, num_strip_levels=0):
         '''Parse text and return a Patch instance'''
         return Patch.parse_lines(text.splitlines(True), num_strip_levels=num_strip_levels)
+    @staticmethod
+    def parse_text_file(filepath, num_strip_levels=0):
+        '''Parse a text file and return a Patch instance'''
+        patch = Patch.parse_text(open(filepath).read(), num_strip_levels=num_strip_levels)
+        patch.source_file_path = filepath
+        return patch
     def __init__(self, num_strip_levels=0):
+        self.source_file_path = None
         self.num_strip_levels = int(num_strip_levels)
         self.header = Header()
         self.diff_pluses = list()
@@ -897,23 +918,15 @@ class Patch(object):
         return int(strip_level) if strip_level is not None else self.num_strip_levels
     def set_strip_level(self, strip_level):
         self.num_strip_levels = int(strip_level)
-    def estimate_strip_level(self, path=None):
-        if path is None:
-            dirpath = os.getcwd()
-        elif os.path.isdir(path):
-            dirpath = path
-        else:
-            dirpath = os.path.dirname(path)
-        for num_strip_level in [0, 1]:
-            try:
-                # it's possible that strip level 1 can raise an exception
-                expfiles = [fdp.path for fdp in self.get_file_paths_plus(num_strip_level) if fdp.status != ADDED]
-                if len([fp for fp in expfiles if os.path.exists(os.path.join(dirpath, fp))]) > 0:
-                    return num_strip_level
-            except:
-                # in which case the strip level is obviously 0
+    def estimate_strip_level(self):
+        trues = 0
+        for diff_plus in self.diff_pluses:
+            check = _file_data_consistent_with_strip_one(diff_plus.diff.file_data)
+            if check is True:
+                trues += 1
+            elif check is False:
                 return 0
-        return None
+        return 1 if trues > 0 else None
     def check_relevance(self, strip_level=None, path=None):
         relevance = collections.namedtuple('relevance', ['goodness', 'missing', 'unexpected'])
         fpath = (lambda fp: fp) if path is None else lambda fp: os.path.join(path, fp)
