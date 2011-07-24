@@ -128,14 +128,22 @@ class FileData:
         else:
             return FileData.Presence.EXTANT
 
-OverlapData = collections.namedtuple('OverlapData', ['unrefreshed', 'uncommitted'])
-
-def _total_overlap_count(overlap_data):
-    '''Total number of overlaps'''
-    count = 0
-    for item in overlap_data:
-        count += len(item)
-    return count
+class OverlapData(object):
+    def __init__(self, unrefreshed=None, uncommitted=None):
+         self.unrefreshed = {} if not unrefreshed else unrefreshed
+         self.uncommitted = set() if not uncommitted else set(uncommitted)
+    def __bool__(self):
+        return len(self.unrefreshed) > 0 and len(self.uncommitted) > 0
+    def report_and_abort(self):
+        for filepath in sorted(self.uncommitted):
+            rfilepath = rel_subdir(filepath)
+            RCTX.stderr.write(_('{0}: file has uncommitted SCM changes.\n').format(rfilepath))
+        for filepath in sorted(self.unrefreshed):
+            rfilepath = rel_subdir(filepath)
+            opatch = self.unrefreshed[filepath]
+            RCTX.stderr.write(_('{0}: file has unrefreshed changes in (applied) "{1}".\n').format(rfilepath, opatch))
+        RCTX.stderr.write(_('Aborted.\n'))
+        return cmd_result.ERROR_SUGGEST_FORCE_OR_REFRESH if len(self.unrefreshed) > 0 else cmd_result.ERROR_SUGGEST_FORCE
 
 def _pts_tz_str(tz_seconds=None):
     '''Return the timezone as a string suitable for use in patch header'''
@@ -413,31 +421,6 @@ class PatchData:
             else:
                 after = apatch.name == self.name
         return None
-    def get_unrefreshed_overlapped_patch_for_file(self, filepath):
-        '''
-        Return the highest applied patch containing unrefreshed
-        changes for this file.
-        '''
-        assert is_readable()
-        applied_patches = get_applied_patch_list()
-        try:
-            patch_index = applied_patches.index(self)
-            applied_patches = applied_patches[:patch_index]
-        except ValueError:
-            pass
-        for applied_patch in reversed(applied_patches):
-            apfile = applied_patch.files.get(filepath, None)
-            if apfile is not None:
-                return applied_patch if apfile.needs_refresh() else None
-        return None
-    def file_overlaps_uncommitted_or_unrefreshed(self, filepath):
-        '''
-        Will this file overlap unrefreshed/uncommitted files?
-        '''
-        assert is_readable()
-        if self.get_unrefreshed_overlapped_patch_for_file(filepath) is not None:
-            return True
-        return scm_ifce.has_uncommitted_change(filepath)
     def get_table_row(self):
         if not self.is_applied():
             state = PatchState.UNAPPLIED
@@ -888,7 +871,7 @@ def get_overlap_data(filepaths, patchname=None):
     '''
     assert is_readable()
     if not filepaths:
-        return OverlapData({}, set())
+        return OverlapData()
     applied_patches = get_applied_patch_list()
     if patchname is not None:
         try:
@@ -911,7 +894,7 @@ def get_overlap_data(filepaths, patchname=None):
             for apfile in apfiles:
                 if applied_patch.files[apfile].needs_refresh():
                     unrefreshed[apfile] = applied_patch.name
-    return OverlapData(unrefreshed, uncommitted)
+    return OverlapData(unrefreshed=unrefreshed, uncommitted=uncommitted)
 
 def get_patch_overlap_data(patchname):
     '''
@@ -957,19 +940,8 @@ def get_next_patch_overlap_data():
     assert is_readable()
     next_index = _get_next_patch_index()
     if next_index is None:
-        return OverlapData(unrefreshed = {}, uncommitted = [])
+        return OverlapData()
     return get_overlap_data(_DB.series[next_index].get_filepaths())
-
-def _report_overlap_and_abort(overlaps):
-    for filepath in sorted(overlaps.uncommitted):
-        rfilepath = rel_subdir(filepath)
-        RCTX.stderr.write(_('{0}: file has uncommitted SCM changes.\n').format(rfilepath))
-    for filepath in sorted(overlaps.unrefreshed):
-        rfilepath = rel_subdir(filepath)
-        opatch = overlaps.unrefreshed[filepath]
-        RCTX.stderr.write(_('{0}: file has unrefreshed changes in (applied) "{1}".\n').format(rfilepath, opatch))
-    RCTX.stderr.write(_('Aborted.\n'))
-    return cmd_result.ERROR_SUGGEST_FORCE_OR_REFRESH if len(overlaps.unrefreshed) > 0 else cmd_result.ERROR_SUGGEST_FORCE
 
 def do_apply_next_patch(force=False):
     '''Apply the next patch in the series'''
@@ -984,8 +956,8 @@ def do_apply_next_patch(force=False):
         return cmd_result.ERROR
     next_patch = _DB.series[next_index]
     overlaps = get_overlap_data(next_patch.get_filepaths())
-    if not force and _total_overlap_count(overlaps) > 0:
-        return _report_overlap_and_abort(overlaps)
+    if not force and overlaps:
+        return overlaps.report_and_abort()
     os.mkdir(next_patch.get_cached_original_dir_path())
     if len(next_patch.files) == 0:
         return cmd_result.OK
@@ -1156,10 +1128,10 @@ def do_add_files_to_patch(patchname, filepaths, force=False):
     patch_is_applied = patch.is_applied()
     if patch_is_applied:
         overlaps = get_filelist_overlap_data(filepaths, patch.name)
-        if not force and _total_overlap_count(overlaps) > 0:
-            return _report_overlap_and_abort(overlaps)
+        if not force and overlaps:
+            return overlaps.report_and_abort()
     else:
-        overlaps = OverlapData([], [])
+        overlaps = OverlapData()
     already_in_patch = set(patch.get_filepaths(filepaths))
     for filepath in filepaths:
         if filepath in already_in_patch:
