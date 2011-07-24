@@ -317,13 +317,16 @@ def do_duplicate_patch(patchname, as_patchname, newdescription):
         ws_event.notify_events(ws_event.PATCH_CREATE)
     return cmd_result.Result(eflags, patch_db.RCTX.message)
 
-def do_import_patch(epatch, as_patchname):
+def do_import_patch(epatch, as_patchname, force=False):
     patch_db.RCTX.reset()
-    console.LOG.start_cmd(_('import "{0}" as "{1}"\n').format(epatch.source_file_path, as_patchname))
-    eflags = patch_db.do_import_patch(epatch, as_patchname)
+    if force:
+        console.LOG.start_cmd(_('import --force "{0}" as "{1}"\n').format(epatch.source_file_path, as_patchname))
+    else:
+        console.LOG.start_cmd(_('import "{0}" as "{1}"\n').format(epatch.source_file_path, as_patchname))
+    eflags = patch_db.do_import_patch(epatch, as_patchname, force=force)
     console.LOG.end_cmd()
     if cmd_result.is_less_than_error(eflags):
-        ws_event.notify_events(ws_event.PATCH_CREATE)
+        ws_event.notify_events(ws_event.PATCH_CREATE|ws_event.PATCH_PUSH)
     return cmd_result.Result(eflags, patch_db.RCTX.message)
 
 def is_pushable():

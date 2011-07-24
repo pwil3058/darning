@@ -133,7 +133,9 @@ class OverlapData(object):
          self.unrefreshed = {} if not unrefreshed else unrefreshed
          self.uncommitted = set() if not uncommitted else set(uncommitted)
     def __bool__(self):
-        return len(self.unrefreshed) > 0 and len(self.uncommitted) > 0
+        return self.__len__() > 0
+    def __len__(self):
+        return len(self.unrefreshed) + len(self.uncommitted)
     def report_and_abort(self):
         for filepath in sorted(self.uncommitted):
             rfilepath = rel_subdir(filepath)
@@ -822,12 +824,15 @@ def do_create_new_patch(patchname, description):
         RCTX.stderr.write(_('Previous top patch ("{0}") needs refreshing.\n').format(old_top))
     return cmd_result.OK
 
-def do_import_patch(epatch, patchname):
+def do_import_patch(epatch, patchname, force=False):
     '''Import an external patch with the given name (after the top patch)'''
     assert is_writable()
     if patch_is_in_series(patchname):
-        RCTX.stderr.write(_('patch "{0}" already exists').format(patchname))
+        RCTX.stderr.write(_('patch "{0}" already exists\n').format(patchname))
         return cmd_result.ERROR | cmd_result.SUGGEST_RENAME
+    overlaps = get_overlap_data(epatch.get_file_paths(epatch.num_strip_levels))
+    if not force and len(overlaps):
+        return overlaps.report_and_abort()
     descr = utils.make_utf8_compliant(epatch.get_description())
     patch = PatchData(patchname, descr)
     for diff_plus in epatch.diff_pluses:
@@ -849,7 +854,7 @@ def do_import_patch(epatch, patchname):
         RCTX.stdout.write(_('{0}: patch inserted after patch "{1}".\n').format(patchname, top_patchname))
     else:
         RCTX.stdout.write(_('{0}: patch inserted at start of series.\n').format(patchname))
-    return cmd_result.OK
+    return do_apply_next_patch(force=force)
 
 def top_patch_needs_refresh():
     '''Does the top applied patch need a refresh?'''
@@ -956,7 +961,7 @@ def do_apply_next_patch(force=False):
         return cmd_result.ERROR
     next_patch = _DB.series[next_index]
     overlaps = get_overlap_data(next_patch.get_filepaths())
-    if not force and overlaps:
+    if not force and len(overlaps):
         return overlaps.report_and_abort()
     os.mkdir(next_patch.get_cached_original_dir_path())
     if len(next_patch.files) == 0:
