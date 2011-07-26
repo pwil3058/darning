@@ -76,13 +76,15 @@ class View(_View):
         _View.__init__(self, buffer=buffer if buffer else Buffer())
 
 class Widget(gtk.ScrolledWindow):
-    def __init__(self, width_in_chars=81, fdesc=None):
+    def __init__(self, width_in_chars=81, aspect_ratio=0.33, fdesc=None):
         gtk.ScrolledWindow.__init__(self)
         # Set up text buffer and view
+        self.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
         self.view = View()
         self._fdesc = fdesc if fdesc is not None else pango.FontDescription("mono 10")
         self.view.modify_font(self._fdesc)
         self._width_in_chars = width_in_chars
+        self._aspect_ratio = aspect_ratio
         self.set_width_in_chars(self._width_in_chars)
         self._initialize_contents()
         self.add(self.view)
@@ -96,10 +98,14 @@ class Widget(gtk.ScrolledWindow):
         context = self.view.get_pango_context()
         metrics = context.get_metrics(self._fdesc)
         width = pango.PIXELS(metrics.get_approximate_char_width() * self._width_in_chars)
-        x, y = self.view.buffer_to_window_coords(gtk.TEXT_WINDOW_TEXT, width, width / 3)
+        height = int(width * self._aspect_ratio)
+        x, y = self.view.buffer_to_window_coords(gtk.TEXT_WINDOW_TEXT, width, height)
         self.view.set_size_request(x, y)
     def set_width_in_chars(self, width_in_chars):
         self._width_in_chars = width_in_chars
+        self._adjust_size_request()
+    def set_aspect_ratio(self, aspect_ratio):
+        self._aspect_ratio = aspect_ratio
         self._adjust_size_request()
     def set_font(self, fdesc):
         self._fdesc = fdesc
