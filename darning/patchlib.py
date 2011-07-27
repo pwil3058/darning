@@ -177,21 +177,22 @@ class DiffStat(object):
                 offset = len(common_path)
             else:
                 offset = 0
-            len_longest_name = max([len(x.path) for x in self]) - offset
-            fstr = '%s {0}{1} |{2:5} {3}\n' % ('#' if comment else '')
-            largest_total = max(max([x.diff_stats.get_total() for x in self]), 1)
-            avail_width = max(0, max_width - (len_longest_name + 9))
-            if comment:
-                avail_width -= 1
-            scale = lambda x: (x * avail_width) / largest_total
-            summation = DiffStat.Stats()
-            for stats in self:
-                summation += stats.diff_stats
-                total = stats.diff_stats.get_total()
-                name = stats.path[offset:]
-                spaces = ' ' * (len_longest_name - len(name))
-                string += fstr.format(name, spaces, total, stats.diff_stats.as_bar(scale))
             num_files = len(self)
+            summation = DiffStat.Stats()
+            if num_files > 0:
+                len_longest_name = max([len(x.path) for x in self]) - offset
+                fstr = '%s {0}{1} |{2:5} {3}\n' % ('#' if comment else '')
+                largest_total = max(max([x.diff_stats.get_total() for x in self]), 1)
+                avail_width = max(0, max_width - (len_longest_name + 9))
+                if comment:
+                    avail_width -= 1
+                scale = lambda x: (x * avail_width) / largest_total
+                for stats in self:
+                    summation += stats.diff_stats
+                    total = stats.diff_stats.get_total()
+                    name = stats.path[offset:]
+                    spaces = ' ' * (len_longest_name - len(name))
+                    string += fstr.format(name, spaces, total, stats.diff_stats.as_bar(scale))
             if num_files > 0 or not quiet:
                 if comment:
                     string += '#'
