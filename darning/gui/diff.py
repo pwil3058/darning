@@ -30,9 +30,10 @@ from darning.gui import gutils
 class TextWidget(gtk.VBox):
     class TwsLineCountDisplay(gtk.HBox):
         STATES = [gtk.STATE_NORMAL, gtk.STATE_ACTIVE, gtk.STATE_PRELIGHT, gtk.STATE_INSENSITIVE]
+        LABEL = _('Added TWS lines:')
         def __init__(self):
             gtk.HBox.__init__(self)
-            self.pack_start(gtk.Label(_('Added TWS lines:')), expand=False, fill=False)
+            self.pack_start(gtk.Label(self.LABEL), expand=False, fill=False)
             self._entry = gtk.Entry()
             self._entry.set_width_chars(1)
             self._entry.set_text(str(0))
@@ -102,13 +103,13 @@ class TextWidget(gtk.VBox):
                 else:
                     self._append_tagged_text(line, self.index_tag)
                 return 0
-        def __init__(self):
-            textview.View.__init__(self, buffer=self.Buffer())
-    def __init__(self):
+        def __init__(self, width_in_chars=81, aspect_ratio=0.33, fdesc=None):
+            textview.View.__init__(self, buffer=self.Buffer(), width_in_chars=width_in_chars, aspect_ratio=aspect_ratio, fdesc=fdesc)
+    def __init__(self, width_in_chars=81, aspect_ratio=0.33, fdesc=None):
         gtk.VBox.__init__(self)
         self.tws_list = []
         self.tws_index = 0
-        self.view = TextWidget.View()
+        self.view = TextWidget.View(width_in_chars=width_in_chars, aspect_ratio=aspect_ratio, fdesc=fdesc)
         self.pack_start(gutils.wrap_in_scrolled_window(self.view))
         self._action_group = gtk.ActionGroup("diff_text")
         self._action_group.add_actions(

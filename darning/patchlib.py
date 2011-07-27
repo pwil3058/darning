@@ -846,7 +846,10 @@ class DiffPlus(object):
         if DEBUG:
             assert isinstance(self.preambles, Preambles) and (self.diff is None or isinstance(self.diff, Diff))
     def __str__(self):
-        return str(self.preambles) + str(self.diff) + str(self.trailing_junk)
+        if self.diff is not None:
+            return str(self.preambles) + str(self.diff) + str(self.trailing_junk)
+        else:
+            return str(self.preambles) + str(self.trailing_junk)
     def fix_trailing_whitespace(self):
         if self.diff is None:
             return []

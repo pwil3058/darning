@@ -110,4 +110,3 @@ class Darning(gtk.Window, dialogue.BusyIndicator, actions.AGandUIManager):
     def _change_pgnd_ncb(self, _arg=None):
         self._update_title()
 
-        

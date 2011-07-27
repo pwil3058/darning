@@ -175,7 +175,7 @@ class PatchState(object):
     UNAPPLIED = ' '
     APPLIED_REFRESHED = '+'
     APPLIED_NEEDS_REFRESH = '-'
-    APPLIED_UNFEFRESHABLE = '!'
+    APPLIED_UNREFRESHABLE = '!'
 
 class PatchTable(object):
     Row = collections.namedtuple('Row', ['name', 'state', 'pos_guards', 'neg_guards'])
@@ -395,18 +395,25 @@ class PatchData:
         are also in filepaths.
         '''
         return set(self.get_filepaths(filepaths=filepaths))
+    def _get_file_applied_validity(self, file_data):
+        assert self.is_applied()
+        if (self.get_overlapping_patch_for_file(file_data.path) is None) and file_data.needs_refresh():
+            if file_data.has_unresolved_merges():
+                return FileData.Validity.UNREFRESHABLE
+            else:
+                return FileData.Validity.NEEDS_REFRESH
+        else:
+            return FileData.Validity.REFRESHED
+    def get_filepath_validity(self, filepath):
+        if not self.is_applied():
+            return None
+        return self._get_file_applied_validity(self.files[filepath])
     def get_files_table(self):
         is_applied = self.is_applied()
         if is_applied:
             table = []
             for fde in self.files.values():
-                if (self.get_overlapping_patch_for_file(fde.path) is None) and fde.needs_refresh():
-                    if fde.has_unresolved_merges():
-                        validity = FileData.Validity.UNREFRESHABLE
-                    else:
-                        validity = FileData.Validity.NEEDS_REFRESH
-                else:
-                    validity = FileData.Validity.REFRESHED
+                validity = self._get_file_applied_validity(file_data)
                 table.append(fsdb.Data(fde.path, FileData.Status(fde.get_presence(), validity), None))
         else:
             table = [fsdb.Data(fde.path, FileData.Status(fde.get_presence(), None), None) for fde in self.files.values()]
@@ -428,7 +435,7 @@ class PatchData:
             state = PatchState.UNAPPLIED
         elif self.needs_refresh():
             if self.has_unresolved_merges():
-                state = PatchState.APPLIED_UNFEFRESHABLE
+                state = PatchState.APPLIED_UNREFRESHABLE
             else:
                 state = PatchState.APPLIED_NEEDS_REFRESH
         else:
@@ -1388,3 +1395,34 @@ def get_extdiff_files_for(filepath, patchname):
     orig = patch.get_cached_original_file_path(filepath)
     return _O_IP_PAIR(original_version=orig, patched_version=filepath)
 
+class ExtDiffPlus(patchlib.DiffPlus):
+    def __init__(self, patch, filepath):
+        preamble = patch.generate_diff_preamble_for_file(filepath)
+        diff = patch.files[filepath].diff
+        patchlib.DiffPlus.__init__(self, [preamble], diff if diff else None)
+        self.validity = patch.get_filepath_validity(filepath)
+
+class ExtPatch(patchlib.Patch):
+    def __init__(self, patch):
+        patchlib.Patch.__init__(self, num_strip_levels=1)
+        self.name = patch.name
+        self.state = PatchState.APPLIED_REFRESHED if patch.is_applied() else PatchState.UNAPPLIED
+        self.set_description(patch.description)
+        self.set_comments('# created by: Darning\n')
+        for filepath in sorted(patch.files):
+            edp = ExtDiffPlus(patch, filepath)
+            self.diff_pluses.append(edp)
+            if self.state == PatchState.UNAPPLIED:
+                continue
+            if self.state == PatchState.APPLIED_REFRESHED and edp.validity != FileData.Validity.REFRESHED:
+                self.state = PatchState.APPLIED_NEEDS_REFRESH if edp.validity == FileData.Validity.NEEDS_REFRESH else PatchState.APPLIED_UNREFRESHABLE
+            elif self.state == PatchState.APPLIED_NEEDS_REFRESH and edp.validity == FileData.Validity.UNREFRESHABLE:
+                self.state = PatchState.APPLIED_UNREFRESHABLE
+        self.set_header_diffstat(strip_level=self.num_strip_levels)
+
+def get_extpatch(patchname):
+    assert is_readable()
+    patch_index = get_patch_series_index(patchname)
+    assert patch_index is not None
+    patch = _DB.series[patch_index]
+    return ExtPatch(patch)

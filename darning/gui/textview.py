@@ -72,35 +72,20 @@ class Buffer(_Buffer):
         return _Buffer.insert_with_tags_by_name(self, text_iter, utils.make_utf8_compliant(text), *args)
 
 class View(_View):
-    def __init__(self, buffer=None):
+    def __init__(self, buffer=None, width_in_chars=81, aspect_ratio=0.33, fdesc=None):
         _View.__init__(self, buffer=buffer if buffer else Buffer())
-
-class Widget(gtk.ScrolledWindow):
-    def __init__(self, width_in_chars=81, aspect_ratio=0.33, fdesc=None):
-        gtk.ScrolledWindow.__init__(self)
-        # Set up text buffer and view
-        self.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
-        self.view = View()
         self._fdesc = fdesc if fdesc is not None else pango.FontDescription("mono 10")
-        self.view.modify_font(self._fdesc)
+        self.modify_font(self._fdesc)
         self._width_in_chars = width_in_chars
         self._aspect_ratio = aspect_ratio
-        self.set_width_in_chars(self._width_in_chars)
-        self._initialize_contents()
-        self.add(self.view)
-    @property
-    def bfr(self):
-        return self.view.get_buffer()
-    @property
-    def digest(self):
-        return hashlib.sha256(self.get_contents()).digest()
+        self._adjust_size_request()
     def _adjust_size_request(self):
-        context = self.view.get_pango_context()
+        context = self.get_pango_context()
         metrics = context.get_metrics(self._fdesc)
         width = pango.PIXELS(metrics.get_approximate_char_width() * self._width_in_chars)
         height = int(width * self._aspect_ratio)
-        x, y = self.view.buffer_to_window_coords(gtk.TEXT_WINDOW_TEXT, width, height)
-        self.view.set_size_request(x, y)
+        x, y = self.buffer_to_window_coords(gtk.TEXT_WINDOW_TEXT, width, height)
+        self.set_size_request(x, y)
     def set_width_in_chars(self, width_in_chars):
         self._width_in_chars = width_in_chars
         self._adjust_size_request()
@@ -109,8 +94,23 @@ class Widget(gtk.ScrolledWindow):
         self._adjust_size_request()
     def set_font(self, fdesc):
         self._fdesc = fdesc
-        self.view.modify_font(self._fdesc)
+        self.modify_font(self._fdesc)
         self._adjust_size_request()
+
+class Widget(gtk.ScrolledWindow):
+    def __init__(self, width_in_chars=81, aspect_ratio=0.33, fdesc=None):
+        gtk.ScrolledWindow.__init__(self)
+        # Set up text buffer and view
+        self.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+        self.view = View(width_in_chars=width_in_chars, aspect_ratio=aspect_ratio, fdesc=fdesc)
+        self._initialize_contents()
+        self.add(self.view)
+    @property
+    def bfr(self):
+        return self.view.get_buffer()
+    @property
+    def digest(self):
+        return hashlib.sha256(self.get_contents()).digest()
     def set_contents(self, text, undoable=False):
         if not undoable:
             self.bfr.begin_not_undoable_action()

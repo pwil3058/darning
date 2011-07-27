@@ -32,6 +32,7 @@ from darning.gui import dialogue
 from darning.gui import text_edit
 from darning.gui import textview
 from darning.gui import gutils
+from darning.gui import patch_view
 
 class Condns(actions.Condns):
     _NEXTRACONDS = 5
@@ -129,6 +130,7 @@ class List(table.MapManagedTable):
         <separator/>
         <placeholder name="applied_indifferent">
           <menuitem action="pm_edit_patch_descr"/>
+          <menuitem action="patch_list_patch_view"/>
           <menuitem action="pm_set_patch_guards"/>
           <menuitem action="patch_list_duplicate"/>
         </placeholder>
@@ -144,7 +146,7 @@ class List(table.MapManagedTable):
         PatchState.UNAPPLIED : None,
         PatchState.APPLIED_REFRESHED : icons.STOCK_APPLIED,
         PatchState.APPLIED_NEEDS_REFRESH : icons.STOCK_APPLIED_NEEDS_REFRESH,
-        PatchState.APPLIED_UNFEFRESHABLE : icons.STOCK_APPLIED_UNREFRESHABLE,
+        PatchState.APPLIED_UNREFRESHABLE : icons.STOCK_APPLIED_UNREFRESHABLE,
     }
     @staticmethod
     def patch_markup(patch_data, selected_guards):
@@ -175,6 +177,8 @@ class List(table.MapManagedTable):
             [
                 ("pm_edit_patch_descr", gtk.STOCK_EDIT, _('Description'), None,
                  _('Edit the selected patch\'s description'), self.do_edit_description),
+                ("patch_list_patch_view", icons.STOCK_DIFF, _('Details'), None,
+                 _('View the selected patch\'s details'), self.do_view_selected_patch),
             ])
         self.add_conditional_actions(Condns.UNIQUE_SELN | Condns.IN_PGND_MUTABLE,
             [
@@ -266,6 +270,9 @@ class List(table.MapManagedTable):
         patchname = self.get_selected_patch()
         result = ifce.PM.do_remove_patch(patchname)
         dialogue.report_any_problems(result)
+    def do_view_selected_patch(self, action=None):
+        patchname = self.get_selected_patch()
+        patch_view.Dialogue(patchname).show()
     def do_duplicate(self, action=None):
         patchname = self.get_selected_patch()
         description = ifce.PM.get_patch_description(patchname)
