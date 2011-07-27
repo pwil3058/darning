@@ -413,7 +413,7 @@ class PatchData:
         if is_applied:
             table = []
             for fde in self.files.values():
-                validity = self._get_file_applied_validity(file_data)
+                validity = self._get_file_applied_validity(fde)
                 table.append(fsdb.Data(fde.path, FileData.Status(fde.get_presence(), validity), None))
         else:
             table = [fsdb.Data(fde.path, FileData.Status(fde.get_presence(), None), None) for fde in self.files.values()]

@@ -25,6 +25,7 @@ from darning.gui import textview
 from darning.gui import dialogue
 from darning.gui import icons
 from darning.gui import diff
+from darning.gui import ws_event
 
 class DiffDisplay(diff.TextWidget):
     def __init__(self, diffplus):
@@ -86,11 +87,9 @@ class Widget(gtk.VBox):
         self.diffs_nbook.set_scrollable(True)
         self.diffs_nbook.popup_enable()
         panes[2].add2(self._framed(_('File Diffs'), self.diffs_nbook))
-        for diffplus in self.epatch.diff_pluses:
-            filepath = diffplus.get_file_path(self.epatch.num_strip_levels)
-            tab_label = self._make_file_label(filepath, diffplus.validity)
-            menu_label = self._make_file_label(filepath, diffplus.validity)
-            self.diffs_nbook.append_page_menu(DiffDisplay(diffplus), tab_label, menu_label)
+        self.diff_displays = {}
+        self._populate_pages()
+        self.update()
         #
         self.show_all()
     @staticmethod
@@ -116,6 +115,35 @@ class Widget(gtk.VBox):
         frame = gtk.Frame(label)
         frame.add(widget)
         return frame
+    def _populate_pages(self):
+        existing = set([fpath for fpath in self.diff_displays])
+        for diffplus in self.epatch.diff_pluses:
+            filepath = diffplus.get_file_path(self.epatch.num_strip_levels)
+            tab_label = self._make_file_label(filepath, diffplus.validity)
+            menu_label = self._make_file_label(filepath, diffplus.validity)
+            if filepath in existing:
+                self.diff_displays[filepath].update(diffplus)
+                self.diffs_nbook.set_tab_label(self.diff_displays[filepath], tab_label)
+                self.diffs_nbook.set_menu_label(self.diff_displays[filepath], menu_label)
+                existing.remove(filepath)
+            else:
+                self.diff_displays[filepath] = DiffDisplay(diffplus)
+                self.diffs_nbook.append_page_menu(self.diff_displays[filepath], tab_label, menu_label)
+        for gone in existing:
+            gonedd = self.diff_displays.pop(gone)
+            pnum = self.diffs_nbook.page_num(gonedd)
+            self.diffs_nbook.remove_page(pnum)
+    def update(self):
+        self.epatch = patch_db.get_extpatch(self.patchname)
+        self.status_box.remove(self.status_icon)
+        self.status_icon = gtk.image_new_from_stock(self.status_icons[self.epatch.state], gtk.ICON_SIZE_BUTTON)
+        self.status_box.add(self.status_icon)
+        self.status_box.show_all()
+        self.tws_display.set_value(len(self.epatch.report_trailing_whitespace()))
+        self.comments.set_contents(self.epatch.get_comments())
+        self.description.set_contents(self.epatch.get_description())
+        self.diffstats.set_contents(self.epatch.get_header_diffstat())
+        self._populate_pages()
 
 class Dialogue(dialogue.AmodalDialog):
     def __init__(self, patchname):
@@ -124,6 +152,9 @@ class Dialogue(dialogue.AmodalDialog):
         self.widget = Widget(patchname)
         self.vbox.pack_start(self.widget, expand=True, fill=True)
         self.connect("response", self._close_cb)
+        self.add_notification_cb(ws_event.PATCH_CHANGES|ws_event.FILE_CHANGES|ws_event.AUTO_UPDATE, self._update_display_cb)
         self.show_all()
     def _close_cb(self, dialog, response_id):
         dialog.destroy()
+    def _update_display_cb(self, _arg=None):
+        self.widget.update()
