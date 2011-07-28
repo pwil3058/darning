@@ -293,6 +293,10 @@ def report_any_problems(result, parent=None):
         problem_type = gtk.MESSAGE_ERROR
     inform_user('\n'.join(result[1:]), parent, problem_type)
 
+def report_exception_as_error(edata, parent=None):
+    problem_type = gtk.MESSAGE_ERROR
+    inform_user(str(edata), parent, problem_type)
+
 class CancelOKDialog(Dialog):
     def __init__(self, title=None, parent=None):
         flags = gtk.DIALOG_MODAL|gtk.DIALOG_DESTROY_WITH_PARENT

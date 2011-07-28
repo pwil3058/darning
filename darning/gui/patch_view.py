@@ -26,6 +26,7 @@ from darning.gui import dialogue
 from darning.gui import icons
 from darning.gui import diff
 from darning.gui import ws_event
+from darning.gui import gutils
 
 class DiffDisplay(diff.TextWidget):
     def __init__(self, diffplus):
@@ -44,6 +45,12 @@ class Widget(gtk.VBox):
         patch_db.PatchState.APPLIED_NEEDS_REFRESH : icons.STOCK_APPLIED_NEEDS_REFRESH,
         patch_db.PatchState.APPLIED_UNREFRESHABLE : icons.STOCK_APPLIED_UNREFRESHABLE,
     }
+    status_tooltips = {
+        patch_db.PatchState.UNAPPLIED : _('This patch is not applied.'),
+        patch_db.PatchState.APPLIED_REFRESHED : _('This patch is applied and refresh is up to date.'),
+        patch_db.PatchState.APPLIED_NEEDS_REFRESH : _('This patch is applied but refresh is NOT up to date.'),
+        patch_db.PatchState.APPLIED_UNREFRESHABLE : _('This patch is applied but has problems (e.g. unresolved merge errosr) that prevent it being refreshed.'),
+    }
     class TWSDisplay(diff.TextWidget.TwsLineCountDisplay):
         LABEL = _('File(s) that add TWS: ')
     def __init__(self, patchname):
@@ -55,6 +62,7 @@ class Widget(gtk.VBox):
         self.status_box = gtk.HBox()
         self.status_box.add(self.status_icon)
         self.status_box.show_all()
+        gutils.set_widget_tooltip_text(self.status_box, self.status_tooltips[self.epatch.state])
         self.tws_display = self.TWSDisplay()
         self.tws_display.set_value(len(self.epatch.report_trailing_whitespace()))
         hbox = gtk.HBox()
@@ -139,6 +147,7 @@ class Widget(gtk.VBox):
         self.status_icon = gtk.image_new_from_stock(self.status_icons[self.epatch.state], gtk.ICON_SIZE_BUTTON)
         self.status_box.add(self.status_icon)
         self.status_box.show_all()
+        gutils.set_widget_tooltip_text(self.status_box, self.status_tooltips[self.epatch.state])
         self.tws_display.set_value(len(self.epatch.report_trailing_whitespace()))
         self.comments.set_contents(self.epatch.get_comments())
         self.description.set_contents(self.epatch.get_description())
@@ -148,13 +157,37 @@ class Widget(gtk.VBox):
 class Dialogue(dialogue.AmodalDialog):
     def __init__(self, patchname):
         title = _('gdarn: Patch "{0}" : {1}').format(patchname, utils.path_rel_home(os.getcwd()))
-        dialogue.AmodalDialog.__init__(self, title=title, parent=dialogue.main_window, flags=gtk.DIALOG_DESTROY_WITH_PARENT, buttons=(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE))
+        dialogue.AmodalDialog.__init__(self, title=title, parent=dialogue.main_window, flags=gtk.DIALOG_DESTROY_WITH_PARENT)
         self.widget = Widget(patchname)
         self.vbox.pack_start(self.widget, expand=True, fill=True)
+        self._save_file = patchname
+        self.save_action = gtk.Action('patch_view_save', _('_Save'), _('Save patch to text file.'), gtk.STOCK_SAVE_AS)
+        self.save_action.connect('activate', self._save_as_acb)
+        save_button = gutils.ActionButton(self.save_action)
+        self.action_area.pack_start(save_button)
+        self.add_buttons(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
         self.connect("response", self._close_cb)
         self.add_notification_cb(ws_event.PATCH_CHANGES|ws_event.FILE_CHANGES|ws_event.AUTO_UPDATE, self._update_display_cb)
         self.show_all()
     def _close_cb(self, dialog, response_id):
         dialog.destroy()
     def _update_display_cb(self, _arg=None):
+        self.show_busy()
         self.widget.update()
+        self.unshow_busy()
+    def _save_as_acb(self, _action):
+        if self.widget.epatch.state in [patch_db.PatchState.APPLIED_NEEDS_REFRESH,  patch_db.PatchState.APPLIED_UNREFRESHABLE ]:
+            if not dialogue.ask_yes_no(_('Patch needs a refresh\n\nContinue?')):
+                return
+        if self._save_file:
+            suggestion = self._save_file
+        else:
+            suggestion = os.getcwd()
+        ans = dialogue.ask_file_name(_('Save as ...'), suggestion=suggestion, existing=False)
+        if ans is None:
+            return
+        try:
+            open(ans, 'wb').write(str(self.widget.epatch))
+            self._save_file = ans
+        except IOError as edata:
+            dialogue.report_exception_as_error(edata, self)
