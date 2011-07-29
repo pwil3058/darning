@@ -42,7 +42,7 @@ class DiffDisplay(diff.TextWidget):
 
 class Widget(gtk.VBox):
     status_icons = {
-        patch_db.PatchState.UNAPPLIED : gtk.STOCK_DIALOG_QUESTION,
+        patch_db.PatchState.UNAPPLIED : gtk.STOCK_REMOVE,
         patch_db.PatchState.APPLIED_REFRESHED : icons.STOCK_APPLIED,
         patch_db.PatchState.APPLIED_NEEDS_REFRESH : icons.STOCK_APPLIED_NEEDS_REFRESH,
         patch_db.PatchState.APPLIED_UNREFRESHABLE : icons.STOCK_APPLIED_UNREFRESHABLE,
@@ -73,30 +73,35 @@ class Widget(gtk.VBox):
         hbox.pack_end(self.tws_display, expand=False)
         self.pack_start(hbox)
         #
-        panes = [gtk.VPaned(), gtk.VPaned(), gtk.VPaned()]
-        for index in [1, 2]:
-            panes[index - 1].add2(panes[index])
-        self.pack_start(panes[0], expand=True, fill=True)
+        pane = gtk.VPaned()
+        self.pack_start(pane, expand=True, fill=True)
+        #
+        self.header_nbook = gtk.Notebook()
+        self.header_nbook.popup_enable()
+        pane.add1(self._framed(_('Header'), self.header_nbook))
         #
         self.comments = textview.Widget(aspect_ratio=0.1)
         self.comments.set_contents(self.epatch.get_comments())
         self.comments.view.set_editable(False)
-        panes[0].add1(self._framed(_('Comments'), self.comments))
+        self.comments.view.set_cursor_visible(False)
+        self.header_nbook.append_page(self.comments, gtk.Label(_('Comments')))
         #
         self.description = textview.Widget()
         self.description.set_contents(self.epatch.get_description())
         self.description.view.set_editable(False)
-        panes[1].add1(self._framed(_('Description'), self.description))
+        self.description.view.set_cursor_visible(False)
+        self.header_nbook.append_page(self.description, gtk.Label(_('Description')))
         #
         self.diffstats = textview.Widget()
         self.diffstats.set_contents(self.epatch.get_header_diffstat())
         self.diffstats.view.set_editable(False)
-        panes[2].add1(self._framed(_('Diff Statistics'), self.diffstats))
+        self.diffstats.view.set_cursor_visible(False)
+        self.header_nbook.append_page(self.diffstats, gtk.Label(_('Diff Statistics')))
         #
         self.diffs_nbook = gtk.Notebook()
         self.diffs_nbook.set_scrollable(True)
         self.diffs_nbook.popup_enable()
-        panes[2].add2(self._framed(_('File Diffs'), self.diffs_nbook))
+        pane.add2(self._framed(_('File Diffs'), self.diffs_nbook))
         self.diff_displays = {}
         self._populate_pages()
         self.update()
