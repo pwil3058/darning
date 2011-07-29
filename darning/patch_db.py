@@ -992,11 +992,11 @@ def do_apply_next_patch(force=False):
             if drop_atws:
                 aws_lines = file_data.diff.fix_trailing_whitespace()
                 if aws_lines:
-                    RCTX.stdout.write(_('"{0}": added trailing white space at line(s) {{{1}}}: removed before application.\n').format(rel_subdir(file_data.path), ', '.join([str(line) for line in aws_lines])))
+                    RCTX.stdout.write(_('"{0}": added trailing white space to "{1}" at line(s) {{{2}}}: removed before application.\n').format(next_patch.name, rel_subdir(file_data.path), ', '.join([str(line) for line in aws_lines])))
             else:
                 aws_lines = file_data.diff.report_trailing_whitespace()
                 if aws_lines:
-                    RCTX.stderr.write(_('"{0}": added trailing white space at line(s) {{{1}}}.\n').format(rel_subdir(file_data.path), ', '.join([str(line) for line in aws_lines])))
+                    RCTX.stderr.write(_('"{0}": added trailing white space to "{1}" at line(s) {{{2}}}.\n').format(next_patch.name, rel_subdir(file_data.path), ', '.join([str(line) for line in aws_lines])))
             result = runext.run_cmd(patch_cmd + [file_data.path], str(file_data.diff))
             RCTX.stdout.write(result.stdout)
             RCTX.stderr.write(result.stderr)
@@ -1085,11 +1085,11 @@ def do_unapply_top_patch():
             if drop_atws:
                 aws_lines = file_data.diff.fix_trailing_whitespace()
                 if aws_lines:
-                    RCTX.stdout.write(_('"{0}": adds trailing white space at line(s) {{{1}}}: removed.\n').format(rel_subdir(file_data.path), ', '.join([str(line) for line in aws_lines])))
+                    RCTX.stdout.write(_('"{0}": adds trailing white space to "{1}" at line(s) {{{2}}}: removed.\n').format(top_patch.name, rel_subdir(file_data.path), ', '.join([str(line) for line in aws_lines])))
             else:
                 aws_lines = file_data.diff.report_trailing_whitespace()
                 if aws_lines:
-                    RCTX.stderr.write(_('"{0}": adds trailing white space at line(s) {{{1}}}.\n').format(rel_subdir(file_data.path), ', '.join([str(line) for line in aws_lines])))
+                    RCTX.stderr.write(_('"{0}": adds trailing white space to "{1}" at line(s) {{{2}}}.\n').format(top_patch.name, rel_subdir(file_data.path), ', '.join([str(line) for line in aws_lines])))
     shutil.rmtree(top_patch.get_cached_original_dir_path())
     new_top_patch_name = get_top_patch_name()
     if new_top_patch_name is None:
