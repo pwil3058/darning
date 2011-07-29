@@ -32,6 +32,8 @@ class DiffDisplay(diff.TextWidget):
     def __init__(self, diffplus):
         self.diffplus = diffplus
         diff.TextWidget.__init__(self)
+        self.tws_nav_buttonbox.pack_start(self.tws_display, expand=False)
+        self.tws_nav_buttonbox.reorder_child(self.tws_display, 0)
     def _get_diff_text(self):
         return str(self.diffplus)
     def update(self, diffplus):
