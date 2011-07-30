@@ -58,7 +58,7 @@ class Widget(gtk.VBox):
     def __init__(self, patchname):
         gtk.VBox.__init__(self)
         self.patchname = patchname
-        self.epatch = patch_db.get_extpatch(self.patchname)
+        self.epatch = patch_db.get_textpatch(self.patchname)
         #
         self.status_icon = gtk.image_new_from_stock(self.status_icons[self.epatch.state], gtk.ICON_SIZE_BUTTON)
         self.status_box = gtk.HBox()
@@ -149,7 +149,7 @@ class Widget(gtk.VBox):
             pnum = self.diffs_nbook.page_num(gonedd)
             self.diffs_nbook.remove_page(pnum)
     def update(self):
-        self.epatch = patch_db.get_extpatch(self.patchname)
+        self.epatch = patch_db.get_textpatch(self.patchname)
         self.status_box.remove(self.status_icon)
         self.status_icon = gtk.image_new_from_stock(self.status_icons[self.epatch.state], gtk.ICON_SIZE_BUTTON)
         self.status_box.add(self.status_icon)

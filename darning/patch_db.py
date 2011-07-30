@@ -1395,14 +1395,14 @@ def get_extdiff_files_for(filepath, patchname):
     orig = patch.get_cached_original_file_path(filepath)
     return _O_IP_PAIR(original_version=orig, patched_version=filepath)
 
-class ExtDiffPlus(patchlib.DiffPlus):
+class TextDiffPlus(patchlib.DiffPlus):
     def __init__(self, patch, filepath):
         preamble = patch.generate_diff_preamble_for_file(filepath)
         diff = patch.files[filepath].diff
         patchlib.DiffPlus.__init__(self, [preamble], diff if diff else None)
         self.validity = patch.get_filepath_validity(filepath)
 
-class ExtPatch(patchlib.Patch):
+class TextPatch(patchlib.Patch):
     def __init__(self, patch):
         patchlib.Patch.__init__(self, num_strip_levels=1)
         self.name = patch.name
@@ -1410,7 +1410,7 @@ class ExtPatch(patchlib.Patch):
         self.set_description(patch.description)
         self.set_comments('# created by: Darning\n')
         for filepath in sorted(patch.files):
-            edp = ExtDiffPlus(patch, filepath)
+            edp = TextDiffPlus(patch, filepath)
             self.diff_pluses.append(edp)
             if self.state == PatchState.UNAPPLIED:
                 continue
@@ -1420,9 +1420,9 @@ class ExtPatch(patchlib.Patch):
                 self.state = PatchState.APPLIED_UNREFRESHABLE
         self.set_header_diffstat(strip_level=self.num_strip_levels)
 
-def get_extpatch(patchname):
+def get_textpatch(patchname):
     assert is_readable()
     patch_index = get_patch_series_index(patchname)
     assert patch_index is not None
     patch = _DB.series[patch_index]
-    return ExtPatch(patch)
+    return TextPatch(patch)
