@@ -148,6 +148,7 @@ class TextWidget(gtk.VBox):
         return ""
     def set_contents(self):
         def update_for_tws_change(new_count):
+            print 'NEW COUNT:', new_count, self._tws_nav_buttons_packed
             if self._tws_nav_buttons_packed and not new_count:
                 self.remove(self.tws_nav_buttonbox)
                 self.view.set_cursor_visible(False)
@@ -156,6 +157,7 @@ class TextWidget(gtk.VBox):
                 self.pack_start(self.tws_nav_buttonbox, expand=False, fill=True)
                 self.view.set_cursor_visible(True)
                 self._tws_nav_buttons_packed = True
+            self.show_all()
         text = self._get_diff_text()
         old_count = len(self.tws_list)
         self.bfr.begin_not_undoable_action()
