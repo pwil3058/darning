@@ -20,7 +20,8 @@ Data = collections.namedtuple('Data', ['name', 'status', 'origin'])
 Deco = collections.namedtuple('Deco', ['style', 'foreground'])
 
 def split_path(path):
-    assert not os.path.isabs(path) # Would result in endless loop
+    if os.path.isabs(path):
+        path = os.path.relpath(path)
     dirpart, part = os.path.split(path)
     parts = [] if not part else [part]
     while dirpart:
