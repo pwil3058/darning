@@ -148,7 +148,6 @@ class TextWidget(gtk.VBox):
         return ""
     def set_contents(self):
         def update_for_tws_change(new_count):
-            print 'NEW COUNT:', new_count, self._tws_nav_buttons_packed
             if self._tws_nav_buttons_packed and not new_count:
                 self.remove(self.tws_nav_buttonbox)
                 self.view.set_cursor_visible(False)
