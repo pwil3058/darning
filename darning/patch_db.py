@@ -1426,3 +1426,28 @@ def get_textpatch(patchname):
     assert patch_index is not None
     patch = _DB.series[patch_index]
     return TextPatch(patch)
+
+def do_export_patch_as(patchname, export_filename, force=False, overwrite=False):
+    assert is_writable()
+    patch = _get_patch(patchname)
+    if not patch:
+        return cmd_result.ERROR
+    textpatch = TextPatch(patch)
+    if not force:
+        if textpatch.state == PatchState.APPLIED_NEEDS_REFRESH:
+            RCTX.stderr.write(_('Patch needs to be refreshed.\n'))
+            return cmd_result.ERROR_SUGGEST_FORCE_OR_REFRESH
+        elif textpatch.state == PatchState.APPLIED_UNREFRESHABLE:
+            RCTX.stderr.write(_('Patch needs to be refreshed but has problems which prevent refresh.\n'))
+            return cmd_result.ERROR_SUGGEST_FORCE
+    if not export_filename:
+        export_filename = utils.convert_patchname_to_filename(patch.name)
+    if not overwrite and os.path.exists(export_filename):
+        RCTX.stderr.write(_('{0}: file already exists.\n').format(export_filename))
+        return cmd_result.ERROR | cmd_result.SUGGEST_RENAME
+    try:
+        open(export_filename, 'wb').write(str(textpatch))
+    except IOError as edata:
+        RCTX.stderr.write(str(edata) + '\n')
+        return cmd_result.ERROR
+    return cmd_result.OK

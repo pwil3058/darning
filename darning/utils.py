@@ -19,6 +19,7 @@ Utility functions
 
 import stat
 import os
+import re
 
 from darning import urlops
 
@@ -114,3 +115,6 @@ def ensure_file_dir_exists(filepath):
     file_dir = os.path.dirname(filepath)
     if not os.path.exists(file_dir):
         os.makedirs(file_dir)
+
+def convert_patchname_to_filename(patchname):
+    return re.sub('(\s+)', '-', patchname.strip())

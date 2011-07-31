@@ -185,12 +185,14 @@ class ActionButton(gtk.Button):
     def __init__(self, action, use_underline=True):
         label = action.get_property("label")
         stock_id = action.get_property("stock-id")
-        if label is "":
+        if label is not None:
             # Empty (NB not None) label means use image only
             gtk.Button.__init__(self, use_underline=use_underline)
             image = gtk.Image()
             image.set_from_stock(stock_id, gtk.ICON_SIZE_BUTTON)
-            self.add(image)
+            self.set_image(image)
+            if label:
+                self.set_label(label)
         else:
             gtk.Button.__init__(self, stock=stock_id, label=label, use_underline=use_underline)
         set_widget_tooltip_text(self, action.get_property("tooltip"))

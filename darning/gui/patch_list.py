@@ -131,6 +131,7 @@ class List(table.MapManagedTable):
         <placeholder name="applied_indifferent">
           <menuitem action="pm_edit_patch_descr"/>
           <menuitem action="patch_list_patch_view"/>
+          <menuitem action="patch_list_export_patch"/>
           <menuitem action="pm_set_patch_guards"/>
           <menuitem action="patch_list_duplicate"/>
         </placeholder>
@@ -179,6 +180,8 @@ class List(table.MapManagedTable):
                  _('Edit the selected patch\'s description'), self.do_edit_description),
                 ("patch_list_patch_view", icons.STOCK_DIFF, _('Details'), None,
                  _('View the selected patch\'s details'), self.do_view_selected_patch),
+                ("patch_list_export_patch", gtk.STOCK_SAVE_AS, _('Export'), None,
+                 _('Export the selected patch to a text file'), self.do_export),
             ])
         self.add_conditional_actions(Condns.UNIQUE_SELN | Condns.IN_PGND_MUTABLE,
             [
@@ -302,6 +305,54 @@ class List(table.MapManagedTable):
                     continue
             break
         dialog.destroy()
+    def do_export(self, action=None):
+        patchname = self.get_selected_patch()
+        do_export_named_patch(self, patchname)
+
+def do_export_named_patch(parent, patchname, suggestion=None, busy_indicator=None):
+    if not suggestion:
+        suggestion = utils.convert_patchname_to_filename(patchname)
+    if busy_indicator is None:
+        busy_indicator = dialogue.main_window
+    PROMPT = _('Export as ...')
+    export_filename = dialogue.ask_file_name(PROMPT, suggestion=suggestion, existing=False)
+    if export_filename is None:
+        return
+    force = False
+    overwrite = False
+    refresh_tried = False
+    while True:
+        busy_indicator.show_busy()
+        result = ifce.PM.do_export_patch_as(patchname, export_filename, force=force, overwrite=overwrite)
+        busy_indicator.unshow_busy()
+        if refresh_tried:
+            result = cmd_result.turn_off_flags(result, cmd_result.SUGGEST_REFRESH)
+        if result.eflags & cmd_result.SUGGEST_FORCE_OR_REFRESH != 0:
+            resp = dialogue.ask_force_refresh_or_cancel(result, clarification=None)
+            if resp == gtk.RESPONSE_CANCEL:
+                return
+            elif resp == dialogue.Response.FORCE:
+                force = True
+            elif resp == dialogue.Response.REFRESH:
+                refresh_tried = True
+                dialogue.show_busy()
+                result = ifce.PM.do_refresh_patch()
+                dialogue.unshow_busy()
+                dialogue.report_any_problems(result)
+            continue
+        elif result.eflags & cmd_result.SUGGEST_RENAME != 0:
+            resp = dialogue.ask_rename_overwrite_or_cancel(result, clarification=None)
+            if resp == gtk.RESPONSE_CANCEL:
+                return
+            elif resp == dialogue.Response.OVERWRITE:
+                overwrite = True
+            elif resp == dialogue.Response.RENAME:
+                export_filename = dialogue.ask_file_name(PROMPT, suggestion=export_filename, existing=False)
+                if export_filename is None:
+                    return
+            continue
+        dialogue.report_any_problems(result)
+        break
 
 class PatchDescrEditDialog(dialogue.Dialog):
     class Widget(text_edit.Widget):

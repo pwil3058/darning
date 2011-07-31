@@ -329,6 +329,15 @@ def do_import_patch(epatch, as_patchname, force=False):
         ws_event.notify_events(ws_event.PATCH_CREATE|ws_event.PATCH_PUSH)
     return cmd_result.Result(eflags, patch_db.RCTX.message)
 
+def do_export_patch_as(patchname, patch_filename, force=False, overwrite=False):
+    patch_db.RCTX.reset()
+    options = '' if not force else '--force '
+    options += '' if not overwrite else '--overwrite '
+    console.LOG.start_cmd(_('export {0}"{1}" as "{2}"\n').format(options, patchname, patch_filename))
+    eflags = patch_db.do_export_patch_as(patchname, patch_filename, force=force, overwrite=overwrite)
+    console.LOG.end_cmd()
+    return cmd_result.Result(eflags, patch_db.RCTX.message)
+
 def is_pushable():
     if not patch_db.is_readable():
         return False

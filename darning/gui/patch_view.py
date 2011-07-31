@@ -167,8 +167,8 @@ class Dialogue(dialogue.AmodalDialog):
         dialogue.AmodalDialog.__init__(self, title=title, parent=dialogue.main_window, flags=gtk.DIALOG_DESTROY_WITH_PARENT)
         self.widget = Widget(patchname)
         self.vbox.pack_start(self.widget, expand=True, fill=True)
-        self._save_file = patchname
-        self.save_action = gtk.Action('patch_view_save', _('_Save'), _('Save patch to text file.'), gtk.STOCK_SAVE_AS)
+        self._save_file = utils.convert_patchname_to_filename(patchname)
+        self.save_action = gtk.Action('patch_view_save', _('_Export'), _('Export patch to text file.'), gtk.STOCK_SAVE_AS)
         self.save_action.connect('activate', self._save_as_acb)
         save_button = gutils.ActionButton(self.save_action)
         self.action_area.pack_start(save_button)
@@ -183,18 +183,5 @@ class Dialogue(dialogue.AmodalDialog):
         self.widget.update()
         self.unshow_busy()
     def _save_as_acb(self, _action):
-        if self.widget.epatch.state in [patch_db.PatchState.APPLIED_NEEDS_REFRESH,  patch_db.PatchState.APPLIED_UNREFRESHABLE ]:
-            if not dialogue.ask_yes_no(_('Patch needs a refresh\n\nContinue?')):
-                return
-        if self._save_file:
-            suggestion = self._save_file
-        else:
-            suggestion = os.getcwd()
-        ans = dialogue.ask_file_name(_('Save as ...'), suggestion=suggestion, existing=False)
-        if ans is None:
-            return
-        try:
-            open(ans, 'wb').write(str(self.widget.epatch))
-            self._save_file = ans
-        except IOError as edata:
-            dialogue.report_exception_as_error(edata, self)
+        from darning.gui import patch_list
+        patch_list.do_export_named_patch(self, self.widget.patchname, suggestion=self._save_file, busy_indicator=self)

@@ -194,6 +194,7 @@ class Response(object):
     DISCARD = 7
     EDIT = 8
     MERGE = 9
+    OVERWRITE = 10
 
 def _form_question(result, clarification):
     if isinstance(result, cmd_result.Result):
@@ -216,6 +217,13 @@ def ask_force_refresh_or_cancel(result, clarification=None, parent=None):
         buttons += (_('_Refresh and Retry'), Response.REFRESH)
     if result.eflags & cmd_result.SUGGEST_FORCE:
         buttons += (_('_Force'), Response.FORCE)
+    question = _form_question(result, clarification)
+    return ask_question(question, parent, buttons)
+
+def ask_rename_overwrite_or_cancel(result, clarification=None, parent=None):
+    buttons = (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL)
+    buttons += (_('_Rename'), Response.RENAME)
+    buttons += (_('_Overwrite'), Response.OVERWRITE)
     question = _form_question(result, clarification)
     return ask_question(question, parent, buttons)
 
