@@ -175,6 +175,11 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
                 ('refresh_files', gtk.STOCK_REFRESH, _('_Refresh Files'), None,
                  _('Refresh/update the file tree display'), self.update),
             ])
+        self.add_conditional_actions(actions.Condns.IN_PGND_MUTABLE + actions.Condns.PMIC + actions.Condns.UNIQUE_SELN,
+            [
+                ('copy_file_to_top_patch', gtk.STOCK_COPY, _('_Copy'), None,
+                 _('Add a copy of the selected file to the top patch'), self._copy_selected_to_top_patch),
+            ])
         self._populate_all = populate_all
         self._auto_expand = auto_expand
         self.connect("row-expanded", self.model.on_row_expanded_cb)
@@ -316,6 +321,32 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
                 filepath_list.append(path)
         dialogue.unshow_busy()
         return filepath_list
+    def _copy_selected_to_top_patch(self, _action=None):
+        file_list = self.get_selected_files()
+        assert len(file_list) == 1
+        filepath = file_list[0]
+        overwrite = False
+        PROMPT = _('Enter target path for copy of "{0}"'.format(filepath))
+        while True:
+            as_filepath = dialogue.ask_file_name(PROMPT, existing=False)
+            if as_filepath is None:
+                break
+            dialogue.show_busy()
+            result = ifce.PM.do_copy_file_to_top_patch(filepath, as_filepath, overwrite=overwrite)
+            dialogue.unshow_busy()
+            if result.eflags & cmd_result.SUGGEST_RENAME != 0:
+                resp = dialogue.ask_rename_overwrite_or_cancel(result, clarification=None)
+                if resp == gtk.RESPONSE_CANCEL:
+                    break
+                elif resp == dialogue.Response.OVERWRITE:
+                    overwrite = True
+                elif resp == dialogue.Response.RENAME:
+                    as_filepath = dialogue.ask_file_name(PROMPT, existing=False)
+                    if as_filepath is None:
+                        break
+                continue
+            dialogue.report_any_problems(result)
+            break
 
 class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
     class ScmTree(Tree):
@@ -337,6 +368,7 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
             <placeholder name="selection_not_patched"/>
             <separator/>
             <placeholder name="unique_selection"/>
+              <menuitem action='copy_file_to_top_patch'/>
             <separator/>
             <placeholder name="no_selection"/>
             <separator/>
@@ -539,6 +571,7 @@ class TopPatchFileTreeWidget(PatchFileTreeWidget):
             <placeholder name="selection_not_patched"/>
             <separator/>
             <placeholder name="unique_selection"/>
+              <menuitem action='copy_file_to_top_patch'/>
               <menuitem action='patch_diff_selected_file'/>
               <menuitem action='patch_extdiff_selected_file'/>
             <separator/>

@@ -496,10 +496,17 @@ _SUB_DIR = None
 def rel_subdir(filepath):
     return filepath if _SUB_DIR is None else os.path.relpath(filepath, SUBDIR)
 
+def rel_basedir(filepath):
+    if os.path.isabs(filepath):
+        filepath = os.path.relpath(filepath)
+    elif _SUB_DIR is not None:
+        filepath = os.path.join(_SUB_DIR, filepath)
+    return filepath
+
 def prepend_subdir(filepaths):
-    if _SUB_DIR is not None:
-        for findex in range(len(filepaths)):
-            filepaths[findex] = os.path.join(_SUB_DIR, filepaths[findex])
+    for findex in range(len(filepaths)):
+        filepaths[findex] = rel_basedir(filepaths[findex])
+    return filepaths
 
 def find_base_dir(remember_sub_dir=False):
     '''Find the nearest directory above that contains a database'''
@@ -1040,6 +1047,12 @@ def get_top_applied_patch_for_file(filepath):
             return applied_patch.name
     return None
 
+def get_top_patch():
+    '''Return the top applied patch'''
+    assert is_readable()
+    top = get_series_index_for_top()
+    return None if top is None else _DB.series[top]
+
 def get_top_patch_name():
     '''Return the name of the top applied patch'''
     assert is_readable()
@@ -1172,6 +1185,33 @@ def do_add_files_to_patch(patchname, filepaths, force=False):
                 patch.files[filepath].old_mode = None
             RCTX.stderr.write(_('{0}: (overlapped) file added to patch "{1}".\n').format(rfilepath, patch.name))
         dump_db() # do this now to minimize problems if interrupted
+    return cmd_result.OK
+
+def do_copy_file_to_top_patch(filepath, as_filepath, overwrite=False):
+    assert is_writable()
+    patch = get_top_patch()
+    if patch is None:
+        RCTX.stderr.write(_('No patches applied.\n'))
+        return cmd_result.ERROR
+    filepath = rel_basedir(filepath)
+    if not os.path.exists(filepath):
+        RCTX.stderr.write(_('{0}: file does not exist.\n').format(rel_subdir(filepath)))
+        return cmd_result.ERROR
+    as_filepath = rel_basedir(as_filepath)
+    if as_filepath in patch.files:
+        if not overwrite:
+            RCTX.stderr.write(_('{0}: file already in patch.\n').format(rel_subdir(as_filepath)))
+            return cmd_result.ERROR | cmd_result.SUGGEST_RENAME
+    else:
+        patch.files[as_filepath] = FileData(as_filepath)
+        patch.do_cache_original(as_filepath, None, False)
+    dump_db()
+    try:
+        shutil.copy2(filepath, as_filepath)
+    except OSError as edata:
+        RCTX.stderr.write(edata)
+        return cmd_result.ERROR
+    RCTX.stdout.write(_('{0}: file added to patch "{1}" as "{2}".\n').format(rel_subdir(filepath), patch.name, rel_subdir(as_filepath)))
     return cmd_result.OK
 
 def do_drop_files_fm_patch(patchname, filepaths):

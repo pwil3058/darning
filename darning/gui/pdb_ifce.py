@@ -295,6 +295,13 @@ def do_add_files_to_patch(filepaths, patchname=None, force=False):
             ws_event.notify_events(ws_event.FILE_ADD)
     return cmd_result.Result(eflags, patch_db.RCTX.message)
 
+def do_copy_file_to_top_patch(filepath, as_filepath, overwrite=False):
+    patch_db.RCTX.reset()
+    console.LOG.start_cmd('copy "{0}" "{1}"\n'.format(filepath, as_filepath))
+    eflags = patch_db.do_copy_file_to_top_patch(filepath, as_filepath, overwrite=overwrite)
+    ws_event.notify_events(ws_event.FILE_ADD)
+    return cmd_result.Result(eflags, patch_db.RCTX.message)
+
 def do_drop_files_from_patch(filepaths, patch=None):
     patch_db.RCTX.reset()
     if patch is None:
