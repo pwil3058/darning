@@ -1,0 +1,9 @@
+[Desktop Entry]
+Encoding=UTF-8
+Name=Darning Patch Management GUI (gdarn)
+GenericName=GUI for the management of source patch series
+Exec=gdarn
+Terminal=false
+Type=Application
+Icon=darning
+Categories=GNOME;GTK;Development;
