@@ -868,7 +868,7 @@ def do_import_patch(epatch, patchname, force=False):
         RCTX.stdout.write(_('{0}: patch inserted after patch "{1}".\n').format(patchname, top_patchname))
     else:
         RCTX.stdout.write(_('{0}: patch inserted at start of series.\n').format(patchname))
-    return do_apply_next_patch(force=force, after_import=True)
+    return do_apply_next_patch(force=force)
 
 def top_patch_needs_refresh():
     '''Does the top applied patch need a refresh?'''
@@ -982,7 +982,7 @@ def get_next_patch_overlap_data():
         return OverlapData()
     return get_overlap_data(_DB.series[next_index].get_filepaths())
 
-def do_apply_next_patch(force=False, after_import=False):
+def do_apply_next_patch(force=False):
     '''Apply the next patch in the series'''
     assert is_writable()
     next_index = _get_next_patch_index()
@@ -1028,8 +1028,8 @@ def do_apply_next_patch(force=False, after_import=False):
             RCTX.stdout.write(result.stdout)
             RCTX.stderr.write(result.stderr)
             biggest_ecode = max(biggest_ecode, result.ecode)
-            patch_ok = result.ecode == 0
-            if after_import and not patch_ok:
+            if result.ecode != 0:
+                patch_ok = False
                 file_data.diff = None
         else:
             RCTX.stdout.write(_('Processing file "{0}".\n').format(rel_subdir(file_data.path)))
