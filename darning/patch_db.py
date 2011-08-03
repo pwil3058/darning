@@ -868,7 +868,7 @@ def do_import_patch(epatch, patchname, force=False):
         RCTX.stdout.write(_('{0}: patch inserted after patch "{1}".\n').format(patchname, top_patchname))
     else:
         RCTX.stdout.write(_('{0}: patch inserted at start of series.\n').format(patchname))
-    return do_apply_next_patch(force=force)
+    return do_apply_next_patch(force=force, after_import=True)
 
 def top_patch_needs_refresh():
     '''Does the top applied patch need a refresh?'''
@@ -982,7 +982,7 @@ def get_next_patch_overlap_data():
         return OverlapData()
     return get_overlap_data(_DB.series[next_index].get_filepaths())
 
-def do_apply_next_patch(force=False):
+def do_apply_next_patch(force=False, after_import=False):
     '''Apply the next patch in the series'''
     assert is_writable()
     next_index = _get_next_patch_index()
@@ -1029,6 +1029,8 @@ def do_apply_next_patch(force=False):
             RCTX.stderr.write(result.stderr)
             biggest_ecode = max(biggest_ecode, result.ecode)
             patch_ok = result.ecode == 0
+            if after_import and not patch_ok:
+                file_data.diff = None
         else:
             RCTX.stdout.write(_('Processing file "{0}".\n').format(rel_subdir(file_data.path)))
         file_exists = os.path.exists(file_data.path)
@@ -1232,6 +1234,37 @@ def do_copy_file_to_top_patch(filepath, as_filepath, overwrite=False):
         RCTX.stderr.write(edata)
         return cmd_result.ERROR
     RCTX.stdout.write(_('{0}: file added to patch "{1}" as "{2}".\n').format(rel_subdir(filepath), patch.name, rel_subdir(as_filepath)))
+    return cmd_result.OK
+
+def do_rename_file_in_top_patch(filepath, new_filepath, force=False, overwrite=False):
+    assert is_writable()
+    patch = get_top_patch()
+    if patch is None:
+        RCTX.stderr.write(_('No patches applied.\n'))
+        return cmd_result.ERROR
+    filepath = rel_basedir(filepath)
+    if not os.path.exists(filepath):
+        RCTX.stderr.write(_('{0}: file does not exist.\n').format(rel_subdir(filepath)))
+        return cmd_result.ERROR
+    if not filepath in patch.files:
+        result = do_add_files_to_patch(patch.name, [rel_subdir(filepath)], force=force)
+        if result != cmd_result.OK:
+            return result
+    new_filepath = rel_basedir(new_filepath)
+    if new_filepath in patch.files:
+        if not overwrite:
+            RCTX.stderr.write(_('{0}: file already in patch.\n').format(rel_subdir(new_filepath)))
+            return cmd_result.ERROR | cmd_result.SUGGEST_RENAME
+    else:
+        patch.files[new_filepath] = FileData(new_filepath)
+        patch.do_cache_original(new_filepath, None, False)
+    dump_db()
+    try:
+        os.rename(filepath, new_filepath)
+    except OSError as edata:
+        RCTX.stderr.write(edata)
+        return cmd_result.ERROR
+    RCTX.stdout.write(_('{0}: file added to patch "{1}" as "{2}".\n').format(rel_subdir(filepath), patch.name, rel_subdir(new_filepath)))
     return cmd_result.OK
 
 def do_drop_files_fm_patch(patchname, filepaths):

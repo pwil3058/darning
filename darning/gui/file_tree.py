@@ -180,6 +180,8 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
             [
                 ('copy_file_to_top_patch', gtk.STOCK_COPY, _('_Copy'), None,
                  _('Add a copy of the selected file to the top patch'), self._copy_selected_to_top_patch),
+                ('rename_file_in_top_patch', icons.STOCK_RENAME, _('_Rename'), None,
+                 _('Rename the selected file within the top patch'), self._rename_selected_in_top_patch),
             ])
         self._populate_all = populate_all
         self._auto_expand = auto_expand
@@ -350,10 +352,10 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
         filepath = file_list[0]
         overwrite = False
         PROMPT = _('Enter target path for copy of "{0}"'.format(filepath))
+        as_filepath = dialogue.ask_file_name(PROMPT, existing=False)
+        if as_filepath is None:
+            return
         while True:
-            as_filepath = dialogue.ask_file_name(PROMPT, existing=False)
-            if as_filepath is None:
-                break
             dialogue.show_busy()
             result = ifce.PM.do_copy_file_to_top_patch(filepath, as_filepath, overwrite=overwrite)
             dialogue.unshow_busy()
@@ -366,6 +368,47 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
                 elif resp == dialogue.Response.RENAME:
                     as_filepath = dialogue.ask_file_name(PROMPT, existing=False)
                     if as_filepath is None:
+                        break
+                continue
+            dialogue.report_any_problems(result)
+            break
+    def _rename_selected_in_top_patch(self, _action=None):
+        file_list = self.get_selected_files()
+        assert len(file_list) == 1
+        filepath = file_list[0]
+        force = False
+        overwrite = False
+        refresh_tried = False
+        PROMPT = _('Enter new path for "{0}"'.format(filepath))
+        new_filepath = dialogue.ask_file_name(PROMPT, existing=False)
+        if new_filepath is None:
+            return
+        while True:
+            dialogue.show_busy()
+            result = ifce.PM.do_rename_file_in_top_patch(filepath, new_filepath, force=force, overwrite=overwrite)
+            dialogue.unshow_busy()
+            if refresh_tried:
+                result = cmd_result.turn_off_flags(result, cmd_result.SUGGEST_REFRESH)
+            if not force and result.eflags & cmd_result.SUGGEST_FORCE_OR_REFRESH != 0:
+                resp = dialogue.ask_force_refresh_or_cancel(result, clarification=None)
+                if resp == gtk.RESPONSE_CANCEL:
+                    break
+                elif resp == dialogue.Response.FORCE:
+                    force = True
+                elif resp == dialogue.Response.REFRESH:
+                    refresh_tried = True
+                    result = ifce.PM.do_refresh_overlapped_files([filepath])
+                    dialogue.report_any_problems(result)
+                continue
+            elif result.eflags & cmd_result.SUGGEST_RENAME != 0:
+                resp = dialogue.ask_rename_overwrite_or_cancel(result, clarification=None)
+                if resp == gtk.RESPONSE_CANCEL:
+                    break
+                elif resp == dialogue.Response.OVERWRITE:
+                    overwrite = True
+                elif resp == dialogue.Response.RENAME:
+                    new_filepath = dialogue.ask_file_name(PROMPT, existing=False)
+                    if new_filepath is None:
                         break
                 continue
             dialogue.report_any_problems(result)
@@ -392,6 +435,7 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
             <separator/>
             <placeholder name="unique_selection"/>
               <menuitem action='copy_file_to_top_patch'/>
+              <menuitem action='rename_file_in_top_patch'/>
             <separator/>
             <placeholder name="no_selection"/>
             <separator/>
@@ -610,6 +654,7 @@ class TopPatchFileTreeWidget(PatchFileTreeWidget):
             <separator/>
             <placeholder name="unique_selection"/>
               <menuitem action='copy_file_to_top_patch'/>
+              <menuitem action='rename_file_in_top_patch'/>
               <menuitem action='patch_diff_selected_file'/>
               <menuitem action='patch_extdiff_selected_file'/>
             <separator/>
