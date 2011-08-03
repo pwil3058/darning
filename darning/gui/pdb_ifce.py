@@ -177,6 +177,11 @@ def get_extdiff_files_for(filepath, patchname):
         patchname = patch_db.get_top_applied_patch_for_file(filepath)
     return patch_db.get_extdiff_files_for(filepath, patchname)
 
+def get_outstanding_changes_below_top():
+    if not patch_db.is_readable():
+        return None
+    return patch_db.get_outstanding_changes_below_top()
+
 def do_create_new_patch(patchname, descr):
     patch_db.RCTX.reset()
     console.LOG.start_cmd(_('new patch "{0}"\n').format(patchname))

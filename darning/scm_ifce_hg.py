@@ -129,7 +129,7 @@ class Mercurial(object):
         Get the subset of files which have uncommitted hg changes.  If files
         is None assume all files in current directory.
         '''
-        cmd = ['hg', 'status', '-mardn'] + files if files else ['.']
+        cmd = ['hg', 'status', '-mardn'] + (files if files else ['.'])
         result = runext.run_cmd(cmd)
         assert result.ecode == 0
         return result.stdout.splitlines()

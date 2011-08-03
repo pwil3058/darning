@@ -883,6 +883,26 @@ def _get_next_patch_index():
     assert is_readable()
     return get_series_index_for_next()
 
+def get_outstanding_changes_below_top():
+    '''Get the data detailing unfrefreshed/uncommitted files below the
+    top patch.  I.e. outstanding changes.
+    '''
+    assert is_readable()
+    applied_patches = get_applied_patch_list()
+    top_patch = applied_patches[-1] if applied_patches else None
+    skip_set = set([filepath for filepath in top_patch.files]) if top_patch else set()
+    unrefreshed = {}
+    for applied_patch in reversed(applied_patches[:-1]):
+        apfiles = applied_patch.get_filepaths()
+        if apfiles:
+            apfiles_set = set(apfiles) - skip_set
+            for apfile in apfiles_set:
+                if applied_patch.files[apfile].needs_refresh():
+                    unrefreshed[apfile] = applied_patch.name
+            skip_set |= apfiles_set
+    uncommitted = set(scm_ifce.get_files_with_uncommitted_changes()) - skip_set
+    return OverlapData(unrefreshed=unrefreshed, uncommitted=uncommitted)
+
 def get_overlap_data(filepaths, patchname=None):
     '''
     Get the data detailing unrefreshed/uncommitted files that will be
@@ -1171,7 +1191,7 @@ def do_add_files_to_patch(patchname, filepaths, force=False):
                 patch.do_cache_original(filepath, None, True)
                 RCTX.stderr.write(_('{0}: file added to patch "{1}". Uncommited SCM changes have been incorporated.\n').format(rfilepath, patch.name))
             elif filepath in overlaps.unrefreshed:
-                patch.do_cache_original(filepath, overlaps.unrefreshed[filepath], False)
+                patch.do_cache_original(filepath, get_patch(overlaps.unrefreshed[filepath]), False)
                 RCTX.stderr.write(_('{0}: file added to patch "{1}". Unrefeshed changes in patch "{2}" incorporated.\n').format(rfilepath, patch.name, overlaps.unrefreshed[filepath]))
             else:
                 patch.do_cache_original(filepath, None, False)

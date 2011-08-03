@@ -21,6 +21,7 @@ import os
 from darning import utils
 from darning import patch_db
 from darning import cmd_result
+from darning import fsdb
 
 from darning.gui import tlview
 from darning.gui import gutils
@@ -212,6 +213,28 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
             dummy = self.model.append(parent_iter, row_tuple)
         if parent_iter is not None:
             self.model.insert_place_holder_if_needed(parent_iter)
+    def get_iter_for_filepath(self, filepath):
+        pathparts = fsdb.split_path(filepath)
+        child_iter = self.model.get_iter_first()
+        for index in range(len(pathparts) - 1):
+            while child_iter is not None:
+                if self.model.get_labelled_value(child_iter, 'name') == pathparts[index]:
+                    tpath = self.model.get_path(child_iter)
+                    if not self.row_expanded(tpath):
+                        self.expand_row(tpath, False)
+                    child_iter = self.model.iter_children(child_iter)
+                    break
+                child_iter = self.model.iter_next(child_iter)
+        while child_iter is not None:
+            if self.model.get_labelled_value(child_iter, 'name') == pathparts[-1]:
+                return child_iter
+            child_iter = self.model.iter_next(child_iter)
+        return None
+    def select_filepaths(self, filepaths):
+        seln = self.get_selection()
+        seln.unselect_all()
+        for filepath in filepaths:
+            seln.select_iter(self.get_iter_for_filepath(filepath))
     def _update_dir(self, dirpath, parent_iter=None):
         changed = False
         if parent_iter is None:
@@ -373,6 +396,10 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
             <placeholder name="no_selection"/>
             <separator/>
             <placeholder name="no_selection_not_patched"/>
+              <menuitem action='scm_select_unsettled'/>
+            <separator/>
+            <separator/>
+            <placeholder name="make_selections"/>
             <separator/>
           </popup>
         </ui>
@@ -413,6 +440,12 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
                      _('Add the selected files to the top patch'), self._add_selection_to_top_patch),
                     ('scm_edit_files_in_top_patch', gtk.STOCK_EDIT, _('_Edit'), None,
                      _('Open the selected files for editing after adding them to the top patch'), self._edit_selection_in_top_patch),
+                ])
+            self.add_conditional_actions(actions.Condns.IN_PGND + actions.Condns.PMIC,
+                [
+                    ('scm_select_unsettled', None, _('Select _Unsettled'), None,
+                     _('Select files that are unrefreshed in patches below top or have uncommitted SCM changes not covered by an applied patch'),
+                     self._select_unsettled),
                 ])
             self.ui_manager.add_ui_from_string(self.UI_DESCR)
             self.add_notification_cb(ws_event.CHECKOUT|ws_event.CHANGE_WD, self.repopulate)
@@ -465,6 +498,11 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
                 return
             if self._add_files_to_top_patch(file_list):
                 text_edit.edit_files_extern(file_list)
+        def _select_unsettled(self, _action=None):
+            unsettled = ifce.PM.get_outstanding_changes_below_top()
+            filepaths = [filepath for filepath in unsettled.unrefreshed]
+            filepaths += [filepath for filepath in unsettled.uncommitted]
+            self.select_filepaths(filepaths)
     def __init__(self, hide_clean=False):
         gtk.VBox.__init__(self)
         ws_event.Listener.__init__(self)
