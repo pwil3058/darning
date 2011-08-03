@@ -27,6 +27,7 @@ from darning.gui import icons
 from darning.gui import diff
 from darning.gui import ws_event
 from darning.gui import gutils
+from darning.gui import ifce
 
 class DiffDisplay(diff.TextWidget):
     def __init__(self, diffplus):
@@ -167,6 +168,11 @@ class Dialogue(dialogue.AmodalDialog):
         dialogue.AmodalDialog.__init__(self, title=title, parent=dialogue.main_window, flags=gtk.DIALOG_DESTROY_WITH_PARENT)
         self.widget = Widget(patchname)
         self.vbox.pack_start(self.widget, expand=True, fill=True)
+        self.refresh_action = gtk.Action('patch_view_refresh', _('_Refresh'), _('Refresh this patch in database.'), icons.STOCK_REFRESH_PATCH)
+        self.refresh_action.connect('activate', self._refresh_acb)
+        self.refresh_action.set_sensitive(self.widget.epatch.state != patch_db.PatchState.UNAPPLIED)
+        refresh_button = gutils.ActionButton(self.refresh_action)
+        self.action_area.pack_start(refresh_button)
         self._save_file = utils.convert_patchname_to_filename(patchname)
         self.save_action = gtk.Action('patch_view_save', _('_Export'), _('Export patch to text file.'), gtk.STOCK_SAVE_AS)
         self.save_action.connect('activate', self._save_as_acb)
@@ -181,7 +187,13 @@ class Dialogue(dialogue.AmodalDialog):
     def _update_display_cb(self, _arg=None):
         self.show_busy()
         self.widget.update()
+        self.refresh_action.set_sensitive(self.widget.epatch.state != patch_db.PatchState.UNAPPLIED)
         self.unshow_busy()
+    def _refresh_acb(self, _action):
+        self.show_busy()
+        result = ifce.PM.do_refresh_patch(self.widget.patchname)
+        self.unshow_busy()
+        dialogue.report_any_problems(result)
     def _save_as_acb(self, _action):
         from darning.gui import patch_list
         patch_list.do_export_named_patch(self, self.widget.patchname, suggestion=self._save_file, busy_indicator=self)

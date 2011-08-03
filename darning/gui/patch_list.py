@@ -126,6 +126,7 @@ class List(table.MapManagedTable):
       <popup name="patches_popup">
         <placeholder name="applied">
           <menuitem action="patch_list_pop_to"/>
+          <menuitem action="patch_list_refresh_selected"/>
         </placeholder>
         <separator/>
         <placeholder name="applied_indifferent">
@@ -204,6 +205,11 @@ class List(table.MapManagedTable):
             [
                 ("patch_list_pop_to", icons.STOCK_POP_PATCH, _('Pop To'), None,
                  _('Apply all applied patches down to the selected patch.'), self.do_pop_patches_to),
+            ])
+        self.add_conditional_actions(Condns.UNIQUE_SELN | Condns.POP_POSSIBLE | Condns.IN_PGND_MUTABLE | Condns.APPLIED,
+            [
+                ("patch_list_refresh_selected", icons.STOCK_PUSH_PATCH, _('Refresh'), None,
+                 _('Refresh the selected patch.'), self.do_refresh_selected_patch_acb),
             ])
         self.ui_manager.add_ui_from_string(self.UI_DESCR)
         self.header.lhs.pack_start(self.ui_manager.get_widget('/patch_list_menubar'), expand=True, fill=True)
@@ -308,6 +314,12 @@ class List(table.MapManagedTable):
     def do_export(self, action=None):
         patchname = self.get_selected_patch()
         do_export_named_patch(self, patchname)
+    def do_refresh_selected_patch_acb(self, _arg):
+        patchname = self.get_selected_patch()
+        dialogue.show_busy()
+        result = ifce.PM.do_refresh_patch(patchname)
+        dialogue.unshow_busy()
+        dialogue.report_any_problems(result)
 
 def do_export_named_patch(parent, patchname, suggestion=None, busy_indicator=None):
     if not suggestion:
