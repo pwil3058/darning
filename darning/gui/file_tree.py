@@ -612,7 +612,7 @@ class PatchFileTreeWidget(gtk.VBox):
                 ])
             self.add_conditional_actions(actions.Condns.IN_PGND_MUTABLE + actions.Condns.PMIC + actions.Condns.UNIQUE_SELN,
                 [
-                    ('patch_extdiff_selected_file', icons.STOCK_DIFF, _('E_xDiff'), None,
+                    ('patch_extdiff_selected_file', icons.STOCK_DIFF, _('E_xtDiff'), None,
                      _('Launch external diff viewer for selected file'), self.extdiff_selected_file_acb),
                 ])
             self.add_notification_cb(ws_event.CHECKOUT|ws_event.CHANGE_WD|ws_event.PATCH_PUSH|ws_event.PATCH_POP, self.repopulate)
@@ -644,6 +644,7 @@ class TopPatchFileTreeWidget(PatchFileTreeWidget):
         <ui>
           <popup name="files_popup">
             <placeholder name="selection_indifferent"/>
+              <menuitem action="file_list_add_new"/>
             <separator/>
             <placeholder name="selection">
               <menuitem action='patch_edit_files'/>
@@ -728,3 +729,16 @@ class CombinedPatchFileTreeWidget(PatchFileTreeWidget):
             assert len(filepaths) == 1
             dialog = diff.CombinedForFileDialog(filepath=filepaths[0])
             dialog.show()
+
+def add_new_file_to_top_patch_acb(_action=None):
+    filepath = dialogue.ask_file_name(_('Enter path for new file'), existing=False)
+    if not filepath:
+        return
+    ScmFileTreeWidget.ScmTree._add_files_to_top_patch([filepath])
+
+
+actions.add_class_indep_actions(actions.Condns.PMIC | actions.Condns.IN_PGND_MUTABLE,
+    [
+        ("file_list_add_new", gtk.STOCK_NEW, _('New'), None,
+         _('Add a new file to the top applied patch'), add_new_file_to_top_patch_acb),
+    ])
