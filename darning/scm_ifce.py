@@ -47,14 +47,6 @@ def get_revision(filepath=None):
         return None
     return _CURRENT_BACK_END.get_revision(filepath)
 
-def has_uncommitted_change(filepath):
-    '''
-    Does the SCM have uncommitted changes for the named file?
-    '''
-    if _CURRENT_BACK_END is None:
-        return False
-    return _CURRENT_BACK_END.has_uncommitted_change(filepath)
-
 def get_files_with_uncommitted_changes(files=None):
     '''
     Get the subset of files which have uncommitted SCM changes.  If files

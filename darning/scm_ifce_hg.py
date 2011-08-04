@@ -112,17 +112,11 @@ class Mercurial(object):
         if filepath:
             cmd.append(filepath)
         result = runext.run_cmd(cmd)
-        assert result.ecode == 0
+        if filepath is None:
+            assert result.ecode == 0
+        elif result.ecode != 0:
+            return None
         return result.stdout
-    @staticmethod
-    def has_uncommitted_change(filepath):
-        '''
-        Does the SCM have uncommitted changes for the named file?
-        '''
-        cmd = ['hg', 'status', '-cuin', filepath]
-        result = runext.run_cmd(cmd)
-        assert result.ecode == 0
-        return result.stdout.strip() != filepath
     @staticmethod
     def get_files_with_uncommitted_changes(files=None):
         '''
