@@ -52,6 +52,7 @@ class Darning(gtk.Window, dialogue.BusyIndicator, actions.AGandUIManager):
             <toolitem name="Refresh" action="patch_list_refresh_top_patch"/>
             <toolitem name="Push" action="patch_list_push"/>
             <toolitem name="Pop" action="patch_list_pop"/>
+            <toolitem name="Fold" action="patch_list_fold_external_patch"/>
             <separator/>
             <toolitem name="New" action="patch_list_new_patch"/>
             <toolitem name="Import" action="patch_list_import_patch"/>

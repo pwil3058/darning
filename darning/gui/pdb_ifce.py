@@ -144,6 +144,16 @@ def get_filepaths_in_next_patch(filepaths=None):
         return []
     return patch_db.get_filepaths_in_next_patch(filepaths=filepaths)
 
+def get_filepaths_in_top_patch(filepaths=None):
+    '''
+    Return the names of the files in the top patch.
+    If filepaths is not None restrict the returned list to names that
+    are also in filepaths.
+    '''
+    if not patch_db.is_readable():
+        return []
+    return patch_db.get_filepaths_in_patch(patchname=None, filepaths=filepaths)
+
 def get_file_diff(filepath, patchname):
     if not patch_db.is_readable():
         return None
@@ -355,6 +365,15 @@ def do_export_patch_as(patchname, patch_filename, force=False, overwrite=False):
     console.LOG.start_cmd(_('export {0}"{1}" as "{2}"\n').format(options, patchname, patch_filename))
     eflags = patch_db.do_export_patch_as(patchname, patch_filename, force=force, overwrite=overwrite)
     console.LOG.end_cmd()
+    return cmd_result.Result(eflags, patch_db.RCTX.message)
+
+def do_fold_epatch(epatch, force=False):
+    patch_db.RCTX.reset()
+    console.LOG.start_cmd(_('fold "{0}"\n').format(epatch.source_file_path))
+    eflags = patch_db.do_fold_epatch(epatch, force=force)
+    console.LOG.end_cmd()
+    if cmd_result.is_less_than_error(eflags):
+        ws_event.notify_events(ws_event.FILE_CHANGES)
     return cmd_result.Result(eflags, patch_db.RCTX.message)
 
 def is_pushable():

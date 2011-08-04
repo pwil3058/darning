@@ -878,6 +878,47 @@ def do_import_patch(epatch, patchname, overwrite=False):
         RCTX.stdout.write(_('{0}: patch inserted at start of series.\n').format(patchname))
     return cmd_result.OK
 
+def do_fold_epatch(epatch, force=False):
+    '''Fold an external patch into the top patch.'''
+    assert is_writable()
+    top_patch = _get_patch(None)
+    if not top_patch:
+        return cmd_result.ERROR
+    top_patch_file_set = set([filepath for filepath in top_patch.files])
+    new_file_list = [filepath for filepath in epatch.get_file_paths(epatch.num_strip_levels) if filepath not in top_patch_file_set]
+    result = do_add_files_to_patch(top_patch.name, new_file_list, force=force)
+    if result != cmd_result.OK:
+        return result
+    patch_cmd = ['patch', '--merge', '--force', '-p1', '--batch', '--quiet']
+    drop_atws = options.get('push', 'drop_added_tws')
+    for diff_plus in epatch.diff_pluses:
+        top_patch.files[filepath].timestamp = -1
+        dump_db()
+        filepath = diff_plus.get_file_path(epatch.num_strip_levels)
+        RCTX.stdout.write(_('Patching file "{0}".\n').format(rel_subdir(filepath)))
+        if drop_atws:
+            aws_lines = diff_plus.fix_trailing_whitespace()
+            if aws_lines:
+                RCTX.stdout.write(_('Added trailing white space to "{0}" at line(s) {{{1}}}: removed before application.\n').format(rel_subdir(filepath), ', '.join([str(line) for line in aws_lines])))
+        else:
+            aws_lines = diff_plus.report_trailing_whitespace()
+            if aws_lines:
+                RCTX.stderr.write(_('Added trailing white space to "{1}" at line(s) {{{2}}}.\n').format(rel_subdir(filepath), ', '.join([str(line) for line in aws_lines])))
+        result = runext.run_cmd(patch_cmd + [filepath], str(diff_plus.diff))
+        RCTX.stdout.write(result.stdout)
+        RCTX.stderr.write(result.stderr)
+        if os.path.exists(filepath):
+            for preamble in diff_plus.preambles:
+                if preamble.preamble_type == 'git':
+                    for key in ['new mode', 'new file mode']:
+                        if key in preamble.extras:
+                            os.chmod(filepath, int(preamble.extras[key], 8))
+                            break
+                    break
+    if top_patch_needs_refresh():
+        RCTX.stdout.write(_('{0}: patch needs refreshing.\n').format(top_patch.name))
+    return cmd_result.OK
+
 def top_patch_needs_refresh():
     '''Does the top applied patch need a refresh?'''
     assert is_readable()
@@ -1148,7 +1189,7 @@ def get_filepaths_in_patch(patchname, filepaths=None):
     are also in filepaths.
     '''
     assert is_readable()
-    patch_index = get_patch_series_index(patchname)
+    patch_index = get_patch_series_index(patchname) if patchname else get_series_index_for_top()
     assert patch_index is not None
     return _DB.series[patch_index].get_filepaths(filepaths)
 

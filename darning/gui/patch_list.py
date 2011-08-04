@@ -580,13 +580,13 @@ class ImportPatchDialog(dialogue.Dialog):
         self.epatch = epatch
         #
         patch_file_name = os.path.basename(epatch.source_file_path)
-        hbox = gtk.HBox()
-        hbox.pack_start(gtk.Label(_("As Patch:")), expand=False)
+        self.namebox = gtk.HBox()
+        self.namebox.pack_start(gtk.Label(_("As Patch:")), expand=False)
         self.as_name = gutils.MutableComboBoxEntry()
         self.as_name.child.set_width_chars(32)
         self.as_name.set_text(patch_file_name)
-        hbox.pack_start(self.as_name, expand=True, fill=True)
-        self.vbox.pack_start(hbox, expand=False, fill=False)
+        self.namebox.pack_start(self.as_name, expand=True, fill=True)
+        self.vbox.pack_start(self.namebox, expand=False, fill=False)
         #
         hbox = gtk.HBox()
         hbox.pack_start(gtk.Label(_("Files: Strip Level:")), expand=False)
@@ -623,6 +623,12 @@ class ImportPatchDialog(dialogue.Dialog):
             self.strip_level_buttons[0].set_active(True)
     def _strip_level_toggle_cb(self, _widget, _arg=None):
         self.update_file_list()
+
+class FoldPatchDialog(ImportPatchDialog):
+    def __init__(self, epatch, parent=None):
+        ImportPatchDialog.__init__(self, epatch, parent)
+        self.set_title( _('Fold Patch: {0} : {1} -- gdarn').format(epatch.source_file_path, utils.path_rel_home(os.getcwd())))
+        self.namebox.hide()
 
 class RestorePatchDialog(dialogue.Dialog):
     _KEYVAL_ESCAPE = gtk.gdk.keyval_from_name('Escape')
@@ -806,6 +812,46 @@ def import_patch_acb(_arg):
             break
     dlg.destroy()
 
+def fold_patch_acb(_arg):
+    patch_file = dialogue.ask_file_name(_('Select patch file to be folded'))
+    if patch_file is None:
+        return
+    try:
+        epatch = patchlib.Patch.parse_text_file(patch_file)
+    except patchlib.ParseError as edata:
+        result = cmd_result.Result(cmd_result.ERROR, '{0}: {1}: {2}\n'.format(patch_file, edata.lineno, edata.message))
+        dialogue.report_any_problems(result)
+        return
+    force = False
+    refresh_tried = False
+    dlg = FoldPatchDialog(epatch, parent=dialogue.main_window)
+    resp = dlg.run()
+    while resp != gtk.RESPONSE_CANCEL:
+        epatch.set_strip_level(dlg.get_strip_level())
+        dlg.show_busy()
+        result = ifce.PM.do_fold_epatch(epatch, force=force)
+        dlg.unshow_busy()
+        if refresh_tried:
+            result = cmd_result.turn_off_flags(result, cmd_result.SUGGEST_REFRESH)
+        if not force and result.eflags & cmd_result.SUGGEST_FORCE_OR_REFRESH != 0:
+            resp = dialogue.ask_force_refresh_or_cancel(result, clarification=None)
+            if resp == gtk.RESPONSE_CANCEL:
+                break
+            elif resp == dialogue.Response.FORCE:
+                force = True
+            elif resp == dialogue.Response.REFRESH:
+                refresh_tried = True
+                dialogue.show_busy()
+                top_patch_file_list = ifce.PM.get_filepaths_in_top_patch()
+                file_list = [filepath for filepath in epatch.get_file_paths(epatch.num_strip_levels) if filepath not in top_patch_file_list]
+                result = ifce.PM.do_refresh_overlapped_files(file_list)
+                dialogue.unshow_busy()
+                dialogue.report_any_problems(result)
+            continue
+        dialogue.report_any_problems(result)
+        break
+    dlg.destroy()
+
 def push_next_patch_acb(_arg):
     force = False
     refresh_tried = False
@@ -928,6 +974,8 @@ actions.add_class_indep_actions(Condns.PUSH_POSSIBLE | Condns.IN_PGND_MUTABLE,
 
 actions.add_class_indep_actions(Condns.POP_POSSIBLE | Condns.IN_PGND_MUTABLE,
     [
+        ("patch_list_fold_external_patch", icons.STOCK_FOLD_PATCH, None, None,
+         _('Fold an external patch into the top applied patch'), fold_patch_acb),
         ("patch_list_pop", icons.STOCK_POP_PATCH, _('Pop'), None,
          _('Pop the top applied patch'), pop_top_patch_acb),
         ("patch_list_pop_all", icons.STOCK_POP_PATCH, _('Pop All'), None,
