@@ -838,15 +838,23 @@ def do_create_new_patch(patchname, description):
         RCTX.stderr.write(_('Previous top patch ("{0}") needs refreshing.\n').format(old_top))
     return cmd_result.OK
 
-def do_import_patch(epatch, patchname, force=False):
+def do_import_patch(epatch, patchname, overwrite=False):
     '''Import an external patch with the given name (after the top patch)'''
     assert is_writable()
     if patch_is_in_series(patchname):
-        RCTX.stderr.write(_('patch "{0}" already exists\n').format(patchname))
-        return cmd_result.ERROR | cmd_result.SUGGEST_RENAME
-    overlaps = get_overlap_data(epatch.get_file_paths(epatch.num_strip_levels))
-    if not force and len(overlaps):
-        return overlaps.report_and_abort()
+        if not overwrite:
+            RCTX.stderr.write(_('patch "{0}" already exists\n').format(patchname))
+            result = cmd_result.ERROR | cmd_result.SUGGEST_RENAME
+            if not is_applied(patchname):
+                result |= cmd_result.SUGGEST_FORCE
+            return result
+        elif is_applied(patchname):
+            RCTX.stderr.write(_('patch "{0}" already exists and is applied. Cannot be overwritten.\n').format(patchname))
+            return cmd_result.ERROR | cmd_result.SUGGEST_RENAME
+        else:
+            result = do_remove_patch(patchname)
+            if result != cmd_result.OK:
+                return result
     descr = utils.make_utf8_compliant(epatch.get_description())
     patch = PatchData(patchname, descr)
     for diff_plus in epatch.diff_pluses:
@@ -868,7 +876,7 @@ def do_import_patch(epatch, patchname, force=False):
         RCTX.stdout.write(_('{0}: patch inserted after patch "{1}".\n').format(patchname, top_patchname))
     else:
         RCTX.stdout.write(_('{0}: patch inserted at start of series.\n').format(patchname))
-    return do_apply_next_patch(force=force)
+    return cmd_result.OK
 
 def top_patch_needs_refresh():
     '''Does the top applied patch need a refresh?'''
@@ -1361,6 +1369,7 @@ def do_remove_patch(patchname):
         _DB.kept_patches[patch.name] = patch
     _DB.series.remove(patch)
     dump_db()
+    RCTX.stdout.write(_('Patch "{0}" removed (but available for restoration).\n').format(patchname))
     return cmd_result.OK
 
 def do_restore_patch(patchname, as_patchname):

@@ -782,32 +782,27 @@ def import_patch_acb(_arg):
         result = cmd_result.Result(cmd_result.ERROR, '{0}: {1}: {2}\n'.format(patch_file, edata.lineno, edata.message))
         dialogue.report_any_problems(result)
         return
-    force = False
-    refresh_tried = False
+    overwrite = False
     dlg = ImportPatchDialog(epatch, parent=dialogue.main_window)
-    while dlg.run() == gtk.RESPONSE_OK:
+    resp = dlg.run()
+    while resp != gtk.RESPONSE_CANCEL:
         epatch.set_strip_level(dlg.get_strip_level())
         dlg.show_busy()
-        result = ifce.PM.do_import_patch(epatch, dlg.get_as_name(), force=force)
+        result = ifce.PM.do_import_patch(epatch, dlg.get_as_name(), overwrite=overwrite)
         dlg.unshow_busy()
-        if refresh_tried:
-            result = cmd_result.turn_off_flags(result, cmd_result.SUGGEST_REFRESH)
-        if not force and result.eflags & cmd_result.SUGGEST_FORCE_OR_REFRESH != 0:
-            resp = dialogue.ask_force_refresh_or_cancel(result, clarification=None)
+        if not overwrite and result.eflags & cmd_result.SUGGEST_FORCE != 0:
+            resp = dialogue.ask_rename_overwrite_or_cancel(result, clarification=None)
             if resp == gtk.RESPONSE_CANCEL:
                 break
-            elif resp == dialogue.Response.FORCE:
-                force = True
-            elif resp == dialogue.Response.REFRESH:
-                refresh_tried = True
-                dialogue.show_busy()
-                file_list = epatch.get_file_paths(epatch.num_strip_levels)
-                result = ifce.PM.do_refresh_overlapped_files(file_list)
-                dialogue.unshow_busy()
-                dialogue.report_any_problems(result)
+            elif resp == dialogue.Response.OVERWRITE:
+                overwrite = True
+            else:
+                resp = dlg.run()
             continue
         dialogue.report_any_problems(result)
-        if not (result.eflags & cmd_result.SUGGEST_RENAME):
+        if result.eflags & cmd_result.SUGGEST_RENAME != 0:
+            resp = dlg.run()
+        else:
             break
     dlg.destroy()
 
