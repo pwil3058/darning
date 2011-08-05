@@ -636,7 +636,6 @@ class TopPatchFileTreeWidget(PatchFileTreeWidget):
         <ui>
           <popup name="files_popup">
             <placeholder name="selection_indifferent"/>
-              <menuitem action="file_list_add_new"/>
             <separator/>
             <placeholder name="selection">
               <menuitem action='patch_edit_files'/>

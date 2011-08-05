@@ -48,14 +48,17 @@ class Darning(gtk.Window, dialogue.BusyIndicator, actions.AGandUIManager):
             </menu>
         </menubar>
         <toolbar name="gdarn_patches_toolbar">
-            <separator/>
+           <separator/>
+            <toolitem action="file_list_add_new"/>
+            <toolitem name="Fold" action="patch_list_fold_external_patch"/>
             <toolitem name="Refresh" action="patch_list_refresh_top_patch"/>
+            <separator/>
             <toolitem name="Push" action="patch_list_push"/>
             <toolitem name="Pop" action="patch_list_pop"/>
-            <toolitem name="Fold" action="patch_list_fold_external_patch"/>
-            <separator/>
+             <separator/>
             <toolitem name="New" action="patch_list_new_patch"/>
             <toolitem name="Import" action="patch_list_import_patch"/>
+             <separator/>
             <toolitem name="Select" action="patch_list_select_guards"/>
         </toolbar>
     </ui>
