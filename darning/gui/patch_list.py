@@ -596,10 +596,12 @@ class ImportPatchDialog(dialogue.Dialog):
         for strip_level_button in self.strip_level_buttons:
             strip_level_button.connect("toggled", self._strip_level_toggle_cb)
             hbox.pack_start(strip_level_button, expand=False, fill=False)
+            strip_level_button.set_active(False)
         self.vbox.pack_start(hbox, expand=False, fill=False)
         #
         self.file_list_widget = textview.Widget()
         self.strip_level_buttons[1 if est_strip_level is None else est_strip_level].set_active(True)
+        self.update_file_list()
         self.vbox.pack_start(self.file_list_widget, expand=True, fill=True)
         self.show_all()
         self.add_button(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL)
