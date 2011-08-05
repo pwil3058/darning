@@ -919,6 +919,24 @@ def do_fold_epatch(epatch, force=False):
         RCTX.stdout.write(_('{0}: patch needs refreshing.\n').format(top_patch.name))
     return cmd_result.OK
 
+def do_fold_named_patch(patchname, force=False):
+    '''Fold a name internal patch into the top patch.'''
+    assert is_writable()
+    patch = _get_patch(patchname)
+    if not patch:
+        return cmd_result.ERROR
+    elif patch.is_applied():
+        RCTX.stderr.write(_('{0}: patch is applied.\n').format(patch.name))
+        return cmd_result.ERROR
+    epatch = TextPatch(patch)
+    result = do_fold_epatch(epatch, force=force)
+    if result != cmd_result.OK:
+        return result
+    _DB.series.remove(patch)
+    dump_db()
+    RCTX.stdout.write(_('"{0}": patch folded into patch "{0}".\n').format(patchname, get_top_patch_name()))
+    return cmd_result.OK
+
 def top_patch_needs_refresh():
     '''Does the top applied patch need a refresh?'''
     assert is_readable()

@@ -139,6 +139,7 @@ class List(table.MapManagedTable):
         <separator/>
         <placeholder name="unapplied">
           <menuitem action="patch_list_remove"/>
+          <menuitem action="patch_list_fold_selected"/>
           <menuitem action="patch_list_push_to"/>
         </placeholder>
       </popup>
@@ -210,6 +211,11 @@ class List(table.MapManagedTable):
             [
                 ("patch_list_refresh_selected", icons.STOCK_PUSH_PATCH, _('Refresh'), None,
                  _('Refresh the selected patch.'), self.do_refresh_selected_patch_acb),
+            ])
+        self.add_conditional_actions(Condns.UNIQUE_SELN | Condns.POP_POSSIBLE | Condns.IN_PGND_MUTABLE | Condns.UNAPPLIED,
+            [
+                ("patch_list_fold_selected", icons.STOCK_FOLD_PATCH, _('Fold'), None,
+                 _('Fold the selected patch into the top applied patch.'), self.do_fold_patch_acb),
             ])
         self.ui_manager.add_ui_from_string(self.UI_DESCR)
         self.header.lhs.pack_start(self.ui_manager.get_widget('/patch_list_menubar'), expand=True, fill=True)
@@ -311,6 +317,34 @@ class List(table.MapManagedTable):
                     continue
             break
         dialog.destroy()
+    def do_fold_patch_acb(self, action=None):
+        patchname = self.get_selected_patch()
+        refresh_tried = False
+        force = False
+        while True:
+            dialogue.show_busy()
+            result = ifce.PM.do_fold_named_patch(patchname, force=force)
+            dialogue.unshow_busy()
+            if refresh_tried:
+                result = cmd_result.turn_off_flags(result, cmd_result.SUGGEST_REFRESH)
+            if not force and result.eflags & cmd_result.SUGGEST_FORCE_OR_REFRESH != 0:
+                resp = dialogue.ask_force_refresh_or_cancel(result, clarification=None)
+                if resp == gtk.RESPONSE_CANCEL:
+                    break
+                elif resp == dialogue.Response.FORCE:
+                    force = True
+                elif resp == dialogue.Response.REFRESH:
+                    refresh_tried = True
+                    dialogue.show_busy()
+                    patch_file_list = ifce.PM.get_filepaths_in_named_patch(patchname)
+                    top_patch_file_list = ifce.PM.get_filepaths_in_top_patch(patch_file_list)
+                    file_list = [filepath for filepath in patch_file_list if filepath not in top_patch_file_list]
+                    result = ifce.PM.do_refresh_overlapped_files(file_list)
+                    dialogue.unshow_busy()
+                    dialogue.report_any_problems(result)
+                continue
+            dialogue.report_any_problems(result)
+            break
     def do_export(self, action=None):
         patchname = self.get_selected_patch()
         do_export_named_patch(self, patchname)
