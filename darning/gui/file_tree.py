@@ -189,8 +189,13 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
         self.connect("row-collapsed", self.model.on_row_collapsed_cb)
         self.connect('button_press_event', self._handle_button_press_cb)
         self.connect('key_press_event', self._handle_key_press_cb)
+        self.get_selection().set_select_function(self._dirs_not_selectable, full=True)
         self._file_db = None
         self.repopulate()
+    def _dirs_not_selectable(self, selection, model, path, is_selected, _arg=None):
+        if not is_selected:
+            return not model.get_labelled_value(model.get_iter(path), 'is_dir')
+        return True
     def _toggle_show_hidden_cb(self, toggleaction):
         dialogue.show_busy()
         self._update_dir('', None)
