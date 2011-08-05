@@ -340,17 +340,6 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
             for subdir in subdirs:
                 filepaths += self.get_filepaths_in_dir(os.path.join(dirname, subdir.name), recursive)
         return filepaths
-    def get_expanded_file_list(self, path_list, show_hidden=True):
-        '''Return the list of files in path_list with directories replaced by their content'''
-        filepath_list = []
-        dialogue.show_busy()
-        for path in path_list:
-            if os.path.isdir(path):
-                filepath_list += self.get_filepaths_in_dir(path, show_hidden=show_hidden, recursive=True)
-            else:
-                filepath_list.append(path)
-        dialogue.unshow_busy()
-        return filepath_list
     def _copy_selected_to_top_patch(self, _action=None):
         file_list = self.get_selected_files()
         assert len(file_list) == 1
@@ -535,14 +524,12 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
                 break
             return result.eflags == cmd_result.OK
         def _add_selection_to_top_patch(self, _action=None):
-            show_hidden = self.show_hidden_action.get_active()
-            file_list = self.get_expanded_file_list(self.get_selected_files(), show_hidden=show_hidden)
+            file_list = self.get_selected_files()
             if len(file_list) == 0:
                 return
             self._add_files_to_top_patch(file_list)
         def _edit_selection_in_top_patch(self, _action=None):
-            show_hidden = self.show_hidden_action.get_active()
-            file_list = self.get_expanded_file_list(self.get_selected_files(), show_hidden=show_hidden)
+            file_list = self.get_selected_files()
             if len(file_list) == 0:
                 return
             if self._add_files_to_top_patch(file_list):
@@ -625,7 +612,7 @@ class PatchFileTreeWidget(gtk.VBox):
         def _get_file_db(self):
             return ifce.PM.get_file_db(self.patch)
         def edit_selected_files_acb(self, _action):
-            file_list = self.get_expanded_file_list(self.get_selected_files())
+            file_list = self.get_selected_files()
             text_edit.edit_files_extern(file_list)
         def diff_selected_file_acb(self, _action):
             filepaths = self.get_selected_files()
@@ -681,7 +668,7 @@ class TopPatchFileTreeWidget(PatchFileTreeWidget):
                 ])
             self.ui_manager.add_ui_from_string(self.UI_DESCR)
         def _drop_selection_from_patch(self, _arg):
-            file_list = self.get_expanded_file_list(self.get_selected_files())
+            file_list = self.get_selected_files()
             if len(file_list) == 0:
                 return
             emsg = '\n'.join(file_list + ["", _('Confirm drop selected file(s) from patch?')])

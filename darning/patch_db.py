@@ -1233,6 +1233,9 @@ def do_add_files_to_patch(patchname, filepaths, force=False):
         if filepath in already_in_patch:
             RCTX.stderr.write(_('{0}: file already in patch "{1}". Ignored.\n').format(rel_subdir(filepath), patch.name))
             continue
+        elif os.path.isdir(filepath):
+            RCTX.stderr.write(_('{0}: is a directory. Ignored.\n').format(rel_subdir(filepath)))
+            continue
         already_in_patch.add(filepath)
         rfilepath = rel_subdir(filepath)
         overlapped_by = patch.get_overlapping_patch_for_file(filepath) if patch_is_applied else None
@@ -1327,6 +1330,8 @@ def do_drop_files_fm_patch(patchname, filepaths):
         if filepath in patch.files:
             patch.do_drop_file(filepath)
             RCTX.stdout.write(_('{0}: file dropped from patch "{1}".\n').format(rel_subdir(filepath), patch.name))
+        elif os.path.isdir(filepath):
+            RCTX.stderr.write(_('{0}: is a directory: ignored.\n').format(rel_subdir(filepath)))
         else:
             RCTX.stderr.write(_('{0}: file not in patch "{1}": ignored.\n').format(rel_subdir(filepath), patch.name))
     return cmd_result.OK
