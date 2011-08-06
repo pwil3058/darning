@@ -909,9 +909,13 @@ class Patch(object):
         '''Parse text and return a Patch instance.  Handle
         possibility that it's an email text.'''
         msg = email.message_from_string(text)
-        text = msg.get_payload()
-        patch = Patch.parse_lines(text.splitlines(True), num_strip_levels=num_strip_levels)
         subject = msg.get('Subject')
+        if subject:
+            # email may have inapproriate newlines (and they play havoc with REs) so fix them
+            text = re.sub('\r\n', os.linesep, msg.get_payload())
+        else:
+            text = msg.get_payload()
+        patch = Patch.parse_lines(text.splitlines(True), num_strip_levels=num_strip_levels)
         if subject:
             descr = patch.get_description()
             patch.set_description('\n'.join([subject, descr]))
