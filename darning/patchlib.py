@@ -18,6 +18,7 @@
 import collections
 import re
 import os
+import email
 
 # Useful named tuples to make code clearer
 _CHUNK = collections.namedtuple('_CHUNK', ['start', 'length'])
@@ -905,11 +906,19 @@ class Patch(object):
         return patch
     @staticmethod
     def parse_text(text, num_strip_levels=0):
-        '''Parse text and return a Patch instance'''
-        return Patch.parse_lines(text.splitlines(True), num_strip_levels=num_strip_levels)
+        '''Parse text and return a Patch instance.  Handle
+        possibility that it's an email text.'''
+        msg = email.message_from_string(text)
+        text = msg.get_payload()
+        patch = Patch.parse_lines(text.splitlines(True), num_strip_levels=num_strip_levels)
+        subject = msg.get('Subject')
+        if subject:
+            descr = patch.get_description()
+            patch.set_description('\n'.join([subject, descr]))
+        return patch
     @staticmethod
     def parse_text_file(filepath, num_strip_levels=0):
-        '''Parse a text file and return a Patch instance'''
+        '''Parse a text file and return a Patch instance.'''
         patch = Patch.parse_text(open(filepath).read(), num_strip_levels=num_strip_levels)
         patch.source_file_path = filepath
         return patch
