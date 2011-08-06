@@ -905,7 +905,10 @@ def do_fold_epatch(epatch, force=False):
             if aws_lines:
                 RCTX.stderr.write(_('Added trailing white space to "{1}" at line(s) {{{2}}}.\n').format(rel_subdir(filepath), ', '.join([str(line) for line in aws_lines])))
         result = runext.run_cmd(patch_cmd + [filepath], str(diff_plus.diff))
-        RCTX.stdout.write(result.stdout)
+        if result.ecode == 0:
+            RCTX.stderr.write(result.stdout)
+        else:
+            RCTX.stdout.write(result.stdout)
         RCTX.stderr.write(result.stderr)
         if os.path.exists(filepath):
             for preamble in diff_plus.preambles:
@@ -1092,12 +1095,14 @@ def do_apply_next_patch(force=False):
                 if aws_lines:
                     RCTX.stderr.write(_('"{0}": added trailing white space to "{1}" at line(s) {{{2}}}.\n').format(next_patch.name, rel_subdir(file_data.path), ', '.join([str(line) for line in aws_lines])))
             result = runext.run_cmd(patch_cmd + [file_data.path], str(file_data.diff))
-            RCTX.stdout.write(result.stdout)
-            RCTX.stderr.write(result.stderr)
             biggest_ecode = max(biggest_ecode, result.ecode)
             if result.ecode != 0:
                 patch_ok = False
                 file_data.diff = None
+                RCTX.stderr.write(result.stdout)
+            else:
+                RCTX.stdout.write(result.stdout)
+            RCTX.stderr.write(result.stderr)
         else:
             RCTX.stdout.write(_('Processing file "{0}".\n').format(rel_subdir(file_data.path)))
         file_exists = os.path.exists(file_data.path)
