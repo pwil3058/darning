@@ -1284,6 +1284,32 @@ def do_add_files_to_patch(patchname, filepaths, force=False):
         dump_db() # do this now to minimize problems if interrupted
     return cmd_result.OK
 
+def do_delete_files_in_top_patch(filepaths):
+    assert is_writable()
+    patch = get_top_patch()
+    if patch is None:
+        RCTX.stderr.write(_('No patches applied.\n'))
+        return cmd_result.ERROR
+    nonexists = 0
+    ioerrors = 0
+    for filepath in prepend_subdir(filepaths):
+        if not os.path.exists(filepath):
+            RCTX.stderr.write(_('{0}: file does not exist. Ignored.\n').format(rel_subdir(filepath)))
+            nonexists += 1
+            continue
+        if filepath not in patch.files:
+            patch.files[filepath] = FileData(filepath)
+            patch.do_cache_original(filepath, None, False)
+        dump_db()
+        try:
+            os.remove(filepath)
+        except OSError as edata:
+            RCTX.stderr.write(edata)
+            ioerrors += 1
+            continue
+        RCTX.stdout.write(_('{0}: file deleted within patch "{1}".\n').format(rel_subdir(filepath), patch.name))
+    return cmd_result.OK if (ioerrors == 0 and len(filepaths) > nonexists) else cmd_result.ERROR
+
 def do_copy_file_to_top_patch(filepath, as_filepath, overwrite=False):
     assert is_writable()
     patch = get_top_patch()

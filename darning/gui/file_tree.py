@@ -340,6 +340,14 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
             for subdir in subdirs:
                 filepaths += self.get_filepaths_in_dir(os.path.join(dirname, subdir.name), recursive)
         return filepaths
+    def _delete_selection_in_top_patch(self, _action=None):
+        file_list = self.get_selected_files()
+        if len(file_list) == 0:
+            return
+        dialogue.show_busy()
+        result = ifce.PM.do_delete_files_in_top_patch(file_list)
+        dialogue.unshow_busy()
+        dialogue.report_any_problems(result)
     def _copy_selected_to_top_patch(self, _action=None):
         file_list = self.get_selected_files()
         assert len(file_list) == 1
@@ -423,6 +431,7 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
             <placeholder name="selection">
               <menuitem action='scm_add_files_to_top_patch'/>
               <menuitem action='scm_edit_files_in_top_patch'/>
+              <menuitem action='scm_delete_files_in_top_patch'/>
             </placeholder>
             <separator/>
             <placeholder name="selection_not_patched"/>
@@ -478,6 +487,8 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
                      _('Add the selected files to the top patch'), self._add_selection_to_top_patch),
                     ('scm_edit_files_in_top_patch', gtk.STOCK_EDIT, _('_Edit'), None,
                      _('Open the selected files for editing after adding them to the top patch'), self._edit_selection_in_top_patch),
+                    ('scm_delete_files_in_top_patch', gtk.STOCK_DELETE, _('_Delete'), None,
+                     _('Add the selected files to the top patch and then delete them'), self._delete_selection_in_top_patch),
                 ])
             self.add_conditional_actions(actions.Condns.IN_PGND + actions.Condns.PMIC,
                 [
@@ -640,6 +651,7 @@ class TopPatchFileTreeWidget(PatchFileTreeWidget):
             <placeholder name="selection">
               <menuitem action='patch_edit_files'/>
               <menuitem action='top_patch_drop_selected_files'/>
+              <menuitem action='top_patch_delete_selected_files'/>
             </placeholder>
             <separator/>
             <placeholder name="selection_not_patched"/>
@@ -664,6 +676,8 @@ class TopPatchFileTreeWidget(PatchFileTreeWidget):
                 [
                     ('top_patch_drop_selected_files', gtk.STOCK_REMOVE, _('_Drop'), None,
                      _('Drop/remove the selected files from the top patch'), self._drop_selection_from_patch),
+                    ('top_patch_delete_selected_files', gtk.STOCK_DELETE, _('_Delete'), None,
+                     _('Delete the selected files'), self._delete_selection_in_top_patch),
                 ])
             self.ui_manager.add_ui_from_string(self.UI_DESCR)
         def _drop_selection_from_patch(self, _arg):
