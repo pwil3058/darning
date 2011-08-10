@@ -1,4 +1,4 @@
-VERSION:=$(subst ',,$(subst VERSION = ',,$(shell grep "VERSION = " setup.py)))
+VERSION:=$(subst ',,$(subst VERSION = ',,$(shell grep "VERSION = " darning/version.py)))
 RELEASE=1
 
 RPMBDIR=~/rpmbuild
@@ -6,7 +6,7 @@ PREFIX=/usr
 
 SRCS:=$(shell hg status -macdn)
 SRCDIST:=darning-$(VERSION).tar.gz
-RPMDIST:=darning-$(VERSION)-$(RELEASE).noarch.rpm
+RPMDIST:=darning-$(subst -,_,$(VERSION))-$(RELEASE).noarch.rpm
 RPMSRC:=$(RPMBDIR)/SOURCES/$(SRCDIST)
 
 help:
@@ -19,7 +19,7 @@ help:
 
 all_dist: $(SRCDIST)  $(WINDIST) $(RPMDIST)
 
-darning.spec: setup.py Makefile setup.cfg
+darning.spec: setup.py Makefile setup.cfg darning/version.py
 	python setup.py bdist_rpm --build-requires python --spec-only --dist-dir .
 	echo "%{_prefix}" >> darning.spec
 	sed -i \

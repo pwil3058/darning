@@ -16,9 +16,11 @@
 from distutils.core import setup
 import glob
 
+from darning import version
+
 NAME = 'darning'
 
-VERSION = '0.01'
+VERSION = version.VERSION
 
 DESCRIPTION = 'a tool for managing a series of source patches.'
 
