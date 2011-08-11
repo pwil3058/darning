@@ -13,21 +13,26 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-'''
-Library functions that are ony of interest CLI programs
-'''
+'''Drop files from a patch.'''
 
-# This should be the only place that subcmd_* modules should be imported
-# as this is sufficient to activate them.
-import darning.cli.subcmd_init
-import darning.cli.subcmd_new
-import darning.cli.subcmd_push
-import darning.cli.subcmd_pop
-import darning.cli.subcmd_add
-import darning.cli.subcmd_refresh
-import darning.cli.subcmd_import
-import darning.cli.subcmd_drop
-import darning.cli.subcmd_remove
-import darning.cli.subcmd_files
-import darning.cli.subcmd_series
-import darning.cli.subcmd_export
+from darning import patch_db
+from darning.cli import cli_args
+from darning.cli import db_utils
+from darning.cli import msg
+
+PARSER = cli_args.SUB_CMD_PARSER.add_parser(
+    'drop',
+    description=_('drop nominated file(s) from the top (or nominated) patch.'),
+)
+
+cli_args.add_patch_option(PARSER, helptext=_('the name of the patch to drop the file(s) from.'))
+
+cli_args.add_files_argument(PARSER, helptext=_('the file(s) to be dropped.'))
+
+def run_drop(args):
+    '''Execute the "drop" sub command using the supplied args'''
+    db_utils.open_db(modifiable=True)
+    db_utils.set_report_context(verbose=True)
+    return patch_db.do_drop_files_fm_patch(args.opt_patch, args.filepaths)
+
+PARSER.set_defaults(run_cmd=run_drop)

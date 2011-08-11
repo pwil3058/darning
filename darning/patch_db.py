@@ -494,7 +494,7 @@ _DB = None
 _SUB_DIR = None
 
 def rel_subdir(filepath):
-    return filepath if _SUB_DIR is None else os.path.relpath(filepath, SUBDIR)
+    return filepath if _SUB_DIR is None else os.path.relpath(filepath, _SUB_DIR)
 
 def rel_basedir(filepath):
     if os.path.isabs(filepath):
@@ -1238,6 +1238,10 @@ def _get_patch(patchname):
             RCTX.stderr.write(_('{0}: patch is NOT known').format(patchname))
     return  _DB.series[patch_index] if patch_index is not None else None
 
+def get_patch_name(arg):
+    patch = _get_patch(arg)
+    return None if patch is None else patch.name
+
 def do_add_files_to_patch(patchname, filepaths, force=False):
     '''Add the named files to the named patch'''
     patch = _get_patch(patchname)
@@ -1648,3 +1652,33 @@ def do_export_patch_as(patchname, export_filename, force=False, overwrite=False)
         RCTX.stderr.write(str(edata) + '\n')
         return cmd_result.ERROR
     return cmd_result.OK
+
+class CombinedTextDiffPlus(patchlib.DiffPlus):
+    def __init__(self, first_patch, filepath):
+        preamble = first_patch.generate_diff_preamble_for_file(filepath, combined=True)
+        diff = first_patch.generate_diff_for_file(filepath, combined=True)
+        patchlib.DiffPlus.__init__(self, [preamble], diff if diff else None)
+
+class CombinedTextPatch(patchlib.Patch):
+    def __init__(self):
+        patchlib.Patch.__init__(self, num_strip_levels=1)
+        applied_patches = get_applied_patch_list()
+        description = ''
+        file_first_patch = {}
+        for applied_patch in applied_patches:
+            description += applied_patch.description
+            for filepath in applied_patch.files:
+                if filepath not in file_first_patch:
+                    file_first_patch[filepath] = applied_patch
+        self.set_description(description)
+        self.set_comments('# created by: Darning\n')
+        for filepath in sorted(file_first_patch):
+            edp = CombinedTextDiffPlus(file_first_patch[filepath], filepath)
+            self.diff_pluses.append(edp)
+        self.set_header_diffstat(strip_level=self.num_strip_levels)
+
+def get_combined_textpatch():
+    assert is_readable()
+    if get_series_index_for_top() is None:
+        return None
+    return CombinedTextPatch()

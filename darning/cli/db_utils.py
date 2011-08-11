@@ -30,7 +30,7 @@ def open_db(modifiable):
     if BASE_DIR:
         os.chdir(BASE_DIR)
     else:
-        sys.exit(_('Valid database NOT found.\n'))
+        sys.exit(_('Valid database NOT found.'))
     scm_ifce.reset_back_end()
     result = patch_db.load_db(modifiable)
     if not result:
