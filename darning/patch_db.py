@@ -46,7 +46,7 @@ options.define('remove', 'keep_patch_backup', options.Defn(options.str_to_bool, 
 # A convenience tuple for sending an original and patched version of something
 _O_IP_PAIR = collections.namedtuple('_O_IP_PAIR', ['original_version', 'patched_version'])
 
-class Failure:
+class Failure(object):
     '''Report failure'''
     def __init__(self, msg):
         self._bool = False
@@ -83,7 +83,16 @@ class BinaryDiff(patchlib.Diff):
     def get_diffstat_stats(self):
         return DiffStat.Stats()
 
-class FileData:
+class PickeExtensibleObject(object):
+    NEW_FIELDS = dict()
+    def __setstate__(self, state):
+        self.__dict__ = state
+    def __getstate__(self):
+        return self.__dict__
+    def __getattr__(self, attr):
+        return self.NEW_FIELDS[attr]
+
+class FileData(PickeExtensibleObject):
     '''Change data for a single file'''
     class Presence(object):
         ADDED = patchlib.FilePathPlus.ADDED
@@ -180,7 +189,7 @@ class PatchState(object):
 class PatchTable(object):
     Row = collections.namedtuple('Row', ['name', 'state', 'pos_guards', 'neg_guards'])
 
-class PatchData:
+class PatchData(PickeExtensibleObject):
     '''Store data for changes to a number of files as a single patch'''
     Guards = collections.namedtuple('Guards', ['positive', 'negative'])
     def __init__(self, name, description):
@@ -477,7 +486,7 @@ class PatchData:
                 return True
         return False
 
-class DataBase:
+class DataBase(PickeExtensibleObject):
     '''Storage for an ordered sequence/series of patches'''
     def __init__(self, description, host_scm=None):
         self.description = _tidy_text(description) if description else ''
