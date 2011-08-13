@@ -113,7 +113,6 @@ class FileData(PickeExtensibleObject):
             self.old_mode = None
             self.timestamp = 0
         self.new_mode = self.old_mode
-        self.scm_revision = None
     @property
     def binary(self):
         return isinstance(self.diff, BinaryDiff)
@@ -198,7 +197,6 @@ class PatchData(PickeExtensibleObject):
         self.files = dict()
         self.pos_guards = set()
         self.neg_guards = set()
-        self.scm_revision = None
     def do_drop_file(self, filepath):
         '''Drop the named file from this patch'''
         assert is_writable()
@@ -378,7 +376,6 @@ class PatchData(PickeExtensibleObject):
             file_data.diff = None
             file_data.new_mode = None
             file_data.timestamp = 0
-            file_data.scm_revision = scm_ifce.get_revision(filepath=file_data.path)
             RCTX.stdout.write(_('"{0}": file does not exist\n').format(rel_subdir(filepath)))
         dump_db()
         return cmd_result.OK
