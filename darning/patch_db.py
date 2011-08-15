@@ -832,6 +832,9 @@ def do_create_new_patch(patchname, description):
     if get_patch_series_index(patchname) is not None:
         RCTX.stderr.write(_('patch "{0}" already exists\n').format(patchname))
         return cmd_result.ERROR|cmd_result.SUGGEST_RENAME
+    elif not utils.is_valid_dir_name(patchname):
+        RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(patchname, utils.ALLOWED_DIR_NAME_CHARS_MSG))
+        return cmd_result.ERROR|cmd_result.SUGGEST_RENAME
     patch = PatchData(patchname, description)
     _insert_patch(patch)
     dump_db()
@@ -861,6 +864,9 @@ def do_import_patch(epatch, patchname, overwrite=False):
             result = do_remove_patch(patchname)
             if result != cmd_result.OK:
                 return result
+    elif not utils.is_valid_dir_name(patchname):
+        RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(patchname, utils.ALLOWED_DIR_NAME_CHARS_MSG))
+        return cmd_result.ERROR|cmd_result.SUGGEST_RENAME
     descr = utils.make_utf8_compliant(epatch.get_description())
     patch = PatchData(patchname, descr)
     for diff_plus in epatch.diff_pluses:
@@ -1409,6 +1415,9 @@ def do_duplicate_patch(patchname, as_patchname, newdescription):
         RCTX.stderr.write(_('{0}: patch already in series.\n').format(as_patchname))
         RCTX.stderr.write(_('Aborted.\n'))
         return cmd_result.ERROR | cmd_result.SUGGEST_RENAME
+    elif not utils.is_valid_dir_name(as_patchname):
+        RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(as_patchname, utils.ALLOWED_DIR_NAME_CHARS_MSG))
+        return cmd_result.ERROR|cmd_result.SUGGEST_RENAME
     newpatch = copy.deepcopy(patch)
     newpatch.name = as_patchname
     newpatch.description = _tidy_text(newdescription)
@@ -1485,6 +1494,9 @@ def do_restore_patch(patchname, as_patchname):
         return cmd_result.ERROR|cmd_result.SUGGEST_RENAME
     if patch_is_in_series(as_patchname):
         RCTX.stderr.write(_('{0}: Already exists in database\n').format(as_patchname))
+        return cmd_result.ERROR|cmd_result.SUGGEST_RENAME
+    elif not utils.is_valid_dir_name(as_patchname):
+        RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(as_patchname, utils.ALLOWED_DIR_NAME_CHARS_MSG))
         return cmd_result.ERROR|cmd_result.SUGGEST_RENAME
     patch = _DB.kept_patches[patchname]
     if as_patchname:

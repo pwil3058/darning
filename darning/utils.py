@@ -21,6 +21,7 @@ import stat
 import os
 import re
 
+from darning import i18n
 from darning import urlops
 
 HOME = os.path.expanduser("~")
@@ -118,3 +119,9 @@ def ensure_file_dir_exists(filepath):
 
 def convert_patchname_to_filename(patchname):
     return re.sub('(\s+)', '-', patchname.strip())
+
+_VALID_DIR_NAME_CRE = re.compile('^[ \w.-]+$')
+ALLOWED_DIR_NAME_CHARS_MSG = _('Only alphanumeric characters plus " ", "_", "-" and "." are allowed.')
+
+def is_valid_dir_name(dirname):
+    return _VALID_DIR_NAME_CRE.match(dirname) is not None
