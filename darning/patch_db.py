@@ -120,6 +120,9 @@ class FileData(PickeExtensibleObject):
         self.after_mode = self.before_mode
         self.before_sha1 = utils.get_sha1_for_file(filepath)
         self.after_sha1 = self.before_sha1
+        self.came_from = None
+        self.came_as_rename = False
+        self.renamed_to = None
     @property
     def binary(self):
         return isinstance(self.diff, BinaryDiff)
@@ -142,6 +145,9 @@ class FileData(PickeExtensibleObject):
             return FileData.Presence.REMOVED
         else:
             return FileData.Presence.EXTANT
+    @property
+    def origin(self):
+        return self.came_from
 
 class OverlapData(object):
     def __init__(self, unrefreshed=None, uncommitted=None):
@@ -431,9 +437,9 @@ class PatchData(PickeExtensibleObject):
             table = []
             for fde in self.files.values():
                 validity = self._get_file_applied_validity(fde)
-                table.append(fsdb.Data(fde.path, FileData.Status(fde.get_presence(), validity), None))
+                table.append(fsdb.Data(fde.path, FileData.Status(fde.get_presence(), validity), fde.origin))
         else:
-            table = [fsdb.Data(fde.path, FileData.Status(fde.get_presence(), None), None) for fde in self.files.values()]
+            table = [fsdb.Data(fde.path, FileData.Status(fde.get_presence(), None), fde.origin) for fde in self.files.values()]
         return table
     def get_overlapping_patch_for_file(self, filepath):
         '''Return the patch (if any) which overlaps the named file in this patch'''
@@ -880,18 +886,37 @@ def do_import_patch(epatch, patchname, overwrite=False):
         return cmd_result.ERROR|cmd_result.SUGGEST_RENAME
     descr = utils.make_utf8_compliant(epatch.get_description())
     patch = PatchData(patchname, descr)
+    renames = dict()
     for diff_plus in epatch.diff_pluses:
         file_data = FileData(diff_plus.get_file_path(epatch.num_strip_levels))
         file_data.diff = diff_plus.diff
+        bad_strip_level = False
         for preamble in diff_plus.preambles:
             if preamble.preamble_type == 'git':
                 for key in ['new mode', 'new file mode']:
+                    if 'copy from' in preamble.extras:
+                        file_data.came_from = preamble.extras['copy from']
+                        file_data.came_as_rename = False
+                        bad_strip_level = preamble.extras.get('copy to', None) != file_data.path
+                    elif 'rename from' in preamble.extras:
+                        file_data.came_from = preamble.extras['rename from']
+                        file_data.came_as_rename = True
+                        renames[file_data.came_from] = file_data.path
+                        bad_strip_level = preamble.extras.get('rename to', None) != file_data.path
                     if key in preamble.extras:
                         file_data.after_mode = int(preamble.extras[key], 8)
                         break
                 break
+        if bad_strip_level:
+            RCTX.stderr.write(_('git data for file "{0}" incompatible with strip level {1}.\n').format(file_data.path, epatch.num_strip_levels))
+            return cmd_result.ERROR
         patch.files[file_data.path] = file_data
         RCTX.stdout.write(_('{0}: file added to patch "{1}".\n').format(file_data.path, patchname))
+    for old_path in renames:
+        if old_path not in patch.files:
+            patch.files[old_path] = FileData(old_path)
+            RCTX.stdout.write(_('{0}: file added to patch "{1}".\n').format(old_path, patchname))
+        patch.files[old_path].renamed_to = renames[old_path]
     _insert_patch(patch)
     dump_db()
     top_patchname = get_top_patch_name()
@@ -1145,7 +1170,7 @@ def do_apply_next_patch(force=False):
         else:
             file_data.timestamp = 0
         if patch_ok:
-            file_data.before_sha1 = utils.get_sha1_for_file(self.get_cached_original_file_path(file_data.path))
+            file_data.before_sha1 = utils.get_sha1_for_file(next_patch.get_cached_original_file_path(file_data.path))
             file_data.after_sha1 = utils.get_sha1_for_file(file_data.path)
         else:
             file_data.before_sha1 = False
@@ -1367,6 +1392,9 @@ def do_copy_file_to_top_patch(filepath, as_filepath, overwrite=False):
     except OSError as edata:
         RCTX.stderr.write(edata)
         return cmd_result.ERROR
+    patch.files[as_filepath].came_from = filepath
+    patch.files[as_filepath].came_as_rename = False
+    dump_db()
     RCTX.stdout.write(_('{0}: file added to patch "{1}" as "{2}".\n').format(rel_subdir(filepath), patch.name, rel_subdir(as_filepath)))
     return cmd_result.OK
 
@@ -1398,6 +1426,10 @@ def do_rename_file_in_top_patch(filepath, new_filepath, force=False, overwrite=F
     except OSError as edata:
         RCTX.stderr.write(edata)
         return cmd_result.ERROR
+    patch.files[new_filepath].came_from = filepath
+    patch.files[new_filepath].came_as_rename = True
+    patch.files[filepath].renamed_to = new_filepath
+    dump_db()
     RCTX.stdout.write(_('{0}: file added to patch "{1}" as "{2}".\n').format(rel_subdir(filepath), patch.name, rel_subdir(new_filepath)))
     return cmd_result.OK
 
