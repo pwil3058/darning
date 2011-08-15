@@ -118,6 +118,8 @@ class FileData(PickeExtensibleObject):
             self.before_mode = None
             self.timestamp = 0
         self.after_mode = self.before_mode
+        self.before_sha1 = utils.get_sha1_for_file(filepath)
+        self.after_sha1 = self.before_sha1
     @property
     def binary(self):
         return isinstance(self.diff, BinaryDiff)
@@ -361,11 +363,13 @@ class PatchData(PickeExtensibleObject):
         if file_data.has_unresolved_merges():
             # ensure this file shows up as needing refresh
             file_data.timestamp = -1
+            file_data.after_sha1 = False
             dump_db()
             RCTX.stderr.write(_('"{0}": file has unresolved merge(s).\n').format(rel_subdir(filepath)))
             return cmd_result.ERROR
         f_exists = os.path.exists(filepath)
-        if f_exists or os.path.exists(self.get_cached_original_file_path(filepath)):
+        before_file = self.get_cached_original_file_path(filepath)
+        if f_exists or os.path.exists(before_file):
             file_data.diff = self.generate_diff_for_file(filepath)
             if f_exists:
                 stat_data = os.stat(filepath)
@@ -382,6 +386,8 @@ class PatchData(PickeExtensibleObject):
             file_data.after_mode = None
             file_data.timestamp = 0
             RCTX.stdout.write(_('"{0}": file does not exist\n').format(rel_subdir(filepath)))
+        file_data.before_sha1 = utils.get_sha1_for_file(before_file)
+        file_data.after_sha1 = utils.get_sha1_for_file(filepath)
         dump_db()
         return cmd_result.OK
     def get_cached_original_dir_path(self):
@@ -1138,6 +1144,12 @@ def do_apply_next_patch(force=False):
             file_data.timestamp = os.path.getmtime(file_data.path)
         else:
             file_data.timestamp = 0
+        if patch_ok:
+            file_data.before_sha1 = utils.get_sha1_for_file(self.get_cached_original_file_path(file_data.path))
+            file_data.after_sha1 = utils.get_sha1_for_file(file_data.path)
+        else:
+            file_data.before_sha1 = False
+            file_data.after_sha1 = False
         if olurpatch:
             RCTX.stdout.write(_('Unrefreshed changes incorporated.\n'))
         elif scm_has_uncommitted_changes:

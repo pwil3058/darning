@@ -20,6 +20,7 @@ Utility functions
 import stat
 import os
 import re
+import hashlib
 
 from darning import i18n
 from darning import urlops
@@ -132,3 +133,8 @@ ALLOWED_DIR_NAME_CHARS_MSG = _('Only alphanumeric characters plus " ", "_", "-" 
 
 def is_valid_dir_name(dirname):
     return _VALID_DIR_NAME_CRE.match(dirname) is not None
+
+def get_sha1_for_file(filepath):
+    if os.path.isfile(filepath):
+        return hashlib.sha1(open(filepath).read()).hexdigest()
+    return None
