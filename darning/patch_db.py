@@ -84,9 +84,14 @@ class BinaryDiff(patchlib.Diff):
         return DiffStat.Stats()
 
 class PickeExtensibleObject(object):
+    '''A base class for pickleable objects that can cope with modifications'''
+    RENAMES = dict()
     NEW_FIELDS = dict()
     def __setstate__(self, state):
         self.__dict__ = state
+        for old_field in self.RENAMES:
+            if old_field in self.__dict__:
+                self.__dict__[self.RENAMES[old_field]] = self.__dict__.pop(old_field)
     def __getstate__(self):
         return self.__dict__
     def __getattr__(self, attr):
@@ -107,21 +112,21 @@ class FileData(PickeExtensibleObject):
         self.diff = None
         try:
             fstat = os.stat(filepath)
-            self.old_mode = fstat.st_mode
+            self.before_mode = fstat.st_mode
             self.timestamp = fstat.st_mtime
         except OSError:
-            self.old_mode = None
+            self.before_mode = None
             self.timestamp = 0
-        self.new_mode = self.old_mode
+        self.after_mode = self.before_mode
     @property
     def binary(self):
         return isinstance(self.diff, BinaryDiff)
     def needs_refresh(self):
         '''Does this file need a refresh? (Given that it is not overshadowed.)'''
         if os.path.exists(self.path):
-            return self.timestamp < os.path.getmtime(self.path) or self.new_mode is None
+            return self.timestamp < os.path.getmtime(self.path) or self.after_mode is None
         else:
-            return self.new_mode is not None or self.timestamp < 0
+            return self.after_mode is not None or self.timestamp < 0
     def has_unresolved_merges(self):
         if os.path.exists(self.path):
             for line in open(self.path).readlines():
@@ -129,9 +134,9 @@ class FileData(PickeExtensibleObject):
                     return True
         return False
     def get_presence(self):
-        if self.old_mode is None:
+        if self.before_mode is None:
             return FileData.Presence.ADDED
-        elif self.new_mode is None:
+        elif self.after_mode is None:
             return FileData.Presence.REMOVED
         else:
             return FileData.Presence.EXTANT
@@ -212,17 +217,17 @@ class PatchData(PickeExtensibleObject):
             if os.path.exists(filepath):
                 os.remove(filepath)
             if os.path.exists(corig_f_path):
-                os.chmod(corig_f_path, self.files[filepath].old_mode)
+                os.chmod(corig_f_path, self.files[filepath].before_mode)
                 shutil.move(corig_f_path, filepath)
         else:
             overlapping_corig_f_path = overlapped_by.get_cached_original_file_path(filepath)
             if os.path.exists(corig_f_path):
                 shutil.move(corig_f_path, overlapping_corig_f_path)
-                overlapped_by.files[filepath].old_mode = self.files[filepath].old_mode
+                overlapped_by.files[filepath].before_mode = self.files[filepath].before_mode
             else:
                 if os.path.exists(overlapping_corig_f_path):
                     os.remove(overlapping_corig_f_path)
-                overlapped_by.files[filepath].old_mode = None
+                overlapped_by.files[filepath].before_mode = None
             # Make sure that the overlapping file gets refreshed
             overlapped_by.files[filepath].timestamp = 0
         del self.files[filepath]
@@ -275,12 +280,12 @@ class PatchData(PickeExtensibleObject):
             shutil.copy2(corig_f_path, filepath)
         if os.path.exists(corig_f_path):
             # We need this so that we need to reset it on pop
-            old_mode = os.stat(corig_f_path).st_mode
+            before_mode = os.stat(corig_f_path).st_mode
             # Make the cached original read only to prevent accidental change
-            os.chmod(corig_f_path, utils.turn_off_write(old_mode))
-            self.files[filepath].old_mode = old_mode
+            os.chmod(corig_f_path, utils.turn_off_write(before_mode))
+            self.files[filepath].before_mode = before_mode
         else:
-            self.files[filepath].old_mode = None
+            self.files[filepath].before_mode = None
     def generate_diff_preamble_for_file(self, filepath, combined=False):
         assert is_readable()
         assert filepath in self.files
@@ -288,23 +293,23 @@ class PatchData(PickeExtensibleObject):
         if self.is_applied():
             olp = None if combined else self.get_overlapping_patch_for_file(filepath)
             if olp is not None:
-                new_mode = olp.files[filepath].old_mode
+                after_mode = olp.files[filepath].before_mode
             else:
-                new_mode = os.stat(filepath).st_mode if os.path.exists(filepath) else None
+                after_mode = os.stat(filepath).st_mode if os.path.exists(filepath) else None
         else:
-            new_mode = file_data.new_mode
-        if file_data.old_mode is None:
+            after_mode = file_data.after_mode
+        if file_data.before_mode is None:
             lines = ['diff --git /dev/null {0}\n'.format(os.path.join('a', filepath)), ]
-            if new_mode is not None:
-                lines.append('new file mode {0:07o}\n'.format(new_mode))
-        elif new_mode is None:
+            if after_mode is not None:
+                lines.append('new file mode {0:07o}\n'.format(after_mode))
+        elif after_mode is None:
             lines = ['diff --git {0} /dev/null\n'.format(os.path.join('a', filepath)), ]
-            lines.append('deleted file mode {0:07o}\n'.format(file_data.old_mode))
+            lines.append('deleted file mode {0:07o}\n'.format(file_data.before_mode))
         else:
             lines = ['diff --git {0} {1}\n'.format(os.path.join('a', filepath), os.path.join('b', filepath)), ]
-            if file_data.old_mode != new_mode:
-                lines.append('old mode {0:07o}\n'.format(file_data.old_mode))
-                lines.append('new mode {0:07o}\n'.format(new_mode))
+            if file_data.before_mode != after_mode:
+                lines.append('old mode {0:07o}\n'.format(file_data.before_mode))
+                lines.append('new mode {0:07o}\n'.format(after_mode))
         return patchlib.Preamble.parse_lines(lines)
     def generate_diff_for_file(self, filepath, combined=False):
         assert is_readable()
@@ -364,17 +369,17 @@ class PatchData(PickeExtensibleObject):
             file_data.diff = self.generate_diff_for_file(filepath)
             if f_exists:
                 stat_data = os.stat(filepath)
-                file_data.new_mode = stat_data.st_mode
+                file_data.after_mode = stat_data.st_mode
                 file_data.timestamp = stat_data.st_mtime
-                if file_data.old_mode is not None and file_data.old_mode != file_data.new_mode:
-                    RCTX.stdout.write(_('"{0}": mode {1:07o} -> {2:07o}.\n').format(rel_subdir(filepath), file_data.old_mode, file_data.new_mode))
+                if file_data.before_mode is not None and file_data.before_mode != file_data.after_mode:
+                    RCTX.stdout.write(_('"{0}": mode {1:07o} -> {2:07o}.\n').format(rel_subdir(filepath), file_data.before_mode, file_data.after_mode))
             else:
-                file_data.new_mode = None
+                file_data.after_mode = None
                 file_data.timestamp = 0
             RCTX.stdout.write(str(file_data.diff))
         else:
             file_data.diff = None
-            file_data.new_mode = None
+            file_data.after_mode = None
             file_data.timestamp = 0
             RCTX.stdout.write(_('"{0}": file does not exist\n').format(rel_subdir(filepath)))
         dump_db()
@@ -876,7 +881,7 @@ def do_import_patch(epatch, patchname, overwrite=False):
             if preamble.preamble_type == 'git':
                 for key in ['new mode', 'new file mode']:
                     if key in preamble.extras:
-                        file_data.new_mode = int(preamble.extras[key], 8)
+                        file_data.after_mode = int(preamble.extras[key], 8)
                         break
                 break
         patch.files[file_data.path] = file_data
@@ -1092,7 +1097,7 @@ def do_apply_next_patch(force=False):
         patch_ok = True
         if file_data.binary is not False:
             RCTX.stdout.write(_('Processing binary file "{0}".\n').format(rel_subdir(file_data.path)))
-            if file_data.new_mode is not None:
+            if file_data.after_mode is not None:
                 open(file_data.path, 'wb').write(file_data.diff.contents)
             elif os.path.exists(file_data.path):
                 os.remove(file_data.path)
@@ -1119,13 +1124,13 @@ def do_apply_next_patch(force=False):
             RCTX.stdout.write(_('Processing file "{0}".\n').format(rel_subdir(file_data.path)))
         file_exists = os.path.exists(file_data.path)
         if file_exists:
-            if file_data.new_mode is not None:
-                os.chmod(file_data.path, file_data.new_mode)
+            if file_data.after_mode is not None:
+                os.chmod(file_data.path, file_data.after_mode)
             file_data.timestamp = os.path.getmtime(file_data.path) if patch_ok else 0
         else:
-            # A non None new_mode means that the file existed when
+            # A non None after_mode means that the file existed when
             # the diff was made so a refresh will be required
-            if file_data.new_mode is not None:
+            if file_data.after_mode is not None:
                 biggest_ecode = max(biggest_ecode, 1)
                 RCTX.stderr.write(_('Expected file not found.\n'))
             file_data.timestamp = 0
@@ -1198,7 +1203,7 @@ def do_unapply_top_patch():
             os.remove(file_data.path)
         corig_f_path = top_patch.get_cached_original_file_path(file_data.path)
         if os.path.exists(corig_f_path):
-            os.chmod(corig_f_path, file_data.old_mode)
+            os.chmod(corig_f_path, file_data.before_mode)
             shutil.move(corig_f_path, file_data.path)
         if file_data.diff:
             if drop_atws:
@@ -1293,9 +1298,9 @@ def do_add_files_to_patch(patchname, filepaths, force=False):
             overlapping_corig_f_path = overlapped_by.get_cached_original_file_path(filepath)
             if os.path.exists(overlapping_corig_f_path):
                 os.link(overlapping_corig_f_path, patch.get_cached_original_file_path(filepath))
-                patch.files[filepath].old_mode = overlapped_by.files[filepath].old_mode
+                patch.files[filepath].before_mode = overlapped_by.files[filepath].before_mode
             else:
-                patch.files[filepath].old_mode = None
+                patch.files[filepath].before_mode = None
             RCTX.stderr.write(_('{0}: (overlapped) file added to patch "{1}".\n').format(rfilepath, patch.name))
         dump_db() # do this now to minimize problems if interrupted
     return cmd_result.OK
