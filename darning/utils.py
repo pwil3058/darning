@@ -23,6 +23,7 @@ import re
 
 from darning import i18n
 from darning import urlops
+from darning import options
 
 HOME = os.path.expanduser("~")
 
@@ -117,8 +118,14 @@ def ensure_file_dir_exists(filepath):
     if not os.path.exists(file_dir):
         os.makedirs(file_dir)
 
+options.define('export', 'replace_spc_in_name_with', options.Defn(str, None, _('Character to replace spaces in patch names with during export')))
+
 def convert_patchname_to_filename(patchname):
-    return re.sub('(\s+)', '-', patchname.strip())
+    repl = options.get('export', 'replace_spc_in_name_with')
+    if isinstance(repl, str):
+        return re.sub('(\s+)', repl, patchname.strip())
+    else:
+        return patchname
 
 _VALID_DIR_NAME_CRE = re.compile('^[ \w.-]+$')
 ALLOWED_DIR_NAME_CHARS_MSG = _('Only alphanumeric characters plus " ", "_", "-" and "." are allowed.')
