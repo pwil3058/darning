@@ -82,15 +82,15 @@ class Mercurial(object):
                 index += 1
                 filepath = item[2:]
                 status = item[0]
-                origin = None
+                related_file = None
                 if status == Mercurial.FileStatus.ADDED and index < lfile_list:
                     if file_list[index][0] == Mercurial.FileStatus.ORIGIN:
-                        origin = file_list[index][2:]
+                        related_file = fsdb.RFD(file_list[index][2:], fsdb.Relation.COPIED_FROM)
                         index += 1
                 elif filepath in unresolved_file_list:
                     status = Mercurial.FileStatus.UNRESOLVED
                 parts = fsdb.split_path(filepath)
-                self.base_dir.add_file(parts, status, origin)
+                self.base_dir.add_file(parts, status, related_file)
     @staticmethod
     def is_valid_repo():
         '''Is the currend working directory in a valid hg repository?'''

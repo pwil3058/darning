@@ -35,7 +35,7 @@ from darning.gui import diff
 
 class Tree(tlview.TreeView, actions.AGandUIManager):
     class Model(tlview.TreeView.Model):
-        Row = collections.namedtuple('Row', ['name', 'is_dir', 'style', 'foreground', 'icon', 'status', 'origin'])
+        Row = collections.namedtuple('Row', ['name', 'is_dir', 'style', 'foreground', 'icon', 'status', 'related_file_str'])
         types = Row(
             name=gobject.TYPE_STRING,
             is_dir=gobject.TYPE_BOOLEAN,
@@ -43,7 +43,7 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
             foreground=gobject.TYPE_STRING,
             icon=gobject.TYPE_STRING,
             status=gobject.TYPE_STRING,
-            origin=gobject.TYPE_STRING
+            related_file_str=gobject.TYPE_STRING
         )
         def insert_place_holder(self, dir_iter):
             self.append(dir_iter)
@@ -79,15 +79,13 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
         def on_row_collapsed_cb(self, _view, dir_iter, _dummy):
             self.insert_place_holder_if_needed(dir_iter)
         def update_iter_row_tuple(self, fsobj_iter, to_tuple):
-            for label in ['style', 'foreground', 'status', 'origin', 'icon']:
+            for label in ['style', 'foreground', 'status', 'related_file_str', 'icon']:
                 index = self.col_index(label)
                 self.set_value(fsobj_iter, index, to_tuple[index])
     # This is not a method but a function within the Tree namespace
     def _format_file_name_crcb(_column, cell_renderer, store, tree_iter, _arg=None):
         name = store.get_value(tree_iter, store.col_index('name'))
-        xinfo = store.get_value(tree_iter, store.col_index('origin'))
-        if xinfo:
-            name += ' <- %s' % xinfo
+        name += store.get_value(tree_iter, store.col_index('related_file_str'))
         cell_renderer.set_property('text', name)
     template =tlview.TreeView.Template(
         properties={'headers-visible' : False},
@@ -134,6 +132,11 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
     KEYVAL_c = gtk.gdk.keyval_from_name('c')
     KEYVAL_C = gtk.gdk.keyval_from_name('C')
     KEYVAL_ESCAPE = gtk.gdk.keyval_from_name('Escape')
+    @staticmethod
+    def _get_related_file_str(data):
+        if data.related_file:
+            return ' {0} {1}'.format(data.related_file.relation, data.related_file.path)
+        return ''
     @staticmethod
     def _handle_button_press_cb(widget, event):
         if event.type == gtk.gdk.BUTTON_PRESS:
@@ -463,7 +466,7 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
                 is_dir=isdir,
                 icon=ScmFileTreeWidget.ScmTree._FILE_ICON[isdir],
                 status=data.status,
-                origin=data.origin,
+                related_file_str=Tree._get_related_file_str(data),
                 style=deco.style,
                 foreground=deco.foreground
             )
@@ -595,7 +598,7 @@ class PatchFileTreeWidget(gtk.VBox):
                 is_dir=isdir,
                 icon=icon,
                 status='',
-                origin=data.origin,
+                related_file_str=Tree._get_related_file_str(data),
                 style=deco.style,
                 foreground=deco.foreground
             )

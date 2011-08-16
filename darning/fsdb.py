@@ -16,7 +16,13 @@
 import collections
 import os
 
-Data = collections.namedtuple('Data', ['name', 'status', 'origin'])
+class Relation(object):
+    COPIED_FROM = '<<-'
+    RENAMED_FROM = '<-'
+    RENAMED_TO = '->'
+
+RFD = collections.namedtuple('RFD', ['path', 'relation'])
+Data = collections.namedtuple('Data', ['name', 'status', 'related_file'])
 Deco = collections.namedtuple('Deco', ['style', 'foreground'])
 
 def split_path(path):
@@ -64,15 +70,15 @@ class GenDir:
         self.files = {}
     def _new_dir(self):
         return GenDir()
-    def add_file(self, path_parts, status, origin=None):
+    def add_file(self, path_parts, status, related_file=None):
         self.status_set.add(status)
         name = path_parts[0]
         if len(path_parts) == 1:
-            self.files[name] = Data(name=name, status=status, origin=origin)
+            self.files[name] = Data(name=name, status=status, related_file=related_file)
         else:
             if name not in self.subdirs:
                 self.subdirs[name] = self._new_dir()
-            self.subdirs[name].add_file(path_parts[1:], status, origin)
+            self.subdirs[name].add_file(path_parts[1:], status, related_file)
     def _update_own_status(self):
         if len(self.status_set) > 0:
             self.status = self.status_set.pop()
@@ -105,7 +111,7 @@ class GenDir:
         for dkey in dkeys:
             if not show_hidden and self._is_hidden_dir(dkey):
                 continue
-            dirs.append(Data(name=dkey, status=self.subdirs[dkey].status, origin=None))
+            dirs.append(Data(name=dkey, status=self.subdirs[dkey].status, related_file=None))
         files = []
         fkeys = list(self.files.keys())
         fkeys.sort()
@@ -121,9 +127,9 @@ class GenFileDb:
         self.base_dir = dir_type()
     def _set_contents(self, file_list, unresolved_file_list=list()):
         for item in file_list:
-            self.base_dir.add_file(split_path(item), status=None, origin=None)
-    def add_file(self, filepath, status, origin=None):
-        self.base_dir.add_file(split_path(filepath), status, origin)
+            self.base_dir.add_file(split_path(item), status=None, related_file=None)
+    def add_file(self, filepath, status, related_file=None):
+        self.base_dir.add_file(split_path(filepath), status, related_file)
     def decorate_dirs(self):
         self.base_dir.update_status()
     def dir_contents(self, dirpath='', show_hidden=False):

@@ -146,8 +146,15 @@ class FileData(PickeExtensibleObject):
         else:
             return FileData.Presence.EXTANT
     @property
-    def origin(self):
-        return self.came_from
+    def related_file(self):
+        if self.came_from:
+            if self.came_as_rename:
+                return fsdb.RFD(self.came_from, fsdb.Relation.RENAMED_FROM)
+            else:
+                return fsdb.RFD(self.came_from, fsdb.Relation.COPIED_FROM)
+        elif self.renamed_to:
+            return fsdb.RFD(self.renamed_to, fsdb.Relation.RENAMED_TO)
+        return None
 
 class OverlapData(object):
     def __init__(self, unrefreshed=None, uncommitted=None):
@@ -437,9 +444,9 @@ class PatchData(PickeExtensibleObject):
             table = []
             for fde in self.files.values():
                 validity = self._get_file_applied_validity(fde)
-                table.append(fsdb.Data(fde.path, FileData.Status(fde.get_presence(), validity), fde.origin))
+                table.append(fsdb.Data(fde.path, FileData.Status(fde.get_presence(), validity), fde.related_file))
         else:
-            table = [fsdb.Data(fde.path, FileData.Status(fde.get_presence(), None), fde.origin) for fde in self.files.values()]
+            table = [fsdb.Data(fde.path, FileData.Status(fde.get_presence(), None), fde.related_file) for fde in self.files.values()]
         return table
     def get_overlapping_patch_for_file(self, filepath):
         '''Return the patch (if any) which overlaps the named file in this patch'''
@@ -778,11 +785,11 @@ def get_patch_file_table(patchname):
 def get_combined_patch_file_table():
     '''Get a table of file data for all applied patches'''
     class _Data(object):
-        __slots__ = ['presence', 'validity', 'origin']
-        def __init__(self, presence, validity, origin=None):
+        __slots__ = ['presence', 'validity', 'related_file']
+        def __init__(self, presence, validity, related_file=None):
             self.presence = presence
             self.validity = validity
-            self.origin = origin
+            self.related_file = related_file
     assert is_readable()
     if len(_DB.series) == 0:
         return []
@@ -805,7 +812,7 @@ def get_combined_patch_file_table():
     table = []
     for filepath in sorted(file_map):
         data = file_map[filepath]
-        table.append(fsdb.Data(filepath, FileData.Status(data.presence, data.validity), data.origin))
+        table.append(fsdb.Data(filepath, FileData.Status(data.presence, data.validity), data.related_file))
     return table
 
 def patch_is_in_series(patchname):

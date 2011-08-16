@@ -119,7 +119,7 @@ class FileDb(fsdb.GenFileDb):
         fsdb.GenFileDb.__init__(self, FileDb.Dir)
         for item in file_list:
             parts = fsdb.split_path(item.name)
-            self.base_dir.add_file(parts, item.status, item.origin)
+            self.base_dir.add_file(parts, item.status, item.related_file)
         self.decorate_dirs()
 
 def get_file_db(patch=None):

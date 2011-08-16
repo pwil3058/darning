@@ -44,8 +44,8 @@ GROUP.add_argument(
 )
 
 def format_file_data(file_data):
-    if file_data.origin:
-        return '{0}: {1} <- {2}\n'.format(file_data.status.presence, patch_db.rel_subdir(file_data.name), patch_db.rel_subdir(file_data.origin))
+    if file_data.related_file:
+        return '{0}: {1} {2} {3}\n'.format(file_data.status.presence, patch_db.rel_subdir(file_data.name), file_data.related_file.relation, patch_db.rel_subdir(file_data.related_file.path))
     else:
         return '{0}: {1}\n'.format(file_data.status.presence, patch_db.rel_subdir(file_data.name))
 
