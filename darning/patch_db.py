@@ -270,7 +270,7 @@ class PatchData(PickeExtensibleObject):
         if file_data.diff:
             patch_cmd = ['patch', '--merge', '--force', '-p1', '--batch', target_name]
             runext.run_cmd(patch_cmd, str(file_data.diff))
-    def do_cache_original(self, filepath, olurpatch=None, scm_has_uncommitted_changes=False):
+    def do_cache_original(self, filepath, overlaps):
         '''Cache the original of the named file for this patch'''
         # "force" argument is supplied to allow shortcutting SCM check
         # which can be expensive
@@ -278,12 +278,12 @@ class PatchData(PickeExtensibleObject):
         assert filepath in self.files
         assert self.is_applied()
         assert self.get_overlapping_patch_for_file(filepath) is None
-        assert not (olurpatch and scm_has_uncommitted_changes)
+        olurpatch = overlaps.unrefreshed.get(filepath, None)
         corig_f_path = self.get_cached_original_file_path(filepath)
         if olurpatch:
             olurpatch.copy_refreshed_version_to(filepath, corig_f_path)
             self.files[filepath].timestamp = 0
-        elif scm_has_uncommitted_changes:
+        elif filepath in overlaps.uncommitted:
             scm_ifce.copy_clean_version_to(filepath, corig_f_path)
             self.files[filepath].timestamp = 0
         elif os.path.exists(filepath):
@@ -1129,9 +1129,7 @@ def do_apply_next_patch(force=False):
     drop_atws = options.get('push', 'drop_added_tws')
     biggest_ecode = 0
     for file_data in next_patch.files.values():
-        olurpatch = overlaps.unrefreshed.get(file_data.path, None)
-        scm_has_uncommitted_changes = file_data.path in overlaps.uncommitted
-        next_patch.do_cache_original(file_data.path, olurpatch, scm_has_uncommitted_changes)
+        next_patch.do_cache_original(file_data.path, overlaps)
         patch_ok = True
         if file_data.binary is not False:
             RCTX.stdout.write(_('Processing binary file "{0}".\n').format(rel_subdir(file_data.path)))
@@ -1182,9 +1180,9 @@ def do_apply_next_patch(force=False):
         else:
             file_data.before_sha1 = False
             file_data.after_sha1 = False
-        if olurpatch:
+        if file_data.path in overlaps.unrefreshed:
             RCTX.stdout.write(_('Unrefreshed changes incorporated.\n'))
-        elif scm_has_uncommitted_changes:
+        elif file_data.path in overlaps.uncommitted:
             RCTX.stdout.write(_('Uncommited changes incorporated.\n'))
         dump_db()
     if biggest_ecode > 1:
