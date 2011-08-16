@@ -938,6 +938,9 @@ class Patch(object):
     def estimate_strip_level(self):
         trues = 0
         for diff_plus in self.diff_pluses:
+            if diff_plus.preambles.get_index_for_type('git') is not None:
+                # git patches will always have a strip level of 1
+                return 1
             check = _file_data_consistent_with_strip_one(diff_plus.diff.file_data)
             if check is True:
                 trues += 1
