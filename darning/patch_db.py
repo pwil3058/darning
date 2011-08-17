@@ -270,7 +270,7 @@ class PatchData(PickeExtensibleObject):
         if file_data.diff:
             patch_cmd = ['patch', '--merge', '--force', '-p1', '--batch', target_name]
             runext.run_cmd(patch_cmd, str(file_data.diff))
-    def do_cache_original(self, filepath, overlaps):
+    def do_cache_original(self, filepath, overlaps=None):
         '''Cache the original of the named file for this patch'''
         # "force" argument is supplied to allow shortcutting SCM check
         # which can be expensive
@@ -278,12 +278,12 @@ class PatchData(PickeExtensibleObject):
         assert filepath in self.files
         assert self.is_applied()
         assert self.get_overlapping_patch_for_file(filepath) is None
-        olurpatch = overlaps.unrefreshed.get(filepath, None)
+        olurpatch = overlaps.unrefreshed.get(filepath, None) if overlaps is not None else None
         corig_f_path = self.get_cached_original_file_path(filepath)
         if olurpatch:
             olurpatch.copy_refreshed_version_to(filepath, corig_f_path)
             self.files[filepath].timestamp = 0
-        elif filepath in overlaps.uncommitted:
+        elif overlaps is not None and filepath in overlaps.uncommitted:
             scm_ifce.copy_clean_version_to(filepath, corig_f_path)
             self.files[filepath].timestamp = 0
         elif os.path.exists(filepath):
@@ -1327,14 +1327,12 @@ def do_add_files_to_patch(patchname, filepaths, force=False):
         overlapped_by = patch.get_overlapping_patch_for_file(filepath) if patch_is_applied else None
         patch.files[filepath] = FileData(filepath)
         if overlapped_by is None:
+            patch.do_cache_original(filepath, overlaps)
             if filepath in overlaps.uncommitted:
-                patch.do_cache_original(filepath, None, True)
                 RCTX.stderr.write(_('{0}: file added to patch "{1}". Uncommited SCM changes have been incorporated.\n').format(rfilepath, patch.name))
             elif filepath in overlaps.unrefreshed:
-                patch.do_cache_original(filepath, get_patch(overlaps.unrefreshed[filepath]), False)
                 RCTX.stderr.write(_('{0}: file added to patch "{1}". Unrefeshed changes in patch "{2}" incorporated.\n').format(rfilepath, patch.name, overlaps.unrefreshed[filepath]))
             else:
-                patch.do_cache_original(filepath, None, False)
                 RCTX.stdout.write(_('{0}: file added to patch "{1}".\n').format(rfilepath, patch.name))
         else:
             overlapping_corig_f_path = overlapped_by.get_cached_original_file_path(filepath)
@@ -1362,7 +1360,7 @@ def do_delete_files_in_top_patch(filepaths):
             continue
         if filepath not in patch.files:
             patch.files[filepath] = FileData(filepath)
-            patch.do_cache_original(filepath, None, False)
+            patch.do_cache_original(filepath)
         dump_db()
         try:
             os.remove(filepath)
@@ -1390,7 +1388,7 @@ def do_copy_file_to_top_patch(filepath, as_filepath, overwrite=False):
             return cmd_result.ERROR | cmd_result.SUGGEST_RENAME
     else:
         patch.files[as_filepath] = FileData(as_filepath)
-        patch.do_cache_original(as_filepath, None, False)
+        patch.do_cache_original(as_filepath)
     dump_db()
     try:
         shutil.copy2(filepath, as_filepath)
@@ -1424,7 +1422,7 @@ def do_rename_file_in_top_patch(filepath, new_filepath, force=False, overwrite=F
             return cmd_result.ERROR | cmd_result.SUGGEST_RENAME
     else:
         patch.files[new_filepath] = FileData(new_filepath)
-        patch.do_cache_original(new_filepath, None, False)
+        patch.do_cache_original(new_filepath)
     dump_db()
     try:
         os.rename(filepath, new_filepath)
