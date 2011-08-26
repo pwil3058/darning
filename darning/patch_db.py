@@ -892,6 +892,23 @@ def do_create_new_patch(patchname, description):
         RCTX.stderr.write(_('Previous top patch ("{0}") needs refreshing.\n').format(old_top))
     return cmd_result.OK
 
+def do_rename_patch(patchname, newname):
+    '''Rename an existing patch.'''
+    assert is_writable()
+    if get_patch_series_index(newname) is not None:
+        RCTX.stderr.write(_('patch "{0}" already exists\n').format(newname))
+        return cmd_result.ERROR|cmd_result.SUGGEST_RENAME
+    elif not utils.is_valid_dir_name(newname):
+        RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(newname, utils.ALLOWED_DIR_NAME_CHARS_MSG))
+        return cmd_result.ERROR|cmd_result.SUGGEST_RENAME
+    patch = _get_patch(patchname)
+    if patch is None:
+        return cmd_result.ERROR
+    patch.set_name(newname)
+    RCTX.stdout.write(_('{0}: patch renamed as "{1}".\n').format(patchname, patch.name))
+    dump_db()
+    return cmd_result.OK
+
 def do_import_patch(epatch, patchname, overwrite=False):
     '''Import an external patch with the given name (after the top patch)'''
     assert is_writable()

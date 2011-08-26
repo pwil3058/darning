@@ -134,6 +134,7 @@ class List(table.MapManagedTable):
           <menuitem action="patch_list_patch_view"/>
           <menuitem action="patch_list_export_patch"/>
           <menuitem action="pm_set_patch_guards"/>
+          <menuitem action="patch_list_rename"/>
           <menuitem action="patch_list_duplicate"/>
         </placeholder>
         <separator/>
@@ -189,6 +190,8 @@ class List(table.MapManagedTable):
             [
                 ("pm_set_patch_guards", icons.STOCK_PATCH_GUARD, None, None,
                  _('Set guards on the selected patch'), self.do_set_guards),
+                ("patch_list_rename", icons.STOCK_RENAME, _('Rename'), None,
+                 _('Rename the selected patch'), self.do_rename),
                 ("patch_list_duplicate", gtk.STOCK_COPY, _('Duplicate'), None,
                  _('Duplicate the selected patch after the top applied patch'), self.do_duplicate),
             ])
@@ -354,6 +357,20 @@ class List(table.MapManagedTable):
         result = ifce.PM.do_refresh_patch(patchname)
         dialogue.unshow_busy()
         dialogue.report_any_problems(result)
+    def do_rename(self, _action=None):
+        patchname = self.get_selected_patch()
+        dialog = dialogue.ReadTextDialog("Rename Patch: %s" % patchname, "New Name:", patchname)
+        while dialog.run() == gtk.RESPONSE_OK:
+            new_name = dialog.entry.get_text()
+            if patchname == new_name:
+                break
+            self.show_busy()
+            result = ifce.PM.do_rename_patch(patchname, new_name)
+            self.unshow_busy()
+            dialogue.report_any_problems(result)
+            if not (result.eflags & cmd_result.ERROR_SUGGEST_RENAME):
+                break
+        dialog.destroy()
 
 def do_export_named_patch(parent, patchname, suggestion=None, busy_indicator=None):
     if not suggestion:

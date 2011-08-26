@@ -212,6 +212,15 @@ def do_create_new_patch(patchname, descr):
         ws_event.notify_events(ws_event.PATCH_CREATE|ws_event.PATCH_PUSH)
     return cmd_result.Result(eflags, patch_db.RCTX.message)
 
+def do_rename_patch(patchname, newname):
+    patch_db.RCTX.reset()
+    console.LOG.start_cmd(_('rename patch "{0}" to "{1}"\n').format(patchname, newname))
+    eflags = patch_db.do_rename_patch(patchname, newname)
+    console.LOG.end_cmd()
+    if cmd_result.is_less_than_error(eflags):
+        ws_event.notify_events(ws_event.PATCH_MODIFY)
+    return cmd_result.Result(eflags, patch_db.RCTX.message)
+
 def do_restore_patch(patchname, as_patchname=''):
     patch_db.RCTX.reset()
     if not as_patchname:
