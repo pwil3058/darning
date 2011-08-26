@@ -841,7 +841,7 @@ class DiffPlus(object):
     def parse_text(text):
         '''Parse text and return a valid DiffPlus or raise exception'''
         return DiffPlus.parse_lines(text.splitlines(True))
-    def __init__(self, preambles=None, diff=None):
+    def __init__(self, preambles=None, diff=None, trailing_junk=None):
         self.preambles = preambles if isinstance(preambles, Preambles) else Preambles(preambles)
         self.diff = diff
         self.trailing_junk = _Lines()

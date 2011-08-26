@@ -97,81 +97,6 @@ class PickeExtensibleObject(object):
     def __getattr__(self, attr):
         return self.NEW_FIELDS[attr]
 
-class FileData(PickeExtensibleObject):
-    '''Change data for a single file'''
-    class Presence(object):
-        ADDED = patchlib.FilePathPlus.ADDED
-        REMOVED = patchlib.FilePathPlus.DELETED
-        EXTANT = patchlib.FilePathPlus.EXTANT
-    class Validity(object):
-        REFRESHED, NEEDS_REFRESH, UNREFRESHABLE = range(3)
-    Status = collections.namedtuple('Status', ['presence', 'validity'])
-    MERGE_CRE = re.compile('^(<<<<<<<|>>>>>>>).*$')
-    def __init__(self, filepath, patch, came_from_path=None, as_rename=False):
-        self.path = filepath
-        self.patch = patch
-        self.came_from_path = came_from_path
-        self.came_as_rename = as_rename
-        self.reset_reference_paths()
-        self.diff = None
-        try:
-            fstat = os.stat(filepath)
-            self.before_mode = fstat.st_mode
-            self.timestamp = fstat.st_mtime
-        except OSError:
-            self.before_mode = None
-            self.timestamp = 0
-        self.after_mode = self.before_mode
-        self.before_sha1 = utils.get_sha1_for_file(filepath)
-        self.after_sha1 = self.before_sha1
-        self.renamed_to = None
-    def reset_reference_paths(self):
-        def generate_cached_original_path(filepath):
-            '''Return the path of the cached original for the given file path'''
-            return os.path.join(self.patch.cached_orig_dir_path, filepath)
-        # have this as a function to make patch renaming easier
-        self.cached_orig_path = generate_cached_original_path(self.path)
-        if self.came_from_path and False: # TODO: fix when git semantics implemented
-            came_from_cop = generate_cached_original_path(self.came_from_path)
-            if self.came_as_rename or os.path.exists(came_from_cop):
-                self.before_file_path = came_from_cop
-            else:
-                self.before_file_path = self.came_from_path
-        else:
-            self.before_file_path = self.cached_orig_path
-    @property
-    def binary(self):
-        return isinstance(self.diff, BinaryDiff)
-    def needs_refresh(self):
-        '''Does this file need a refresh? (Given that it is not overshadowed.)'''
-        if os.path.exists(self.path):
-            return self.timestamp < os.path.getmtime(self.path) or self.after_mode is None
-        else:
-            return self.after_mode is not None or self.timestamp < 0
-    def has_unresolved_merges(self):
-        if os.path.exists(self.path):
-            for line in open(self.path).readlines():
-                if FileData.MERGE_CRE.match(line):
-                    return True
-        return False
-    def get_presence(self):
-        if self.before_mode is None:
-            return FileData.Presence.ADDED
-        elif self.after_mode is None:
-            return FileData.Presence.REMOVED
-        else:
-            return FileData.Presence.EXTANT
-    @property
-    def related_file(self):
-        if self.came_from_path:
-            if self.came_as_rename:
-                return fsdb.RFD(self.came_from_path, fsdb.Relation.RENAMED_FROM)
-            else:
-                return fsdb.RFD(self.came_from_path, fsdb.Relation.COPIED_FROM)
-        elif self.renamed_to:
-            return fsdb.RFD(self.renamed_to, fsdb.Relation.RENAMED_TO)
-        return None
-
 class OverlapData(object):
     def __init__(self, unrefreshed=None, uncommitted=None):
          self.unrefreshed = {} if not unrefreshed else unrefreshed
@@ -190,6 +115,127 @@ class OverlapData(object):
             RCTX.stderr.write(_('{0}: file has unrefreshed changes in (applied) "{1}".\n').format(rfilepath, opatch.name))
         RCTX.stderr.write(_('Aborted.\n'))
         return cmd_result.ERROR_SUGGEST_FORCE_ABSORB_OR_REFRESH if len(self.unrefreshed) > 0 else cmd_result.ERROR_SUGGEST_FORCE_OR_ABSORB
+
+class FileData(PickeExtensibleObject):
+    '''Change data for a single file'''
+    class Presence(object):
+        ADDED = patchlib.FilePathPlus.ADDED
+        REMOVED = patchlib.FilePathPlus.DELETED
+        EXTANT = patchlib.FilePathPlus.EXTANT
+    class Validity(object):
+        REFRESHED, NEEDS_REFRESH, UNREFRESHABLE = range(3)
+    Status = collections.namedtuple('Status', ['presence', 'validity'])
+    MERGE_CRE = re.compile('^(<<<<<<<|>>>>>>>).*$')
+    def __init__(self, filepath, patch, overlaps=OverlapData(), came_from_path=None, as_rename=False):
+        self.path = filepath
+        self.patch = patch
+        self.came_from_path = came_from_path
+        self.came_as_rename = as_rename
+        self.renamed_to = None
+        self.reset_reference_paths()
+        self.diff = None
+        if self.came_from_path:
+            self.orig_mode = None
+            came_from_data = self.patch.files.get(self.came_from_path, None)
+            if came_from_data:
+                self.before_mode = came_from_data.before_mode
+                self.before_sha1 = came_from_data.before_sha1
+                self.timestamp = came_from_data.timestamp
+            else:
+                # self.came_from_path must exist so no need for "try"
+                fstat = os.stat(self.came_from_path)
+                self.before_mode = fstat.st_mode
+                self.timestamp = fstat.st_mtime
+                self.before_sha1 = utils.get_sha1_for_file(self.came_from_path)
+        else:
+            try:
+                fstat = os.stat(filepath)
+                self.orig_mode = fstat.st_mode
+                self.timestamp = fstat.st_mtime
+            except OSError:
+                self.orig_mode = None
+                self.timestamp = 0
+            self.before_mode = self.orig_mode
+            self.before_sha1 = utils.get_sha1_for_file(filepath)
+        self.after_mode = self.before_mode
+        self.after_sha1 = self.before_sha1
+        if self.patch.is_applied():
+            self.do_cache_original(overlaps)
+    def reset_reference_paths(self):
+        def generate_cached_original_path(filepath):
+            '''Return the path of the cached original for the given file path'''
+            return os.path.join(self.patch.cached_orig_dir_path, filepath)
+        # have this as a function to make patch renaming easier
+        self.cached_orig_path = generate_cached_original_path(self.path)
+        if self.came_from_path:
+            came_from_cop = generate_cached_original_path(self.came_from_path)
+            if self.came_as_rename or os.path.exists(came_from_cop):
+                self.before_file_path = came_from_cop
+            else:
+                self.before_file_path = self.came_from_path
+        elif self.renamed_to:
+            self.before_file_path = '/dev/null'
+        else:
+            self.before_file_path = self.cached_orig_path
+    def do_cache_original(self, overlaps=OverlapData()):
+        '''Cache the original of the named file for this patch'''
+        assert is_writable()
+        assert self.patch.is_applied()
+        assert self.patch.get_overlapping_patch_for_file(self.path) is None
+        olurpatch = overlaps.unrefreshed.get(self.path, None)
+        if olurpatch:
+            olurpatch.copy_refreshed_version_to(self.path, self.cached_orig_path)
+            self.timestamp = 0
+        elif self.path in overlaps.uncommitted:
+            scm_ifce.copy_clean_version_to(self.path, self.cached_orig_path)
+            self.timestamp = 0
+        elif os.path.exists(self.path):
+            # We'll try to preserve links when we pop patches
+            # so we move the file to the cached originals' directory and then make
+            # a copy (without links) in the working directory
+            utils.ensure_file_dir_exists(self.cached_orig_path)
+            shutil.move(self.path, self.cached_orig_path)
+            shutil.copy2(self.cached_orig_path, self.path)
+        if os.path.exists(self.cached_orig_path):
+            # We need this so that we need to reset it on pop
+            orig_mode = os.stat(self.cached_orig_path).st_mode
+            # Make the cached original read only to prevent accidental change
+            os.chmod(self.cached_orig_path, utils.turn_off_write(orig_mode))
+            self.orig_mode = orig_mode
+        else:
+            self.orig_mode = None
+    @property
+    def binary(self):
+        return isinstance(self.diff, BinaryDiff)
+    def needs_refresh(self):
+        '''Does this file need a refresh? (Given that it is not overshadowed.)'''
+        if os.path.exists(self.path):
+            return self.timestamp < os.path.getmtime(self.path) or self.after_mode is None
+        else:
+            return self.after_mode is not None or self.timestamp < 0
+    def has_unresolved_merges(self):
+        if os.path.exists(self.path):
+            for line in open(self.path).readlines():
+                if FileData.MERGE_CRE.match(line):
+                    return True
+        return False
+    def get_presence(self):
+        if self.orig_mode is None:
+            return FileData.Presence.ADDED
+        elif self.after_mode is None:
+            return FileData.Presence.REMOVED
+        else:
+            return FileData.Presence.EXTANT
+    @property
+    def related_file(self):
+        if self.came_from_path:
+            if self.came_as_rename:
+                return fsdb.RFD(self.came_from_path, fsdb.Relation.RENAMED_FROM)
+            else:
+                return fsdb.RFD(self.came_from_path, fsdb.Relation.COPIED_FROM)
+        elif self.renamed_to:
+            return fsdb.RFD(self.renamed_to, fsdb.Relation.RENAMED_TO)
+        return None
 
 def _pts_tz_str(tz_seconds=None):
     '''Return the timezone as a string suitable for use in patch header'''
@@ -246,10 +292,13 @@ class PatchData(PickeExtensibleObject):
         '''Drop the named file from this patch'''
         assert is_writable()
         assert filepath in self.files
+        renamed_from = self.files[filepath].came_from_path if self.files[filepath].came_as_rename else None
         if not self.is_applied():
             # not much to do here
             del self.files[filepath]
             dump_db()
+            if renamed_from is not None:
+                self.do_drop_file(renamed_from)
             return
         corig_f_path = self.files[filepath].cached_orig_path
         overlapped_by = self.get_overlapping_patch_for_file(filepath)
@@ -257,7 +306,7 @@ class PatchData(PickeExtensibleObject):
             if os.path.exists(filepath):
                 os.remove(filepath)
             if os.path.exists(corig_f_path):
-                os.chmod(corig_f_path, self.files[filepath].before_mode)
+                os.chmod(corig_f_path, self.files[filepath].orig_mode)
                 shutil.move(corig_f_path, filepath)
         else:
             overlapping_corig_f_path = overlapped_by.files[filepath].cached_orig_path
@@ -270,8 +319,19 @@ class PatchData(PickeExtensibleObject):
                 overlapped_by.files[filepath].before_mode = None
             # Make sure that the overlapping file gets refreshed
             overlapped_by.files[filepath].timestamp = 0
+        renamed_to = self.files[filepath].renamed_to
         del self.files[filepath]
+        if renamed_to is not None and renamed_to in self.files:
+            # Second check is necessary in the case where a renamed
+            # file is dropped and the source is dropped as a result.
+            self.files[renamed_to].came_as_rename = False
+            self.files[renamed_to].reset_reference_paths()
+        for file_data in self.files.values():
+            if file_data.came_from_path == filepath:
+                file_data.before_file_path = filepath
         dump_db()
+        if renamed_from is not None:
+            self.do_drop_file(renamed_from)
     def copy_refreshed_version_to(self, filepath, target_name):
         file_data = self.files[filepath]
         if not file_data.needs_refresh():
@@ -294,35 +354,6 @@ class PatchData(PickeExtensibleObject):
         if file_data.diff:
             patch_cmd = ['patch', '--merge', '--force', '-p1', '--batch', target_name]
             runext.run_cmd(patch_cmd, str(file_data.diff))
-    def do_cache_original(self, filepath, overlaps=OverlapData()):
-        '''Cache the original of the named file for this patch'''
-        assert is_writable()
-        assert filepath in self.files
-        assert self.is_applied()
-        assert self.get_overlapping_patch_for_file(filepath) is None
-        olurpatch = overlaps.unrefreshed.get(filepath, None)
-        corig_f_path = self.files[filepath].cached_orig_path
-        if olurpatch:
-            olurpatch.copy_refreshed_version_to(filepath, corig_f_path)
-            self.files[filepath].timestamp = 0
-        elif filepath in overlaps.uncommitted:
-            scm_ifce.copy_clean_version_to(filepath, corig_f_path)
-            self.files[filepath].timestamp = 0
-        elif os.path.exists(filepath):
-            # We'll try to preserve links when we pop patches
-            # so we move the file to the cached originals' directory and then make
-            # a copy (without links) in the working directory
-            utils.ensure_file_dir_exists(corig_f_path)
-            shutil.move(filepath, corig_f_path)
-            shutil.copy2(corig_f_path, filepath)
-        if os.path.exists(corig_f_path):
-            # We need this so that we need to reset it on pop
-            before_mode = os.stat(corig_f_path).st_mode
-            # Make the cached original read only to prevent accidental change
-            os.chmod(corig_f_path, utils.turn_off_write(before_mode))
-            self.files[filepath].before_mode = before_mode
-        else:
-            self.files[filepath].before_mode = None
     def generate_diff_preamble_for_file(self, filepath, combined=False):
         assert is_readable()
         assert filepath in self.files
@@ -331,22 +362,32 @@ class PatchData(PickeExtensibleObject):
             olp = None if combined else self.get_overlapping_patch_for_file(filepath)
             if olp is not None:
                 after_mode = olp.files[filepath].before_mode
+            elif os.path.exists(filepath):
+                after_mode = os.stat(filepath).st_mode
             else:
-                after_mode = os.stat(filepath).st_mode if os.path.exists(filepath) else None
+                after_mode = file_data.before_mode if file_data.renamed_to else None
         else:
             after_mode = file_data.after_mode
+        if file_data.came_from_path:
+            lines = ['diff --git {0} {1}\n'.format(os.path.join('a', file_data.came_from_path), os.path.join('b', filepath)), ]
+        else:
+            lines = ['diff --git {0} {1}\n'.format(os.path.join('a', filepath), os.path.join('b', filepath)), ]            
         if file_data.before_mode is None:
-            lines = ['diff --git /dev/null {0}\n'.format(os.path.join('a', filepath)), ]
             if after_mode is not None:
                 lines.append('new file mode {0:07o}\n'.format(after_mode))
         elif after_mode is None:
-            lines = ['diff --git {0} /dev/null\n'.format(os.path.join('a', filepath)), ]
             lines.append('deleted file mode {0:07o}\n'.format(file_data.before_mode))
         else:
-            lines = ['diff --git {0} {1}\n'.format(os.path.join('a', filepath), os.path.join('b', filepath)), ]
             if file_data.before_mode != after_mode:
                 lines.append('old mode {0:07o}\n'.format(file_data.before_mode))
                 lines.append('new mode {0:07o}\n'.format(after_mode))
+        if not combined and file_data.came_from_path:
+            if file_data.came_as_rename:
+                lines.append('rename from {0}\n'.format(file_data.came_from_path))
+                lines.append('rename to {0}\n'.format(file_data.path))
+            else:
+                lines.append('copy from {0}\n'.format(file_data.came_from_path))
+                lines.append('copy to {0}\n'.format(file_data.path))
         return patchlib.Preamble.parse_lines(lines)
     def generate_diff_for_file(self, filepath, combined=False):
         assert is_readable()
@@ -354,7 +395,7 @@ class PatchData(PickeExtensibleObject):
         assert self.is_applied()
         olp = None if combined else self.get_overlapping_patch_for_file(filepath)
         to_file = filepath if olp is None else olp.files[filepath].cached_orig_path
-        fm_file = self.files[filepath].cached_origpath if combined else self.files[filepath].before_file_path
+        fm_file = self.files[filepath].cached_orig_path if combined else self.files[filepath].before_file_path
         fm_exists = os.path.exists(fm_file)
         if os.path.exists(to_file):
             to_name_label = os.path.join('b' if fm_exists else 'a', filepath)
@@ -375,7 +416,7 @@ class PatchData(PickeExtensibleObject):
             fm_time_stamp = _PTS_ZERO
             fm_contents = ''
         if to_contents == fm_contents:
-            return ''
+            return None
         if to_contents.find('\000') != -1 or fm_contents.find('\000') != -1:
             return BinaryDiff(patchlib._PAIR(fm_name_label, to_name_label))
         diffgen = difflib.unified_diff(fm_contents.splitlines(True), to_contents.splitlines(True),
@@ -386,7 +427,10 @@ class PatchData(PickeExtensibleObject):
         assert filepath in self.files
         preamble = self.generate_diff_preamble_for_file(filepath, combined)
         diff = self.generate_diff_for_file(filepath, combined) if self.is_applied() else self.files[filepath].diff
-        return patchlib.DiffPlus([preamble], diff)
+        diff_plus = patchlib.DiffPlus([preamble], diff)
+        if not combined and self.files[filepath].renamed_to:
+            diff_plus.trailing_junk.append(_('# Renamed to: {0}\n').format(self.files[filepath].renamed_to))
+        return diff_plus
     def do_refresh_file(self, filepath):
         '''Refresh the named file in this patch'''
         assert is_writable()
@@ -948,7 +992,7 @@ def do_import_patch(epatch, patchname, overwrite=False):
             if bad_strip_level:
                 RCTX.stderr.write(_('git data for file "{0}" incompatible with strip level {1}.\n').format(filepath, epatch.num_strip_levels))
                 return cmd_result.ERROR
-        file_data = FileData(filepath, patch, came_from, as_rename)
+        file_data = FileData(filepath, patch, came_from_path=came_from, as_rename=as_rename)
         file_data.diff = diff_plus.diff
         if git_preamble:
             for key in ['new mode', 'new file mode']:
@@ -962,6 +1006,7 @@ def do_import_patch(epatch, patchname, overwrite=False):
             patch.files[old_path] = FileData(old_path, patch)
             RCTX.stdout.write(_('{0}: file added to patch "{1}".\n').format(old_path, patchname))
         patch.files[old_path].renamed_to = renames[old_path]
+        patch.files[old_path].before_file_path = '/dev/null'
     _insert_patch(patch)
     dump_db()
     top_patchname = get_top_patch_name()
@@ -975,20 +1020,13 @@ def do_fold_epatch(epatch, absorb=False, force=False):
     '''Fold an external patch into the top patch.'''
     assert is_writable()
     assert not (absorb and force)
-    top_patch = _get_patch(None)
+    top_patch = _get_top_patch()
     if not top_patch:
         return cmd_result.ERROR
-    top_patch_file_set = set([filepath for filepath in top_patch.files])
-    new_file_list = [filepath for filepath in epatch.get_file_paths(epatch.num_strip_levels) if filepath not in top_patch_file_set]
-    result = do_add_files_to_patch(top_patch.name, new_file_list, absorb=absorb, force=force)
-    if result != cmd_result.OK:
-        return result
-    patch_cmd = ['patch', '--merge', '--force', '-p1', '--batch', '--quiet']
-    drop_atws = options.get('push', 'drop_added_tws')
-    for diff_plus in epatch.diff_pluses:
+    def _apply_diff_plus(diff_plus):
+        filepath = diff_plus.get_file_path(epatch.num_strip_levels)
         top_patch.files[filepath].timestamp = -1
         dump_db()
-        filepath = diff_plus.get_file_path(epatch.num_strip_levels)
         RCTX.stdout.write(_('Patching file "{0}".\n').format(rel_subdir(filepath)))
         if drop_atws:
             aws_lines = diff_plus.fix_trailing_whitespace()
@@ -1005,13 +1043,97 @@ def do_fold_epatch(epatch, absorb=False, force=False):
             RCTX.stdout.write(result.stdout)
         RCTX.stderr.write(result.stderr)
         if os.path.exists(filepath):
-            for preamble in diff_plus.preambles:
-                if preamble.preamble_type == 'git':
-                    for key in ['new mode', 'new file mode']:
-                        if key in preamble.extras:
-                            os.chmod(filepath, int(preamble.extras[key], 8))
-                            break
-                    break
+            git_preamble = diff_plus.get_preamble_for_type('git')
+            if git_preamble is not None:
+                for key in ['new mode', 'new file mode']:
+                    if key in preamble.extras:
+                        os.chmod(filepath, int(preamble.extras[key], 8))
+                        break
+    new_file_list = [filepath for filepath in epatch.get_file_paths(epatch.num_strip_levels) if filepath not in top_patch.files]
+    if not force:
+        overlaps = get_filelist_overlap_data(new_file_list, top_patch.name)
+        if not absorb and len(overlaps) > 0:
+            return overlaps.report_and_abort()
+    else:
+        overlaps = OverlapData()
+    patch_cmd = ['patch', '--merge', '--force', '-p1', '--batch', '--quiet']
+    drop_atws = options.get('push', 'drop_added_tws')
+    copies = []
+    renames = []
+    creates = []
+    # Do the caching of existing files first to obviate copy/rename problems
+    for diff_plus in epatch.diff_pluses:
+        filepath = diff_plus.get_file_path(epatch.num_strip_levels)
+        git_preamble = diff_plus.get_preamble_for_type('git')
+        copied_from = git_preamble.extras.get('copy from', None) if git_preamble else None
+        renamed_from = git_preamble.extras.get('rename from', None) if git_preamble else None
+        came_from_path = copied_from if copied_from else renamed_from
+        file_data = top_patch.files.get(filepath, None)
+        if file_data is None:
+            file_data = FileData(filepath, top_patch, overlaps=overlaps, came_from_path=came_from_path, as_rename=renamed_from is not None)
+            top_patch.files[filepath] = file_data
+        elif came_from_path:
+            file_data.came_from_path = came_from_path
+            file_data.came_as_rename = renamed_from is not None
+            file_data.reset_reference_paths()
+        if renamed_from is not None:
+            if renamed_from not in top_patch.files:
+                top_patch.files[renamed_from] = FileData(renamed_from, top_patch, overlaps=overlaps)
+            renames.append(diff_plus)
+        elif copied_from is not None:
+            copies.append(diff_plus)
+        elif not os.path.exists(filepath):
+            created.append(diff_plus)
+    # Now use patch to create any file created by the fold
+    for diff_plus in epatch.diff_pluses:
+        if diff_plus in created:
+            _apply_diff_plus(diff_plus)
+    # Do any copying
+    for diff_plus in epatch.diff_pluses:
+        if diff_plus in copies:
+            filepath = diff_plus.get_file_path(epatch.num_strip_levels)
+            file_data = top_patch.files.get(filename, None)
+            assert file_data is not None
+            copied_file_data = top_patch.files.get(file_data.came_from_path, None)
+            if copied_file_data is not None and os.path.exists(copied_file_data.cached_orig_path):
+                source = copied_file_data.cached_orig_path
+            elif os.path.exists(file_data.came_from_path):
+                source = file_data.came_from_path
+            else:
+                source = None
+            if source is None:
+                RCTX.stderr.write(_('{0}: failed to copy {1}.\n').format(rel_subdir(file_data.path), rel_subdir(file_data.came_from_path)))
+            else:
+                file_data.before_file_path = source
+                try:
+                    shutil.copy2(source, file_data.path)
+                except OSError as edata:
+                    RCTX.stderr.write(edata)
+    # Do any renaming
+    for diff_plus in epatch.diff_pluses:
+        if diff_plus in renames:
+            filepath = diff_plus.get_file_path(epatch.num_strip_levels)
+            file_data = top_patch.files.get(filename, None)
+            assert file_data is not None
+            renamed_file_data = top_patch.files.get(file_data.came_from_path, None)
+            if os.path.exists(renamed_file_data.cached_orig_path):
+                source = renamed_file_data.cached_orig_path
+            elif os.path.exists(file_data.came_from_path):
+                source = file_data.came_from_path
+            else:
+                source = None
+            if source is None:
+                RCTX.stderr.write(_('{0}: failed to rename {1}.\n').format(rel_subdir(file_data.path), rel_subdir(file_data.came_from_path)))
+            else:
+                file_data.before_file_path = source
+                try:
+                    os.rename(source, file_data.path)
+                except OSError as edata:
+                    RCTX.stderr.write(edata)
+    # Apply the remaining changes
+    for diff_plus in epatch.diff_pluses:
+        if diff_plus not in created:
+            _apply_diff_plus(diff_plus)
     if top_patch_needs_refresh():
         RCTX.stdout.write(_('{0}: patch needs refreshing.\n').format(top_patch.name))
     return cmd_result.OK
@@ -1151,29 +1273,7 @@ def do_apply_next_patch(absorb=False, force=False):
     '''Apply the next patch in the series'''
     assert is_writable()
     assert not (absorb and force)
-    next_index = _get_next_patch_index()
-    if next_index is None:
-        top_patch = get_top_patch_name()
-        if top_patch:
-            RCTX.stderr.write(_('No pushable patches. "{0}" is on top.\n').format(top_patch))
-        else:
-            RCTX.stderr.write(_('No pushable patches.\n'))
-        return cmd_result.ERROR
-    next_patch = _DB.series[next_index]
-    if force:
-        overlaps = OverlapData()
-    else:
-        overlaps = get_overlap_data(next_patch.get_filepaths())
-        if not absorb and len(overlaps):
-            return overlaps.report_and_abort()
-    os.mkdir(next_patch.cached_orig_dir_path)
-    if len(next_patch.files) == 0:
-        return cmd_result.OK
-    patch_cmd = ['patch', '--merge', '--force', '-p1', '--batch', '--quiet']
-    drop_atws = options.get('push', 'drop_added_tws')
-    biggest_ecode = 0
-    for file_data in next_patch.files.values():
-        next_patch.do_cache_original(file_data.path, overlaps)
+    def _apply_file_data_patch(file_data, biggest_ecode):
         patch_ok = True
         if file_data.binary is not False:
             RCTX.stdout.write(_('Processing binary file "{0}".\n').format(rel_subdir(file_data.path)))
@@ -1214,10 +1314,6 @@ def do_apply_next_patch(absorb=False, force=False):
                 biggest_ecode = max(biggest_ecode, 1)
                 RCTX.stderr.write(_('Expected file not found.\n'))
             file_data.timestamp = 0
-        if os.path.exists(file_data.path) and patch_ok:
-            file_data.timestamp = os.path.getmtime(file_data.path)
-        else:
-            file_data.timestamp = 0
         if patch_ok:
             file_data.before_sha1 = utils.get_sha1_for_file(file_data.before_file_path)
             file_data.after_sha1 = utils.get_sha1_for_file(file_data.path)
@@ -1229,6 +1325,77 @@ def do_apply_next_patch(absorb=False, force=False):
         elif file_data.path in overlaps.uncommitted:
             RCTX.stdout.write(_('Uncommited changes incorporated.\n'))
         dump_db()
+        return biggest_ecode
+    next_index = _get_next_patch_index()
+    if next_index is None:
+        top_patch = get_top_patch_name()
+        if top_patch:
+            RCTX.stderr.write(_('No pushable patches. "{0}" is on top.\n').format(top_patch))
+        else:
+            RCTX.stderr.write(_('No pushable patches.\n'))
+        return cmd_result.ERROR
+    next_patch = _DB.series[next_index]
+    if force:
+        overlaps = OverlapData()
+    else:
+        overlaps = get_overlap_data(next_patch.get_filepaths())
+        if not absorb and len(overlaps):
+            return overlaps.report_and_abort()
+    os.mkdir(next_patch.cached_orig_dir_path)
+    if len(next_patch.files) == 0:
+        return cmd_result.OK
+    patch_cmd = ['patch', '--merge', '--force', '-p1', '--batch', '--quiet']
+    drop_atws = options.get('push', 'drop_added_tws')
+    copies = []
+    renames = []
+    creates = []
+    # Do the caching of existing files first to obviate copy/rename problems
+    for file_data in next_patch.files.values():
+        file_data.do_cache_original(overlaps)
+        if file_data.came_from_path:
+            if file_data.came_as_rename:
+                renames.append(file_data)
+            else:
+                copies.append(file_data)
+        elif not os.path.exists(file_data.path):
+            created.append(file_data)
+    biggest_ecode = 0
+    # Next do the files that are created by this patch as they may have been copied
+    for file_data in creates:
+        biggest_ecode = _apply_file_data_patch(file_data, biggest_ecode)
+    # Now do the copying
+    for file_data in copies:
+        copied_file_data = next_patch.files.get(file_data.came_from_path, None)
+        if copied_file_data is not None and os.path.exists(copied_file_data.cached_orig_path):
+            source = copied_file_data.cached_orig_path
+        elif os.path.exists(file_data.came_from_path):
+            source = file_data.came_from_path
+        else:
+            source = None
+        if source is None:
+            RCTX.stderr.write(_('{0}: failed to copy {1}.\n').format(rel_subdir(file_data.path), rel_subdir(file_data.came_from_path)))
+        else:
+            file_data.before_file_path = source
+            try:
+                shutil.copy2(source, file_data.path)
+            except OSError as edata:
+                RCTX.stderr.write(edata)
+    # and renaming
+    for file_data in renames:
+        next_patch.files[file_data.came_from_path].before_file_path = '/dev/null'
+        if not os.path.exists(file_data.came_from_path):
+            RCTX.stderr.write(_('{0}: failed to rename {1} (not found).\n').format(rel_subdir(file_data.path), rel_subdir(file_data.came_from_path)))
+        else:
+            file_data.before_file_path = next_patch.files[file_data.came_from_path].cached_orig_path
+            try:
+                os.rename(file_data.came_from_path, file_data.path)
+            except OSError as edata:
+                RCTX.stderr.write(edata)
+    # and finally apply any patches
+    for file_data in next_patch.files.values():
+        if file_data in creates:
+            continue
+        biggest_ecode = _apply_file_data_patch(file_data, biggest_ecode)
     if biggest_ecode > 1:
         RCTX.stderr.write(_('A refresh is required after issues are resolved.\n'))
     elif biggest_ecode > 0:
@@ -1244,11 +1411,10 @@ def get_top_applied_patch_for_file(filepath):
             return applied_patch.name
     return None
 
-def get_top_patch():
+def _get_top_patch():
     '''Return the top applied patch'''
     assert is_readable()
-    top = get_series_index_for_top()
-    return None if top is None else _DB.series[top]
+    return _get_patch(None)
 
 def get_top_patch_name():
     '''Return the name of the top applied patch'''
@@ -1288,7 +1454,7 @@ def do_unapply_top_patch():
         if os.path.exists(file_data.path):
             os.remove(file_data.path)
         if os.path.exists(file_data.cached_orig_path):
-            os.chmod(file_data.cached_orig_path, file_data.before_mode)
+            os.chmod(file_data.cached_orig_path, file_data.orig_mode)
             shutil.move(file_data.cached_orig_path, file_data.path)
         if file_data.diff:
             if drop_atws:
@@ -1333,67 +1499,54 @@ def _get_patch(patchname):
     if not patchname:
         patch_index = get_series_index_for_top()
         if patch_index is None:
-            RCTX.stderr.write(_('No patches applied'))
+            RCTX.stderr.write(_('No patches applied\n'))
     else:
         patch_index = get_patch_series_index(patchname)
         if patch_index is None:
-            RCTX.stderr.write(_('{0}: patch is NOT known').format(patchname))
+            RCTX.stderr.write(_('{0}: patch is NOT known\n').format(patchname))
     return  _DB.series[patch_index] if patch_index is not None else None
 
 def get_patch_name(arg):
     patch = _get_patch(arg)
     return None if patch is None else patch.name
 
-def do_add_files_to_patch(patchname, filepaths, absorb=False, force=False):
+def do_add_files_to_top_patch(filepaths, absorb=False, force=False):
     '''Add the named files to the named patch'''
     assert not (absorb and force)
-    patch = _get_patch(patchname)
-    if patch is None:
+    top_patch = _get_top_patch()
+    if top_patch is None:
         return cmd_result.ERROR
     prepend_subdir(filepaths)
-    patch_is_applied = patch.is_applied()
-    if patch_is_applied and not force:
-        overlaps = get_filelist_overlap_data(filepaths, patch.name)
-        if not absorb and overlaps:
+    if not force:
+        overlaps = get_filelist_overlap_data(filepaths, top_patch.name)
+        if not absorb and len(overlaps) > 0:
             return overlaps.report_and_abort()
     else:
         overlaps = OverlapData()
-    already_in_patch = set(patch.get_filepaths(filepaths))
+    already_in_patch = set(top_patch.get_filepaths(filepaths))
     for filepath in filepaths:
         if filepath in already_in_patch:
-            RCTX.stderr.write(_('{0}: file already in patch "{1}". Ignored.\n').format(rel_subdir(filepath), patch.name))
+            RCTX.stderr.write(_('{0}: file already in patch "{1}". Ignored.\n').format(rel_subdir(filepath), top_patch.name))
             continue
         elif os.path.isdir(filepath):
             RCTX.stderr.write(_('{0}: is a directory. Ignored.\n').format(rel_subdir(filepath)))
             continue
         already_in_patch.add(filepath)
         rfilepath = rel_subdir(filepath)
-        overlapped_by = patch.get_overlapping_patch_for_file(filepath) if patch_is_applied else None
-        patch.files[filepath] = FileData(filepath, patch)
-        if overlapped_by is None:
-            patch.do_cache_original(filepath, overlaps)
-            if filepath in overlaps.uncommitted:
-                RCTX.stderr.write(_('{0}: file added to patch "{1}". Uncommited SCM changes have been incorporated.\n').format(rfilepath, patch.name))
-            elif filepath in overlaps.unrefreshed:
-                RCTX.stderr.write(_('{0}: file added to patch "{1}". Unrefeshed changes in patch "{2}" incorporated.\n').format(rfilepath, patch.name, overlaps.unrefreshed[filepath]))
-            else:
-                RCTX.stdout.write(_('{0}: file added to patch "{1}".\n').format(rfilepath, patch.name))
+        top_patch.files[filepath] = FileData(filepath, top_patch, overlaps=overlaps)
+        if filepath in overlaps.uncommitted:
+            RCTX.stderr.write(_('{0}: file added to patch "{1}". Uncommited SCM changes have been incorporated.\n').format(rfilepath, top_patch.name))
+        elif filepath in overlaps.unrefreshed:
+            RCTX.stderr.write(_('{0}: file added to patch "{1}". Unrefeshed changes in patch "{2}" incorporated.\n').format(rfilepath, top_patch.name, overlaps.unrefreshed[filepath]))
         else:
-            overlapping_corig_f_path = overlapped_by.files[filepath].cached_orig_path
-            if os.path.exists(overlapping_corig_f_path):
-                os.link(overlapping_corig_f_path, patch.files[filepath].cached_orig_path)
-                patch.files[filepath].before_mode = overlapped_by.files[filepath].before_mode
-            else:
-                patch.files[filepath].before_mode = None
-            RCTX.stderr.write(_('{0}: (overlapped) file added to patch "{1}".\n').format(rfilepath, patch.name))
+            RCTX.stdout.write(_('{0}: file added to patch "{1}".\n').format(rfilepath, top_patch.name))
         dump_db() # do this now to minimize problems if interrupted
     return cmd_result.OK
 
 def do_delete_files_in_top_patch(filepaths):
     assert is_writable()
-    patch = get_top_patch()
+    patch = _get_top_patch()
     if patch is None:
-        RCTX.stderr.write(_('No patches applied.\n'))
         return cmd_result.ERROR
     nonexists = 0
     ioerrors = 0
@@ -1404,7 +1557,6 @@ def do_delete_files_in_top_patch(filepaths):
             continue
         if filepath not in patch.files:
             patch.files[filepath] = FileData(filepath, patch)
-            patch.do_cache_original(filepath)
         dump_db()
         try:
             os.remove(filepath)
@@ -1417,9 +1569,8 @@ def do_delete_files_in_top_patch(filepaths):
 
 def do_copy_file_to_top_patch(filepath, as_filepath, overwrite=False):
     assert is_writable()
-    patch = get_top_patch()
+    patch = _get_top_patch()
     if patch is None:
-        RCTX.stderr.write(_('No patches applied.\n'))
         return cmd_result.ERROR
     filepath = rel_basedir(filepath)
     if not os.path.exists(filepath):
@@ -1432,7 +1583,6 @@ def do_copy_file_to_top_patch(filepath, as_filepath, overwrite=False):
             return cmd_result.ERROR | cmd_result.SUGGEST_RENAME
     else:
         patch.files[as_filepath] = FileData(as_filepath, patch, came_from_path=filepath)
-        patch.do_cache_original(as_filepath)
     dump_db()
     try:
         shutil.copy2(filepath, as_filepath)
@@ -1440,22 +1590,21 @@ def do_copy_file_to_top_patch(filepath, as_filepath, overwrite=False):
         RCTX.stderr.write(edata)
         return cmd_result.ERROR
     dump_db()
-    RCTX.stdout.write(_('{0}: file added to patch "{1}" as "{2}".\n').format(rel_subdir(filepath), patch.name, rel_subdir(as_filepath)))
+    RCTX.stdout.write(_('{0}: file copied to "{1}" in patch "{2}".\n').format(rel_subdir(filepath), rel_subdir(as_filepath), patch.name))
     return cmd_result.OK
 
 def do_rename_file_in_top_patch(filepath, new_filepath, absorb=False, force=False, overwrite=False):
     assert is_writable()
     assert not (absorb and force)
-    patch = get_top_patch()
+    patch = _get_top_patch()
     if patch is None:
-        RCTX.stderr.write(_('No patches applied.\n'))
         return cmd_result.ERROR
     filepath = rel_basedir(filepath)
     if not os.path.exists(filepath):
         RCTX.stderr.write(_('{0}: file does not exist.\n').format(rel_subdir(filepath)))
         return cmd_result.ERROR
     if not filepath in patch.files:
-        result = do_add_files_to_patch(patch.name, [rel_subdir(filepath)], absorb=absorb, force=force)
+        result = do_add_files_to_top_patch([rel_subdir(filepath)], absorb=absorb, force=force)
         if result != cmd_result.OK:
             return result
     new_filepath = rel_basedir(new_filepath)
@@ -1465,7 +1614,6 @@ def do_rename_file_in_top_patch(filepath, new_filepath, absorb=False, force=Fals
             return cmd_result.ERROR | cmd_result.SUGGEST_RENAME
     else:
         patch.files[new_filepath] = FileData(new_filepath, patch, came_from_path=filepath, as_rename=True)
-        patch.do_cache_original(new_filepath)
     dump_db()
     try:
         os.rename(filepath, new_filepath)
@@ -1473,8 +1621,9 @@ def do_rename_file_in_top_patch(filepath, new_filepath, absorb=False, force=Fals
         RCTX.stderr.write(edata)
         return cmd_result.ERROR
     patch.files[filepath].renamed_to = new_filepath
+    patch.files[filepath].before_file_path = '/dev/null'
     dump_db()
-    RCTX.stdout.write(_('{0}: file added to patch "{1}" as "{2}".\n').format(rel_subdir(filepath), patch.name, rel_subdir(new_filepath)))
+    RCTX.stdout.write(_('{0}: file renamed to "{1}" in patch "{2}".\n').format(rel_subdir(filepath), rel_subdir(new_filepath), patch.name))
     return cmd_result.OK
 
 def do_drop_files_fm_patch(patchname, filepaths):
@@ -1723,6 +1872,8 @@ class TextPatch(patchlib.Patch):
         self.set_comments('# created by: Darning\n')
         for filepath in sorted(patch.files):
             edp = TextDiffPlus(patch, filepath)
+            if edp.diff is None and patch.files[filepath].renamed_to:
+                continue
             self.diff_pluses.append(edp)
             if self.state == PatchState.UNAPPLIED:
                 continue

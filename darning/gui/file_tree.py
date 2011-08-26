@@ -523,7 +523,7 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
             refresh_tried = False
             while True:
                 dialogue.show_busy()
-                result = ifce.PM.do_add_files_to_patch(file_list, absorb=absorb, force=force)
+                result = ifce.PM.do_add_files_to_top_patch(file_list, absorb=absorb, force=force)
                 dialogue.unshow_busy()
                 if refresh_tried:
                     result = cmd_result.turn_off_flags(result, cmd_result.SUGGEST_REFRESH)

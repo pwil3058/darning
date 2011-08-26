@@ -22,10 +22,8 @@ from darning.cli import msg
 
 PARSER = cli_args.SUB_CMD_PARSER.add_parser(
     'add',
-    description=_('Add nominated file(s) to the top (or nominated) patch.'),
+    description=_('Add nominated file(s) to the top patch.'),
 )
-
-cli_args.add_patch_option(PARSER, helptext=_('the name of the patch to add the file(s) to.'))
 
 cli_args.add_force_option(PARSER, helptext=_('incorporate uncommitted/unrefreshed changes to named files into the top (or nominated) patch.'))
 
@@ -35,6 +33,6 @@ def run_add(args):
     '''Execute the "add" sub command using the supplied args'''
     db_utils.open_db(modifiable=True)
     db_utils.set_report_context(verbose=True)
-    return patch_db.do_add_files_to_patch(args.opt_patch, args.filepaths, force=args.opt_force)
+    return patch_db.do_add_files_to_top_patch(args.filepaths, force=args.opt_force)
 
 PARSER.set_defaults(run_cmd=run_add)

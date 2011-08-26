@@ -240,7 +240,7 @@ def do_push_next_patch(absorb=False, force=False):
     eflags = patch_db.do_apply_next_patch(absorb=absorb, force=force)
     console.LOG.end_cmd()
     if cmd_result.is_less_than_error(eflags):
-        ws_event.notify_events(ws_event.PATCH_PUSH)
+        ws_event.notify_events(ws_event.PATCH_PUSH|ws_event.FILE_CHANGES)
     return cmd_result.Result(eflags, patch_db.RCTX.message)
 
 def do_pop_top_patch():
@@ -249,7 +249,7 @@ def do_pop_top_patch():
     eflags = patch_db.do_unapply_top_patch()
     console.LOG.end_cmd()
     if cmd_result.is_less_than_error(eflags):
-        ws_event.notify_events(ws_event.PATCH_POP)
+        ws_event.notify_events(ws_event.PATCH_POP|ws_event.FILE_CHANGES)
     return cmd_result.Result(eflags, patch_db.RCTX.message)
 
 def do_refresh_overlapped_files(file_list):
@@ -314,13 +314,10 @@ def do_select_guards(guards_str):
         ws_event.notify_events(ws_event.PATCH_MODIFY)
     return cmd_result.Result(eflags, patch_db.RCTX.message)
 
-def do_add_files_to_patch(filepaths, patchname=None, absorb=False, force=False):
+def do_add_files_to_top_patch(filepaths, absorb=False, force=False):
     patch_db.RCTX.reset()
-    if patchname is None:
-        console.LOG.start_cmd('add {0}\n'.format(utils.file_list_to_string(filepaths)))
-    else:
-        console.LOG.start_cmd('add --patch={0} {1}\n'.format(patchname, utils.file_list_to_string(filepaths)))
-    eflags = patch_db.do_add_files_to_patch(patchname, filepaths, absorb=absorb, force=force)
+    console.LOG.start_cmd('add {0}\n'.format(utils.file_list_to_string(filepaths)))
+    eflags = patch_db.do_add_files_to_top_patch(filepaths, absorb=absorb, force=force)
     console.LOG.end_cmd()
     if cmd_result.is_less_than_error(eflags):
         if (absorb or force):
