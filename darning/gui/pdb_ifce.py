@@ -234,10 +234,10 @@ def do_restore_patch(patchname, as_patchname=''):
         ws_event.notify_events(ws_event.PATCH_CREATE)
     return cmd_result.Result(eflags, patch_db.RCTX.message)
 
-def do_push_next_patch(force=False):
+def do_push_next_patch(absorb=False, force=False):
     patch_db.RCTX.reset()
     console.LOG.start_cmd('push\n')
-    eflags = patch_db.do_apply_next_patch(force=force)
+    eflags = patch_db.do_apply_next_patch(absorb=absorb, force=force)
     console.LOG.end_cmd()
     if cmd_result.is_less_than_error(eflags):
         ws_event.notify_events(ws_event.PATCH_PUSH)
@@ -314,16 +314,16 @@ def do_select_guards(guards_str):
         ws_event.notify_events(ws_event.PATCH_MODIFY)
     return cmd_result.Result(eflags, patch_db.RCTX.message)
 
-def do_add_files_to_patch(filepaths, patchname=None, force=False):
+def do_add_files_to_patch(filepaths, patchname=None, absorb=False, force=False):
     patch_db.RCTX.reset()
     if patchname is None:
         console.LOG.start_cmd('add {0}\n'.format(utils.file_list_to_string(filepaths)))
     else:
         console.LOG.start_cmd('add --patch={0} {1}\n'.format(patchname, utils.file_list_to_string(filepaths)))
-    eflags = patch_db.do_add_files_to_patch(patchname, filepaths, force=force)
+    eflags = patch_db.do_add_files_to_patch(patchname, filepaths, absorb=absorb, force=force)
     console.LOG.end_cmd()
     if cmd_result.is_less_than_error(eflags):
-        if force:
+        if (absorb or force):
             ws_event.notify_events(ws_event.FILE_ADD|ws_event.PATCH_REFRESH)
         else:
             ws_event.notify_events(ws_event.FILE_ADD)
@@ -343,10 +343,10 @@ def do_copy_file_to_top_patch(filepath, as_filepath, overwrite=False):
     ws_event.notify_events(ws_event.FILE_ADD)
     return cmd_result.Result(eflags, patch_db.RCTX.message)
 
-def do_rename_file_in_top_patch(filepath, new_filepath, force=False, overwrite=False):
+def do_rename_file_in_top_patch(filepath, new_filepath, absorb=False, force=False, overwrite=False):
     patch_db.RCTX.reset()
     console.LOG.start_cmd('rename "{0}" "{1}"\n'.format(filepath, new_filepath))
-    eflags = patch_db.do_rename_file_in_top_patch(filepath, new_filepath, force=force, overwrite=overwrite)
+    eflags = patch_db.do_rename_file_in_top_patch(filepath, new_filepath, absorb=absorb, force=force, overwrite=overwrite)
     ws_event.notify_events(ws_event.FILE_ADD|ws_event.FILE_DEL)
     return cmd_result.Result(eflags, patch_db.RCTX.message)
 
@@ -393,19 +393,19 @@ def do_export_patch_as(patchname, patch_filename, force=False, overwrite=False):
     console.LOG.end_cmd()
     return cmd_result.Result(eflags, patch_db.RCTX.message)
 
-def do_fold_epatch(epatch, force=False):
+def do_fold_epatch(epatch, absorb=False, force=False):
     patch_db.RCTX.reset()
     console.LOG.start_cmd(_('fold --file "{0}"\n').format(epatch.source_file_path))
-    eflags = patch_db.do_fold_epatch(epatch, force=force)
+    eflags = patch_db.do_fold_epatch(epatch, absorb=absorb, force=force)
     console.LOG.end_cmd()
     if cmd_result.is_less_than_error(eflags):
         ws_event.notify_events(ws_event.FILE_CHANGES)
     return cmd_result.Result(eflags, patch_db.RCTX.message)
 
-def do_fold_named_patch(patchname, force=False):
+def do_fold_named_patch(patchname, absorb=False, force=False):
     patch_db.RCTX.reset()
     console.LOG.start_cmd(_('fold --patch "{0}"\n').format(patchname))
-    eflags = patch_db.do_fold_named_patch(patchname, force=force)
+    eflags = patch_db.do_fold_named_patch(patchname, absorb=absorb, force=force)
     console.LOG.end_cmd()
     if cmd_result.is_less_than_error(eflags):
         ws_event.notify_events(ws_event.FILE_CHANGES|ws_event.PATCH_DELETE)

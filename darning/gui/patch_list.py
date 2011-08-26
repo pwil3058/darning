@@ -305,7 +305,7 @@ class List(table.MapManagedTable):
                 result = ifce.PM.do_duplicate_patch(patchname, as_patchname, newdescription)
                 dialog.unshow_busy()
                 if not refresh_tried and result.eflags & cmd_result.SUGGEST_REFRESH != 0:
-                    resp = dialogue.ask_force_refresh_or_cancel(result, clarification=None)
+                    resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
                     if resp == gtk.RESPONSE_CANCEL:
                         break
                     elif resp == dialogue.Response.REFRESH:
@@ -324,18 +324,21 @@ class List(table.MapManagedTable):
         patchname = self.get_selected_patch()
         refresh_tried = False
         force = False
+        absorb = False
         while True:
             dialogue.show_busy()
-            result = ifce.PM.do_fold_named_patch(patchname, force=force)
+            result = ifce.PM.do_fold_named_patch(patchname, absorb=absorb, force=force)
             dialogue.unshow_busy()
             if refresh_tried:
                 result = cmd_result.turn_off_flags(result, cmd_result.SUGGEST_REFRESH)
-            if not force and result.eflags & cmd_result.SUGGEST_FORCE_OR_REFRESH != 0:
-                resp = dialogue.ask_force_refresh_or_cancel(result, clarification=None)
+            if not (absorb or force) and result.eflags & cmd_result.SUGGEST_FORCE_ABSORB_OR_REFRESH != 0:
+                resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
                 if resp == gtk.RESPONSE_CANCEL:
                     break
                 elif resp == dialogue.Response.FORCE:
                     force = True
+                elif resp == dialogue.Response.ABSORB:
+                    absorb = True
                 elif resp == dialogue.Response.REFRESH:
                     refresh_tried = True
                     dialogue.show_busy()
@@ -391,7 +394,7 @@ def do_export_named_patch(parent, patchname, suggestion=None, busy_indicator=Non
         if refresh_tried:
             result = cmd_result.turn_off_flags(result, cmd_result.SUGGEST_REFRESH)
         if result.eflags & cmd_result.SUGGEST_FORCE_OR_REFRESH != 0:
-            resp = dialogue.ask_force_refresh_or_cancel(result, clarification=None)
+            resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
             if resp == gtk.RESPONSE_CANCEL:
                 return
             elif resp == dialogue.Response.FORCE:
@@ -876,22 +879,25 @@ def fold_patch_acb(_arg):
         dialogue.report_any_problems(result)
         return
     force = False
+    absorb = False
     refresh_tried = False
     dlg = FoldPatchDialog(epatch, parent=dialogue.main_window)
     resp = dlg.run()
     while resp != gtk.RESPONSE_CANCEL:
         epatch.set_strip_level(dlg.get_strip_level())
         dlg.show_busy()
-        result = ifce.PM.do_fold_epatch(epatch, force=force)
+        result = ifce.PM.do_fold_epatch(epatch, absorb=absorb, force=force)
         dlg.unshow_busy()
         if refresh_tried:
             result = cmd_result.turn_off_flags(result, cmd_result.SUGGEST_REFRESH)
-        if not force and result.eflags & cmd_result.SUGGEST_FORCE_OR_REFRESH != 0:
-            resp = dialogue.ask_force_refresh_or_cancel(result, clarification=None)
+        if not (absorb or force) and result.eflags & cmd_result.SUGGEST_FORCE_ABSORB_OR_REFRESH != 0:
+            resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
             if resp == gtk.RESPONSE_CANCEL:
                 break
             elif resp == dialogue.Response.FORCE:
                 force = True
+            elif resp == dialogue.Response.ABSORB:
+                absorb = True
             elif resp == dialogue.Response.REFRESH:
                 refresh_tried = True
                 dialogue.show_busy()
@@ -907,19 +913,22 @@ def fold_patch_acb(_arg):
 
 def push_next_patch_acb(_arg):
     force = False
+    absorb = True
     refresh_tried = False
     while True:
         dialogue.show_busy()
-        result = ifce.PM.do_push_next_patch(force=force)
+        result = ifce.PM.do_push_next_patch(absorb=absorb, force=force)
         dialogue.unshow_busy()
         if refresh_tried:
             result = cmd_result.turn_off_flags(result, cmd_result.SUGGEST_REFRESH)
-        if not force and result.eflags & cmd_result.SUGGEST_FORCE_OR_REFRESH != 0:
-            resp = dialogue.ask_force_refresh_or_cancel(result, clarification=None)
+        if not (absorb or force) and result.eflags & cmd_result.SUGGEST_FORCE_ABSORB_OR_REFRESH != 0:
+            resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
             if resp == gtk.RESPONSE_CANCEL:
                 return False
             elif resp == dialogue.Response.FORCE:
                 force = True
+            elif resp == dialogue.Response.ABSORB:
+                absorb = True
             elif resp == dialogue.Response.REFRESH:
                 refresh_tried = True
                 dialogue.show_busy()
@@ -939,7 +948,7 @@ def pop_top_patch_acb(_arg):
         result = ifce.PM.do_pop_top_patch()
         dialogue.unshow_busy()
         if not refresh_tried and result.eflags & cmd_result.SUGGEST_REFRESH != 0:
-            resp = dialogue.ask_force_refresh_or_cancel(result, clarification=None)
+            resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
             if resp == gtk.RESPONSE_CANCEL:
                 return False
             elif resp == dialogue.Response.REFRESH:

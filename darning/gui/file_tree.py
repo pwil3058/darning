@@ -381,6 +381,7 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
         file_list = self.get_selected_files()
         assert len(file_list) == 1
         filepath = file_list[0]
+        absorb = False
         force = False
         overwrite = False
         refresh_tried = False
@@ -390,16 +391,18 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
             return
         while True:
             dialogue.show_busy()
-            result = ifce.PM.do_rename_file_in_top_patch(filepath, new_filepath, force=force, overwrite=overwrite)
+            result = ifce.PM.do_rename_file_in_top_patch(filepath, new_filepath, absorb=absorb, force=force, overwrite=overwrite)
             dialogue.unshow_busy()
             if refresh_tried:
                 result = cmd_result.turn_off_flags(result, cmd_result.SUGGEST_REFRESH)
-            if not force and result.eflags & cmd_result.SUGGEST_FORCE_OR_REFRESH != 0:
-                resp = dialogue.ask_force_refresh_or_cancel(result, clarification=None)
+            if not (absorb or force) and result.eflags & cmd_result.SUGGEST_FORCE_ABSORB_OR_REFRESH != 0:
+                resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
                 if resp == gtk.RESPONSE_CANCEL:
                     break
                 elif resp == dialogue.Response.FORCE:
                     force = True
+                elif resp == dialogue.Response.ABSORB:
+                    absorb = True
                 elif resp == dialogue.Response.REFRESH:
                     refresh_tried = True
                     result = ifce.PM.do_refresh_overlapped_files([filepath])
@@ -515,20 +518,23 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
             return self._file_db.dir_contents(dirpath, show_hidden)
         @staticmethod
         def _add_files_to_top_patch(file_list):
+            absorb = False
             force = False
             refresh_tried = False
             while True:
                 dialogue.show_busy()
-                result = ifce.PM.do_add_files_to_patch(file_list, force=force)
+                result = ifce.PM.do_add_files_to_patch(file_list, absorb=absorb, force=force)
                 dialogue.unshow_busy()
                 if refresh_tried:
                     result = cmd_result.turn_off_flags(result, cmd_result.SUGGEST_REFRESH)
-                if not force and result.eflags & cmd_result.SUGGEST_FORCE_OR_REFRESH != 0:
-                    resp = dialogue.ask_force_refresh_or_cancel(result, clarification=None)
+                if not (absorb or force) and result.eflags & cmd_result.SUGGEST_FORCE_ABSORB_OR_REFRESH != 0:
+                    resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
                     if resp == gtk.RESPONSE_CANCEL:
                         break
                     elif resp == dialogue.Response.FORCE:
                         force = True
+                    elif resp == dialogue.Response.ABSORB:
+                        absorb = True
                     elif resp == dialogue.Response.REFRESH:
                         refresh_tried = True
                         result = ifce.PM.do_refresh_overlapped_files(file_list)

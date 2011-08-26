@@ -191,7 +191,7 @@ class Response(object):
     REFRESH = 4
     RECOVER = 5
     RENAME = 6
-    DISCARD = 7
+    ABSORB = 7
     EDIT = 8
     MERGE = 9
     OVERWRITE = 10
@@ -211,10 +211,12 @@ def _form_question(result, clarification):
     else:
         return qtn
 
-def ask_force_refresh_or_cancel(result, clarification=None, parent=None):
+def ask_force_refresh_absorb_or_cancel(result, clarification=None, parent=None):
     buttons = (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL)
     if result.eflags & cmd_result.SUGGEST_REFRESH:
         buttons += (_('_Refresh and Retry'), Response.REFRESH)
+    if result.eflags & cmd_result.SUGGEST_ABSORB:
+        buttons += (_('_Absorb Changes'), Response.ABSORB)
     if result.eflags & cmd_result.SUGGEST_FORCE:
         buttons += (_('_Force'), Response.FORCE)
     question = _form_question(result, clarification)

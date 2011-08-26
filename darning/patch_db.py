@@ -187,9 +187,9 @@ class OverlapData(object):
         for filepath in sorted(self.unrefreshed):
             rfilepath = rel_subdir(filepath)
             opatch = self.unrefreshed[filepath]
-            RCTX.stderr.write(_('{0}: file has unrefreshed changes in (applied) "{1}".\n').format(rfilepath, opatch))
+            RCTX.stderr.write(_('{0}: file has unrefreshed changes in (applied) "{1}".\n').format(rfilepath, opatch.name))
         RCTX.stderr.write(_('Aborted.\n'))
-        return cmd_result.ERROR_SUGGEST_FORCE_OR_REFRESH if len(self.unrefreshed) > 0 else cmd_result.ERROR_SUGGEST_FORCE
+        return cmd_result.ERROR_SUGGEST_FORCE_ABSORB_OR_REFRESH if len(self.unrefreshed) > 0 else cmd_result.ERROR_SUGGEST_FORCE_OR_ABSORB
 
 def _pts_tz_str(tz_seconds=None):
     '''Return the timezone as a string suitable for use in patch header'''
@@ -294,20 +294,18 @@ class PatchData(PickeExtensibleObject):
         if file_data.diff:
             patch_cmd = ['patch', '--merge', '--force', '-p1', '--batch', target_name]
             runext.run_cmd(patch_cmd, str(file_data.diff))
-    def do_cache_original(self, filepath, overlaps=None):
+    def do_cache_original(self, filepath, overlaps=OverlapData()):
         '''Cache the original of the named file for this patch'''
-        # "force" argument is supplied to allow shortcutting SCM check
-        # which can be expensive
         assert is_writable()
         assert filepath in self.files
         assert self.is_applied()
         assert self.get_overlapping_patch_for_file(filepath) is None
-        olurpatch = overlaps.unrefreshed.get(filepath, None) if overlaps is not None else None
+        olurpatch = overlaps.unrefreshed.get(filepath, None)
         corig_f_path = self.files[filepath].cached_orig_path
         if olurpatch:
             olurpatch.copy_refreshed_version_to(filepath, corig_f_path)
             self.files[filepath].timestamp = 0
-        elif overlaps is not None and filepath in overlaps.uncommitted:
+        elif filepath in overlaps.uncommitted:
             scm_ifce.copy_clean_version_to(filepath, corig_f_path)
             self.files[filepath].timestamp = 0
         elif os.path.exists(filepath):
@@ -973,15 +971,16 @@ def do_import_patch(epatch, patchname, overwrite=False):
         RCTX.stdout.write(_('{0}: patch inserted at start of series.\n').format(patchname))
     return cmd_result.OK
 
-def do_fold_epatch(epatch, force=False):
+def do_fold_epatch(epatch, absorb=False, force=False):
     '''Fold an external patch into the top patch.'''
     assert is_writable()
+    assert not (absorb and force)
     top_patch = _get_patch(None)
     if not top_patch:
         return cmd_result.ERROR
     top_patch_file_set = set([filepath for filepath in top_patch.files])
     new_file_list = [filepath for filepath in epatch.get_file_paths(epatch.num_strip_levels) if filepath not in top_patch_file_set]
-    result = do_add_files_to_patch(top_patch.name, new_file_list, force=force)
+    result = do_add_files_to_patch(top_patch.name, new_file_list, absorb=absorb, force=force)
     if result != cmd_result.OK:
         return result
     patch_cmd = ['patch', '--merge', '--force', '-p1', '--batch', '--quiet']
@@ -1017,9 +1016,10 @@ def do_fold_epatch(epatch, force=False):
         RCTX.stdout.write(_('{0}: patch needs refreshing.\n').format(top_patch.name))
     return cmd_result.OK
 
-def do_fold_named_patch(patchname, force=False):
+def do_fold_named_patch(patchname, absorb=False, force=False):
     '''Fold a name internal patch into the top patch.'''
     assert is_writable()
+    assert not (absorb and force)
     patch = _get_patch(patchname)
     if not patch:
         return cmd_result.ERROR
@@ -1027,7 +1027,7 @@ def do_fold_named_patch(patchname, force=False):
         RCTX.stderr.write(_('{0}: patch is applied.\n').format(patch.name))
         return cmd_result.ERROR
     epatch = TextPatch(patch)
-    result = do_fold_epatch(epatch, force=force)
+    result = do_fold_epatch(epatch, absorb=absorb, force=force)
     if result != cmd_result.OK:
         return result
     _DB.series.remove(patch)
@@ -1063,7 +1063,7 @@ def get_outstanding_changes_below_top():
             apfiles_set = set(apfiles) - skip_set
             for apfile in apfiles_set:
                 if applied_patch.files[apfile].needs_refresh():
-                    unrefreshed[apfile] = applied_patch.name
+                    unrefreshed[apfile] = applied_patch
             skip_set |= apfiles_set
     uncommitted = set(scm_ifce.get_files_with_uncommitted_changes()) - skip_set
     return OverlapData(unrefreshed=unrefreshed, uncommitted=uncommitted)
@@ -1097,7 +1097,7 @@ def get_overlap_data(filepaths, patchname=None):
             uncommitted -= apfiles_set
             for apfile in apfiles:
                 if applied_patch.files[apfile].needs_refresh():
-                    unrefreshed[apfile] = applied_patch.name
+                    unrefreshed[apfile] = applied_patch
     return OverlapData(unrefreshed=unrefreshed, uncommitted=uncommitted)
 
 def get_patch_overlap_data(patchname):
@@ -1147,9 +1147,10 @@ def get_next_patch_overlap_data():
         return OverlapData()
     return get_overlap_data(_DB.series[next_index].get_filepaths())
 
-def do_apply_next_patch(force=False):
+def do_apply_next_patch(absorb=False, force=False):
     '''Apply the next patch in the series'''
     assert is_writable()
+    assert not (absorb and force)
     next_index = _get_next_patch_index()
     if next_index is None:
         top_patch = get_top_patch_name()
@@ -1159,9 +1160,12 @@ def do_apply_next_patch(force=False):
             RCTX.stderr.write(_('No pushable patches.\n'))
         return cmd_result.ERROR
     next_patch = _DB.series[next_index]
-    overlaps = get_overlap_data(next_patch.get_filepaths())
-    if not force and len(overlaps):
-        return overlaps.report_and_abort()
+    if force:
+        overlaps = OverlapData()
+    else:
+        overlaps = get_overlap_data(next_patch.get_filepaths())
+        if not absorb and len(overlaps):
+            return overlaps.report_and_abort()
     os.mkdir(next_patch.cached_orig_dir_path)
     if len(next_patch.files) == 0:
         return cmd_result.OK
@@ -1340,16 +1344,17 @@ def get_patch_name(arg):
     patch = _get_patch(arg)
     return None if patch is None else patch.name
 
-def do_add_files_to_patch(patchname, filepaths, force=False):
+def do_add_files_to_patch(patchname, filepaths, absorb=False, force=False):
     '''Add the named files to the named patch'''
+    assert not (absorb and force)
     patch = _get_patch(patchname)
     if patch is None:
         return cmd_result.ERROR
     prepend_subdir(filepaths)
     patch_is_applied = patch.is_applied()
-    if patch_is_applied:
+    if patch_is_applied and not force:
         overlaps = get_filelist_overlap_data(filepaths, patch.name)
-        if not force and overlaps:
+        if not absorb and overlaps:
             return overlaps.report_and_abort()
     else:
         overlaps = OverlapData()
@@ -1438,8 +1443,9 @@ def do_copy_file_to_top_patch(filepath, as_filepath, overwrite=False):
     RCTX.stdout.write(_('{0}: file added to patch "{1}" as "{2}".\n').format(rel_subdir(filepath), patch.name, rel_subdir(as_filepath)))
     return cmd_result.OK
 
-def do_rename_file_in_top_patch(filepath, new_filepath, force=False, overwrite=False):
+def do_rename_file_in_top_patch(filepath, new_filepath, absorb=False, force=False, overwrite=False):
     assert is_writable()
+    assert not (absorb and force)
     patch = get_top_patch()
     if patch is None:
         RCTX.stderr.write(_('No patches applied.\n'))
@@ -1449,7 +1455,7 @@ def do_rename_file_in_top_patch(filepath, new_filepath, force=False, overwrite=F
         RCTX.stderr.write(_('{0}: file does not exist.\n').format(rel_subdir(filepath)))
         return cmd_result.ERROR
     if not filepath in patch.files:
-        result = do_add_files_to_patch(patch.name, [rel_subdir(filepath)], force=force)
+        result = do_add_files_to_patch(patch.name, [rel_subdir(filepath)], absorb=absorb, force=force)
         if result != cmd_result.OK:
             return result
     new_filepath = rel_basedir(new_filepath)
