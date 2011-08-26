@@ -852,6 +852,9 @@ class DiffPlus(object):
             return str(self.preambles) + str(self.diff) + str(self.trailing_junk)
         else:
             return str(self.preambles) + str(self.trailing_junk)
+    def get_preamble_for_type(self, preamble_type):
+        index = self.preambles.get_index_for_type('git')
+        return None if index is None else self.preambles[index]
     def fix_trailing_whitespace(self):
         if self.diff is None:
             return []
