@@ -45,6 +45,8 @@ options.define('remove', 'keep_patch_backup', options.Defn(options.str_to_bool, 
 
 # A convenience tuple for sending an original and patched version of something
 _O_IP_PAIR = collections.namedtuple('_O_IP_PAIR', ['original_version', 'patched_version'])
+# A convenience tuple for sending original, patched and stashed versions of something
+_O_IP_S_TRIPLET = collections.namedtuple('_O_IP_S_TRIPLET', ['original_version', 'patched_version', 'stashed_version'])
 
 class Failure(object):
     '''Report failure'''
@@ -161,12 +163,14 @@ class FileData(PickeExtensibleObject):
         self.after_sha1 = self.before_sha1
         if self.patch.is_applied():
             self.do_cache_original(overlaps)
+            self.do_stash_current()
     def reset_reference_paths(self):
         def generate_cached_original_path(filepath):
             '''Return the path of the cached original for the given file path'''
             return os.path.join(self.patch.cached_orig_dir_path, filepath)
         # have this as a function to make patch renaming easier
         self.cached_orig_path = generate_cached_original_path(self.path)
+        self.stashed_path = os.path.join(self.patch.stash_dir_path, self.path)
         if self.came_from_path:
             came_from_cop = generate_cached_original_path(self.came_from_path)
             if self.came_as_rename or os.path.exists(came_from_cop):
@@ -177,6 +181,17 @@ class FileData(PickeExtensibleObject):
             self.before_file_path = '/dev/null'
         else:
             self.before_file_path = self.cached_orig_path
+    def do_stash_current(self):
+        '''Stash the current version of this file for later reference'''
+        assert is_writable()
+        assert is_top_applied_patch(self.patch.name)
+        assert self.needs_refresh() is False
+        if os.path.exists(self.stashed_path):
+            os.remove(self.stashed_path)
+        if os.path.exists(self.path):
+            utils.ensure_file_dir_exists(self.stashed_path)
+            shutil.copy2(self.path, self.stashed_path)
+            os.chmod(self.stashed_path, utils.turn_off_write(self.after_mode))
     def do_cache_original(self, overlaps=OverlapData()):
         '''Cache the original of the named file for this patch'''
         assert is_writable()
@@ -204,6 +219,14 @@ class FileData(PickeExtensibleObject):
             self.orig_mode = orig_mode
         else:
             self.orig_mode = None
+    def get_reconciliation_paths(self):
+        assert is_readable()
+        assert is_top_applied_patch(self.patch.name)
+        # make it hard for the user to (accidentally) create these files if they don't exist
+        orig = self.cached_orig_path if os.path.exists(self.cached_orig_path) else '/dev/null'
+        stashed = self.stashed_path if os.path.exists(self.stashed_path) else '/dev/null'
+        # The user has to be able to cope with the main file not existing (meld can)
+        return _O_IP_S_TRIPLET(orig, self.path, stashed)
     @property
     def binary(self):
         return isinstance(self.diff, BinaryDiff)
@@ -282,10 +305,17 @@ class PatchData(PickeExtensibleObject):
     def set_name(self, newname, first=False):
         if not first:
             old_cached_orig_dir_path = self.cached_orig_dir_path
+            old_stash_dir_path = self.stash_dir_path
         self.name = newname
         self.cached_orig_dir_path = _cached_original_dir_path(self.name)
+        self.stash_dir_path = _stash_dir_path(self.name)
         if not first and os.path.exists(old_cached_orig_dir_path):
             os.rename(old_cached_orig_dir_path, self.cached_orig_dir_path)
+        if not first:
+            assert os.path.exists(old_stash_dir_path)
+            os.rename(old_stash_dir_path, self.stash_dir_path)
+        else:
+            os.mkdir(self.stash_dir_path)
         for file_data in self.files.values():
             file_data.reset_reference_paths()
     def do_drop_file(self, filepath):
@@ -466,6 +496,7 @@ class PatchData(PickeExtensibleObject):
             RCTX.stdout.write(_('"{0}": file does not exist\n').format(rel_subdir(filepath)))
         file_data.before_sha1 = utils.get_sha1_for_file(file_data.before_file_path)
         file_data.after_sha1 = utils.get_sha1_for_file(filepath)
+        file_data.do_stash_current()
         dump_db()
         return cmd_result.OK
     def get_filepaths(self, filepaths=None):
@@ -577,6 +608,7 @@ class DataBase(PickeExtensibleObject):
 
 _DB_DIR = '.darning.dbd'
 _ORIGINALS_DIR = os.path.join(_DB_DIR, 'orig')
+_STASH_DIR = os.path.join(_DB_DIR, 'stash')
 _DB_FILE = os.path.join(_DB_DIR, 'database')
 _DB_LOCK_FILE = os.path.join(_DB_DIR, 'lock')
 _DB = None
@@ -585,6 +617,10 @@ _SUB_DIR = None
 def _cached_original_dir_path(patchname):
     '''Return the path of the cached originals' directory for the given patch name'''
     return os.path.join(_ORIGINALS_DIR, patchname)
+
+def _stash_dir_path(patchname):
+    '''Return the path of the cached originals' directory for the given patch name'''
+    return os.path.join(_STASH_DIR, patchname)
 
 def rel_subdir(filepath):
     return filepath if _SUB_DIR is None else os.path.relpath(filepath, _SUB_DIR)
@@ -684,6 +720,7 @@ def do_create_db(description):
         dir_mode = stat.S_IRWXU|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH
         os.mkdir(_DB_DIR, dir_mode)
         os.mkdir(_ORIGINALS_DIR, dir_mode)
+        os.mkdir(_STASH_DIR, dir_mode)
         lock_state = _lock_db()
         assert lock_state is True
         db_obj = DataBase(description, None)
@@ -1317,6 +1354,7 @@ def do_apply_next_patch(absorb=False, force=False):
         if patch_ok:
             file_data.before_sha1 = utils.get_sha1_for_file(file_data.before_file_path)
             file_data.after_sha1 = utils.get_sha1_for_file(file_data.path)
+            file_data.do_stash_current()
         else:
             file_data.before_sha1 = False
             file_data.after_sha1 = False
@@ -1725,6 +1763,7 @@ def do_remove_patch(patchname):
         _DB.kept_patches[patch.name] = patch
     _DB.series.remove(patch)
     dump_db()
+    shutil.rmtree(patch.stash_dir_path)
     RCTX.stdout.write(_('Patch "{0}" removed (but available for restoration).\n').format(patchname))
     return cmd_result.OK
 
