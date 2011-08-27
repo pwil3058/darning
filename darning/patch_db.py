@@ -1479,11 +1479,9 @@ def is_patch_pushable(patchname):
 def do_unapply_top_patch():
     '''Unapply the top applied patch'''
     assert is_writable()
-    top_patch_index = get_series_index_for_top()
-    if top_patch_index is None:
-        RCTX.stderr.write(_('No patches applied.\n'))
+    top_patch = _get_top_patch()
+    if not top_patch:
         return cmd_result.ERROR
-    top_patch = _DB.series[top_patch_index]
     if top_patch.needs_refresh():
         RCTX.stderr.write(_('Top patch ("{0}") needs to be refreshed.\n').format(top_patch.name))
         return cmd_result.ERROR_SUGGEST_REFRESH
@@ -1583,8 +1581,8 @@ def do_add_files_to_top_patch(filepaths, absorb=False, force=False):
 
 def do_delete_files_in_top_patch(filepaths):
     assert is_writable()
-    patch = _get_top_patch()
-    if patch is None:
+    top_patch = _get_top_patch()
+    if top_patch is None:
         return cmd_result.ERROR
     nonexists = 0
     ioerrors = 0
@@ -1593,8 +1591,8 @@ def do_delete_files_in_top_patch(filepaths):
             RCTX.stderr.write(_('{0}: file does not exist. Ignored.\n').format(rel_subdir(filepath)))
             nonexists += 1
             continue
-        if filepath not in patch.files:
-            patch.files[filepath] = FileData(filepath, patch)
+        if filepath not in top_patch.files:
+            top_patch.files[filepath] = FileData(filepath, top_patch)
         dump_db()
         try:
             os.remove(filepath)
@@ -1602,25 +1600,25 @@ def do_delete_files_in_top_patch(filepaths):
             RCTX.stderr.write(edata)
             ioerrors += 1
             continue
-        RCTX.stdout.write(_('{0}: file deleted within patch "{1}".\n').format(rel_subdir(filepath), patch.name))
+        RCTX.stdout.write(_('{0}: file deleted within patch "{1}".\n').format(rel_subdir(filepath), top_patch.name))
     return cmd_result.OK if (ioerrors == 0 and len(filepaths) > nonexists) else cmd_result.ERROR
 
 def do_copy_file_to_top_patch(filepath, as_filepath, overwrite=False):
     assert is_writable()
-    patch = _get_top_patch()
-    if patch is None:
+    top_patch = _get_top_patch()
+    if top_patch is None:
         return cmd_result.ERROR
     filepath = rel_basedir(filepath)
     if not os.path.exists(filepath):
         RCTX.stderr.write(_('{0}: file does not exist.\n').format(rel_subdir(filepath)))
         return cmd_result.ERROR
     as_filepath = rel_basedir(as_filepath)
-    if as_filepath in patch.files:
+    if as_filepath in top_patch.files:
         if not overwrite:
             RCTX.stderr.write(_('{0}: file already in patch.\n').format(rel_subdir(as_filepath)))
             return cmd_result.ERROR | cmd_result.SUGGEST_RENAME
     else:
-        patch.files[as_filepath] = FileData(as_filepath, patch, came_from_path=filepath)
+        top_patch.files[as_filepath] = FileData(as_filepath, top_patch, came_from_path=filepath)
     dump_db()
     try:
         shutil.copy2(filepath, as_filepath)
@@ -1628,40 +1626,40 @@ def do_copy_file_to_top_patch(filepath, as_filepath, overwrite=False):
         RCTX.stderr.write(edata)
         return cmd_result.ERROR
     dump_db()
-    RCTX.stdout.write(_('{0}: file copied to "{1}" in patch "{2}".\n').format(rel_subdir(filepath), rel_subdir(as_filepath), patch.name))
+    RCTX.stdout.write(_('{0}: file copied to "{1}" in patch "{2}".\n').format(rel_subdir(filepath), rel_subdir(as_filepath), top_patch.name))
     return cmd_result.OK
 
 def do_rename_file_in_top_patch(filepath, new_filepath, absorb=False, force=False, overwrite=False):
     assert is_writable()
     assert not (absorb and force)
-    patch = _get_top_patch()
-    if patch is None:
+    top_patch = _get_top_patch()
+    if top_patch is None:
         return cmd_result.ERROR
     filepath = rel_basedir(filepath)
     if not os.path.exists(filepath):
         RCTX.stderr.write(_('{0}: file does not exist.\n').format(rel_subdir(filepath)))
         return cmd_result.ERROR
-    if not filepath in patch.files:
+    if not filepath in top_patch.files:
         result = do_add_files_to_top_patch([rel_subdir(filepath)], absorb=absorb, force=force)
         if result != cmd_result.OK:
             return result
     new_filepath = rel_basedir(new_filepath)
-    if new_filepath in patch.files:
+    if new_filepath in top_patch.files:
         if not overwrite:
             RCTX.stderr.write(_('{0}: file already in patch.\n').format(rel_subdir(new_filepath)))
             return cmd_result.ERROR | cmd_result.SUGGEST_RENAME
     else:
-        patch.files[new_filepath] = FileData(new_filepath, patch, came_from_path=filepath, as_rename=True)
+        top_patch.files[new_filepath] = FileData(new_filepath, top_patch, came_from_path=filepath, as_rename=True)
     dump_db()
     try:
         os.rename(filepath, new_filepath)
     except OSError as edata:
         RCTX.stderr.write(edata)
         return cmd_result.ERROR
-    patch.files[filepath].renamed_to = new_filepath
-    patch.files[filepath].before_file_path = '/dev/null'
+    top_patch.files[filepath].renamed_to = new_filepath
+    top_patch.files[filepath].before_file_path = '/dev/null'
     dump_db()
-    RCTX.stdout.write(_('{0}: file renamed to "{1}" in patch "{2}".\n').format(rel_subdir(filepath), rel_subdir(new_filepath), patch.name))
+    RCTX.stdout.write(_('{0}: file renamed to "{1}" in patch "{2}".\n').format(rel_subdir(filepath), rel_subdir(new_filepath), top_patch.name))
     return cmd_result.OK
 
 def do_drop_files_fm_patch(patchname, filepaths):
