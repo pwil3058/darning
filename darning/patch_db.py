@@ -1895,6 +1895,14 @@ def get_extdiff_files_for(filepath, patchname):
     before = patch.files[filepath].before_file_path
     return _O_IP_PAIR(original_version=before, patched_version=filepath)
 
+def get_reconciliation_paths(filepath):
+    assert is_readable()
+    top_patch = _get_top_patch()
+    if not top_patch:
+        return None
+    assert filepath in top_patch.files
+    return top_patch.files[filepath].get_reconciliation_paths()
+
 class TextDiffPlus(patchlib.DiffPlus):
     def __init__(self, patch, filepath):
         preamble = patch.generate_diff_preamble_for_file(filepath)

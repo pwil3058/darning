@@ -668,6 +668,7 @@ class TopPatchFileTreeWidget(PatchFileTreeWidget):
             <placeholder name="unique_selection"/>
               <menuitem action='copy_file_to_top_patch'/>
               <menuitem action='rename_file_in_top_patch'/>
+              <menuitem action='patch_reconcile_selected_file'/>
               <menuitem action='patch_diff_selected_file'/>
               <menuitem action='patch_extdiff_selected_file'/>
             <separator/>
@@ -688,6 +689,11 @@ class TopPatchFileTreeWidget(PatchFileTreeWidget):
                     ('top_patch_delete_selected_files', gtk.STOCK_DELETE, _('_Delete'), None,
                      _('Delete the selected files'), self._delete_selection_in_top_patch),
                 ])
+            self.add_conditional_actions(actions.Condns.IN_PGND_MUTABLE + actions.Condns.PMIC + actions.Condns.UNIQUE_SELN,
+                [
+                    ('patch_reconcile_selected_file', icons.STOCK_MERGE, _('_Reconcile'), None,
+                     _('Launch reconciliation tool for the selected file'), self.reconcile_selected_file_acb),
+                ])
             self.ui_manager.add_ui_from_string(self.UI_DESCR)
         def _drop_selection_from_patch(self, _arg):
             file_list = self.get_selected_files()
@@ -700,6 +706,11 @@ class TopPatchFileTreeWidget(PatchFileTreeWidget):
             result = ifce.PM.do_drop_files_from_patch(file_list, self.patch)
             dialogue.unshow_busy()
             dialogue.report_any_problems(result)
+        def reconcile_selected_file_acb(self, _action):
+            filepaths = self.get_selected_files()
+            assert len(filepaths) == 1
+            files = ifce.PM.get_reconciliation_paths(filepath=filepaths[0])
+            dialogue.report_any_problems(diff.launch_reconciliation_tool(files.original_version, files.patched_version, files.stashed_version))
     def __init__(self, patch=None):
         assert patch is None
         PatchFileTreeWidget.__init__(self, patch=None)

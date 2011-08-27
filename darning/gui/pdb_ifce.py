@@ -197,6 +197,11 @@ def get_extdiff_files_for(filepath, patchname):
         patchname = patch_db.get_top_applied_patch_for_file(filepath)
     return patch_db.get_extdiff_files_for(filepath, patchname)
 
+def get_reconciliation_paths(filepath):
+    if not patch_db.is_readable():
+        return None
+    return patch_db.get_reconciliation_paths(filepath)
+
 def get_outstanding_changes_below_top():
     if not patch_db.is_readable():
         return None
