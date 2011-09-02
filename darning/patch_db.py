@@ -1096,8 +1096,16 @@ def do_fold_epatch(epatch, absorb=False, force=False):
                     if key in preamble.extras:
                         os.chmod(filepath, int(preamble.extras[key], 8))
                         break
-    new_file_list = [filepath for filepath in epatch.get_file_paths(epatch.num_strip_levels) if filepath not in top_patch.files]
     if not force:
+        new_file_list = []
+        for diff_plus in epatch.diff_pluses:
+            filepath = diff_plus.get_file_path(epatch.num_strip_levels)
+            if filepath in top_patch.files:
+                continue
+            git_preamble = diff_plus.get_preamble_for_type('git')
+            if git_preamble and ('copy from' in git_preamble.extras or 'rename from' in git_preamble.extras):
+                continue
+            new_file_list.append(filepath)
         overlaps = get_filelist_overlap_data(new_file_list, top_patch.name)
         if not absorb and len(overlaps) > 0:
             return overlaps.report_and_abort()
@@ -1130,10 +1138,10 @@ def do_fold_epatch(epatch, absorb=False, force=False):
         elif copied_from is not None:
             copies.append(diff_plus)
         elif not os.path.exists(filepath):
-            created.append(diff_plus)
+            creates.append(diff_plus)
     # Now use patch to create any file created by the fold
     for diff_plus in epatch.diff_pluses:
-        if diff_plus in created:
+        if diff_plus in creates:
             _apply_diff_plus(diff_plus)
     # Do any copying
     for diff_plus in epatch.diff_pluses:
@@ -1179,7 +1187,7 @@ def do_fold_epatch(epatch, absorb=False, force=False):
                     RCTX.stderr.write(edata)
     # Apply the remaining changes
     for diff_plus in epatch.diff_pluses:
-        if diff_plus not in created:
+        if diff_plus not in creates:
             _apply_diff_plus(diff_plus)
     if top_patch_needs_refresh():
         RCTX.stdout.write(_('{0}: patch needs refreshing.\n').format(top_patch.name))
@@ -1386,7 +1394,8 @@ def do_apply_next_patch(absorb=False, force=False):
     if force:
         overlaps = OverlapData()
     else:
-        overlaps = get_overlap_data(next_patch.get_filepaths())
+        # We don't worry about overlaps for files that came from a copy or rename
+        overlaps = get_overlap_data([fpth for fpth in next_patch.files if fpth.came_from_path is None])
         if not absorb and len(overlaps):
             return overlaps.report_and_abort()
     os.mkdir(next_patch.cached_orig_dir_path)
@@ -1406,7 +1415,7 @@ def do_apply_next_patch(absorb=False, force=False):
             else:
                 copies.append(file_data)
         elif not os.path.exists(file_data.path):
-            created.append(file_data)
+            creates.append(file_data)
     biggest_ecode = 0
     # Next do the files that are created by this patch as they may have been copied
     for file_data in creates:
