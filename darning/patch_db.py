@@ -1626,6 +1626,7 @@ def do_copy_file_to_top_patch(filepath, as_filepath, overwrite=False):
     if not overwrite and as_filepath in top_patch.files:
         RCTX.stderr.write(_('{0}: file already in patch.\n').format(rel_subdir(as_filepath)))
         return cmd_result.ERROR | cmd_result.SUGGEST_RENAME
+    needs_refresh = False
     record_copy = True
     came_from_path = filepath
     if filepath in top_patch.files:
@@ -1636,9 +1637,7 @@ def do_copy_file_to_top_patch(filepath, as_filepath, overwrite=False):
             # if this file was created by the patch so don't record the copy
             record_copy = os.path.exists(top_patch.files[filepath].cached_orig_path)
     if as_filepath in top_patch.files:
-        top_patch.files[as_filepath].came_from_path = came_from_path if record_copy else None
-        top_patch.files[as_filepath].came_as_rename = False
-        top_patch.files[as_filepath].reset_reference_paths()
+        needs_refresh = True
     elif record_copy:
         top_patch.files[as_filepath] = FileData(as_filepath, top_patch, came_from_path=came_from_path)
     else:
@@ -1649,6 +1648,11 @@ def do_copy_file_to_top_patch(filepath, as_filepath, overwrite=False):
     except OSError as edata:
         RCTX.stderr.write(edata)
         return cmd_result.ERROR
+    if needs_refresh:
+        top_patch.files[as_filepath].came_from_path = came_from_path if record_copy else None
+        top_patch.files[as_filepath].came_as_rename = False
+        top_patch.files[as_filepath].reset_reference_paths()
+        top_patch.do_refresh_file(as_filepath)
     dump_db()
     RCTX.stdout.write(_('{0}: file copied to "{1}" in patch "{2}".\n').format(rel_subdir(filepath), rel_subdir(as_filepath), top_patch.name))
     return cmd_result.OK
@@ -1695,9 +1699,6 @@ def do_rename_file_in_top_patch(filepath, new_filepath, force=False, overwrite=F
         came_from_path = None
         _delete_original()
     if new_filepath in top_patch.files:
-        top_patch.files[new_filepath].came_from_path = came_from_path
-        top_patch.files[new_filepath].came_as_rename = as_rename
-        top_patch.files[new_filepath].renamed_to = None
         needs_refresh = True
     else:
         top_patch.files[new_filepath] = FileData(new_filepath, top_patch, came_from_path=came_from_path, as_rename=as_rename)
@@ -1712,6 +1713,9 @@ def do_rename_file_in_top_patch(filepath, new_filepath, force=False, overwrite=F
         top_patch.files[came_from_path].reset_reference_paths()
         top_patch.do_refresh_file(came_from_path)
     if needs_refresh:
+        top_patch.files[new_filepath].came_from_path = came_from_path
+        top_patch.files[new_filepath].came_as_rename = as_rename
+        top_patch.files[new_filepath].renamed_to = None
         top_patch.files[new_filepath].reset_reference_paths()
         top_patch.do_refresh_file(new_filepath)
     dump_db()
