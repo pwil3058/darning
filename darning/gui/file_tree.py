@@ -381,7 +381,6 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
         file_list = self.get_selected_files()
         assert len(file_list) == 1
         filepath = file_list[0]
-        absorb = False
         force = False
         overwrite = False
         refresh_tried = False
@@ -391,18 +390,16 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
             return
         while True:
             dialogue.show_busy()
-            result = ifce.PM.do_rename_file_in_top_patch(filepath, new_filepath, absorb=absorb, force=force, overwrite=overwrite)
+            result = ifce.PM.do_rename_file_in_top_patch(filepath, new_filepath, force=force, overwrite=overwrite)
             dialogue.unshow_busy()
             if refresh_tried:
                 result = cmd_result.turn_off_flags(result, cmd_result.SUGGEST_REFRESH)
-            if not (absorb or force) and result.eflags & cmd_result.SUGGEST_FORCE_ABSORB_OR_REFRESH != 0:
+            if not force and result.eflags & cmd_result.SUGGEST_FORCE_ABSORB_OR_REFRESH != 0:
                 resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
                 if resp == gtk.RESPONSE_CANCEL:
                     break
                 elif resp == dialogue.Response.FORCE:
                     force = True
-                elif resp == dialogue.Response.ABSORB:
-                    absorb = True
                 elif resp == dialogue.Response.REFRESH:
                     refresh_tried = True
                     result = ifce.PM.do_refresh_overlapped_files([filepath])

@@ -345,10 +345,10 @@ def do_copy_file_to_top_patch(filepath, as_filepath, overwrite=False):
     ws_event.notify_events(ws_event.FILE_ADD)
     return cmd_result.Result(eflags, patch_db.RCTX.message)
 
-def do_rename_file_in_top_patch(filepath, new_filepath, absorb=False, force=False, overwrite=False):
+def do_rename_file_in_top_patch(filepath, new_filepath, force=False, overwrite=False):
     patch_db.RCTX.reset()
     console.LOG.start_cmd('rename "{0}" "{1}"\n'.format(filepath, new_filepath))
-    eflags = patch_db.do_rename_file_in_top_patch(filepath, new_filepath, absorb=absorb, force=force, overwrite=overwrite)
+    eflags = patch_db.do_rename_file_in_top_patch(filepath, new_filepath, force=force, overwrite=overwrite)
     ws_event.notify_events(ws_event.FILE_ADD|ws_event.FILE_DEL)
     return cmd_result.Result(eflags, patch_db.RCTX.message)
 
