@@ -142,21 +142,17 @@ class FileData(PickeExtensibleObject):
             if came_from_data:
                 self.before_mode = came_from_data.before_mode
                 self.before_sha1 = came_from_data.before_sha1
-                self.timestamp = came_from_data.timestamp
             else:
                 # self.came_from_path must exist so no need for "try"
                 fstat = os.stat(self.came_from_path)
                 self.before_mode = fstat.st_mode
-                self.timestamp = fstat.st_mtime
                 self.before_sha1 = utils.get_sha1_for_file(self.came_from_path)
         else:
             try:
                 fstat = os.stat(filepath)
                 self.orig_mode = fstat.st_mode
-                self.timestamp = fstat.st_mtime
             except OSError:
                 self.orig_mode = None
-                self.timestamp = 0
             self.before_mode = self.orig_mode
             self.before_sha1 = utils.get_sha1_for_file(filepath)
         self.after_sha1 = self.before_sha1
@@ -205,10 +201,8 @@ class FileData(PickeExtensibleObject):
         olurpatch = overlaps.unrefreshed.get(self.path, None)
         if olurpatch:
             olurpatch.copy_refreshed_version_to(self.path, self.cached_orig_path)
-            self.timestamp = 0
         elif self.path in overlaps.uncommitted:
             scm_ifce.copy_clean_version_to(self.path, self.cached_orig_path)
-            self.timestamp = 0
         elif os.path.exists(self.path):
             # We'll try to preserve links when we pop patches
             # so we move the file to the cached originals' directory and then make
@@ -357,7 +351,7 @@ class PatchData(PickeExtensibleObject):
                     os.remove(overlapping_corig_f_path)
                 overlapped_by.files[filepath].before_mode = None
             # Make sure that the overlapping file gets refreshed
-            overlapped_by.files[filepath].timestamp = 0
+            overlapped_by.files[filepath].after_sha1 = False
         renamed_to = self.files[filepath].renamed_to
         del self.files[filepath]
         if renamed_to is not None and renamed_to in self.files:
@@ -481,7 +475,6 @@ class PatchData(PickeExtensibleObject):
         # Do a check for unresolved merges here
         if file_data.has_unresolved_merges():
             # ensure this file shows up as needing refresh
-            file_data.timestamp = -1
             file_data.after_sha1 = False
             dump_db()
             RCTX.stderr.write(_('"{0}": file has unresolved merge(s).\n').format(rel_subdir(filepath)))
@@ -492,17 +485,14 @@ class PatchData(PickeExtensibleObject):
             if f_exists:
                 stat_data = os.stat(filepath)
                 file_data.after_mode = stat_data.st_mode
-                file_data.timestamp = stat_data.st_mtime
                 if file_data.before_mode is not None and file_data.before_mode != file_data.after_mode:
                     RCTX.stdout.write(_('"{0}": mode {1:07o} -> {2:07o}.\n').format(rel_subdir(filepath), file_data.before_mode, file_data.after_mode))
             else:
                 file_data.after_mode = None
-                file_data.timestamp = 0
             RCTX.stdout.write(str(file_data.diff))
         else:
             file_data.diff = None
             file_data.after_mode = None
-            file_data.timestamp = 0
             RCTX.stdout.write(_('"{0}": file does not exist\n').format(rel_subdir(filepath)))
         file_data.before_sha1 = utils.get_sha1_for_file(file_data.before_file_path)
         file_data.after_sha1 = utils.get_sha1_for_file(filepath)
@@ -1072,7 +1062,6 @@ def do_fold_epatch(epatch, absorb=False, force=False):
         return cmd_result.ERROR
     def _apply_diff_plus(diff_plus):
         filepath = diff_plus.get_file_path(epatch.num_strip_levels)
-        top_patch.files[filepath].timestamp = -1
         dump_db()
         RCTX.stdout.write(_('Patching file "{0}".\n').format(rel_subdir(filepath)))
         if drop_atws:
@@ -1361,14 +1350,11 @@ def do_apply_next_patch(absorb=False, force=False):
         if file_exists:
             if file_data.after_mode is not None:
                 os.chmod(file_data.path, file_data.after_mode)
-            file_data.timestamp = os.path.getmtime(file_data.path) if patch_ok else 0
-        else:
+        elif file_data.after_mode is not None:
             # A non None after_mode means that the file existed when
             # the diff was made so a refresh will be required
-            if file_data.after_mode is not None:
-                biggest_ecode = max(biggest_ecode, 1)
-                RCTX.stderr.write(_('Expected file not found.\n'))
-            file_data.timestamp = 0
+            biggest_ecode = max(biggest_ecode, 1)
+            RCTX.stderr.write(_('Expected file not found.\n'))
         if patch_ok:
             file_data.before_sha1 = utils.get_sha1_for_file(file_data.before_file_path)
             file_data.after_sha1 = utils.get_sha1_for_file(file_data.path)
@@ -1395,7 +1381,7 @@ def do_apply_next_patch(absorb=False, force=False):
         overlaps = OverlapData()
     else:
         # We don't worry about overlaps for files that came from a copy or rename
-        overlaps = get_overlap_data([fpth for fpth in next_patch.files if fpth.came_from_path is None])
+        overlaps = get_overlap_data([fpth for fpth in next_patch.files if next_patch.files[fpth].came_from_path is None])
         if not absorb and len(overlaps):
             return overlaps.report_and_abort()
     os.mkdir(next_patch.cached_orig_dir_path)
