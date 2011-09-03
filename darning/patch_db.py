@@ -1015,7 +1015,8 @@ def do_import_patch(epatch, patchname, overwrite=False):
     patch = PatchData(patchname, descr)
     renames = dict()
     for diff_plus in epatch.diff_pluses:
-        filepath = diff_plus.get_file_path(epatch.num_strip_levels)
+        filepath_plus = diff_plus.get_file_path_plus(epatch.num_strip_levels)
+        filepath = filepath_plus.path
         came_from = None
         as_rename = False
         git_preamble = diff_plus.get_preamble_for_type('git')
@@ -1034,6 +1035,8 @@ def do_import_patch(epatch, patchname, overwrite=False):
                 return cmd_result.ERROR
         file_data = FileData(filepath, patch, came_from_path=came_from, as_rename=as_rename)
         file_data.diff = diff_plus.diff
+        # let push know it may need to set this.
+        file_data.after_mode = False if filepath_plus.status != patchlib.FilePathPlus.DELETED else None
         if git_preamble:
             for key in ['new mode', 'new file mode']:
                 if key in git_preamble.extras:
@@ -1291,6 +1294,7 @@ def do_apply_next_patch(absorb=False, force=False):
     '''Apply the next patch in the series'''
     assert is_writable()
     assert not (absorb and force)
+    patch_cmd = ['patch', '--merge', '--force', '-p1', '--batch', '--quiet']
     def _apply_file_data_patch(file_data, biggest_ecode):
         patch_ok = True
         if file_data.binary is not False:
@@ -1309,7 +1313,10 @@ def do_apply_next_patch(absorb=False, force=False):
                 aws_lines = file_data.diff.report_trailing_whitespace()
                 if aws_lines:
                     RCTX.stderr.write(_('"{0}": added trailing white space to "{1}" at line(s) {{{2}}}.\n').format(next_patch.name, rel_subdir(file_data.path), ', '.join([str(line) for line in aws_lines])))
-            result = runext.run_cmd(patch_cmd + [file_data.path], str(file_data.diff))
+            if file_data.after_mode is None:
+                result = runext.run_cmd(patch_cmd + ['--remove-empty-files', file_data.path], str(file_data.diff))
+            else:
+                result = runext.run_cmd(patch_cmd + [file_data.path], str(file_data.diff))
             biggest_ecode = max(biggest_ecode, result.ecode)
             if result.ecode != 0:
                 patch_ok = False
@@ -1320,15 +1327,25 @@ def do_apply_next_patch(absorb=False, force=False):
             RCTX.stderr.write(result.stderr)
         else:
             RCTX.stdout.write(_('Processing file "{0}".\n').format(rel_subdir(file_data.path)))
-        file_exists = os.path.exists(file_data.path)
-        if file_exists:
-            if file_data.after_mode is not None:
+        if os.path.exists(file_data.path):
+            if file_data.after_mode is False:
+                # First push on an imported patch
+                file_data.after_mode = os.stat(file_data.path).st_mode
+            elif file_data.after_mode is None:
+                # This means we expect the file to be deleted but it wasn't
+                # probably because it wasn't empty after the patch was applied.
+                file_data.after_mode = os.stat(file_data.path).st_mode
+                patch_ok = False
+            else:
                 os.chmod(file_data.path, file_data.after_mode)
         elif file_data.after_mode is not None:
             # A non None after_mode means that the file existed when
             # the diff was made so a refresh will be required
+            patch_ok = False
             biggest_ecode = max(biggest_ecode, 1)
             RCTX.stderr.write(_('Expected file not found.\n'))
+            # set after mode to None so it shows up as a delete
+            file_data.after_mode = None
         if patch_ok:
             file_data.before_sha1 = utils.get_sha1_for_file(file_data.before_file_path)
             file_data.after_sha1 = utils.get_sha1_for_file(file_data.path)
@@ -1361,7 +1378,6 @@ def do_apply_next_patch(absorb=False, force=False):
     os.mkdir(next_patch.cached_orig_dir_path)
     if len(next_patch.files) == 0:
         return cmd_result.OK
-    patch_cmd = ['patch', '--merge', '--force', '-p1', '--batch', '--quiet']
     drop_atws = options.get('push', 'drop_added_tws')
     copies = []
     renames = []
@@ -1374,8 +1390,11 @@ def do_apply_next_patch(absorb=False, force=False):
                 renames.append(file_data)
             else:
                 copies.append(file_data)
-        elif not os.path.exists(file_data.path):
+        elif os.path.exists(file_data.path):
+            file_data.before_mode = file_data.orig_mode
+        else:
             creates.append(file_data)
+            file_data.before_mode = None
     biggest_ecode = 0
     # Next do the files that are created by this patch as they may have been copied
     for file_data in creates:
@@ -1383,11 +1402,14 @@ def do_apply_next_patch(absorb=False, force=False):
     # Now do the copying
     for file_data in copies:
         copied_file_data = next_patch.files.get(file_data.came_from_path, None)
-        if copied_file_data is not None and os.path.exists(copied_file_data.cached_orig_path):
-            source = copied_file_data.cached_orig_path
+        if copied_file_data is not None:
+            file_data.before_mode = copied_file_data.before_mode
+            source = copied_file_data.cached_orig_path if os.path.exists(copied_file_data.cached_orig_path) else None
         elif os.path.exists(file_data.came_from_path):
             source = file_data.came_from_path
+            file_data.before_mode = os.stat(file_data.path).st_mode
         else:
+            file_data.before_mode = None
             source = None
         if source is None:
             RCTX.stderr.write(_('{0}: failed to copy {1}.\n').format(rel_subdir(file_data.path), rel_subdir(file_data.came_from_path)))
@@ -1404,6 +1426,7 @@ def do_apply_next_patch(absorb=False, force=False):
             RCTX.stderr.write(_('{0}: failed to rename {1} (not found).\n').format(rel_subdir(file_data.path), rel_subdir(file_data.came_from_path)))
         else:
             file_data.before_file_path = next_patch.files[file_data.came_from_path].cached_orig_path
+            file_data.before_mode = next_patch.files[file_data.came_from_path].orig_mode
             try:
                 os.rename(file_data.came_from_path, file_data.path)
             except OSError as edata:
