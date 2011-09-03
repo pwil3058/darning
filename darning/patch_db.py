@@ -188,7 +188,10 @@ class FileData(PickeExtensibleObject):
         if os.path.exists(self.path):
             utils.ensure_file_dir_exists(self.stashed_path)
             shutil.copy2(self.path, self.stashed_path)
-            os.chmod(self.stashed_path, utils.turn_off_write(self.after_mode))
+            # It's possible for this to be called with self.after_mode set to None
+            # e.g. if the file will be created during push of a newly imported
+            # patch so we can't us it.  Read the files current mode instead.
+            os.chmod(self.stashed_path, utils.turn_off_write(os.stat(self.path).st_mode))
     def do_delete_stash(self):
         assert is_writable()
         if os.path.exists(self.stashed_path):
@@ -1095,7 +1098,7 @@ def do_fold_epatch(epatch, absorb=False, force=False):
             if git_preamble and ('copy from' in git_preamble.extras or 'rename from' in git_preamble.extras):
                 continue
             new_file_list.append(filepath)
-        overlaps = get_filelist_overlap_data(new_file_list, top_patch.name)
+        overlaps = get_overlap_data(new_file_list, top_patch.name)
         if not absorb and len(overlaps) > 0:
             return overlaps.report_and_abort()
     else:
@@ -1237,9 +1240,11 @@ def get_outstanding_changes_below_top():
 def get_overlap_data(filepaths, patchname=None):
     '''
     Get the data detailing unrefreshed/uncommitted files that will be
-    overlapped by the named files
+    overlapped by the files in filelist if they are added to the named
+    (or top, if patchename is None) patch.
     '''
     assert is_readable()
+    assert patchname is None or get_patch_series_index(patchname) is not None
     if not filepaths:
         return OverlapData()
     applied_patches = get_applied_patch_list()
@@ -1266,16 +1271,6 @@ def get_overlap_data(filepaths, patchname=None):
                     unrefreshed[apfile] = applied_patch
     return OverlapData(unrefreshed=unrefreshed, uncommitted=uncommitted)
 
-def get_patch_overlap_data(patchname):
-    '''
-    Get the data detailing unrefreshed/uncommitted files that will be
-    overlapped by the named patch's current files if filepaths is None.
-    '''
-    assert is_readable()
-    patch_index = get_patch_series_index(patchname)
-    assert patch_index is not None
-    return get_overlap_data(_DB.series[patch_index].get_filepaths())
-
 def get_file_diff(filepath, patchname):
     assert is_readable()
     patch_index = get_patch_series_index(patchname)
@@ -1291,27 +1286,6 @@ def get_file_combined_diff(filepath):
             break
     assert patch is not None
     return patch.get_diff_for_file(filepath, True)
-
-def get_filelist_overlap_data(filepaths, patchname=None):
-    '''
-    Get the data detailing unrefreshed/uncommitted files that will be
-    overlapped by the files in filelist if they are added to the named
-    (or top, if None) patch.
-    '''
-    assert is_readable()
-    assert patchname is None or get_patch_series_index(patchname) is not None
-    return get_overlap_data(filepaths, patchname)
-
-def get_next_patch_overlap_data():
-    '''
-    Get the data detailing unrefreshed/uncommitted files that will be
-    overlapped by the nextpatch
-    '''
-    assert is_readable()
-    next_index = _get_next_patch_index()
-    if next_index is None:
-        return OverlapData()
-    return get_overlap_data(_DB.series[next_index].get_filepaths())
 
 def do_apply_next_patch(absorb=False, force=False):
     '''Apply the next patch in the series'''
@@ -1559,7 +1533,7 @@ def do_add_files_to_top_patch(filepaths, absorb=False, force=False):
         return cmd_result.ERROR
     prepend_subdir(filepaths)
     if not force:
-        overlaps = get_filelist_overlap_data(filepaths, top_patch.name)
+        overlaps = get_overlap_data(filepaths, top_patch.name)
         if not absorb and len(overlaps) > 0:
             return overlaps.report_and_abort()
     else:
