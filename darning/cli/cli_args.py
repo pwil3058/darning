@@ -63,6 +63,30 @@ def add_force_option(parser, helptext):
         action='store_true',
     )
 
+def add_force_option(parser, helptext):
+    parser.add_argument(
+        '-f', '--force',
+        help=helptext,
+        dest='opt_force',
+        action='store_true',
+    )
+
+def add_absorb_option(parser, helptext):
+    parser.add_argument(
+        '-a', '--absorb',
+        help=helptext,
+        dest='opt_absorb',
+        action='store_true',
+    )
+
+def add_overwrite_option(parser, helptext):
+    parser.add_argument(
+        '-o', '--overwrite',
+        help=helptext,
+        dest='opt_overwrite',
+        action='store_true',
+    )
+
 def add_verbose_option(parser, helptext):
     parser.add_argument(
         '-v', '--verbose',
