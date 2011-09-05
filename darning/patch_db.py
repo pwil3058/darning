@@ -85,6 +85,11 @@ class BinaryDiff(patchlib.Diff):
     def get_diffstat_stats(self):
         return DiffStat.Stats()
 
+def _do_apply_diff_to_file(filepath, diff, delete_empty=False):
+    patch_cmd_hdr = ['patch', '--merge', '--force', '-p1', '--batch', '--quiet']
+    patch_cmd = patch_cmd_hdr + (['--remove-empty-files', filepath] if delete_empty else [filepath])
+    return runext.run_cmd(patch_cmd, str(diff))
+
 class PickeExtensibleObject(object):
     '''A base class for pickleable objects that can cope with modifications'''
     RENAMES = dict()
@@ -379,8 +384,7 @@ class PatchData(PickeExtensibleObject):
             with open(target_name, 'w') as fobj:
                 fobj.write('')
         if file_data.diff:
-            patch_cmd = ['patch', '--merge', '--force', '-p1', '--batch', target_name]
-            runext.run_cmd(patch_cmd, str(file_data.diff))
+            _do_apply_diff_to_file(target_name, file_data.diff)
     def generate_diff_preamble_for_file(self, filepath, combined=False):
         assert is_readable()
         assert filepath in self.files
@@ -1067,7 +1071,7 @@ def do_fold_epatch(epatch, absorb=False, force=False):
             aws_lines = diff_plus.report_trailing_whitespace()
             if aws_lines:
                 RCTX.stderr.write(_('Added trailing white space to "{1}" at line(s) {{{2}}}.\n').format(rel_subdir(filepath), ', '.join([str(line) for line in aws_lines])))
-        result = runext.run_cmd(patch_cmd + [filepath], str(diff_plus.diff))
+        result = _do_apply_diff_to_file(filepath, diff_plus.diff)
         if result.ecode == 0:
             RCTX.stderr.write(result.stdout)
         else:
@@ -1095,7 +1099,6 @@ def do_fold_epatch(epatch, absorb=False, force=False):
             return overlaps.report_and_abort()
     else:
         overlaps = OverlapData()
-    patch_cmd = ['patch', '--merge', '--force', '-p1', '--batch', '--quiet']
     drop_atws = options.get('push', 'drop_added_tws')
     copies = []
     renames = []
@@ -1283,7 +1286,6 @@ def do_apply_next_patch(absorb=False, force=False):
     '''Apply the next patch in the series'''
     assert is_writable()
     assert not (absorb and force)
-    patch_cmd = ['patch', '--merge', '--force', '-p1', '--batch', '--quiet']
     def _apply_file_data_patch(file_data, biggest_ecode):
         patch_ok = True
         if file_data.binary is not False:
@@ -1302,10 +1304,7 @@ def do_apply_next_patch(absorb=False, force=False):
                 aws_lines = file_data.diff.report_trailing_whitespace()
                 if aws_lines:
                     RCTX.stderr.write(_('"{0}": added trailing white space to "{1}" at line(s) {{{2}}}.\n').format(next_patch.name, rel_subdir(file_data.path), ', '.join([str(line) for line in aws_lines])))
-            if file_data.after_mode is None:
-                result = runext.run_cmd(patch_cmd + ['--remove-empty-files', file_data.path], str(file_data.diff))
-            else:
-                result = runext.run_cmd(patch_cmd + [file_data.path], str(file_data.diff))
+            result = _do_apply_diff_to_file(file_data.path, file_data.diff, delete_empty=file_data.after_mode is None)
             biggest_ecode = max(biggest_ecode, result.ecode)
             if result.ecode != 0:
                 patch_ok = False
