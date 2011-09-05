@@ -144,15 +144,10 @@ class FileData(PickeExtensibleObject):
                 self.before_sha1 = came_from_data.before_sha1
             else:
                 # self.came_from_path must exist so no need for "try"
-                fstat = os.stat(self.came_from_path)
-                self.before_mode = fstat.st_mode
+                self.before_mode = utils.get_mode_for_file(self.came_from_path)
                 self.before_sha1 = utils.get_sha1_for_file(self.came_from_path)
         else:
-            try:
-                fstat = os.stat(filepath)
-                self.orig_mode = fstat.st_mode
-            except OSError:
-                self.orig_mode = None
+            self.orig_mode = utils.get_mode_for_file(filepath)
             self.before_mode = self.orig_mode
             self.before_sha1 = utils.get_sha1_for_file(filepath)
         self.after_sha1 = self.before_sha1
@@ -188,10 +183,7 @@ class FileData(PickeExtensibleObject):
         if os.path.exists(self.path):
             utils.ensure_file_dir_exists(self.stashed_path)
             shutil.copy2(self.path, self.stashed_path)
-            # It's possible for this to be called with self.after_mode set to None
-            # e.g. if the file will be created during push of a newly imported
-            # patch so we can't us it.  Read the files current mode instead.
-            os.chmod(self.stashed_path, utils.turn_off_write(os.stat(self.path).st_mode))
+            utils.do_turn_off_write_for_file(self.stashed_path)
     def do_delete_stash(self):
         assert is_writable()
         if os.path.exists(self.stashed_path):
@@ -214,11 +206,9 @@ class FileData(PickeExtensibleObject):
             shutil.move(self.path, self.cached_orig_path)
             shutil.copy2(self.cached_orig_path, self.path)
         if os.path.exists(self.cached_orig_path):
-            # We need this so that we need to reset it on pop
-            orig_mode = os.stat(self.cached_orig_path).st_mode
             # Make the cached original read only to prevent accidental change
-            os.chmod(self.cached_orig_path, utils.turn_off_write(orig_mode))
-            self.orig_mode = orig_mode
+            # Save the original value as we need this so that we need to reset it on pop
+            self.orig_mode = utils.do_turn_off_write_for_file(self.cached_orig_path)
         else:
             self.orig_mode = None
     def get_reconciliation_paths(self):
@@ -400,7 +390,7 @@ class PatchData(PickeExtensibleObject):
             if olp is not None:
                 after_mode = olp.files[filepath].before_mode
             elif os.path.exists(filepath):
-                after_mode = os.stat(filepath).st_mode
+                after_mode = utils.get_mode_for_file(filepath)
             else:
                 after_mode = file_data.before_mode if file_data.renamed_to else None
         else:
@@ -486,8 +476,7 @@ class PatchData(PickeExtensibleObject):
         if f_exists or os.path.exists(file_data.before_file_path):
             file_data.diff = self.generate_diff_for_file(filepath)
             if f_exists:
-                stat_data = os.stat(filepath)
-                file_data.after_mode = stat_data.st_mode
+                file_data.after_mode = utils.get_mode_for_file(filepath)
                 if file_data.before_mode is not None and file_data.before_mode != file_data.after_mode:
                     RCTX.stdout.write(_('"{0}": mode {1:07o} -> {2:07o}.\n').format(rel_subdir(filepath), file_data.before_mode, file_data.after_mode))
             else:
@@ -1330,11 +1319,11 @@ def do_apply_next_patch(absorb=False, force=False):
         if os.path.exists(file_data.path):
             if file_data.after_mode is False:
                 # First push on an imported patch
-                file_data.after_mode = os.stat(file_data.path).st_mode
+                file_data.after_mode = utils.get_mode_for_file(file_data.path)
             elif file_data.after_mode is None:
                 # This means we expect the file to be deleted but it wasn't
                 # probably because it wasn't empty after the patch was applied.
-                file_data.after_mode = os.stat(file_data.path).st_mode
+                file_data.after_mode = utils.get_mode_for_file(file_data.path)
                 patch_ok = False
             else:
                 os.chmod(file_data.path, file_data.after_mode)
@@ -1407,7 +1396,7 @@ def do_apply_next_patch(absorb=False, force=False):
             source = copied_file_data.cached_orig_path if os.path.exists(copied_file_data.cached_orig_path) else None
         elif os.path.exists(file_data.came_from_path):
             source = file_data.came_from_path
-            file_data.before_mode = os.stat(file_data.path).st_mode
+            file_data.before_mode = utils.get_mode_for_file(file_data.path)
         else:
             file_data.before_mode = None
             source = None

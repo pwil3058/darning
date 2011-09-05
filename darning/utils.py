@@ -73,6 +73,18 @@ def turn_off_write(mode):
     '''Return the given mode with the write bits turned off'''
     return mode & ~(stat.S_IWUSR|stat.S_IWGRP|stat.S_IWOTH)
 
+def get_mode_for_file(filepath):
+    try:
+        return os.stat(filepath).st_mode
+    except OSError:
+        return None
+
+def do_turn_off_write_for_file(filepath):
+    '''Turn off write bits for name file and return original mode'''
+    mode = get_mode_for_file(filepath)
+    os.chmod(filepath, turn_off_write(mode))
+    return mode
+
 def is_utf8_compliant(text):
     try:
         _dummy= text.decode('utf-8')
