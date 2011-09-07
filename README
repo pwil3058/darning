@@ -14,6 +14,11 @@ This software works better with:
  - meld 1.5 or later
  - pygtksourceview 2.10.1
 
+This software works best when used with SCM managed sources where it
+understands the SCM in use.  At present, it only has knowledge of the
+following SCMs:
+  - Mercurial
+
 INSTALLATION:
 
 It is NOT necessary to install this software in order to use it.  All
