@@ -229,9 +229,13 @@ class FileData(PickeExtensibleObject):
         return isinstance(self.diff, BinaryDiff)
     def needs_refresh(self):
         '''Does this file need a refresh? (Given that it is not overshadowed.)'''
-        if self.after_sha1 != utils.get_sha1_for_file(self.path):
+        if self.after_mode != utils.get_mode_for_file(self.path):
             return True
-        return self.before_sha1 != utils.get_sha1_for_file(self.before_file_path)
+        elif self.after_sha1 != utils.get_sha1_for_file(self.path):
+            return True
+        elif self.came_from_path and not self.came_as_rename:
+            return self.before_sha1 != utils.get_sha1_for_file(self.before_file_path)
+        return False
     def has_unresolved_merges(self):
         if os.path.exists(self.path):
             for line in open(self.path).readlines():
