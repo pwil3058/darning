@@ -1599,10 +1599,12 @@ def do_copy_file_to_top_patch(filepath, as_filepath, overwrite=False):
     if top_patch is None:
         return cmd_result.ERROR
     filepath = rel_basedir(filepath)
+    as_filepath = rel_basedir(as_filepath)
+    if filepath == as_filepath:
+        return cmd_result.OK
     if not os.path.exists(filepath):
         RCTX.stderr.write(_('{0}: file does not exist.\n').format(rel_subdir(filepath)))
         return cmd_result.ERROR
-    as_filepath = rel_basedir(as_filepath)
     if not overwrite and as_filepath in top_patch.files:
         RCTX.stderr.write(_('{0}: file already in patch.\n').format(rel_subdir(as_filepath)))
         return cmd_result.ERROR | cmd_result.SUGGEST_RENAME
@@ -1647,10 +1649,12 @@ def do_rename_file_in_top_patch(filepath, new_filepath, force=False, overwrite=F
     if top_patch is None:
         return cmd_result.ERROR
     filepath = rel_basedir(filepath)
+    new_filepath = rel_basedir(new_filepath)
+    if filepath == new_filepath:
+        return cmd_result.OK
     if not os.path.exists(filepath):
         RCTX.stderr.write(_('{0}: file does not exist.\n').format(rel_subdir(filepath)))
         return cmd_result.ERROR
-    new_filepath = rel_basedir(new_filepath)
     if not overwrite and new_filepath in top_patch.files:
         RCTX.stderr.write(_('{0}: file already in patch.\n').format(rel_subdir(new_filepath)))
         return cmd_result.ERROR | cmd_result.SUGGEST_RENAME

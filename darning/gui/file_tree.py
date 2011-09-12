@@ -357,8 +357,8 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
         filepath = file_list[0]
         overwrite = False
         PROMPT = _('Enter target path for copy of "{0}"'.format(filepath))
-        as_filepath = dialogue.ask_file_name(PROMPT, existing=False)
-        if as_filepath is None:
+        as_filepath = dialogue.ask_file_name(PROMPT, existing=False, suggestion=filepath)
+        if as_filepath is None or os.path.relpath(as_filepath) == filepath:
             return
         while True:
             dialogue.show_busy()
@@ -385,8 +385,8 @@ class Tree(tlview.TreeView, actions.AGandUIManager):
         overwrite = False
         refresh_tried = False
         PROMPT = _('Enter new path for "{0}"'.format(filepath))
-        new_filepath = dialogue.ask_file_name(PROMPT, existing=False)
-        if new_filepath is None:
+        new_filepath = dialogue.ask_file_name(PROMPT, existing=False, suggestion=filepath)
+        if new_filepath is None or os.path.relpath(new_filepath) == filepath:
             return
         while True:
             dialogue.show_busy()
