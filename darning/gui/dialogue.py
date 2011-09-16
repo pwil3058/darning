@@ -251,7 +251,7 @@ def ask_file_name(prompt, suggestion=None, existing=True, parent=None):
                 dialog.set_current_name(basename)
     response = dialog.run()
     if response == gtk.RESPONSE_OK:
-        new_file_name = dialog.get_filename()
+        new_file_name = os.path.relpath(dialog.get_filename())
     else:
         new_file_name = None
     dialog.destroy()
@@ -277,7 +277,7 @@ def ask_dir_name(prompt, suggestion=None, existing=True, parent=None):
                 dialog.set_current_folder(dirname)
     response = dialog.run()
     if response == gtk.RESPONSE_OK:
-        new_dir_name = dialog.get_filename()
+        new_dir_name = os.path.relpath(dialog.get_filename())
     else:
         new_dir_name = None
     dialog.destroy()

@@ -145,16 +145,16 @@ class FileData(PickeExtensibleObject):
             self.orig_mode = None
             came_from_data = self.patch.files.get(self.came_from_path, None)
             if came_from_data:
-                self.before_mode = came_from_data.before_mode
-                self.before_sha1 = came_from_data.before_sha1
+                self.before_mode = came_from_data.orig_mode
+                self.before_sha1 = utils.get_sha1_for_file(came_from_data.cached_orig_path)
             else:
                 # self.came_from_path must exist so no need for "try"
                 self.before_mode = utils.get_mode_for_file(self.came_from_path)
                 self.before_sha1 = utils.get_sha1_for_file(self.came_from_path)
         else:
-            self.orig_mode = utils.get_mode_for_file(filepath)
+            self.orig_mode = utils.get_mode_for_file(self.path)
             self.before_mode = self.orig_mode
-            self.before_sha1 = utils.get_sha1_for_file(filepath)
+            self.before_sha1 = utils.get_sha1_for_file(self.path)
         self.after_sha1 = self.before_sha1
         self.after_mode = self.before_mode
         if self.patch.is_applied():
@@ -282,8 +282,8 @@ class FileData(PickeExtensibleObject):
     def _has_unresolved_merges(self, overlapping_patch):
         '''Does this file contain unresolved merge problems?'''
         def _file_has_unresolved_merges(filepath):
-            if os.path.exists(self.path):
-                for line in open(self.path).readlines():
+            if os.path.exists(filepath):
+                for line in open(filepath).readlines():
                     if FileData.MERGE_CRE.match(line):
                         return True
             return False
@@ -307,7 +307,7 @@ class FileData(PickeExtensibleObject):
     def get_applied_validity(self):
         assert self.patch.is_applied()
         if self.needs_refresh():
-            if self._has_unresolved_merges(self.get_overlap_data()):
+            if self._has_unresolved_merges(self.get_overlapping_patch()):
                 return FileData.Validity.UNREFRESHABLE
             else:
                 return FileData.Validity.NEEDS_REFRESH
@@ -343,7 +343,7 @@ class FileData(PickeExtensibleObject):
         assert is_readable()
         if self.patch.is_applied():
             if overlapping_patch is not None:
-                after_mode = overlapping_patch.files[filepath].before_mode
+                after_mode = overlapping_patch.files[self.path].before_mode
             elif os.path.exists(self.path):
                 after_mode = utils.get_mode_for_file(self.path)
             else:
@@ -351,9 +351,9 @@ class FileData(PickeExtensibleObject):
         else:
             after_mode = self.after_mode
         if self.came_from_path:
-            lines = ['diff --git {0} {1}\n'.format(os.path.join('a', self.came_from_path), os.path.join('b', filepath)), ]
+            lines = ['diff --git {0} {1}\n'.format(os.path.join('a', self.came_from_path), os.path.join('b', self.path)), ]
         else:
-            lines = ['diff --git {0} {1}\n'.format(os.path.join('a', filepath), os.path.join('b', filepath)), ]            
+            lines = ['diff --git {0} {1}\n'.format(os.path.join('a', self.path), os.path.join('b', self.path)), ]            
         if self.before_mode is None:
             if after_mode is not None:
                 lines.append('new file mode {0:07o}\n'.format(after_mode))
@@ -416,7 +416,7 @@ class FileData(PickeExtensibleObject):
         if not combined and self.renamed_to:
             diff_plus.trailing_junk.append(_('# Renamed to: {0}\n').format(self.renamed_to))
         return diff_plus
-    def do_refresh(self):
+    def do_refresh(self, quiet=True):
         '''Refresh the named file in this patch'''
         assert is_writable()
         assert self.patch.is_applied()
@@ -433,15 +433,17 @@ class FileData(PickeExtensibleObject):
             self.diff = self.generate_diff(overlapping_patch)
             if f_exists:
                 self.after_mode = utils.get_mode_for_file(self.path) if overlapping_file_data is None else overlapping_file_data.orig_mode
-                if self.before_mode is not None and self.before_mode != self.after_mode:
+                if not quiet and self.before_mode is not None and self.before_mode != self.after_mode:
                     RCTX.stdout.write(_('"{0}": mode {1:07o} -> {2:07o}.\n').format(rel_subdir(self.path), self.before_mode, self.after_mode))
             else:
                 self.after_mode = None
-            RCTX.stdout.write(str(self.diff))
+            if not quiet and self.diff is not None:
+                RCTX.stdout.write(str(self.diff))
         else:
             self.diff = None
             self.after_mode = None
-            RCTX.stdout.write(_('"{0}": file does not exist\n').format(rel_subdir(self.path)))
+            if not quiet:
+                RCTX.stdout.write(_('"{0}": file does not exist\n').format(rel_subdir(self.path)))
         self.before_sha1 = utils.get_sha1_for_file(self.before_file_path)
         self.after_sha1 = utils.get_sha1_for_file(self.path if overlapping_file_data is None else overlapping_file_data.cached_orig_path)
         self.do_stash_current(overlapping_patch)
@@ -1688,6 +1690,7 @@ def do_rename_file_in_top_patch(filepath, new_filepath, force=False, overwrite=F
     needs_refresh = False
     as_rename = True
     came_from_path = filepath
+    is_boomerang = False
     if not filepath in top_patch.files:
         result = do_add_files_to_top_patch([rel_subdir(filepath)], absorb=False, force=force)
         result &= ~cmd_result.SUGGEST_ABSORB
@@ -1697,6 +1700,7 @@ def do_rename_file_in_top_patch(filepath, new_filepath, force=False, overwrite=F
         if top_patch.files[filepath].came_from_path == new_filepath:
             came_from_path = None
             as_rename = False
+            is_boomerang = new_filepath in top_patch.files and top_patch.files[new_filepath].came_as_rename
         else:
             came_from_path = top_patch.files[filepath].came_from_path
             as_rename = top_patch.files[filepath].came_as_rename
@@ -1708,7 +1712,6 @@ def do_rename_file_in_top_patch(filepath, new_filepath, force=False, overwrite=F
         as_rename = False
         came_from_path = None
         _delete_original()
-    top_patch.files[came_from_path].renamed_to = new_filepath if as_rename else None
     if new_filepath in top_patch.files:
         needs_refresh = True
     else:
@@ -1722,6 +1725,8 @@ def do_rename_file_in_top_patch(filepath, new_filepath, force=False, overwrite=F
     if came_from_path:
         top_patch.files[came_from_path].reset_renamed_to(new_filepath if as_rename else None)
     if needs_refresh:
+        if is_boomerang:
+            top_patch.files[new_filepath].renamed_to = None
         top_patch.files[new_filepath].reset_came_from(came_from_path, as_rename)
     dump_db()
     RCTX.stdout.write(_('{0}: file renamed to "{1}" in patch "{2}".\n').format(rel_subdir(filepath), rel_subdir(new_filepath), top_patch.name))
@@ -1779,7 +1784,7 @@ def do_refresh_overlapped_files(file_list):
     for applied_patch in reversed(_APPLIED_PATCHES):
         for file_data in applied_patch.files.values():
             if file_data.path in file_set:
-                eflags |= file_data.do_refresh()
+                eflags |= file_data.do_refresh(quiet=False)
                 file_set.remove(file_data.path)
                 if len(file_set) == 0:
                     break
@@ -1798,7 +1803,7 @@ def do_refresh_patch(patchname=None):
         return cmd_result.ERROR
     eflags = 0
     for file_data in patch.files.values():
-        eflags |= file_data.do_refresh()
+        eflags |= file_data.do_refresh(quiet=False)
     if eflags > 0:
         RCTX.stderr.write(_('Patch "{0}" requires another refresh after issues are resolved.\n').format(patch.name))
     else:
