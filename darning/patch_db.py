@@ -179,6 +179,15 @@ class FileData(PickeExtensibleObject):
         self.cached_orig_path = self.patch.generate_cached_original_path(self.path)
         self.stashed_path = os.path.join(self.patch.stash_dir_path, self.path)
         self.set_before_file_path()
+    def reset_renamed_to(self, renamed_to):
+        self.renamed_to = renamed_to
+        self.reset_reference_paths()
+        self.do_refresh()
+    def reset_came_from(self, came_from_path, came_as_rename):
+        self.came_from_path = came_from_path
+        self.came_as_rename = came_as_rename
+        self.reset_reference_paths()
+        self.do_refresh()
     def do_stash_current(self, overlapping_patch):
         '''Stash the current version of this file for later reference'''
         assert is_writable()
@@ -504,10 +513,6 @@ class PatchData(PickeExtensibleObject):
         '''Drop the named file from this patch'''
         assert is_writable()
         assert filepath in self.files
-        def _drop_renamed_to_status_for(source_file_path):
-            self.files[source_file_path].renamed_to = None
-            self.files[source_file_path].reset_reference_paths()
-            self.files[source_file_path].do_refresh()
         renamed_from = self.files[filepath].came_from_path if self.files[filepath].came_as_rename else None
         self.files[filepath].do_delete_stash()
         if not self.is_applied():
@@ -515,7 +520,7 @@ class PatchData(PickeExtensibleObject):
             del self.files[filepath]
             dump_db()
             if renamed_from is not None:
-                _drop_renamed_to_status_for(renamed_from)
+                self.files[renamed_from].reset_renamed_to(None)
             return
         corig_f_path = self.files[filepath].cached_orig_path
         overlapped_by = self.files[filepath].get_overlapping_patch()
@@ -542,20 +547,16 @@ class PatchData(PickeExtensibleObject):
         if renamed_to is not None and renamed_to in self.files:
             # Second check is necessary in the case where a renamed
             # file is dropped and the source is dropped as a result.
-            self.files[renamed_to].came_as_rename = False
-            self.files[renamed_to].reset_reference_paths()
-            self.files[renamed_to].do_refresh()
+            self.files[renamed_to].reset_came_from(filepath, False)
         if renamed_from is not None and renamed_from in self.files:
-            self.files[renamed_from].renamed_to = None
-            self.files[renamed_from].reset_reference_paths()
-            self.files[renamed_from].do_refresh()
+            self.files[renamed_from].reset_renamed_to(None)
         for file_data in self.files.values():
             if file_data.came_from_path == filepath:
                 assert file_data.came_as_rename == False
                 file_data.before_file_path = filepath
         dump_db()
         if renamed_from is not None:
-            _drop_renamed_to_status_for(renamed_from)
+            self.files[renamed_from].reset_renamed_to(None)
     def get_filepaths(self, filepaths=None):
         '''
         Return the names of the files in this patch.
@@ -1660,10 +1661,7 @@ def do_copy_file_to_top_patch(filepath, as_filepath, overwrite=False):
         RCTX.stderr.write(edata)
         return cmd_result.ERROR
     if needs_refresh:
-        top_patch.files[as_filepath].came_from_path = came_from_path if record_copy else None
-        top_patch.files[as_filepath].came_as_rename = False
-        top_patch.files[as_filepath].reset_reference_paths()
-        top_patch.files[as_filepath].do_refresh()
+        top_patch.files[as_filepath].reset_came_from(came_from_path if record_copy else None, False)
     dump_db()
     RCTX.stdout.write(_('{0}: file copied to "{1}" in patch "{2}".\n').format(rel_subdir(filepath), rel_subdir(as_filepath), top_patch.name))
     return cmd_result.OK
@@ -1722,14 +1720,9 @@ def do_rename_file_in_top_patch(filepath, new_filepath, force=False, overwrite=F
         RCTX.stderr.write(edata)
         return cmd_result.ERROR
     if came_from_path:
-        top_patch.files[came_from_path].renamed_to = new_filepath if as_rename else None
-        top_patch.files[came_from_path].reset_reference_paths()
-        top_patch.files[came_from_path].do_refresh()
+        top_patch.files[came_from_path].reset_renamed_to(new_filepath if as_rename else None)
     if needs_refresh:
-        top_patch.files[new_filepath].came_from_path = came_from_path
-        top_patch.files[new_filepath].came_as_rename = as_rename
-        top_patch.files[new_filepath].reset_reference_paths()
-        top_patch.files[new_filepath].do_refresh()
+        top_patch.files[new_filepath].reset_came_from(came_from_path, as_rename)
     dump_db()
     RCTX.stdout.write(_('{0}: file renamed to "{1}" in patch "{2}".\n').format(rel_subdir(filepath), rel_subdir(new_filepath), top_patch.name))
     return cmd_result.OK
