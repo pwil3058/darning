@@ -197,7 +197,7 @@ class FileData(PickeExtensibleObject):
         '''Cache the original of the named file for this patch'''
         assert is_writable()
         assert self.patch.is_applied()
-        assert self.patch.get_overlapping_patch_for_file(self.path) is None
+        assert self.get_overlapping_patch() is None
         olurpatch = overlaps.unrefreshed.get(self.path, None)
         if olurpatch:
             olurpatch.copy_refreshed_version_to(self.path, self.cached_orig_path)
@@ -230,7 +230,7 @@ class FileData(PickeExtensibleObject):
     def binary(self):
         return isinstance(self.diff, BinaryDiff)
     def needs_refresh(self):
-        '''Does this file need a refresh? (Given that it is not overshadowed.)'''
+        '''Does this file need a refresh? (Given that it is not overlapped.)'''
         if self.after_mode != utils.get_mode_for_file(self.path):
             return True
         elif self.after_sha1 != utils.get_sha1_for_file(self.path):
@@ -251,6 +251,18 @@ class FileData(PickeExtensibleObject):
             return FileData.Presence.REMOVED
         else:
             return FileData.Presence.EXTANT
+    def get_overlapping_patch(self):
+        '''Return the applied patch (if any) which overlaps the this file'''
+        assert is_readable()
+        assert self.patch.is_applied()
+        after = False
+        for apatch in _APPLIED_PATCHES:
+            if after:
+                if self.path in apatch.files:
+                    return apatch
+            else:
+                after = apatch.name == self.patch.name
+        return None
     @property
     def related_file(self):
         if self.came_from_path:
@@ -341,7 +353,7 @@ class PatchData(PickeExtensibleObject):
                 _drop_renamed_to_status_for(renamed_from)
             return
         corig_f_path = self.files[filepath].cached_orig_path
-        overlapped_by = self.get_overlapping_patch_for_file(filepath)
+        overlapped_by = self.files[filepath].get_overlapping_patch()
         if overlapped_by is None:
             if os.path.exists(filepath):
                 os.remove(filepath)
@@ -405,7 +417,7 @@ class PatchData(PickeExtensibleObject):
         assert filepath in self.files
         file_data = self.files[filepath]
         if self.is_applied():
-            olp = None if combined else self.get_overlapping_patch_for_file(filepath)
+            olp = None if combined else file_data.get_overlapping_patch()
             if olp is not None:
                 after_mode = olp.files[filepath].before_mode
             elif os.path.exists(filepath):
@@ -439,7 +451,7 @@ class PatchData(PickeExtensibleObject):
         assert is_readable()
         assert filepath in self.files
         assert self.is_applied()
-        olp = None if combined else self.get_overlapping_patch_for_file(filepath)
+        olp = None if combined else self.files[filepath].get_overlapping_patch()
         to_file = filepath if olp is None else olp.files[filepath].cached_orig_path
         fm_file = self.files[filepath].cached_orig_path if combined else self.files[filepath].before_file_path
         fm_exists = os.path.exists(fm_file)
@@ -482,7 +494,7 @@ class PatchData(PickeExtensibleObject):
         assert is_writable()
         assert filepath in self.files
         assert self.is_applied()
-        assert self.get_overlapping_patch_for_file(filepath) is None
+        assert self.files[filepath].get_overlapping_patch() is None
         file_data = self.files[filepath]
         # Do a check for unresolved merges here
         if file_data.has_unresolved_merges():
@@ -528,7 +540,7 @@ class PatchData(PickeExtensibleObject):
         return set(self.get_filepaths(filepaths=filepaths))
     def _get_file_applied_validity(self, file_data):
         assert self.is_applied()
-        if (self.get_overlapping_patch_for_file(file_data.path) is None) and file_data.needs_refresh():
+        if (file_data.get_overlapping_patch() is None) and file_data.needs_refresh():
             if file_data.has_unresolved_merges():
                 return FileData.Validity.UNREFRESHABLE
             else:
@@ -549,18 +561,6 @@ class PatchData(PickeExtensibleObject):
         else:
             table = [fsdb.Data(fde.path, FileData.Status(fde.get_presence(), None), fde.related_file) for fde in self.files.values()]
         return table
-    def get_overlapping_patch_for_file(self, filepath):
-        '''Return the patch (if any) which overlaps the named file in this patch'''
-        assert is_readable()
-        assert self.is_applied()
-        after = False
-        for apatch in get_applied_patch_list():
-            if after:
-                if filepath in apatch.files:
-                    return apatch
-            else:
-                after = apatch.name == self.name
-        return None
     def get_table_row(self):
         if not self.is_applied():
             state = PatchState.UNAPPLIED
@@ -586,8 +586,8 @@ class PatchData(PickeExtensibleObject):
         return False
     def is_overlapped(self):
         '''Are any files in this patch overlapped by applied patches?'''
-        for filepath in self.files:
-            if self.get_overlapping_patch_for_file(filepath) is not None:
+        for file_data in self.files.values():
+            if file_data.get_overlapping_patch() is not None:
                 return True
         return False
     def is_pushable(self):
@@ -596,7 +596,7 @@ class PatchData(PickeExtensibleObject):
     def needs_refresh(self):
         '''Does this patch need a refresh?'''
         for file_data in self.files.values():
-            if self.get_overlapping_patch_for_file(file_data.path) is not None:
+            if file_data.get_overlapping_patch() is not None:
                 continue
             if file_data.needs_refresh():
                 return True
@@ -604,7 +604,7 @@ class PatchData(PickeExtensibleObject):
     def has_unresolved_merges(self):
         '''Is this patch refreshable? i.e. no unresolved merges'''
         for file_data in self.files.values():
-            if self.get_overlapping_patch_for_file(file_data.path) is not None:
+            if file_data.get_overlapping_patch() is not None:
                 continue
             if file_data.has_unresolved_merges():
                 return True
@@ -916,7 +916,7 @@ def get_combined_patch_file_table():
         if not patch.is_applied():
             continue
         for fde in patch.files.values():
-            if (patch.get_overlapping_patch_for_file(fde.path) is None) and fde.needs_refresh():
+            if (fde.get_overlapping_patch() is None) and fde.needs_refresh():
                 if fde.has_unresolved_merges():
                     validity = FileData.Validity.UNREFRESHABLE
                 else:
@@ -1789,13 +1789,11 @@ def do_refresh_patch(patchname=None):
         return cmd_result.ERROR
     is_top = patch.is_top_applied_patch()
     eflags = 0
-    for filepath in patch.files:
-        if not is_top:
-            olap_patch = patch.get_overlapping_patch_for_file(filepath)
-            if olap_patch:
-                RCTX.stderr.write(_('"{0}: overlapped by patch "{1}": skipped\n').format(rel_subdir(filepath), olap_patch.name))
-                continue
-        eflags |= patch.do_refresh_file(filepath)
+    for file_data in patch.files.values():
+        if not is_top and file_data.get_overlapping_patch() is not None:
+            RCTX.stderr.write(_('"{0}: overlapped by patch "{1}": skipped\n').format(rel_subdir(file_data.path), olap_patch.name))
+            continue
+        eflags |= patch.do_refresh_file(file_data.path)
     if eflags > 0:
         RCTX.stderr.write(_('Patch "{0}" requires another refresh after issues are resolved.\n').format(patch.name))
     else:
@@ -1943,7 +1941,7 @@ def get_extdiff_files_for(filepath, patchname):
     assert is_applied(patchname)
     patch =  _DB.series[get_patch_series_index(patchname)]
     assert filepath in patch.files
-    assert patch.get_overlapping_patch_for_file(filepath) is None
+    assert patch.files[filepath].get_overlapping_patch() is None
     before = patch.files[filepath].before_file_path
     return _O_IP_PAIR(original_version=before, patched_version=filepath)
 
