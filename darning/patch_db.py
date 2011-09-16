@@ -230,20 +230,41 @@ class FileData(PickeExtensibleObject):
     def binary(self):
         return isinstance(self.diff, BinaryDiff)
     def needs_refresh(self):
-        '''Does this file need a refresh? (Given that it is not overlapped.)'''
-        if self.after_mode != utils.get_mode_for_file(self.path):
-            return True
-        elif self.after_sha1 != utils.get_sha1_for_file(self.path):
-            return True
-        elif self.came_from_path and not self.came_as_rename:
-            return self.before_sha1 != utils.get_sha1_for_file(self.before_file_path)
+        '''Does this file need a refresh?'''
+        if not self.patch.is_applied():
+            # None means "undeterminable"
+            return None
+        olpatch = self.get_overlapping_patch()
+        if olpatch is not None:
+            olfd = olpatch.files[self.path]
+            if self.after_mode != olfd.orig_mode:
+                return True
+            elif self.after_sha1 != utils.get_sha1_for_file(olfd.cached_orig_path):
+                return True
+        else:
+            if self.after_mode != utils.get_mode_for_file(self.path):
+                return True
+            elif self.after_sha1 != utils.get_sha1_for_file(self.path):
+                return True
+            elif self.came_from_path and not self.came_as_rename:
+                return self.before_sha1 != utils.get_sha1_for_file(self.before_file_path)
         return False
     def has_unresolved_merges(self):
-        if os.path.exists(self.path):
-            for line in open(self.path).readlines():
-                if FileData.MERGE_CRE.match(line):
-                    return True
-        return False
+        '''Does this file contain unresolved merge problems?'''
+        def _file_has_unresolved_merges(filepath):
+            if os.path.exists(self.path):
+                for line in open(self.path).readlines():
+                    if FileData.MERGE_CRE.match(line):
+                        return True
+            return False
+        if not self.patch.is_applied():
+            # None means "undeterminable"
+            return None
+        olpatch = self.get_overlapping_patch()
+        if olpatch is not None:
+            return _file_has_unresolved_merges(olpatch.files[self.path].cached_orig_path)
+        else:
+            return _file_has_unresolved_merges(self.path)
     def get_presence(self):
         if self.orig_mode is None:
             return FileData.Presence.ADDED
@@ -540,7 +561,7 @@ class PatchData(PickeExtensibleObject):
         return set(self.get_filepaths(filepaths=filepaths))
     def _get_file_applied_validity(self, file_data):
         assert self.is_applied()
-        if (file_data.get_overlapping_patch() is None) and file_data.needs_refresh():
+        if file_data.needs_refresh():
             if file_data.has_unresolved_merges():
                 return FileData.Validity.UNREFRESHABLE
             else:
@@ -596,16 +617,12 @@ class PatchData(PickeExtensibleObject):
     def needs_refresh(self):
         '''Does this patch need a refresh?'''
         for file_data in self.files.values():
-            if file_data.get_overlapping_patch() is not None:
-                continue
             if file_data.needs_refresh():
                 return True
         return False
     def has_unresolved_merges(self):
         '''Is this patch refreshable? i.e. no unresolved merges'''
         for file_data in self.files.values():
-            if file_data.get_overlapping_patch() is not None:
-                continue
             if file_data.has_unresolved_merges():
                 return True
         return False
@@ -916,7 +933,7 @@ def get_combined_patch_file_table():
         if not patch.is_applied():
             continue
         for fde in patch.files.values():
-            if (fde.get_overlapping_patch() is None) and fde.needs_refresh():
+            if fde.needs_refresh():
                 if fde.has_unresolved_merges():
                     validity = FileData.Validity.UNREFRESHABLE
                 else:
