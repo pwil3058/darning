@@ -182,7 +182,7 @@ class FileData(PickeExtensibleObject):
     def do_stash_current(self):
         '''Stash the current version of this file for later reference'''
         assert is_writable()
-        assert is_top_applied_patch(self.patch.name)
+        assert self.patch.is_top_applied_patch()
         assert self.needs_refresh() is False
         self.do_delete_stash()
         if os.path.exists(self.path):
@@ -220,7 +220,7 @@ class FileData(PickeExtensibleObject):
             self.orig_mode = None
     def get_reconciliation_paths(self):
         assert is_readable()
-        assert is_top_applied_patch(self.patch.name)
+        assert self.patch.is_top_applied_patch()
         # make it hard for the user to (accidentally) create these files if they don't exist
         before = self.before_file_path if os.path.exists(self.before_file_path) else '/dev/null'
         stashed = self.stashed_path if os.path.exists(self.stashed_path) else '/dev/null'
@@ -574,7 +574,9 @@ class PatchData(PickeExtensibleObject):
         return PatchTable.Row(name=self.name, state=state, pos_guards=self.pos_guards, neg_guards=self.neg_guards)
     def is_applied(self):
         '''Is this patch applied?'''
-        return os.path.isdir(self.cached_orig_dir_path)
+        return self in _APPLIED_PATCHES
+    def is_top_applied_patch(self):
+        return False if not _APPLIED_PATCHES else self == _APPLIED_PATCHES[-1]
     def is_blocked_by_guard(self):
         '''Is the this patch blocked from being applied by any guards?'''
         if (self.pos_guards & _DB.selected_guards) != self.pos_guards:
@@ -624,6 +626,7 @@ _DB_FILE = os.path.join(_DB_DIR, 'database')
 _DB_LOCK_FILE = os.path.join(_DB_DIR, 'lock')
 _DB = None
 _SUB_DIR = None
+_APPLIED_PATCHES = None
 
 def _cached_original_dir_path(patchname):
     '''Return the path of the cached originals' directory for the given patch name'''
@@ -754,14 +757,17 @@ def release_db():
     '''Release access to the database'''
     assert is_readable()
     global _DB
+    global _APPLIED_PATCHES
     writeable = is_writable()
     _DB = None
+    _APPLIED_PATCHES = None
     if writeable:
         _unlock_db()
 
 def load_db(lock=True):
     '''Load the database for access (read only unless lock is True)'''
     global _DB
+    global _APPLIED_PATCHES
     assert exists()
     assert not is_readable()
     while lock:
@@ -786,6 +792,7 @@ def load_db(lock=True):
         fobj.close()
     if lock and lock_state is not True:
         return Failure(_('Database is read only. Lock held by: {0}').format(holder))
+    _APPLIED_PATCHES = _generate_applied_patch_list()
     return True
 
 def dump_db():
@@ -860,7 +867,7 @@ def _get_applied_patch_names_set():
         return os.path.isdir(os.path.join(_ORIGINALS_DIR, item))
     return set([item for item in os.listdir(_ORIGINALS_DIR) if isdir(item)])
 
-def get_applied_patch_list():
+def _generate_applied_patch_list():
     '''Get an ordered list of applied patches'''
     assert is_readable()
     applied = list()
@@ -879,7 +886,7 @@ def get_applied_patch_list():
 def get_applied_patch_name_list():
     '''Get an ordered list of applied patch names'''
     assert is_readable()
-    return [patch.name for patch in get_applied_patch_list()]
+    return [patch.name for patch in _APPLIED_PATCHES]
 
 def get_patch_series_index(patchname):
     '''Get the index in series for the patch with the given name'''
@@ -936,10 +943,9 @@ def is_applied(patchname):
 
 def is_top_applied_patch(patchname):
     '''Is the named patch the top applied patch?'''
-    top_index = get_series_index_for_top()
-    if top_index is None:
+    if not _APPLIED_PATCHES:
         return False
-    return _DB.series[top_index].name == patchname
+    return _APPLIED_PATCHES[-1].name == patchname
 
 def patch_needs_refresh(patchname):
     '''Does the named patch need to be refreshed?'''
@@ -1109,7 +1115,7 @@ def do_fold_epatch(epatch, absorb=False, force=False):
             if git_preamble and ('copy from' in git_preamble.extras or 'rename from' in git_preamble.extras):
                 continue
             new_file_list.append(filepath)
-        overlaps = get_overlap_data(new_file_list, top_patch.name)
+        overlaps = get_overlap_data(new_file_list, top_patch)
         if not absorb and len(overlaps) > 0:
             return overlaps.report_and_abort()
     else:
@@ -1233,11 +1239,12 @@ def get_outstanding_changes_below_top():
     top patch.  I.e. outstanding changes.
     '''
     assert is_readable()
-    applied_patches = get_applied_patch_list()
-    top_patch = applied_patches[-1] if applied_patches else None
-    skip_set = set([filepath for filepath in top_patch.files]) if top_patch else set()
+    if not _APPLIED_PATCHES:
+        return OverlapData()
+    top_patch = _APPLIED_PATCHES[-1]
+    skip_set = set([filepath for filepath in top_patch.files])
     unrefreshed = {}
-    for applied_patch in reversed(applied_patches[:-1]):
+    for applied_patch in reversed(_APPLIED_PATCHES[:-1]):
         apfiles = applied_patch.get_filepaths()
         if apfiles:
             apfiles_set = set(apfiles) - skip_set
@@ -1248,24 +1255,17 @@ def get_outstanding_changes_below_top():
     uncommitted = set(scm_ifce.get_files_with_uncommitted_changes()) - skip_set
     return OverlapData(unrefreshed=unrefreshed, uncommitted=uncommitted)
 
-def get_overlap_data(filepaths, patchname=None):
+def get_overlap_data(filepaths, patch=None):
     '''
     Get the data detailing unrefreshed/uncommitted files that will be
     overlapped by the files in filelist if they are added to the named
-    (or top, if patchename is None) patch.
+    (or next, if patchname is None) patch.
     '''
     assert is_readable()
-    assert patchname is None or get_patch_series_index(patchname) is not None
+    assert patch is None or patch.is_applied()
     if not filepaths:
         return OverlapData()
-    applied_patches = get_applied_patch_list()
-    if patchname is not None:
-        try:
-            patch = get_patch(patchname)
-            patch_index = applied_patches.index(patch)
-            applied_patches = applied_patches[:patch_index]
-        except ValueError:
-            pass
+    applied_patches = _APPLIED_PATCHES if patch is None else _APPLIED_PATCHES[:_APPLIED_PATCHES.index(patch)]
     uncommitted = set(scm_ifce.get_files_with_uncommitted_changes(filepaths))
     remaining_files = set(filepaths)
     unrefreshed = {}
@@ -1291,7 +1291,7 @@ def get_file_diff(filepath, patchname):
 def get_file_combined_diff(filepath):
     assert is_readable()
     patch = None
-    for applied_patch in get_applied_patch_list():
+    for applied_patch in _APPLIED_PATCHES:
         if filepath in applied_patch.files:
             patch = applied_patch
             break
@@ -1380,6 +1380,7 @@ def do_apply_next_patch(absorb=False, force=False):
         if not absorb and len(overlaps):
             return overlaps.report_and_abort()
     os.mkdir(next_patch.cached_orig_dir_path)
+    _APPLIED_PATCHES.append(next_patch)
     if len(next_patch.files) == 0:
         return cmd_result.OK
     drop_atws = options.get('push', 'drop_added_tws')
@@ -1444,8 +1445,7 @@ def do_apply_next_patch(absorb=False, force=False):
 
 def get_top_applied_patch_for_file(filepath):
     assert is_readable()
-    applied_patches = get_applied_patch_list()
-    for applied_patch in reversed(applied_patches):
+    for applied_patch in reversed(_APPLIED_PATCHES):
         if filepath in applied_patch.files:
             return applied_patch.name
     return None
@@ -1453,13 +1453,15 @@ def get_top_applied_patch_for_file(filepath):
 def _get_top_patch():
     '''Return the top applied patch'''
     assert is_readable()
-    return _get_patch(None)
+    if not _APPLIED_PATCHES:
+        RCTX.stderr.write(_('No patches applied\n'))
+        return None
+    return _APPLIED_PATCHES[-1]
 
 def get_top_patch_name():
     '''Return the name of the top applied patch'''
     assert is_readable()
-    top = get_series_index_for_top()
-    return None if top is None else _DB.series[top].name
+    return None if not _APPLIED_PATCHES else _APPLIED_PATCHES[-1].name
 
 def is_blocked_by_guard(patchname):
     '''Is the named patch blocked from being applied by any guards?'''
@@ -1503,6 +1505,7 @@ def do_unapply_top_patch():
                 if aws_lines:
                     RCTX.stderr.write(_('"{0}": adds trailing white space to "{1}" at line(s) {{{2}}}.\n').format(top_patch.name, rel_subdir(file_data.path), ', '.join([str(line) for line in aws_lines])))
     shutil.rmtree(top_patch.cached_orig_dir_path)
+    _APPLIED_PATCHES.remove(top_patch)
     new_top_patch_name = get_top_patch_name()
     if new_top_patch_name is None:
         RCTX.stdout.write(_('There are now no patches applied.\n'))
@@ -1533,15 +1536,14 @@ def get_filepaths_in_next_patch(filepaths=None):
     return _DB.series[patch_index].get_filepaths(filepaths)
 
 def _get_patch(patchname):
-    if not patchname:
-        patch_index = get_series_index_for_top()
-        if patch_index is None:
-            RCTX.stderr.write(_('No patches applied\n'))
-    else:
-        patch_index = get_patch_series_index(patchname)
-        if patch_index is None:
-            RCTX.stderr.write(_('{0}: patch is NOT known\n').format(patchname))
-    return  _DB.series[patch_index] if patch_index is not None else None
+    patch_index = get_patch_series_index(patchname)
+    if patch_index is None:
+        RCTX.stderr.write(_('{0}: patch is NOT known\n').format(patchname))
+        return None
+    return  _DB.series[patch_index]
+
+def _get_named_or_top_patch(patchname):
+    return _get_patch(patchname) if patchname is not None else _get_top_patch()
 
 def get_patch_name(arg):
     patch = _get_patch(arg)
@@ -1555,7 +1557,7 @@ def do_add_files_to_top_patch(filepaths, absorb=False, force=False):
         return cmd_result.ERROR
     prepend_subdir(filepaths)
     if not force:
-        overlaps = get_overlap_data(filepaths, top_patch.name)
+        overlaps = get_overlap_data(filepaths, top_patch)
         if not absorb and len(overlaps) > 0:
             return overlaps.report_and_abort()
     else:
@@ -1719,7 +1721,7 @@ def do_rename_file_in_top_patch(filepath, new_filepath, force=False, overwrite=F
 def do_drop_files_fm_patch(patchname, filepaths):
     '''Drop the named file from the named patch'''
     assert is_writable()
-    patch = _get_patch(patchname)
+    patch = _get_named_or_top_patch(patchname)
     if patch is None:
         return cmd_result.ERROR
     prepend_subdir(filepaths)
@@ -1762,12 +1764,10 @@ def do_refresh_overlapped_files(file_list):
     '''Refresh any files in the list which are in an applied patch
     (within the topmost such patch).'''
     assert is_writable()
-    assert get_series_index_for_top() is not None
-    applied_patches = get_applied_patch_list()
-    assert len(applied_patches) > 0
+    assert len(_APPLIED_PATCHES) > 0
     file_set = set(file_list)
     eflags = 0
-    for applied_patch in reversed(applied_patches):
+    for applied_patch in reversed(_APPLIED_PATCHES):
         for file_name in applied_patch.files:
             if file_name in file_set:
                 eflags |= applied_patch.do_refresh_file(file_name)
@@ -1781,13 +1781,13 @@ def do_refresh_overlapped_files(file_list):
 def do_refresh_patch(patchname=None):
     '''Refresh the named (or top applied) patch'''
     assert is_writable()
-    patch = _get_patch(patchname)
+    patch = _get_named_or_top_patch(patchname)
     if patch is None:
         return cmd_result.ERROR
     if not patch.is_applied():
         RCTX.stderr.write(_('Patch "{0}" is not applied\n').format(patchname))
         return cmd_result.ERROR
-    is_top = is_top_applied_patch(patch.name)
+    is_top = patch.is_top_applied_patch()
     eflags = 0
     for filepath in patch.files:
         if not is_top:
@@ -1849,7 +1849,7 @@ def _tidy_text(text):
 
 def do_set_patch_description(patchname, text):
     assert is_writable()
-    patch = _get_patch(patchname)
+    patch = _get_named_or_top_patch(patchname)
     if not patch:
         return cmd_result.ERROR
     old_description = patch.description
@@ -1901,7 +1901,7 @@ def get_patch_guards(patchname):
 
 def do_set_patch_guards(patchname, guards):
     assert is_writable()
-    patch = _get_patch(patchname)
+    patch = _get_named_or_top_patch(patchname)
     if not patch:
         return cmd_result.ERROR
     patch.pos_guards = set(guards.positive)
@@ -1991,7 +1991,7 @@ def get_textpatch(patchname):
 
 def do_export_patch_as(patchname, export_filename, force=False, overwrite=False):
     assert is_writable()
-    patch = _get_patch(patchname)
+    patch = _get_named_or_top_patch(patchname)
     if not patch:
         return cmd_result.ERROR
     textpatch = TextPatch(patch)
@@ -2023,10 +2023,9 @@ class CombinedTextDiffPlus(patchlib.DiffPlus):
 class CombinedTextPatch(patchlib.Patch):
     def __init__(self):
         patchlib.Patch.__init__(self, num_strip_levels=1)
-        applied_patches = get_applied_patch_list()
         description = ''
         file_first_patch = {}
-        for applied_patch in applied_patches:
+        for applied_patch in _APPLIED_PATCHES:
             description += applied_patch.description
             for filepath in applied_patch.files:
                 if filepath not in file_first_patch:
