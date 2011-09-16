@@ -194,6 +194,26 @@ class FileData(PickeExtensibleObject):
         assert is_writable()
         if os.path.exists(self.stashed_path):
             os.remove(self.stashed_path)
+    def _copy_refreshed_version_to(self, target_name):
+        if not self.needs_refresh():
+            if os.path.exists(self.path):
+                utils.ensure_file_dir_exists(target_name)
+                shutil.copy2(self.path, target_name)
+            return
+        if self.binary is not False:
+            if os.path.exists(self.cached_orig_path):
+                utils.ensure_file_dir_exists(target_name)
+                shutil.copy2(self.cached_orig_path, target_name)
+            return
+        if os.path.exists(self.cached_orig_path):
+            utils.ensure_file_dir_exists(target_name)
+            shutil.copy2(self.cached_orig_path, target_name)
+        elif self.diff:
+            utils.ensure_file_dir_exists(target_name)
+            with open(target_name, 'w') as fobj:
+                fobj.write('')
+        if self.diff:
+            _do_apply_diff_to_file(target_name, self.diff)
     def do_cache_original(self, overlaps=OverlapData()):
         '''Cache the original of the named file for this patch'''
         assert is_writable()
@@ -201,7 +221,7 @@ class FileData(PickeExtensibleObject):
         assert self.get_overlapping_patch() is None
         olurpatch = overlaps.unrefreshed.get(self.path, None)
         if olurpatch:
-            olurpatch.copy_refreshed_version_to(self.path, self.cached_orig_path)
+            olurpatch.files[self.path]._copy_refreshed_version_to(self.cached_orig_path)
         elif self.path in overlaps.uncommitted:
             scm_ifce.copy_clean_version_to(self.path, self.cached_orig_path)
         elif os.path.exists(self.path):
@@ -536,27 +556,6 @@ class PatchData(PickeExtensibleObject):
         dump_db()
         if renamed_from is not None:
             _drop_renamed_to_status_for(renamed_from)
-    def copy_refreshed_version_to(self, filepath, target_name):
-        file_data = self.files[filepath]
-        if not file_data.needs_refresh():
-            if os.path.exists(file_data.path):
-                utils.ensure_file_dir_exists(target_name)
-                shutil.copy2(file_data.path, target_name)
-            return
-        if file_data.binary is not False:
-            if os.path.exists(file_data.cached_orig_path):
-                utils.ensure_file_dir_exists(target_name)
-                shutil.copy2(file_data.cached_orig_path, target_name)
-            return
-        if os.path.exists(file_data.cached_orig_path):
-            utils.ensure_file_dir_exists(target_name)
-            shutil.copy2(file_data.cached_orig_path, target_name)
-        elif file_data.diff:
-            utils.ensure_file_dir_exists(target_name)
-            with open(target_name, 'w') as fobj:
-                fobj.write('')
-        if file_data.diff:
-            _do_apply_diff_to_file(target_name, file_data.diff)
     def get_filepaths(self, filepaths=None):
         '''
         Return the names of the files in this patch.
