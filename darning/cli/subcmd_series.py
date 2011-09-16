@@ -71,15 +71,6 @@ def run_series(args):
     else:
         for patch_data in table:
             sys.stdout.write(format_patch_data(patch_data))
-    #if args.opt_applied:
-        #for patch_data in sorted(patch_db.get_combined_patch_file_table()):
-            #sys.stdout.write(format_patch_data(patch_data))
-    #else:
-        #patchname = patch_db.get_patch_name(args.patchname)
-        #if patchname is None:
-            #return cmd_result.ERROR
-        #for patch_data in sorted(patch_db.get_patch_file_table(patchname)):
-            #sys.stdout.write(format_patch_data(patch_data))
     return cmd_result.OK
 
 PARSER.set_defaults(run_cmd=run_series)
