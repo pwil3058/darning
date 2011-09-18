@@ -18,6 +18,7 @@ in_valid_pgnd = False
 pgnd_is_mutable = False
 
 import os
+import email.utils
 
 from darning import scm_ifce as SCM
 from darning import cmd_result
@@ -122,16 +123,14 @@ def get_author_name_and_email():
     name = options.get('user', 'name')
     if not name:
         name = utils.get_first_in_envar(DEFAULT_NAME_EVARS)
-    email = options.get('user', 'email')
-    if not email:
-        email = utils.get_first_in_envar(DEFAULT_EMAIL_VARS)
-    if not email:
+    email_addr = options.get('user', 'email')
+    if not email_addr:
+        email_addr = utils.get_first_in_envar(DEFAULT_EMAIL_VARS)
+    if not email_addr:
         user = os.environ.get('LOGNAME', None)
         host = os.environ.get('HOSTNAME', None)
-        email = '@'.join([user, host]) if user and host else None
-    if name and email:
-        return '{0} <{1}>'.format(name, email)
-    elif email:
-        return email
+        email_addr = '@'.join([user, host]) if user and host else None
+    if email_addr:
+        return email.utils.formataddr((name, email_addr,))
     else:
         return None
