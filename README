@@ -11,6 +11,7 @@ This software requires:
  - patch 2.6.1 or later
 
 This software works better with:
+ - vte 0.28.1 or later
  - meld 1.5 or later
  - pygtksourceview 2.10.1
 
