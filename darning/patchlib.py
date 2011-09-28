@@ -927,10 +927,10 @@ class Patch(object):
     def parse_text_file(filepath, num_strip_levels=0):
         '''Parse a text file and return a Patch instance.'''
         patch = Patch.parse_text(open(filepath).read(), num_strip_levels=num_strip_levels)
-        patch.source_file_path = filepath
+        patch.source_name = filepath
         return patch
     def __init__(self, num_strip_levels=0):
-        self.source_file_path = None
+        self.source_name = None
         self.num_strip_levels = int(num_strip_levels)
         self.header = Header()
         self.diff_pluses = list()

@@ -1972,7 +1972,7 @@ class TextDiffPlus(patchlib.DiffPlus):
 class TextPatch(patchlib.Patch):
     def __init__(self, patch):
         patchlib.Patch.__init__(self, num_strip_levels=1)
-        self.name = patch.name
+        self.source_name = patch.name
         self.state = PatchState.APPLIED_REFRESHED if patch.is_applied() else PatchState.UNAPPLIED
         self.set_description(patch.description)
         self.set_comments('# created by: Darning\n')

@@ -377,9 +377,9 @@ def do_duplicate_patch(patchname, as_patchname, newdescription):
 def do_import_patch(epatch, as_patchname, overwrite=False):
     patch_db.RCTX.reset()
     if overwrite:
-        console.LOG.start_cmd(_('import --overwrite "{0}" as "{1}"\n').format(epatch.source_file_path, as_patchname))
+        console.LOG.start_cmd(_('import --overwrite "{0}" as "{1}"\n').format(epatch.source_name, as_patchname))
     else:
-        console.LOG.start_cmd(_('import "{0}" as "{1}"\n').format(epatch.source_file_path, as_patchname))
+        console.LOG.start_cmd(_('import "{0}" as "{1}"\n').format(epatch.source_name, as_patchname))
     eflags = patch_db.do_import_patch(epatch, as_patchname, overwrite=overwrite)
     console.LOG.end_cmd()
     if cmd_result.is_less_than_error(eflags):
@@ -397,7 +397,7 @@ def do_export_patch_as(patchname, patch_filename, force=False, overwrite=False):
 
 def do_fold_epatch(epatch, absorb=False, force=False):
     patch_db.RCTX.reset()
-    console.LOG.start_cmd(_('fold --file "{0}"\n').format(epatch.source_file_path))
+    console.LOG.start_cmd(_('fold --file "{0}"\n').format(epatch.source_name))
     eflags = patch_db.do_fold_epatch(epatch, absorb=absorb, force=force)
     console.LOG.end_cmd()
     if cmd_result.is_less_than_error(eflags):

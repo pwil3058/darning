@@ -627,13 +627,13 @@ class DuplicatePatchDialog(NewSeriesDescrDialog):
 class ImportPatchDialog(dialogue.Dialog):
     def __init__(self, epatch, parent=None):
         flags = ~gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT
-        title = _('Import Patch: {0} : {1} -- gdarn').format(epatch.source_file_path, utils.path_rel_home(os.getcwd()))
+        title = _('Import Patch: {0} : {1} -- gdarn').format(epatch.source_name, utils.path_rel_home(os.getcwd()))
         dialogue.Dialog.__init__(self, title, parent, flags, None)
         if not parent:
             self.set_icon_from_file(icons.APP_ICON_FILE)
         self.epatch = epatch
         #
-        patch_file_name = os.path.basename(epatch.source_file_path)
+        patch_file_name = os.path.basename(epatch.source_name)
         self.namebox = gtk.HBox()
         self.namebox.pack_start(gtk.Label(_("As Patch:")), expand=False)
         self.as_name = gutils.MutableComboBoxEntry()
@@ -683,7 +683,7 @@ class ImportPatchDialog(dialogue.Dialog):
 class FoldPatchDialog(ImportPatchDialog):
     def __init__(self, epatch, parent=None):
         ImportPatchDialog.__init__(self, epatch, parent)
-        self.set_title( _('Fold Patch: {0} : {1} -- gdarn').format(epatch.source_file_path, utils.path_rel_home(os.getcwd())))
+        self.set_title( _('Fold Patch: {0} : {1} -- gdarn').format(epatch.source_name, utils.path_rel_home(os.getcwd())))
         self.namebox.hide()
 
 class RestorePatchDialog(dialogue.Dialog):
