@@ -30,6 +30,7 @@ import difflib
 import errno
 import sys
 
+from darning import rctx as RCTX
 from darning import i18n
 from darning import scm_ifce
 from darning import runext
@@ -61,13 +62,6 @@ class Failure(object):
         return self.msg
     def __repr__(self):
         return _('Failure({0})').format(self.msg)
-
-class ReportContext(object):
-    def __init__(self, stdout, stderr):
-        self.stdout = stdout
-        self.stderr = stderr
-
-RCTX = ReportContext(stdout=sys.stdout, stderr=sys.stderr)
 
 class BinaryDiff(patchlib.Diff):
     def __init__(self, file_data):

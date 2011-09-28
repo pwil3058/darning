@@ -21,6 +21,7 @@ import os
 import sys
 import atexit
 
+from darning import rctx
 from darning import patch_db
 from darning import scm_ifce
 
@@ -38,13 +39,6 @@ def open_db(modifiable):
     atexit.register(patch_db.release_db)
     return True
 
-class Context(object):
-    def __init__(self, stdout, stderr):
-        self.stdout = stdout
-        self.stderr = stderr
-
 def set_report_context(verbose=True):
-    if verbose:
-        patch_db.RCTX = Context(sys.stdout, sys.stderr)
-    else:
-        patch_db.RCTX = Context(open('/dev/null', 'w'), sys.stderr)
+    if not verbose:
+        rctx.reset(open('/dev/null', 'w'), sys.stderr)
