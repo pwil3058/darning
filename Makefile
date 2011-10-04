@@ -56,7 +56,7 @@ test-cli/.%.ok: test-cli/%.test
 	@LANG=C; LC_ALL=C; PATH="$(PWD):$(PATH)";	\
 	export LANG LC_ALL PATH;					\
 	cd $(@D);									\
-	./run.py -q $(<F)
+	./run.py $(<F)
 	@touch $@
 
 clean:
