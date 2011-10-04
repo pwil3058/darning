@@ -8,6 +8,9 @@ SRCS:=$(shell hg status -macdn)
 SRCDIST:=darning-$(VERSION).tar.gz
 RPMDIST:=darning-$(subst -,_,$(VERSION))-$(RELEASE).noarch.rpm
 RPMSRC:=$(RPMBDIR)/SOURCES/$(SRCDIST)
+CLI_SRCS=darn $(filter %.py, $(filter-out pixmaps/% darning/gui/%, $(SRCS)))
+CLI_TEST_SCRIPTS=$(wildcard test-cli/*.test)
+CLI_TESTS=$(patsubst test-cli/%.test,test-cli/.%.ok, $(CLI_TEST_SCRIPTS))
 
 help:
 	@echo "Choices are:"
@@ -47,6 +50,16 @@ install:
 	desktop-file-install darning.desktop --dir $(PREFIX)/share/applications
 	rm MANIFEST
 
+check: $(CLI_TESTS)
+
+test-cli/.%.ok: test-cli/%.test
+	@LANG=C; LC_ALL=C; PATH="$(PWD):$(PATH)";	\
+	export LANG LC_ALL PATH;					\
+	cd $(@D);									\
+	./run.py -q $(<F)
+	@touch $@
+
 clean:
 	-rm *.rpm *.spec *.exe *.tar.gz MANIFEST
 	-rm -r build
+	-rm $(CLI_TESTS)

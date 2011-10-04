@@ -733,7 +733,7 @@ def do_create_db(description):
                 os.rmdir(dirnm)
     root = find_base_dir(remember_sub_dir=False)
     if root is not None:
-        RCTX.stderr.write(_('Inside existing playground: {0}.\n').format(os.path.relpath(root)))
+        RCTX.stderr.write(_('Inside existing playground: "{0}".\n').format(os.path.relpath(root)))
         return cmd_result.ERROR
     elif os.path.exists(_DB_DIR):
         if os.path.exists(_ORIGINALS_DIR) and os.path.exists(_DB_FILE):
