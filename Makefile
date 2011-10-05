@@ -52,7 +52,7 @@ install:
 
 check: $(CLI_TESTS)
 
-test-cli/.%.ok: test-cli/%.test
+test-cli/.%.ok: test-cli/%.test $(CLI_SRCS)
 	@LANG=C; LC_ALL=C; PATH="$(PWD):$(PATH)";	\
 	export LANG LC_ALL PATH;					\
 	cd $(@D);									\

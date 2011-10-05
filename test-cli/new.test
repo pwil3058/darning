@@ -44,14 +44,14 @@ Test creating a new patch with the same name as an existing patch
 from a sub directory of a playground.
 $ darn new --descr='The second patch created in the series.' second
 ? 17
-! patch "second" already exists
+! patch "second" already exists.
 
 Test creating a new patch with the same name as an existing patch
 from the root directory of a playground.
 $ cd ..
 $ darn new --descr='The second patch created in the series.' second
 ? 17
-! patch "second" already exists
+! patch "second" already exists.
 
 Make sure a new patch goes into the series after the top patch.
 $ darn pop
@@ -68,7 +68,7 @@ $ darn pop
 > Patch "first" is now on top.
 $ darn pop
 > There are now no patches applied.
-$ darn new --descr='The third patch created in the series.' fourth
+$ darn new --descr='The fourth patch created in the series.' fourth
 $ darn series
 > +: fourth
 >  : first

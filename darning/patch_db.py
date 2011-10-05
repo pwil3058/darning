@@ -982,7 +982,7 @@ def do_create_new_patch(patchname, description):
     '''Create a new patch with the given name and description (after the top patch)'''
     assert is_writable()
     if get_patch_series_index(patchname) is not None:
-        RCTX.stderr.write(_('patch "{0}" already exists\n').format(patchname))
+        RCTX.stderr.write(_('patch "{0}" already exists.\n').format(patchname))
         return cmd_result.ERROR|cmd_result.SUGGEST_RENAME
     elif not utils.is_valid_dir_name(patchname):
         RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(patchname, utils.ALLOWED_DIR_NAME_CHARS_MSG))
@@ -1551,7 +1551,7 @@ def get_filepaths_in_next_patch(filepaths=None):
 def _get_patch(patchname):
     patch_index = get_patch_series_index(patchname)
     if patch_index is None:
-        RCTX.stderr.write(_('{0}: patch is NOT known\n').format(patchname))
+        RCTX.stderr.write(_('{0}: patch is NOT known.\n').format(patchname))
         return None
     return  _DB.series[patch_index]
 
@@ -1812,7 +1812,8 @@ def do_remove_patch(patchname):
     if patch is None:
         return cmd_result.ERROR
     if patch.is_applied():
-        RCTX.stderr,write(_('{0}: patch is applied and cannot be removed\n').format(patchname))
+        RCTX.stderr.write(_('{0}: patch is applied and cannot be removed.\n').format(patchname))
+        return cmd_result.ERROR
     if options.get('remove', 'keep_patch_backup'):
         _DB.kept_patches[patch.name] = patch
     _DB.series.remove(patch)
