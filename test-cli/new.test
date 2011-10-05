@@ -27,6 +27,10 @@ Now try again.
 $ darn new --descr='The first patch created in the series.' first
 $ darn series
 > +: first
+$ ls .darning.dbd/orig
+> first
+$ ls .darning.dbd/stash
+> first
 
 Test listing series in a sub directory of a playground.
 $ mkdir subdir
@@ -39,6 +43,12 @@ $ darn new --descr='The second patch created in the series.' second
 $ darn series
 > +: first
 > +: second
+$ ls ../.darning.dbd/orig
+> first
+> second
+$ ls ../.darning.dbd/stash
+> first
+> second
 
 Test creating a new patch with the same name as an existing patch
 from a sub directory of a playground.
@@ -61,6 +71,13 @@ $ darn series
 > +: first
 > +: third
 >  : second
+$ ls .darning.dbd/orig
+> first
+> third
+$ ls .darning.dbd/stash
+> first
+> second
+> third
 
 Make sure a new patch goes into the series at the beginning if no
 patches are applied.
@@ -74,3 +91,5 @@ $ darn series
 >  : first
 >  : third
 >  : second
+$ ls .darning.dbd/orig
+> fourth

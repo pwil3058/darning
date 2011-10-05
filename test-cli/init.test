@@ -22,6 +22,19 @@ $ ls -a
 > ..
 > .darning.dbd
 
+Check that the expected files and directories are in place
+$ ls .darning.dbd
+> database
+> orig
+> stash
+$ ls .darning.dbd/orig/
+$ ls .darning.dbd/stash/
+$ ls .darning.dbd/database
+> .darning.dbd/database
+$ ls .darning.dbd/database/
+? 2
+! ls: cannot access .darning.dbd/database/: Not a directory
+
 Test invalid initialization in root directory of a playground.
 $ darn init
 ? 1
