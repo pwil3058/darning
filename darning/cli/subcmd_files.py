@@ -43,11 +43,20 @@ GROUP.add_argument(
     help=_('the name of the patch whose files are to be listed.'),
 )
 
+VAL_MAP = {
+    None: ' ',
+    patch_db.FileData.Validity.REFRESHED: '+',
+    patch_db.FileData.Validity.NEEDS_REFRESH: '?',
+    patch_db.FileData.Validity.UNREFRESHABLE: '!',
+}
+
 def format_file_data(file_data):
+    def status_to_str(status):
+        return '{0}:{1}'.format(status.presence, VAL_MAP[status.validity])
     if file_data.related_file:
-        return '{0}: {1} {2} {3}\n'.format(file_data.status.presence, patch_db.rel_subdir(file_data.name), file_data.related_file.relation, patch_db.rel_subdir(file_data.related_file.path))
+        return '{0}: {1} {2} {3}\n'.format(status_to_str(file_data.status), patch_db.rel_subdir(file_data.name), file_data.related_file.relation, patch_db.rel_subdir(file_data.related_file.path))
     else:
-        return '{0}: {1}\n'.format(file_data.status.presence, patch_db.rel_subdir(file_data.name))
+        return '{0}: {1}\n'.format(status_to_str(file_data.status), patch_db.rel_subdir(file_data.name))
 
 def run_files(args):
     '''Execute the "files" sub command using the supplied args'''

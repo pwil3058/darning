@@ -1,0 +1,149 @@
+### Copyright (C) 2011 Peter Williams <peter_ono@users.sourceforge.net>
+###
+### This program is free software; you can redistribute it and/or modify
+### it under the terms of the GNU General Public License as published by
+### the Free Software Foundation; version 2 of the License only.
+###
+### This program is distributed in the hope that it will be useful,
+### but WITHOUT ANY WARRANTY; without even the implied warranty of
+### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+### GNU General Public License for more details.
+###
+### You should have received a copy of the GNU General Public License
+### along with this program; if not, write to the Free Software
+### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Test the 'darn add' command.
+
+Create some test files.
+$ mkfile file1
+< file one
+$ mkfile file2
+< file two
+$ ls
+> file1
+> file2
+
+Test adding a file when not in a playground.
+$ darn add file1 file2 nonexistent
+? 1
+! Valid database NOT found.
+
+Initialise a playground and try again without creating a patch
+$ darn init
+$ darn add file1 file2 nonexistent
+? 1
+! No patches applied.
+$ darn files
+? 1
+! No patches applied.
+
+Create a patch and add files including a nonexistent one
+$ darn new first --descr "First patch created."
+$ darn add file1 file2 nonexistent
+> file1: file added to patch "first".
+> file2: file added to patch "first".
+> nonexistent: file added to patch "first".
+$ darn files
+>  :+: file1
+>  :+: file2
+> +:+: nonexistent
+
+Create a second patch and add the same files
+$ darn new second --descr "Second patch created."
+$ darn add file1 file2 nonexistent
+> file1: file added to patch "second".
+> file2: file added to patch "second".
+> nonexistent: file added to patch "second".
+$ darn files
+>  :+: file1
+>  :+: file2
+> +:+: nonexistent
+$ darn series
+> +: first
+> +: second
+
+Modify some of the files then create a third patch and add the same files
+$ patch -e file2
+< a
+< another line
+< .
+$ darn series
+> +: first
+> ?: second
+$ darn files
+>  :+: file1
+>  :?: file2
+> +:+: nonexistent
+$ darn new third --descr "Third patch created."
+! Previous top patch ("second") needs refreshing.
+$ darn series
+> +: first
+> ?: second
+> +: third
+$ darn add file1 file2 nonexistent
+? 39
+! file2: file has unrefreshed changes in (applied) patch "second".
+! Aborted.
+$ darn series
+> +: first
+> ?: second
+> +: third
+$ darn files
+#> file1: file added to patch "third".
+#> file2: file added to patch "third".
+#> nonexistent: file added to patch "third".
+#>  :+: file1
+#>  :+: file2
+#> +:+: nonexistent
+
+Do it again and absorb the unrefreshed changes into the third patch.
+$ darn add --absorb file1 file2 nonexistent
+> file1: file added to patch "third".
+> file2: file added to patch "third".
+! file2: Unrefeshed changes in patch "second" incorporated in patch "third".
+> nonexistent: file added to patch "third".
+$ darn series
+> +: first
+> ?: second
+> +: third
+$ darn files
+>  :+: file1
+>  :+: file2
+> +:+: nonexistent
+Confirm that the change has been absorbed.
+$ diff -e .darning.dbd/orig/third/file2 file2
+? 1
+> 1a
+> another line
+> .
+$ darn files second
+>  :+: file1
+>  :?: file2
+> +:+: nonexistent
+
+Do it again into a fourth patch using --force.
+$ darn new fourth --descr "Fourth patch created."
+$ patch -e file1
+< a
+< another line (this time to file1)
+< .
+$ darn add --force file1 file2 nonexistent
+> file1: file added to patch "fourth".
+> file2: file added to patch "fourth".
+> nonexistent: file added to patch "fourth".
+$ darn series
+> +: first
+> ?: second
+> ?: third
+> +: fourth
+$ darn files
+>  :+: file1
+>  :+: file2
+> +:+: nonexistent
+Confirm that the change has not been absorbed.
+$ diff -e .darning.dbd/orig/fourth/file2 file2
+$ darn files third
+>  :?: file1
+>  :+: file2
+> +:+: nonexistent

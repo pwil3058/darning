@@ -83,6 +83,11 @@ class Command(object):
         elif self.cmd_line[0] == 'unset':
             if self.cmd_line[0] in os.environ:
                 del os.environ[self.cmd_line[0]]
+        elif self.cmd_line[0] == 'mkfile':
+            try:
+                open(self.cmd_line[1], 'w').write(self.input_text)
+            except OSError as edata:
+                return Result(ecode=1, stderr=str(edata))
         else:
             try:
                 return self._run()

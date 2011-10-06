@@ -113,7 +113,7 @@ class OverlapData(object):
         for filepath in sorted(self.unrefreshed):
             rfilepath = rel_subdir(filepath)
             opatch = self.unrefreshed[filepath]
-            RCTX.stderr.write(_('{0}: file has unrefreshed changes in (applied) "{1}".\n').format(rfilepath, opatch.name))
+            RCTX.stderr.write(_('{0}: file has unrefreshed changes in (applied) patch "{1}".\n').format(rfilepath, opatch.name))
         RCTX.stderr.write(_('Aborted.\n'))
         return cmd_result.ERROR_SUGGEST_FORCE_ABSORB_OR_REFRESH if len(self.unrefreshed) > 0 else cmd_result.ERROR_SUGGEST_FORCE_OR_ABSORB
 
@@ -471,7 +471,7 @@ def _pts_for_path(path):
 class PatchState(object):
     UNAPPLIED = ' '
     APPLIED_REFRESHED = '+'
-    APPLIED_NEEDS_REFRESH = '-'
+    APPLIED_NEEDS_REFRESH = '?'
     APPLIED_UNREFRESHABLE = '!'
 
 class PatchTable(object):
@@ -1467,7 +1467,7 @@ def _get_top_patch():
     '''Return the top applied patch'''
     assert is_readable()
     if not _APPLIED_PATCHES:
-        RCTX.stderr.write(_('No patches applied\n'))
+        RCTX.stderr.write(_('No patches applied.\n'))
         return None
     return _APPLIED_PATCHES[-1]
 
@@ -1559,7 +1559,7 @@ def _get_named_or_top_patch(patchname):
     return _get_patch(patchname) if patchname is not None else _get_top_patch()
 
 def get_patch_name(arg):
-    patch = _get_patch(arg)
+    patch = _get_named_or_top_patch(arg)
     return None if patch is None else patch.name
 
 def do_add_files_to_top_patch(filepaths, absorb=False, force=False):
@@ -1586,12 +1586,11 @@ def do_add_files_to_top_patch(filepaths, absorb=False, force=False):
         already_in_patch.add(filepath)
         rfilepath = rel_subdir(filepath)
         top_patch.files[filepath] = FileData(filepath, top_patch, overlaps=overlaps)
+        RCTX.stdout.write(_('{0}: file added to patch "{1}".\n').format(rfilepath, top_patch.name))
         if filepath in overlaps.uncommitted:
-            RCTX.stderr.write(_('{0}: file added to patch "{1}". Uncommited SCM changes have been incorporated.\n').format(rfilepath, top_patch.name))
+            RCTX.stderr.write(_('{0}: Uncommited SCM changes have been incorporated in patch "{1}".\n').format(rfilepath, top_patch.name))
         elif filepath in overlaps.unrefreshed:
-            RCTX.stderr.write(_('{0}: file added to patch "{1}". Unrefeshed changes in patch "{2}" incorporated.\n').format(rfilepath, top_patch.name, overlaps.unrefreshed[filepath]))
-        else:
-            RCTX.stdout.write(_('{0}: file added to patch "{1}".\n').format(rfilepath, top_patch.name))
+            RCTX.stderr.write(_('{0}: Unrefeshed changes in patch "{2}" incorporated in patch "{1}".\n').format(rfilepath, top_patch.name, overlaps.unrefreshed[filepath].name))
         dump_db() # do this now to minimize problems if interrupted
     return cmd_result.OK
 
