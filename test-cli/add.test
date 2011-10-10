@@ -111,12 +111,16 @@ $ darn files
 >  :+: file1
 >  :+: file2
 > +:+: nonexistent
-Confirm that the change has been absorbed.
-$ diff -e .darning.dbd/orig/third/file2 file2
-? 1
-> 1a
-> another line
-> .
+Confirm that the change has been absorbed into "third" patch.
+$ darn diff --notimestamp -P second file2
+> diff --git a/file2 b/file2
+$ darn diff --notimestamp -P third file2
+> diff --git a/file2 b/file2
+> --- a/file2
+> +++ b/file2
+> @@ -1,1 +1,2 @@
+>  file two
+> +another line
 $ darn files second
 >  :+: file1
 >  :?: file2
@@ -141,8 +145,16 @@ $ darn files
 >  :+: file1
 >  :+: file2
 > +:+: nonexistent
-Confirm that the change has not been absorbed.
-$ diff -e .darning.dbd/orig/fourth/file2 file2
+Confirm that the change has not been absorbed into "fourth" patch.
+$ darn diff --notimestamp -P third file2
+> diff --git a/file2 b/file2
+> --- a/file2
+> +++ b/file2
+> @@ -1,1 +1,2 @@
+>  file two
+> +another line
+$ darn diff --notimestamp -P fourth file2
+> diff --git a/file2 b/file2
 $ darn files third
 >  :?: file1
 >  :+: file2

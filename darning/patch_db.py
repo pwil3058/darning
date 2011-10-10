@@ -1301,6 +1301,30 @@ def get_file_diff(filepath, patchname, with_timestamps=True):
     assert filepath in patch.files
     return patch.files[filepath].get_diff_plus(with_timestamps=with_timestamps)
 
+def get_diff_for_files(filepaths, patchname, with_timestamps=True):
+    assert is_readable()
+    patch = _get_named_or_top_patch(patchname)
+    if patch is None:
+        return False
+    if filepaths:
+        is_ok = True
+        file_list = []
+        prepend_subdir(filepaths)
+        for filepath in filepaths:
+            if filepath in patch.files:
+                file_list.append(patch.files[filepath])
+            else:
+                is_ok = False
+                RCTX.stderr.write('{0}: file is not in patch "{1}".\n'.format(rel_subdir(filepath), patch.name))
+        if not is_ok:
+            return False
+    else:
+        file_list = [patch.files[filepath] for filepath in sorted(patch.files)]
+    diff = ''
+    for file_data in file_list:
+        diff += str(file_data.get_diff_plus(with_timestamps=with_timestamps))
+    return diff
+
 def get_file_combined_diff(filepath, with_timestamps=True):
     assert is_readable()
     patch = None
@@ -1310,6 +1334,37 @@ def get_file_combined_diff(filepath, with_timestamps=True):
             break
     assert patch is not None
     return patch.files[filepath].get_diff_plus(combined=True, with_timestamps=with_timestamps)
+
+def get_combined_diff_for_files(filepaths, with_timestamps=True):
+    assert is_readable()
+    file_list = []
+    if filepaths:
+        is_ok = True
+        prepend_subdir(filepaths)
+        for filepath in filepaths:
+            found = False
+            for applied_patch in _APPLIED_PATCHES:
+                if filepath in applied_patch.files:
+                    file_list.append(applied_patch.files[filepath])
+                    found = True
+                    break
+            if not found:
+                is_ok = False
+                RCTX.stderr.write('{0}: file is not in any applied patch.\n'.format(rel_subdir(filepath)))
+        if not is_ok:
+            return False
+    else:
+        file_set = set()
+        for applied_patch in _APPLIED_PATCHES:
+            for filepath in sorted(applied_patch.files):
+                if filepath in file_set:
+                    continue
+                file_set.add(filepath)
+                file_list.append(applied_patch.files[filepath])
+    diff = ''
+    for file_data in file_list:
+        diff += str(file_data.get_diff_plus(combined=True, with_timestamps=with_timestamps))
+    return diff
 
 def do_apply_next_patch(absorb=False, force=False):
     '''Apply the next patch in the series'''

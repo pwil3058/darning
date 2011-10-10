@@ -54,6 +54,12 @@ class Command(object):
         assert self.cmd_line_str
         self.cmd_line = shlex.split(self.cmd_line_str)
         self.input_text = ''
+        try:
+            red_index = self.cmd_line.index('>')
+            self.red_file_path = self.cmd_line[red_index + 1]
+            del self.cmd_line[red_index:red_index + 2]
+        except:
+            self.red_file_path = None
     def __str__(self):
         return self.cmd_line_str
     def append_input_line(self, line):
@@ -67,6 +73,9 @@ class Command(object):
         sout, serr = sub.communicate(self.input_text)
         if self.IS_POSIX:
             signal.signal(signal.SIGPIPE, savedsh)
+        if self.red_file_path:
+            open(self.red_file_path, 'w').write(sout)
+            sout = ''
         return Result(ecode=sub.returncode, stdout=sout, stderr=serr)
     def run(self):
         if self.cmd_line[0] == 'umask':
