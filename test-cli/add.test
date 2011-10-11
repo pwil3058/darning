@@ -48,6 +48,12 @@ $ darn files
 >  :+: file1
 >  :+: file2
 > +:+: nonexistent
+$ ls .darning.dbd/orig/first
+> file1
+> file2
+$ ls .darning.dbd/stash/first
+> file1
+> file2
 
 Create a second patch and add the same files
 $ darn new second --descr "Second patch created."
@@ -62,6 +68,12 @@ $ darn files
 $ darn series
 > +: first
 > +: second
+$ ls .darning.dbd/orig/second
+> file1
+> file2
+$ ls .darning.dbd/stash/second
+> file1
+> file2
 
 Modify some of the files then create a third patch and add the same files
 $ patch -e file2
@@ -90,12 +102,8 @@ $ darn series
 > ?: second
 > +: third
 $ darn files
-#> file1: file added to patch "third".
-#> file2: file added to patch "third".
-#> nonexistent: file added to patch "third".
-#>  :+: file1
-#>  :+: file2
-#> +:+: nonexistent
+$ ls .darning.dbd/orig/third
+$ ls .darning.dbd/stash/third
 
 Do it again and absorb the unrefreshed changes into the third patch.
 $ darn add --absorb file1 file2 nonexistent
@@ -111,6 +119,13 @@ $ darn files
 >  :+: file1
 >  :+: file2
 > +:+: nonexistent
+$ ls .darning.dbd/orig/third
+> file1
+> file2
+$ ls .darning.dbd/stash/third
+> file1
+> file2
+
 Confirm that the change has been absorbed into "third" patch.
 $ darn diff --notimestamp -P second file2
 > diff --git a/file2 b/file2

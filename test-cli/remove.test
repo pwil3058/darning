@@ -59,6 +59,12 @@ $ darn series
 > +: first
 >  : second
 >  : third
+$ ls .darning.dbd/orig/
+> first
+$ ls .darning.dbd/stash/
+> first
+> second
+> third
 
 Remove a patch in the middle of the series
 $ darn remove second
@@ -66,6 +72,11 @@ $ darn remove second
 $ darn series
 > +: first
 >  : third
+$ ls .darning.dbd/orig/
+> first
+$ ls .darning.dbd/stash/
+> first
+> third
 
 Remove a patch in the end of the series
 $ darn remove third
