@@ -1,0 +1,163 @@
+### Copyright (C) 2011 Peter Williams <peter_ono@users.sourceforge.net>
+###
+### This program is free software; you can redistribute it and/or modify
+### it under the terms of the GNU General Public License as published by
+### the Free Software Foundation; version 2 of the License only.
+###
+### This program is distributed in the hope that it will be useful,
+### but WITHOUT ANY WARRANTY; without even the implied warranty of
+### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+### GNU General Public License for more details.
+###
+### You should have received a copy of the GNU General Public License
+### along with this program; if not, write to the Free Software
+### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Test the 'darn add' command.
+
+Create some test files.
+$ mkfile file1
+< file one
+$ mkfile file2
+< file two
+$ mkfile file3
+< file two
+
+Initialiaze a playground, create some patches and add the files to the patches
+$ darn init
+$ darn new first
+$ darn add file1 file2 file3 nonexistent > /dev/null
+$ patch -e file1
+< a
+< first change
+<.
+$ patch -e file2
+< a
+< first change
+<.
+$ patch -e file3
+< a
+< first change
+<.
+$ darn refresh
+$ darn new second
+$ darn add file1 file2 file3 nonexistent > /dev/null
+$ patch -e file1
+< a
+< second change
+<.
+$ patch -e file2
+< a
+< second change
+<.
+$ patch -e file3
+< a
+< second change
+<.
+$ darn refresh
+$ darn new third
+$ darn add file1 file2 file3 nonexistent > /dev/null
+$ patch -e file1
+< a
+< third change
+<.
+$ patch -e file2
+< a
+< third change
+<.
+$ patch -e file3
+< a
+< third change
+<.
+$ darn refresh
+$ darn series
+> +: first
+> +: second
+> +: third
+
+Now test dropping files from an applied but non top patches
+$ darn drop -P second file2 file3
+> file2: file dropped from patch "second".
+> file3: file dropped from patch "second".
+$ darn files second
+>  :+: file1
+> +:+: nonexistent
+$ ls .darning.dbd/orig/second
+> file1
+$ ls .darning.dbd/stash/second
+> file1
+$ darn series
+> +: first
+> +: second
+> ?: third
+$ darn diff --notimestamp -P second
+> diff --git a/file1 b/file1
+> --- a/file1
+> +++ b/file1
+> @@ -1,2 +1,3 @@
+>  file one
+>  first change
+> +second change
+> diff --git a/nonexistent b/nonexistent
+$ darn diff --notimestamp
+> diff --git a/file1 b/file1
+> --- a/file1
+> +++ b/file1
+> @@ -1,3 +1,4 @@
+>  file one
+>  first change
+>  second change
+> +third change
+> diff --git a/file2 b/file2
+> --- a/file2
+> +++ b/file2
+> @@ -1,2 +1,4 @@
+>  file two
+>  first change
+> +second change
+> +third change
+> diff --git a/file3 b/file3
+> --- a/file3
+> +++ b/file3
+> @@ -1,2 +1,4 @@
+>  file two
+>  first change
+> +second change
+> +third change
+> diff --git a/nonexistent b/nonexistent
+
+Now test dropping nonexistent file
+$ darn drop -P second nonexistent
+> nonexistent: file dropped from patch "second".
+$ darn files second
+>  :+: file1
+$ ls .darning.dbd/orig/second
+> file1
+$ ls .darning.dbd/stash/second
+> file1
+$ darn series
+> +: first
+> +: second
+> ?: third
+
+Now test dropping a file from an unapplied patch
+$ darn refresh
+$ darn pop
+> Patch "second" is now on top.
+$ darn series
+> +: first
+> +: second
+>  : third
+$ darn drop -P third file1 nonexistent
+> file1: file dropped from patch "third".
+> nonexistent: file dropped from patch "third".
+$ darn series
+> +: first
+> +: second
+>  : third
+$ ls .darning.dbd/orig/
+> first
+> second
+$ ls .darning.dbd/stash/third
+> file2
+> file3
