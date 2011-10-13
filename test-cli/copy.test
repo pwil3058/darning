@@ -368,3 +368,93 @@ $ ls
 > file2
 > file3
 > file4
+
+Now test copying a tracked file
+$ darn new second
+$ darn add file1
+> file1: file added to patch "second".
+$ patch -e file1
+< a
+< add a line
+< .
+$ darn refresh
+$ darn diff --notimestamp
+> diff --git a/file1 b/file1
+> --- a/file1
+> +++ b/file1
+> @@ -1,1 +1,2 @@
+>  file one
+> +add a line
+$ darn copy file1 file1.copy
+> file1: file copied to "file1.copy" in patch "second".
+$ darn diff --notimestamp
+> diff --git a/file1 b/file1
+> --- a/file1
+> +++ b/file1
+> @@ -1,1 +1,2 @@
+>  file one
+> +add a line
+> diff --git a/file1 b/file1.copy
+> copy from file1
+> copy to file1.copy
+> --- a/file1.copy
+> +++ b/file1.copy
+> @@ -1,1 +1,2 @@
+>  file one
+> +add a line
+$ darn refresh
+$ darn pop
+> There are now no patches applied.
+$ darn push
+> Patching file "file1".
+> Patching file "file1.copy".
+> Patch "second" is now on top
+$ darn diff --notimestamp
+> diff --git a/file1 b/file1
+> --- a/file1
+> +++ b/file1
+> @@ -1,1 +1,2 @@
+>  file one
+> +add a line
+> diff --git a/file1 b/file1.copy
+> copy from file1
+> copy to file1.copy
+> --- a/file1.copy
+> +++ b/file1.copy
+> @@ -1,1 +1,2 @@
+>  file one
+> +add a line
+$ darn files
+>  :+: file1
+> +:+: file1.copy <<- file1
+$ darn drop file1
+> file1: file dropped from patch "second".
+$ darn files
+> +:+: file1.copy <<- file1
+$ darn diff --notimestamp
+> diff --git a/file1 b/file1.copy
+> copy from file1
+> copy to file1.copy
+> --- a/file1.copy
+> +++ b/file1.copy
+> @@ -1,1 +1,2 @@
+>  file one
+> +add a line
+$ cat file1
+> file one
+$ darn pop
+> There are now no patches applied.
+$ darn push
+> Patching file "file1.copy".
+> Patch "second" is now on top
+$ darn diff --notimestamp
+> diff --git a/file1 b/file1.copy
+> copy from file1
+> copy to file1.copy
+> --- a/file1.copy
+> +++ b/file1.copy
+> @@ -1,1 +1,2 @@
+>  file one
+> +add a line
+$ darn files
+> +:+: file1.copy <<- file1
