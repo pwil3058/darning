@@ -8,7 +8,7 @@ SRCS:=$(shell hg status -macdn)
 SRCDIST:=darning-$(VERSION).tar.gz
 RPMDIST:=darning-$(subst -,_,$(VERSION))-$(RELEASE).noarch.rpm
 RPMSRC:=$(RPMBDIR)/SOURCES/$(SRCDIST)
-CLI_SRCS=darn $(filter %.py, $(filter-out pixmaps/% darning/gui/%, $(SRCS)))
+CLI_SRCS=darn $(wildcard darning/*.py) $(wildcard darning/cli/*.py)
 CLI_TEST_SCRIPTS=$(wildcard test-cli/*.test)
 CLI_TESTS=$(patsubst test-cli/%.test,test-cli/.%.ok, $(CLI_TEST_SCRIPTS))
 

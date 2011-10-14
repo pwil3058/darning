@@ -1,2 +1,4 @@
 include Makefile
 include darning.desktop
+include test-cli/*.test
+include test-cli/run.py

@@ -1,7 +1,7 @@
 STATUS:
 
 This software is still under development and is only Alpha standard at
-this time.  Extensive testing has not yet been undertaken.
+this time.  Some script based testing has been undertaken.
 
 REQUIREMENTS:
 
@@ -35,6 +35,10 @@ on Unix like systems and:
     python setup.py install
 
 on other systems (but be aware this has only been tested on Linux).
+
+To run the test scripts do:
+
+    make check
 
 USAGE:
 
