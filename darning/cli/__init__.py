@@ -33,3 +33,4 @@ import darning.cli.subcmd_series
 import darning.cli.subcmd_export
 import darning.cli.subcmd_diff
 import darning.cli.subcmd_copy
+import darning.cli.subcmd_move

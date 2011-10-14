@@ -1770,8 +1770,8 @@ def do_rename_file_in_top_patch(filepath, new_filepath, force=False, overwrite=F
     except OSError as edata:
         RCTX.stderr.write(edata)
         return cmd_result.ERROR
-    if came_from_path:
-        top_patch.files[came_from_path].reset_renamed_to(new_filepath if as_rename else None)
+    if came_from_path and as_rename:
+        top_patch.files[came_from_path].reset_renamed_to(new_filepath)
     if needs_refresh:
         if is_boomerang:
             top_patch.files[new_filepath].renamed_to = None
