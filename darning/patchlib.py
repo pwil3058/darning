@@ -20,8 +20,6 @@ import re
 import os
 import email
 
-from darning import gitbase85
-
 # Useful named tuples to make code clearer
 _CHUNK = collections.namedtuple('_CHUNK', ['start', 'length'])
 _HUNK = collections.namedtuple('_HUNK', ['offset', 'start', 'length', 'numlines'])
@@ -813,66 +811,6 @@ class ContextDiff(Diff):
         Diff.__init__(self, 'context', lines, file_data, hunks)
 
 Diff.subtypes.append(ContextDiff)
-
-class GitBinaryDiffHunk(DiffHunk):
-    LITERAL, DELTA = ('literal', 'delta')
-    def __init__(self, lines, method, size):
-        DiffHunk.__init__(self, lines, None, None)
-        self.method = method
-        self.size = size
-    def _process_tws(self, fix=False):
-        return list()
-    def get_diffstat_stats(self):
-        return DiffStat.Stats()
-    def fix_trailing_whitespace(self):
-        return self._process_tws(fix=True)
-    def report_trailing_whitespace(self):
-        return self._process_tws(fix=False)
-
-class GitBinaryDiff(Diff):
-    START_CRE = re.compile('^GIT binary patch$')
-    HUNK_START_CRE = re.compile('^(literal|delta) (\d+)$')
-    HUNK_LINE_CRE = gitbase85.LINE_CRE
-    BLANK_LINE_CRE = re.compile("^\s*$")
-    @staticmethod
-    def get_hunk_at(lines, start_index):
-        smatch = GitBinaryDiff.HUNK_START_CRE.match(lines[start_index])
-        if not smatch:
-            return (None, start_index)
-        method = smatch.group(1)
-        size = int(smatch.group(1))
-        index = start_index = 1
-        try:
-            total = 0
-            while total < size:
-                try:
-                    data = gitbase85.decode_line(lines[index])
-                except gitbase85.Error:
-                    raise ParseError('Malformed GIT binary patch.')
-                total += size(data)
-                index += 1
-            if index < len(lines):
-                if HUNK_LINE_CRE.match(lines[index]):
-                    raise ParseError('Unexpected binary data at line {0}.'.format(index))
-                # absorb the blank line if there is one
-                if BLANK_LINE_CRE.match(lines[index]):
-                    index += 1
-        except IndexError:
-            raise ParseError(_('Unexpected end of GIT binary patch text.'))
-        return (GitBinaryDiffHunk(lines[start_index:index], method, size), index)
-    @staticmethod
-    def get_diff_at(lines, start_index, raise_if_malformed=True):
-        if not GitBinaryDiff.START_CRE(lines[start_index]):
-            return (None, start_index)
-        forward, index = self.get_hunk_at(lines, start_index + 1)
-        if forward is None and raise_if_malformed:
-            raise ParseError(_('No content in GIT binary patch text.'))
-        backward, index = self.get_hunk_at(lines, index)
-        return (GitBinaryDiff(lines[start_index:index], [forward, backward]), index)
-    def __init__(self, lines, hunks):
-        Diff.__init__(self, 'git_binary', lines, None, hunks)
-
-Diff.subtypes.append(GitBinaryDiff)
 
 class DiffPlus(object):
     '''Class to hold diff (headerless) information relavent to a single file.
