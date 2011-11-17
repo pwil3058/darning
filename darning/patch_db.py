@@ -119,6 +119,7 @@ class OverlapData(object):
 
 class FileData(PickeExtensibleObject):
     '''Change data for a single file'''
+    RENAMES = { 'before_sha1' : 'before_hash', 'after_sha1' : 'after_hash', }
     class Presence(object):
         ADDED = patchlib.FilePathPlus.ADDED
         REMOVED = patchlib.FilePathPlus.DELETED
@@ -140,16 +141,16 @@ class FileData(PickeExtensibleObject):
             came_from_data = self.patch.files.get(self.came_from_path, None)
             if came_from_data:
                 self.before_mode = came_from_data.orig_mode
-                self.before_sha1 = utils.get_sha1_for_file(came_from_data.cached_orig_path)
+                self.before_hash = utils.get_git_hash_for_file(came_from_data.cached_orig_path)
             else:
                 # self.came_from_path must exist so no need for "try"
                 self.before_mode = utils.get_mode_for_file(self.came_from_path)
-                self.before_sha1 = utils.get_sha1_for_file(self.came_from_path)
+                self.before_hash = utils.get_git_hash_for_file(self.came_from_path)
         else:
             self.orig_mode = utils.get_mode_for_file(self.path)
             self.before_mode = self.orig_mode
-            self.before_sha1 = utils.get_sha1_for_file(self.path)
-        self.after_sha1 = self.before_sha1
+            self.before_hash = utils.get_git_hash_for_file(self.path)
+        self.after_hash = self.before_hash
         self.after_mode = self.before_mode
         if self.patch.is_applied():
             self.do_cache_original(overlaps)
@@ -263,15 +264,15 @@ class FileData(PickeExtensibleObject):
             olfd = olpatch.files[self.path]
             if self.after_mode != olfd.orig_mode:
                 return True
-            elif self.after_sha1 != utils.get_sha1_for_file(olfd.cached_orig_path):
+            elif self.after_hash != utils.get_git_hash_for_file(olfd.cached_orig_path):
                 return True
         else:
             if self.after_mode != utils.get_mode_for_file(self.path):
                 return True
-            elif self.after_sha1 != utils.get_sha1_for_file(self.path):
+            elif self.after_hash != utils.get_git_hash_for_file(self.path):
                 return True
             elif self.came_from_path and not self.came_as_rename:
-                return self.before_sha1 != utils.get_sha1_for_file(self.before_file_path)
+                return self.before_hash != utils.get_git_hash_for_file(self.before_file_path)
         return False
     def _has_unresolved_merges(self, overlapping_patch):
         '''Does this file contain unresolved merge problems?'''
@@ -417,7 +418,7 @@ class FileData(PickeExtensibleObject):
         overlapping_patch = self.get_overlapping_patch()
         if self._has_unresolved_merges(overlapping_patch):
             # ensure this file shows up as needing refresh
-            self.after_sha1 = False
+            self.after_hash = False
             dump_db()
             RCTX.stderr.write(_('"{0}": file has unresolved merge(s).\n').format(rel_subdir(self.path)))
             return cmd_result.ERROR
@@ -438,8 +439,8 @@ class FileData(PickeExtensibleObject):
             self.after_mode = None
             if not quiet:
                 RCTX.stdout.write(_('"{0}": file does not exist\n').format(rel_subdir(self.path)))
-        self.before_sha1 = utils.get_sha1_for_file(self.before_file_path)
-        self.after_sha1 = utils.get_sha1_for_file(self.path if overlapping_file_data is None else overlapping_file_data.cached_orig_path)
+        self.before_hash = utils.get_git_hash_for_file(self.before_file_path)
+        self.after_hash = utils.get_git_hash_for_file(self.path if overlapping_file_data is None else overlapping_file_data.cached_orig_path)
         self.do_stash_current(overlapping_patch)
         dump_db()
         return cmd_result.OK
@@ -536,7 +537,7 @@ class PatchData(PickeExtensibleObject):
                     os.remove(overlapping_corig_f_path)
                 overlapped_by.files[filepath].before_mode = None
             # Make sure that the overlapping file gets refreshed
-            overlapped_by.files[filepath].after_sha1 = False
+            overlapped_by.files[filepath].after_hash = False
         renamed_to = self.files[filepath].renamed_to
         renamed_from = self.files[filepath].came_from_path if self.files[filepath].came_as_rename else None
         del self.files[filepath]
@@ -1419,12 +1420,12 @@ def do_apply_next_patch(absorb=False, force=False):
             # set after mode to None so it shows up as a delete
             file_data.after_mode = None
         if patch_ok:
-            file_data.before_sha1 = utils.get_sha1_for_file(file_data.before_file_path)
-            file_data.after_sha1 = utils.get_sha1_for_file(file_data.path)
+            file_data.before_hash = utils.get_git_hash_for_file(file_data.before_file_path)
+            file_data.after_hash = utils.get_git_hash_for_file(file_data.path)
             file_data.do_stash_current(None)
         else:
-            file_data.before_sha1 = False
-            file_data.after_sha1 = False
+            file_data.before_hash = False
+            file_data.after_hash = False
         if file_data.path in overlaps.unrefreshed:
             RCTX.stdout.write(_('Unrefreshed changes incorporated.\n'))
         elif file_data.path in overlaps.uncommitted:
