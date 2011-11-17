@@ -93,10 +93,23 @@ class Command(object):
             if self.cmd_line[0] in os.environ:
                 del os.environ[self.cmd_line[0]]
         elif self.cmd_line[0] == 'mkfile':
-            try:
-                open(self.cmd_line[1], 'w').write(self.input_text)
-            except OSError as edata:
-                return Result(ecode=1, stderr=str(edata))
+            if len(self.cmd_line) == 2:
+                try:
+                    open(self.cmd_line[1], 'w').write(self.input_text)
+                except OSError as edata:
+                    return Result(ecode=1, stderr=str(edata))
+            if len(self.cmd_line) == 3:
+                if self.cmd_line[1] != '-b':
+                    return Result(ecode=1, stderr='mkfile: Unrecognized option: {0}.'.format(self.cmd_line[1]))
+                # For the time being just stick a char 0 in the middle
+                midpoint = len(self.input_text) / 2
+                data = self.input_text[:midpoint] + '\000' + self.input_text[midpoint:]
+                try:
+                    open(self.cmd_line[2], 'wb').write(data)
+                except OSError as edata:
+                    return Result(ecode=1, stderr=str(edata))
+            else:
+                Result(ecode=1, stderr='mkfile: Missing file name.')
         else:
             try:
                 return self._run()

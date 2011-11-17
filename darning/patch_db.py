@@ -29,6 +29,7 @@ import re
 import difflib
 import errno
 import sys
+import zlib
 
 from darning import rctx as RCTX
 from darning import i18n
@@ -39,6 +40,8 @@ from darning import utils
 from darning import patchlib
 from darning import fsdb
 from darning import options
+from darning import gitbase85
+from darning import gitdelta
 
 options.define('pop', 'drop_added_tws', options.Defn(options.str_to_bool, True, _('Remove added trailing white space (TWS) from patch after pop')))
 options.define('push', 'drop_added_tws', options.Defn(options.str_to_bool, True, _('Remove added trailing white space (TWS) from patch before push')))
@@ -63,22 +66,6 @@ class Failure(object):
     def __repr__(self):
         return _('Failure({0})').format(self.msg)
 
-class BinaryDiff(patchlib.Diff):
-    def __init__(self, file_data):
-        Diff.__init__(self, 'binary', [], file_data, hunks=None)
-        if os.path.exists(file_data.after):
-            self.contents = open(file_data.after).read()
-        else:
-            self.contents = None
-    def __str__(self):
-        return _('Binary files "{0}" and "{1}" differ.\n').format(self.file_data.before, self.file_data.after)
-    def fix_trailing_whitespace(self):
-        return []
-    def report_trailing_whitespace(self):
-        return []
-    def get_diffstat_stats(self):
-        return DiffStat.Stats()
-
 def _do_apply_diff_to_file(filepath, diff, delete_empty=False):
     patch_cmd_hdr = ['patch', '--merge', '--force', '-p1', '--batch', '--quiet']
     patch_cmd = patch_cmd_hdr + (['--remove-empty-files', filepath] if delete_empty else [filepath])
@@ -97,6 +84,51 @@ class PickeExtensibleObject(object):
         return self.__dict__
     def __getattr__(self, attr):
         return self.NEW_FIELDS[attr]
+
+class ZippedData(object):
+    ZLIB_COMPRESSION_LEVEL = 6
+    def __init__(self, data):
+        if data is not None:
+            self.raw_len = len(data)
+            self.zipped_data = zlib.compress(bytes(data), self.ZLIB_COMPRESSION_LEVEL)
+        else:
+            self.raw_len = None
+            self.zipped_data = None
+    def __bool__(self):
+        return self.zipped_data is not None
+    @property
+    def raw_data(self):
+        return zlib.decompress(self.zipped_data)
+    @property
+    def zipped_len(self):
+        return len(self.zipped_data)
+
+class BinaryDiff(patchlib.Diff):
+    def __init__(self, fm_data, to_data):
+        patchlib.Diff.__init__(self, 'binary', [], None, hunks=None)
+        self.contents = ZippedData(to_data)
+        self.orig_contents = ZippedData(fm_data)
+    def __str__(self):
+        text = 'GIT binary patch\n'
+        text += self.binary_diff_body_text(self.orig_contents, self.contents)
+        text += self.binary_diff_body_text(self.contents, self.orig_contents)
+        return text
+    def fix_trailing_whitespace(self):
+        return []
+    def report_trailing_whitespace(self):
+        return []
+    def get_diffstat_stats(self):
+        return patchlib.DiffStat.Stats()
+    def binary_diff_body_text(self, fm_data, to_data):
+        text = ''
+        delta = None
+        if fm_data.raw_len and to_data.raw_len:
+            delta = ZippedData(gitdelta.diff_delta(fm_data.raw_data, to_data.raw_data))
+        if delta and delta.zipped_len < to_data.zipped_len:
+            text += 'delta {0}\n{1}\n'.format(delta.raw_len, ''.join(gitbase85.encode_to_lines(delta.zipped_data)))
+        else:
+            text += 'literal {0}{1}\n\n'.format(to_data.raw_len, ''.join(gitbase85.encode_to_lines(to_data.zipped_data)))
+        return text
 
 class OverlapData(object):
     def __init__(self, unrefreshed=None, uncommitted=None):
@@ -339,12 +371,16 @@ class FileData(PickeExtensibleObject):
         if self.patch.is_applied():
             if overlapping_patch is not None:
                 after_mode = overlapping_patch.files[self.path].before_mode
+                after_hash = overlapping_patch.files[self.path].before_hash
             elif os.path.exists(self.path):
                 after_mode = utils.get_mode_for_file(self.path)
+                after_hash = utils.get_git_hash_for_file(self.path)
             else:
                 after_mode = self.before_mode if self.renamed_to else None
+                after_hash = None
         else:
             after_mode = self.after_mode
+            after_hash = self.after_hash
         if self.came_from_path:
             lines = ['diff --git {0} {1}\n'.format(os.path.join('a', self.came_from_path), os.path.join('b', self.path)), ]
         else:
@@ -365,6 +401,11 @@ class FileData(PickeExtensibleObject):
             else:
                 lines.append('copy from {0}\n'.format(self.came_from_path))
                 lines.append('copy to {0}\n'.format(self.path))
+        if self.binary:
+            hash_line = 'index {0}'.format(self.before_hash if self.before_hash else '0' *48)
+            hash_line += '..{0}'.format(after_hash if after_hash else '0' *48)
+            hash_line += ' {0:07o}\n'.format(after_mode) if self.before_mode == after_mode else '\n'
+            lines.append(hash_line)
         return patchlib.Preamble.parse_lines(lines)
     def generate_diff(self, overlapping_patch, combined=False, with_timestamps=True):
         assert is_readable()
@@ -376,7 +417,7 @@ class FileData(PickeExtensibleObject):
         if os.path.exists(to_file):
             to_name_label = os.path.join('b' if fm_exists else 'a', self.path)
             to_time_stamp = _pts_for_path(to_file) if with_timestamps else None
-            with open(to_file) as fobj:
+            with open(to_file, 'rb') as fobj:
                 to_contents = fobj.read()
         else:
             to_name_label = '/dev/null'
@@ -385,7 +426,7 @@ class FileData(PickeExtensibleObject):
         if fm_exists:
             fm_name_label = os.path.join('a', self.path)
             fm_time_stamp = _pts_for_path(fm_file) if with_timestamps else None
-            with open(fm_file) as fobj:
+            with open(fm_file, 'rb') as fobj:
                 fm_contents = fobj.read()
         else:
             fm_name_label = '/dev/null'
@@ -394,7 +435,7 @@ class FileData(PickeExtensibleObject):
         if to_contents == fm_contents:
             return None
         if to_contents.find('\000') != -1 or fm_contents.find('\000') != -1:
-            return BinaryDiff(patchlib._PAIR(fm_name_label, to_name_label))
+            return BinaryDiff(fm_contents, to_contents)
         diffgen = difflib.unified_diff(fm_contents.splitlines(True), to_contents.splitlines(True),
             fromfile=fm_name_label, tofile=to_name_label, fromfiledate=fm_time_stamp, tofiledate=to_time_stamp)
         return patchlib.Diff.parse_lines(list(diffgen))
@@ -1376,7 +1417,11 @@ def do_apply_next_patch(absorb=False, force=False):
         if file_data.binary is not False:
             RCTX.stdout.write(_('Processing binary file "{0}".\n').format(rel_subdir(file_data.path)))
             if file_data.after_mode is not None:
-                open(file_data.path, 'wb').write(file_data.diff.contents)
+                try:
+                    open(file_data.path, 'wb').write(file_data.diff.contents.raw_data)
+                except TypeError, AttributeError:
+                    # Handle patches in old database format
+                    open(file_data.path, 'wb').write(file_data.diff.contents)
             elif os.path.exists(file_data.path):
                 os.remove(file_data.path)
         elif file_data.diff:
