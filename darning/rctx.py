@@ -26,4 +26,4 @@ stderr = sys.stderr
 def reset(new_stdout, new_stderr):
     global stdout, stderr
     stdout = new_stdout
-    stderr = sys.stderr
+    stderr = new_stderr
