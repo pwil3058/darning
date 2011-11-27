@@ -65,7 +65,7 @@ $ darn diff --notimestamp
 > diff --git a/file4 b/file4
 > --- a/file4
 > +++ b/file4
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file four
 > +a change which will be lost
 $ patch -e file1.moved
@@ -80,13 +80,13 @@ $ darn diff --notimestamp
 > rename to file1.moved
 > --- a/file1.moved
 > +++ b/file1.moved
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +a change
 > diff --git a/file4 b/file4
 > --- a/file4
 > +++ b/file4
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file four
 > +a change which will be lost
 $ darn files
@@ -109,13 +109,13 @@ $ darn diff --notimestamp
 > rename to file1.moved.moved
 > --- a/file1.moved.moved
 > +++ b/file1.moved.moved
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +a change
 > diff --git a/file4 b/file4
 > --- a/file4
 > +++ b/file4
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file four
 > +a change which will be lost
 
@@ -147,7 +147,7 @@ $ darn diff --notimestamp
 > rename to file1.moved.moved
 > --- a/file1.moved.moved
 > +++ b/file1.moved.moved
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +a change
 > diff --git a/file2 b/file2
@@ -157,13 +157,13 @@ $ darn diff --notimestamp
 > rename to file3
 > --- a/file3
 > +++ b/file3
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file two
 > +modify overwritten
 > diff --git a/file4 b/file4
 > --- a/file4
 > +++ b/file4
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file four
 > +a change which will be lost
 
@@ -182,7 +182,7 @@ $ darn diff --notimestamp
 > rename to file1.moved.moved
 > --- a/file1.moved.moved
 > +++ b/file1.moved.moved
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +a change
 > diff --git a/file2 b/file2
@@ -192,7 +192,7 @@ $ darn diff --notimestamp
 > rename to file3
 > --- a/file3
 > +++ b/file3
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file two
 > +modify overwritten
 > diff --git a/file5 b/file4
@@ -257,7 +257,7 @@ $ darn diff --notimestamp
 > rename to file1.moved.moved
 > --- a/file1.moved.moved
 > +++ b/file1.moved.moved
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +a change
 > diff --git a/file2 b/file2
@@ -267,7 +267,7 @@ $ darn diff --notimestamp
 > rename to file3
 > --- a/file3
 > +++ b/file3
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file two
 > +modify overwritten
 > diff --git a/file5 b/file4
@@ -299,7 +299,7 @@ $ darn diff --notimestamp
 > rename to file1.moved.moved
 > --- a/file1.moved.moved
 > +++ b/file1.moved.moved
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +a change
 > diff --git a/file2 b/file2
@@ -309,13 +309,13 @@ $ darn diff --notimestamp
 > rename to file3
 > --- a/file3
 > +++ b/file3
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file two
 > +modify overwritten
 > diff --git a/file5 b/file5
 > --- a/file5
 > +++ /dev/null
-> @@ -1,1 +1,0 @@
+> @@ -1 +0,0 @@
 > -file five
 
 Drop the overwritten "untracked" file
@@ -336,18 +336,18 @@ $ darn diff --notimestamp
 > rename to file1.moved.moved
 > --- a/file1.moved.moved
 > +++ b/file1.moved.moved
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +a change
 > diff --git a/file2 b/file2
 > --- a/file2
 > +++ /dev/null
-> @@ -1,1 +1,0 @@
+> @@ -1 +0,0 @@
 > -file two
 > diff --git a/file5 b/file5
 > --- a/file5
 > +++ /dev/null
-> @@ -1,1 +1,0 @@
+> @@ -1 +0,0 @@
 > -file five
 
 Drop a simple move
@@ -364,17 +364,17 @@ $ darn diff --notimestamp
 > diff --git a/file1 b/file1
 > --- a/file1
 > +++ /dev/null
-> @@ -1,1 +1,0 @@
+> @@ -1 +0,0 @@
 > -file one
 > diff --git a/file2 b/file2
 > --- a/file2
 > +++ /dev/null
-> @@ -1,1 +1,0 @@
+> @@ -1 +0,0 @@
 > -file two
 > diff --git a/file5 b/file5
 > --- a/file5
 > +++ /dev/null
-> @@ -1,1 +1,0 @@
+> @@ -1 +0,0 @@
 > -file five
 
 Pop and we should be back to the start
@@ -410,7 +410,7 @@ $ darn diff --notimestamp
 > diff --git a/file1 b/file1
 > --- a/file1
 > +++ b/file1
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +add a line
 $ darn move file1 file1.moved
@@ -423,7 +423,7 @@ $ darn diff --notimestamp
 > rename to file1.moved
 > --- a/file1.moved
 > +++ b/file1.moved
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +add a line
 $ darn refresh
@@ -441,7 +441,7 @@ $ darn diff --notimestamp
 > rename to file1.moved
 > --- a/file1.moved
 > +++ b/file1.moved
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +add a line
 $ darn files
@@ -457,7 +457,7 @@ $ darn diff --notimestamp
 > copy to file1.moved
 > --- a/file1.moved
 > +++ b/file1.moved
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +add a line
 $ cat file1
@@ -473,7 +473,7 @@ $ darn diff --notimestamp
 > copy to file1.moved
 > --- a/file1.moved
 > +++ b/file1.moved
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +add a line
 $ darn files
@@ -493,7 +493,7 @@ $ darn diff --notimestamp
 > new file mode 0100664
 > --- /dev/null
 > +++ a/nonexistent
-> @@ -1,0 +1,1 @@
+> @@ -0,0 +1 @@
 > +content
 $ darn move nonexistent nonexistent.moved
 > nonexistent: file renamed to "nonexistent.moved" in patch "third".
@@ -504,7 +504,7 @@ $ darn diff --notimestamp
 > new file mode 0100664
 > --- /dev/null
 > +++ a/nonexistent.moved
-> @@ -1,0 +1,1 @@
+> @@ -0,0 +1 @@
 > +content
 
 Move a file that was newly copied in the patch

@@ -59,7 +59,7 @@ $ darn diff --notimestamp
 > diff --git a/file4 b/file4
 > --- a/file4
 > +++ b/file4
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file four
 > +a change which will be lost
 $ patch -e file1.copy
@@ -72,13 +72,13 @@ $ darn diff --notimestamp
 > copy to file1.copy
 > --- a/file1.copy
 > +++ b/file1.copy
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +a change
 > diff --git a/file4 b/file4
 > --- a/file4
 > +++ b/file4
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file four
 > +a change which will be lost
 $ darn files
@@ -98,7 +98,7 @@ $ darn diff --notimestamp
 > copy to file1.copy
 > --- a/file1.copy
 > +++ b/file1.copy
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +a change
 > diff --git a/file1 b/file1.copy.copy
@@ -106,13 +106,13 @@ $ darn diff --notimestamp
 > copy to file1.copy.copy
 > --- a/file1.copy.copy
 > +++ b/file1.copy.copy
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +a change
 > diff --git a/file4 b/file4
 > --- a/file4
 > +++ b/file4
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file four
 > +a change which will be lost
 
@@ -139,7 +139,7 @@ $ darn diff --notimestamp
 > copy to file1.copy
 > --- a/file1.copy
 > +++ b/file1.copy
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +a change
 > diff --git a/file1 b/file1.copy.copy
@@ -147,7 +147,7 @@ $ darn diff --notimestamp
 > copy to file1.copy.copy
 > --- a/file1.copy.copy
 > +++ b/file1.copy.copy
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +a change
 > diff --git a/file2 b/file3
@@ -155,13 +155,13 @@ $ darn diff --notimestamp
 > copy to file3
 > --- a/file3
 > +++ b/file3
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file two
 > +modify overwritten
 > diff --git a/file4 b/file4
 > --- a/file4
 > +++ b/file4
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file four
 > +a change which will be lost
 
@@ -177,7 +177,7 @@ $ darn diff --notimestamp
 > copy to file1.copy
 > --- a/file1.copy
 > +++ b/file1.copy
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +a change
 > diff --git a/file1 b/file1.copy.copy
@@ -185,7 +185,7 @@ $ darn diff --notimestamp
 > copy to file1.copy.copy
 > --- a/file1.copy.copy
 > +++ b/file1.copy.copy
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +a change
 > diff --git a/file2 b/file3
@@ -193,7 +193,7 @@ $ darn diff --notimestamp
 > copy to file3
 > --- a/file3
 > +++ b/file3
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file two
 > +modify overwritten
 > diff --git a/file2 b/file4
@@ -244,7 +244,7 @@ $ darn diff --notimestamp
 > copy to file1.copy
 > --- a/file1.copy
 > +++ b/file1.copy
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +a change
 > diff --git a/file1 b/file1.copy.copy
@@ -252,7 +252,7 @@ $ darn diff --notimestamp
 > copy to file1.copy.copy
 > --- a/file1.copy.copy
 > +++ b/file1.copy.copy
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +a change
 > diff --git a/file2 b/file3
@@ -260,7 +260,7 @@ $ darn diff --notimestamp
 > copy to file3
 > --- a/file3
 > +++ b/file3
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file two
 > +modify overwritten
 > diff --git a/file2 b/file4
@@ -289,7 +289,7 @@ $ darn diff --notimestamp
 > copy to file1.copy
 > --- a/file1.copy
 > +++ b/file1.copy
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +a change
 > diff --git a/file1 b/file1.copy.copy
@@ -297,7 +297,7 @@ $ darn diff --notimestamp
 > copy to file1.copy.copy
 > --- a/file1.copy.copy
 > +++ b/file1.copy.copy
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +a change
 > diff --git a/file2 b/file3
@@ -305,7 +305,7 @@ $ darn diff --notimestamp
 > copy to file3
 > --- a/file3
 > +++ b/file3
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file two
 > +modify overwritten
 
@@ -323,7 +323,7 @@ $ darn diff --notimestamp
 > copy to file1.copy
 > --- a/file1.copy
 > +++ b/file1.copy
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +a change
 > diff --git a/file1 b/file1.copy.copy
@@ -331,7 +331,7 @@ $ darn diff --notimestamp
 > copy to file1.copy.copy
 > --- a/file1.copy.copy
 > +++ b/file1.copy.copy
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +a change
 
@@ -348,7 +348,7 @@ $ darn diff --notimestamp
 > copy to file1.copy.copy
 > --- a/file1.copy.copy
 > +++ b/file1.copy.copy
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +a change
 
@@ -382,7 +382,7 @@ $ darn diff --notimestamp
 > diff --git a/file1 b/file1
 > --- a/file1
 > +++ b/file1
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +add a line
 $ darn copy file1 file1.copy
@@ -391,7 +391,7 @@ $ darn diff --notimestamp
 > diff --git a/file1 b/file1
 > --- a/file1
 > +++ b/file1
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +add a line
 > diff --git a/file1 b/file1.copy
@@ -399,7 +399,7 @@ $ darn diff --notimestamp
 > copy to file1.copy
 > --- a/file1.copy
 > +++ b/file1.copy
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +add a line
 $ darn refresh
@@ -413,7 +413,7 @@ $ darn diff --notimestamp
 > diff --git a/file1 b/file1
 > --- a/file1
 > +++ b/file1
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +add a line
 > diff --git a/file1 b/file1.copy
@@ -421,7 +421,7 @@ $ darn diff --notimestamp
 > copy to file1.copy
 > --- a/file1.copy
 > +++ b/file1.copy
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +add a line
 $ darn files
@@ -437,7 +437,7 @@ $ darn diff --notimestamp
 > copy to file1.copy
 > --- a/file1.copy
 > +++ b/file1.copy
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +add a line
 $ cat file1
@@ -453,7 +453,7 @@ $ darn diff --notimestamp
 > copy to file1.copy
 > --- a/file1.copy
 > +++ b/file1.copy
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file one
 > +add a line
 $ darn files

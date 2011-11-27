@@ -133,7 +133,7 @@ $ darn diff --notimestamp -P third file2
 > diff --git a/file2 b/file2
 > --- a/file2
 > +++ b/file2
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file two
 > +another line
 $ darn files second
@@ -165,7 +165,7 @@ $ darn diff --notimestamp -P third file2
 > diff --git a/file2 b/file2
 > --- a/file2
 > +++ b/file2
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file two
 > +another line
 $ darn diff --notimestamp -P fourth file2
