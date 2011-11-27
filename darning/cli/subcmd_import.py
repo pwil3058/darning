@@ -81,12 +81,7 @@ def run_import(args):
     eflags = patch_db.do_import_patch(epatch, args.patchname)
     if eflags != cmd_result.OK:
         return eflags
-    warn = patch_db.top_patch_needs_refresh()
-    if warn:
-        old_top = patch_db.get_top_patch_name()
     sys.stdout.write(_('Imported "{0}" as patch "{1}".\n').format(args.patchfile, args.patchname))
-    if warn:
-        sys.stderr.write(_('Previous top patch ("{0}") needs refreshing.\n').format(old_top))
     return cmd_result.OK
 
 PARSER.set_defaults(run_cmd=run_import)

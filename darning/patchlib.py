@@ -19,6 +19,9 @@ import collections
 import re
 import os
 import email
+import zlib
+
+from darning import gitbase85
 
 # Useful named tuples to make code clearer
 _CHUNK = collections.namedtuple('_CHUNK', ['start', 'length'])
@@ -44,6 +47,8 @@ class TooMayStripLevels(Exception):
         self.message = message
         self.path = path
         self.levels = levels
+
+class DataError(ParseError): pass
 
 DEBUG = False
 class Bug(Exception): pass
@@ -363,7 +368,7 @@ class GitPreamble(Preamble):
         'rename to' : re.compile('^(rename to)\s+({0})$'.format(_PATH_RE_STR)),
         'similarity index' : re.compile('^(similarity index)\s+((\d*)%)$'),
         'dissimilarity index' : re.compile('^(dissimilarity index)\s+((\d*)%)$'),
-        'index' : re.compile('^(index)\s+(([a-fA-F0-9]+)..([a-fA-F0-9]+) (\d*))$'),
+        'index' : re.compile('^(index)\s+(([a-fA-F0-9]+)..([a-fA-F0-9]+)( (\d*))?)$'),
     }
     @staticmethod
     def get_preamble_at(lines, index, raise_if_malformed):
@@ -811,6 +816,67 @@ class ContextDiff(Diff):
         Diff.__init__(self, 'context', lines, file_data, hunks)
 
 Diff.subtypes.append(ContextDiff)
+
+class GitBinaryDiffData(_Lines):
+    LITERAL, DELTA = ('literal', 'delta')
+    def __init__(self, lines, method, size_raw, data_zipped):
+        _Lines.__init__(self, lines)
+        self.method = method
+        self.size_raw = size_raw
+        self.data_zipped = data_zipped
+    @property
+    def size_zipped(self):
+        return len(self.data_zipped)
+    @property
+    def data_raw(self):
+        return zlib.decompress(bytes(self.data_zipped))
+
+class GitBinaryDiff(Diff):
+    START_CRE = re.compile('^GIT binary patch$')
+    DATA_START_CRE = re.compile('^(literal|delta) (\d+)$')
+    DATA_LINE_CRE = gitbase85.LINE_CRE
+    BLANK_LINE_CRE = re.compile("^\s*$")
+    @staticmethod
+    def get_data_at(lines, start_index):
+        smatch = GitBinaryDiff.DATA_START_CRE.match(lines[start_index])
+        if not smatch:
+            return (None, start_index)
+        method = smatch.group(1)
+        size = int(smatch.group(2))
+        index = start_index + 1
+        while index < len(lines) and GitBinaryDiff.DATA_LINE_CRE.match(lines[index]):
+            index += 1
+        end_data = index
+        # absorb the blank line if there is one
+        if GitBinaryDiff.BLANK_LINE_CRE.match(lines[index]):
+            has_blank = True
+            index += 1
+        else:
+            has_blank = False
+        dlines = lines[start_index:index]
+        try:
+            data_zipped = gitbase85.decode_lines(lines[start_index + 1:end_data])
+        except AssertionError:
+            raise DataError('Inconsistent git binary patch data.', lineno=start_index)
+        raw_size = len(zlib.decompress(bytes(data_zipped)))
+        if raw_size != size:
+            raise DataError(_('Git binary patch expected {0} bytes. Got {1} bytes.'.format(size, raw_size)), lineno=start_index)
+        return (GitBinaryDiffData(dlines, method, raw_size, data_zipped), index)
+    @staticmethod
+    def get_diff_at(lines, start_index, raise_if_malformed=True):
+        if not GitBinaryDiff.START_CRE.match(lines[start_index]):
+            return (None, start_index)
+        forward, index = GitBinaryDiff.get_data_at(lines, start_index + 1)
+        if forward is None and raise_if_malformed:
+            raise ParseError(_('No content in GIT binary patch text.'))
+        reverse, index = GitBinaryDiff.get_data_at(lines, index)
+        return (GitBinaryDiff(lines[start_index:index], forward, reverse), index)
+    def __init__(self, lines, forward, reverse):
+        Diff.__init__(self, 'git_binary', lines, None, None)
+        self.forward = forward
+        self.reverse = reverse
+
+Diff.subtypes.append(GitBinaryDiff)
 
 class DiffPlus(object):
     '''Class to hold diff (headerless) information relavent to a single file.

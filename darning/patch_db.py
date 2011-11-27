@@ -248,10 +248,10 @@ class FileData(PickeExtensibleObject):
                 utils.ensure_file_dir_exists(target_name)
                 shutil.copy2(self.path, target_name)
             return
-        if self.binary is not False:
-            if os.path.exists(self.cached_orig_path):
+        if self.binary:
+            if os.path.exists(self.stashed_path):
                 utils.ensure_file_dir_exists(target_name)
-                shutil.copy2(self.cached_orig_path, target_name)
+                shutil.copy2(self.stashed_path, target_name)
             return
         if os.path.exists(self.cached_orig_path):
             utils.ensure_file_dir_exists(target_name)
@@ -297,7 +297,7 @@ class FileData(PickeExtensibleObject):
         return _O_IP_S_TRIPLET(before, self.path, stashed)
     @property
     def binary(self):
-        return isinstance(self.diff, BinaryDiff)
+        return isinstance(self.diff, BinaryDiff) or isinstance(self.diff, patchlib.GitBinaryDiff)
     def needs_refresh(self):
         '''Does this file need a refresh?'''
         if not self.patch.is_applied():
@@ -1099,6 +1099,9 @@ def do_import_patch(epatch, patchname, overwrite=False):
         came_from = None
         as_rename = False
         git_preamble = diff_plus.get_preamble_for_type('git')
+        if isinstance(diff_plus.diff, patchlib.GitBinaryDiff) and (not git_preamble or 'index' not in git_preamble.extras):
+            RCTX.stderr.write(_('git binary patch for file "{0}" has no index data.\n').format(filepath))
+            return cmd_result.ERROR
         if git_preamble:
             bad_strip_level = False
             if 'copy from' in git_preamble.extras:
@@ -1123,6 +1126,13 @@ def do_import_patch(epatch, patchname, overwrite=False):
                 if key in git_preamble.extras:
                     file_data.after_mode = int(git_preamble.extras[key], 8)
                     break
+            index_str = git_preamble.extras.get('index', None)
+            if index_str:
+                # If there's hash data in the patch we'll use it
+                get_hash = lambda text: None if int(text, 16) == 0 else text
+                match = re.match('^([a-fA-F0-9]+)..([a-fA-F0-9]+)( (\d*))?$', index_str)
+                file_data.before_hash = get_hash(match.group(1))
+                file_data.after_hash = get_hash(match.group(2))
         patch.files[file_data.path] = file_data
         RCTX.stdout.write(_('{0}: file added to patch "{1}".\n').format(rel_subdir(file_data.path), patchname))
     for old_path in renames:
@@ -1428,7 +1438,7 @@ def do_apply_next_patch(absorb=False, force=False):
     assert not (absorb and force)
     def _apply_file_data_patch(file_data, biggest_ecode):
         patch_ok = True
-        if file_data.binary is not False:
+        if isinstance(file_data.diff, BinaryDiff):
             RCTX.stdout.write(_('Processing binary file "{0}".\n').format(rel_subdir(file_data.path)))
             if file_data.before_hash != utils.get_git_hash_for_file(file_data.path):
                 RCTX.stderr.write(_('"{0}": binary file original has changed.\n').format(rel_subdir(file_data.path)))
@@ -1440,6 +1450,29 @@ def do_apply_next_patch(absorb=False, force=False):
                     open(file_data.path, 'wb').write(file_data.diff.contents)
             elif os.path.exists(file_data.path):
                 os.remove(file_data.path)
+        elif isinstance(file_data.diff, patchlib.GitBinaryDiff):
+            RCTX.stdout.write(_('Processing binary file "{0}" with imported patch.\n').format(rel_subdir(file_data.path)))
+            if file_data.after_mode is None:
+                # it was a delete
+                if os.path.exists(file_data.path):
+                    os.remove(file_data.path)
+            elif file_data.diff.forward.method == patchlib.GitBinaryDiffData.LITERAL:
+                # if it's literal just apply it.
+                open(file_data.path, 'wb').write(file_data.diff.forward.data_raw)
+            else:
+                if file_data.before_hash != utils.get_git_hash_for_file(file_data.path):
+                    # the original file has changed and it would be unwise to apply the delta
+                    biggest_ecode = max(biggest_ecode, 2)
+                    RCTX.stderr.write(_('"{0}": imported binary delta can not be applied.\n').format(rel_subdir(file_data.path)))
+                else:
+                    contents = open(file_data.path, 'rb').read()
+                    try:
+                        new_contents = gitdelta.patch_delta(contents, file_data.diff.forward.data_raw)
+                    except gitdelta.PatchError as edata:
+                        biggest_ecode = max(biggest_ecode, 2)
+                        RCTX.stderr.write(_('"{0}": imported binary delta failed to apply: {1}.\n').format(rel_subdir(file_data.path), edata))
+                    else:
+                        open(file_data.path, 'wb').write(new_contents)
         elif file_data.diff:
             RCTX.stdout.write(_('Patching file "{0}".\n').format(rel_subdir(file_data.path)))
             if drop_atws:
@@ -1483,10 +1516,15 @@ def do_apply_next_patch(absorb=False, force=False):
             # Make sure it shows up as needing a refresh
             file_data.after_hash = False
         elif file_data.before_hash is False:
-            # An imported patch applied cleanly so mark it up to date
+            # An imported patch (without hash data) applied cleanly so mark it up to date
             file_data.before_hash = utils.get_git_hash_for_file(file_data.before_file_path)
             file_data.after_hash = utils.get_git_hash_for_file(file_data.path)
             file_data.do_stash_current(None)
+        elif os.path.exists(file_data.path) != os.path.exists(file_data.stashed_path):
+            # probably an imported patch without hash data
+            if not file_data.needs_refresh():
+                # if it's up to date stash a copy
+                file_data.do_stash_current(None)
         if file_data.path in overlaps.unrefreshed:
             RCTX.stdout.write(_('Unrefreshed changes incorporated.\n'))
         elif file_data.path in overlaps.uncommitted:
@@ -1571,7 +1609,7 @@ def do_apply_next_patch(absorb=False, force=False):
     elif biggest_ecode > 0:
         RCTX.stderr.write(_('A refresh is required.\n'))
     RCTX.stdout.write(_('Patch "{0}" is now on top\n').format(next_patch.name))
-    return cmd_result.OK
+    return cmd_result.ERROR if biggest_ecode > 1 else cmd_result.OK
 
 def get_top_applied_patch_for_file(filepath):
     assert is_readable()
