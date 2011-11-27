@@ -16,6 +16,7 @@
 '''Import an external patch and place it in the series behind the current top patch.'''
 
 import os
+import sys
 
 from darning import patch_db
 from darning import patchlib

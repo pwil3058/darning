@@ -67,9 +67,21 @@ class Failure(object):
         return _('Failure({0})').format(self.msg)
 
 def _do_apply_diff_to_file(filepath, diff, delete_empty=False):
-    patch_cmd_hdr = ['patch', '--merge', '--force', '-p1', '--batch', '--quiet']
+    patch_cmd_hdr = ['patch', '--merge', '--force', '-p1', '--batch', ]
     patch_cmd = patch_cmd_hdr + (['--remove-empty-files', filepath] if delete_empty else [filepath])
-    return runext.run_cmd(patch_cmd, str(diff))
+    result = runext.run_cmd(patch_cmd, str(diff))
+    # move all but the first line of stdout to stderr
+    # drop first line so that reports can be made relative to subdir
+    olines = result.stdout.splitlines(True)
+    prefix = '{0}: '.format(rel_subdir(filepath))
+    # Put file name at start of line so they make sense on their own
+    if len(olines) > 1:
+        stderr = prefix + prefix.join(olines[1:] + result.stderr.splitlines(True))
+    elif result.stderr:
+        stderr = prefix + prefix.join(result.stderr.splitlines(True))
+    else:
+        stderr = ''
+    return runext.Result(result.ecode, '', stderr)
 
 class PickeExtensibleObject(object):
     '''A base class for pickleable objects that can cope with modifications'''
@@ -1098,23 +1110,25 @@ def do_import_patch(epatch, patchname, overwrite=False):
                 renames[came_from] = filepath
                 bad_strip_level = preamble.extras.get('rename to', None) != filepath
             if bad_strip_level:
-                RCTX.stderr.write(_('git data for file "{0}" incompatible with strip level {1}.\n').format(filepath, epatch.num_strip_levels))
+                RCTX.stderr.write(_('git data for file "{0}" incompatible with strip level {1}.\n').format(rel_subdir(filepath), epatch.num_strip_levels))
                 return cmd_result.ERROR
         file_data = FileData(filepath, patch, came_from_path=came_from, as_rename=as_rename)
         file_data.diff = diff_plus.diff
         # let push know it may need to set this.
         file_data.after_mode = False if filepath_plus.status != patchlib.FilePathPlus.DELETED else None
+        file_data.after_hash = False
+        file_data.before_hash = False # make it clear this is an imported patch
         if git_preamble:
             for key in ['new mode', 'new file mode']:
                 if key in git_preamble.extras:
                     file_data.after_mode = int(git_preamble.extras[key], 8)
                     break
         patch.files[file_data.path] = file_data
-        RCTX.stdout.write(_('{0}: file added to patch "{1}".\n').format(file_data.path, patchname))
+        RCTX.stdout.write(_('{0}: file added to patch "{1}".\n').format(rel_subdir(file_data.path), patchname))
     for old_path in renames:
         if old_path not in patch.files:
             patch.files[old_path] = FileData(old_path, patch)
-            RCTX.stdout.write(_('{0}: file added to patch "{1}".\n').format(old_path, patchname))
+            RCTX.stdout.write(_('{0}: file added to patch "{1}".\n').format(rel_subdir(old_path), patchname))
         patch.files[old_path].renamed_to = renames[old_path]
         patch.files[old_path].set_before_file_path()
     _insert_patch(patch)
@@ -1416,6 +1430,8 @@ def do_apply_next_patch(absorb=False, force=False):
         patch_ok = True
         if file_data.binary is not False:
             RCTX.stdout.write(_('Processing binary file "{0}".\n').format(rel_subdir(file_data.path)))
+            if file_data.before_hash != utils.get_git_hash_for_file(file_data.path):
+                RCTX.stderr.write(_('"{0}": binary file original has changed.\n').format(rel_subdir(file_data.path)))
             if file_data.after_mode is not None:
                 try:
                     open(file_data.path, 'wb').write(file_data.diff.contents.raw_data)
@@ -1436,9 +1452,8 @@ def do_apply_next_patch(absorb=False, force=False):
                     RCTX.stderr.write(_('"{0}": added trailing white space to "{1}" at line(s) {{{2}}}.\n').format(next_patch.name, rel_subdir(file_data.path), ', '.join([str(line) for line in aws_lines])))
             result = _do_apply_diff_to_file(file_data.path, file_data.diff, delete_empty=file_data.after_mode is None)
             biggest_ecode = max(biggest_ecode, result.ecode)
+            patch_ok = result.ecode == 0 and not result.stderr
             if result.ecode != 0:
-                patch_ok = False
-                file_data.diff = None
                 RCTX.stderr.write(result.stdout)
             else:
                 RCTX.stdout.write(result.stdout)
@@ -1464,13 +1479,14 @@ def do_apply_next_patch(absorb=False, force=False):
             RCTX.stderr.write(_('Expected file not found.\n'))
             # set after mode to None so it shows up as a delete
             file_data.after_mode = None
-        if patch_ok:
+        if not patch_ok:
+            # Make sure it shows up as needing a refresh
+            file_data.after_hash = False
+        elif file_data.before_hash is False:
+            # An imported patch applied cleanly so mark it up to date
             file_data.before_hash = utils.get_git_hash_for_file(file_data.before_file_path)
             file_data.after_hash = utils.get_git_hash_for_file(file_data.path)
             file_data.do_stash_current(None)
-        else:
-            file_data.before_hash = False
-            file_data.after_hash = False
         if file_data.path in overlaps.unrefreshed:
             RCTX.stdout.write(_('Unrefreshed changes incorporated.\n'))
         elif file_data.path in overlaps.uncommitted:
