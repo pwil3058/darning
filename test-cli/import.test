@@ -119,7 +119,7 @@ $ darn push
 > Patching file "sub2/sub1/file1".
 > Patching file "file1".
 > Patching file "sub1/file1".
-> Patch "patch1" is now on top
+> Patch "patch1" is now on top.
 $ darn files
 >  :+: file1
 >  :+: sub1/file1
@@ -164,7 +164,7 @@ $ darn push
 > Patching file "file1".
 ! file1: Hunk #1 merged at 3.
 > Patching file "sub1/file1".
-> Patch "patch2" is now on top
+> Patch "patch2" is now on top.
 $ darn files
 >  :?: file1
 >  :+: sub1/file1

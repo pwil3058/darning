@@ -232,7 +232,7 @@ $ darn push
 > Patching file "file1.copy".
 > Patching file "file1.copy.copy".
 > Processing file "file4".
-> Patch "first" is now on top
+> Patch "first" is now on top.
 $ darn files
 > +:+: file1.copy <<- file1
 > +:+: file1.copy.copy <<- file1
@@ -408,7 +408,7 @@ $ darn pop
 $ darn push
 > Patching file "file1".
 > Patching file "file1.copy".
-> Patch "second" is now on top
+> Patch "second" is now on top.
 $ darn diff --notimestamp
 > diff --git a/file1 b/file1
 > --- a/file1
@@ -446,7 +446,7 @@ $ darn pop
 > There are now no patches applied.
 $ darn push
 > Patching file "file1.copy".
-> Patch "second" is now on top
+> Patch "second" is now on top.
 $ darn diff --notimestamp
 > diff --git a/file1 b/file1.copy
 > copy from file1

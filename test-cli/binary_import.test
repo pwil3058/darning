@@ -137,7 +137,7 @@ $ darn push
 > Processing binary file "sub2/sub1/file1" with imported patch.
 > Processing binary file "file1" with imported patch.
 > Processing binary file "sub1/file1" with imported patch.
-> Patch "patch1" is now on top
+> Patch "patch1" is now on top.
 $ darn series
 > +: patch1
 $ darn files
@@ -170,7 +170,7 @@ $ darn push
 > Processing binary file "file1" with imported patch.
 ! "file1": imported binary delta can not be applied.
 > Processing binary file "sub1/file1" with imported patch.
-> Patch "patch2" is now on top
+> Patch "patch2" is now on top.
 ! A refresh is required after issues are resolved.
 $ darn series
 > +: patch1
@@ -219,6 +219,86 @@ $ darn files
 >  :+: sub1/file1
 >  :+: sub2/file1
 >  :+: sub2/sub1/file1
+$ darn diff
+> diff --git a/file1 b/file1
+> diff --git a/sub1/file1 b/sub1/file1
+> index 399b0221ca664ee12a166b6b3db01b010bebe4b5..8bd6b04ae5cefaff10e68fc436085433daa5416f 0100664
+> GIT binary patch
+> delta 22
+> dc%0L)oS-3?n3rFYky@mXms+lnlbM&w1prdk2Uq|A
+> 
+> delta 4
+> Lc$~A;n4kdw0;mBR
+> 
+> diff --git a/sub2/file1 b/sub2/file1
+> index aa6c8a8507e8400b0efadcea1e356f6ee4918311..e65b95d4fe918fc4c487751259a7a59ed4505626 0100664
+> GIT binary patch
+> delta 22
+> dc%0L)oS-3?n3rFYky@mXms+lnlbM&w1prdk2Uq|A
+> 
+> delta 4
+> Lc$~A;n4kdw0;mBR
+> 
+> diff --git a/sub2/sub1/file1 b/sub2/sub1/file1
+> index 847597b0211a341b36b5da5312cf8674d214f14d..83759159fdd6f39ef5712e5308a104abd4fbd5b4 0100664
+> GIT binary patch
+> delta 22
+> dc%0L+o}eX|n3rFYky@mXms+lnlbM&w1prf02VMXG
+> 
+> delta 4
+> Lc$~A=nxF*$0=NMn
+> 
+
+$ darn pop
+> Patch "patch1" is now on top.
+$ darn series
+> +: patch1
+>  : patch2
+$ darn files
+>  :+: file1
+>  :+: sub1/file1
+>  :+: sub2/file1
+>  :+: sub2/sub1/file1
+
+$ darn pop
+> There are now no patches applied.
+$ darn series
+>  : patch1
+>  : patch2
+$ darn files
+? 1
+! No patches applied.
+
+$ darn push
+> Processing binary file "sub2/file1".
+> Processing binary file "sub2/sub1/file1".
+> Processing binary file "file1".
+> Processing binary file "sub1/file1".
+> Patch "patch1" is now on top.
+$ darn series
+> +: patch1
+>  : patch2
+$ darn files
+>  :+: file1
+>  :+: sub1/file1
+>  :+: sub2/file1
+>  :+: sub2/sub1/file1
+
+$ darn push
+> Processing binary file "sub2/file1".
+> Processing binary file "sub2/sub1/file1".
+> Processing file "file1".
+> Processing binary file "sub1/file1".
+> Patch "patch2" is now on top.
+$ darn series
+> +: patch1
+> +: patch2
+$ darn files
+>  :+: file1
+>  :+: sub1/file1
+>  :+: sub2/file1
+>  :+: sub2/sub1/file1
+
 $ darn diff
 > diff --git a/file1 b/file1
 > diff --git a/sub1/file1 b/sub1/file1

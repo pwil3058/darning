@@ -1608,7 +1608,7 @@ def do_apply_next_patch(absorb=False, force=False):
         RCTX.stderr.write(_('A refresh is required after issues are resolved.\n'))
     elif biggest_ecode > 0:
         RCTX.stderr.write(_('A refresh is required.\n'))
-    RCTX.stdout.write(_('Patch "{0}" is now on top\n').format(next_patch.name))
+    RCTX.stdout.write(_('Patch "{0}" is now on top.\n').format(next_patch.name))
     return cmd_result.ERROR if biggest_ecode > 1 else cmd_result.OK
 
 def get_top_applied_patch_for_file(filepath):

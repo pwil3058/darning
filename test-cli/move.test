@@ -241,7 +241,7 @@ $ darn push
 > Patching file "file3".
 > Processing file "file4".
 > Patching file "file1.moved.moved".
-> Patch "first" is now on top
+> Patch "first" is now on top.
 $ darn files
 > -:+: file1 -> file1.moved.moved
 > +:+: file1.moved.moved <- file1
@@ -432,7 +432,7 @@ $ darn pop
 $ darn push
 > Processing file "file1".
 > Patching file "file1.moved".
-> Patch "second" is now on top
+> Patch "second" is now on top.
 $ darn diff --notimestamp
 > diff --git a/file1 b/file1
 > # Renamed to: file1.moved
@@ -466,7 +466,7 @@ $ darn pop
 > There are now no patches applied.
 $ darn push
 > Patching file "file1.moved".
-> Patch "second" is now on top
+> Patch "second" is now on top.
 $ darn diff --notimestamp
 > diff --git a/file1 b/file1.moved
 > copy from file1
@@ -567,7 +567,7 @@ $ darn pop
 $ darn push
 > Processing file "file2".
 > Processing file "file1".
-> Patch "swap" is now on top
+> Patch "swap" is now on top.
 $ darn files
 >  :+: file1 <- file2
 >  :+: file2 <- file1

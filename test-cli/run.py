@@ -140,8 +140,8 @@ class Test(object):
             if match:
                 token, line = match.groups()
                 if token == '$':
-                    test = Test(index, line)
                     index += 1
+                    test = Test(index, line)
                     break
                 else:
                     raise ParseError('{0}: unexpected "{1}"'.format(index, match[1]))
