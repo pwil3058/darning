@@ -19,6 +19,7 @@ This software works best when used with SCM managed sources where it
 understands the SCM in use.  At present, it only has knowledge of the
 following SCMs:
   - Mercurial
+  - Git
 
 INSTALLATION:
 
