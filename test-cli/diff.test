@@ -67,7 +67,27 @@ $ patch -e sub2/sub1/file1
 < a
 < a new line
 < .
+$ darn files
+>  :?: file1
+>  :?: sub1/file1
+>  :?: sub2/file1
+>  :?: sub2/sub1/file1
+$ darn files --combined
+>  :?: file1
+>  :?: sub1/file1
+>  :?: sub2/file1
+>  :?: sub2/sub1/file1
 $ darn refresh
+$ darn files
+>  :+: file1
+>  :+: sub1/file1
+>  :+: sub2/file1
+>  :+: sub2/sub1/file1
+$ darn files --combined
+>  :+: file1
+>  :+: sub1/file1
+>  :+: sub2/file1
+>  :+: sub2/sub1/file1
 $ darn diff --notimestamps
 > diff --git a/file1 b/file1
 > --- a/file1
@@ -101,6 +121,11 @@ $ darn add file1 sub1/file1 sub2/file1 sub2/sub1/file1
 > sub1/file1: file added to patch "second".
 > sub2/file1: file added to patch "second".
 > sub2/sub1/file1: file added to patch "second".
+$ darn files --combined
+>  :+: file1
+>  :+: sub1/file1
+>  :+: sub2/file1
+>  :+: sub2/sub1/file1
 $ patch -e file1
 < a
 < another new line

@@ -110,6 +110,26 @@ class Command(object):
                     return Result(ecode=1, stderr=str(edata))
             else:
                 Result(ecode=1, stderr='mkfile: Missing file name.')
+        elif self.cmd_line[0] == 'create_file_tree':
+            for dindex in range(6):
+                if dindex:
+                    dname = 'dir{0}/'.format(dindex)
+                    os.mkdir(dname)
+                else:
+                    dname = ''
+                for sdindex in range(6):
+                    if sdindex:
+                        if not dindex:
+                            continue
+                        sdname = 'subdir{0}/'.format(sdindex)
+                        os.mkdir(dname + sdname)
+                    else:
+                        sdname = ''
+                    for findex in range(1, 6):
+                        tfpath = dname + sdname + 'file{0}'.format(findex)
+                        open(tfpath, 'w').write('{0}:\nis a text file.\n'.format(tfpath))
+                        bfpath = dname + sdname + 'binary{0}'.format(findex)
+                        open(bfpath, 'w').write('{0}:\000is a binary file.\n'.format(bfpath))
         else:
             try:
                 return self._run()

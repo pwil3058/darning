@@ -313,6 +313,7 @@ $ darn diff --notimestamp
 >  file two
 > +modify overwritten
 > diff --git a/file5 b/file5
+> deleted file mode 0100664
 > --- a/file5
 > +++ /dev/null
 > @@ -1 +0,0 @@
@@ -340,11 +341,13 @@ $ darn diff --notimestamp
 >  file one
 > +a change
 > diff --git a/file2 b/file2
+> deleted file mode 0100664
 > --- a/file2
 > +++ /dev/null
 > @@ -1 +0,0 @@
 > -file two
 > diff --git a/file5 b/file5
+> deleted file mode 0100664
 > --- a/file5
 > +++ /dev/null
 > @@ -1 +0,0 @@
@@ -362,16 +365,19 @@ $ ls
 > file4
 $ darn diff --notimestamp
 > diff --git a/file1 b/file1
+> deleted file mode 0100664
 > --- a/file1
 > +++ /dev/null
 > @@ -1 +0,0 @@
 > -file one
 > diff --git a/file2 b/file2
+> deleted file mode 0100664
 > --- a/file2
 > +++ /dev/null
 > @@ -1 +0,0 @@
 > -file two
 > diff --git a/file5 b/file5
+> deleted file mode 0100664
 > --- a/file5
 > +++ /dev/null
 > @@ -1 +0,0 @@
@@ -538,9 +544,24 @@ $ darn move file1 file1.temp
 $ darn move file2 file1
 ? 17
 ! file1: file already in patch.
+$ darn diff --notimestamp file1 file1.temp
+> diff --git a/file1 b/file1
+> # Renamed to: file1.temp
+> diff --git a/file1 b/file1.temp
+> rename from file1
+> rename to file1.temp
 $ darn move --overwrite file2 file1
 > file2: file added to patch "swap".
 > file2: file renamed to "file1" in patch "swap".
+$ darn diff --notimestamp file1 file2 file1.temp
+> diff --git a/file2 b/file1
+> rename from file2
+> rename to file1
+> diff --git a/file2 b/file2
+> # Renamed to: file1
+> diff --git a/file1 b/file1.temp
+> rename from file1
+> rename to file1.temp
 $ darn move file1.temp file2
 ? 17
 ! file2: file already in patch.
@@ -553,11 +574,9 @@ $ darn diff --notimestamp
 > diff --git a/file2 b/file1
 > rename from file2
 > rename to file1
-> # Renamed to: file2
 > diff --git a/file1 b/file2
 > rename from file1
 > rename to file2
-> # Renamed to: file1
 $ cat file1
 > file two
 $ cat file2
@@ -575,11 +594,9 @@ $ darn diff --notimestamp
 > diff --git a/file2 b/file1
 > rename from file2
 > rename to file1
-> # Renamed to: file2
 > diff --git a/file1 b/file2
 > rename from file1
 > rename to file2
-> # Renamed to: file1
 $ cat file1
 > file two
 $ cat file2

@@ -34,10 +34,12 @@ cli_args.add_force_option(GROUP, helptext=_('force the operation and leave uncom
 
 cli_args.add_absorb_option(GROUP, helptext=_('absorb/incorporate uncommitted/unrefreshed changes to the pushed patch\'s files into the pushed patch.'))
 
+cli_args.add_quiet_option(GROUP, helptext=_('operate quietly.  Only abnormal results will be reported.'))
+
 def run_push(args):
     '''Execute the "push" sub command using the supplied args'''
     db_utils.open_db(modifiable=True)
-    db_utils.set_report_context(verbose=True)
+    db_utils.set_report_context(verbose=not args.opt_quiet)
     return patch_db.do_apply_next_patch(absorb=args.opt_absorb, force=args.opt_force)
 
 PARSER.set_defaults(run_cmd=run_push)

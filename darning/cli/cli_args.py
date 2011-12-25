@@ -87,6 +87,14 @@ def add_verbose_option(parser, helptext):
         action='store_true',
     )
 
+def add_quiet_option(parser, helptext):
+    parser.add_argument(
+        '-q', '--quiet',
+        help=helptext,
+        dest='opt_quiet',
+        action='store_true',
+    )
+
 def add_files_argument(parser, helptext):
     parser.add_argument(
         'filepaths',
