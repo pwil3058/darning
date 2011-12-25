@@ -56,7 +56,7 @@ class MaskedCondns(actions.MaskedCondns):
             return actions.MaskedCondns(Condns.DONT_CARE, Condns.APPLIED_CONDNS)
         patchname = model.get_patch_name(model_iter)
         if model.get_patch_is_applied(model_iter):
-            cond = Condns.APPLIED_TOP if ifce.PM.is_top_applied_patch(patchname) else Condns.APPLIED_NOT_TOP
+            cond = Condns.APPLIED_TOP if ifce.PM.is_top_patch(patchname) else Condns.APPLIED_NOT_TOP
         elif ifce.PM.is_blocked_by_guard(patchname):
             cond = Condns.UNAPPLIED_BLOCKED
         else:
@@ -276,12 +276,12 @@ class List(table.MapManagedTable):
             break
     def do_push_patches_to(self, action=None):
         patchname = self.get_selected_patch()
-        while ifce.PM.is_pushable() and not ifce.PM.is_top_applied_patch(patchname):
+        while ifce.PM.is_pushable() and not ifce.PM.is_top_patch(patchname):
             if not push_next_patch_acb(None):
                 break
     def do_pop_patches_to(self, action=None):
         patchname = self.get_selected_patch()
-        while ifce.PM.is_poppable() and not ifce.PM.is_top_applied_patch(patchname):
+        while ifce.PM.is_poppable() and not ifce.PM.is_top_patch(patchname):
             if not pop_top_patch_acb(None):
                 break
     def do_remove(self, action=None):

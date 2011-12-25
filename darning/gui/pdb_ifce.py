@@ -180,10 +180,10 @@ def get_patch_guards(patch):
     guards = patch_db.get_patch_guards(patch)
     return ['+' + grd for grd in guards.positive] + ['-' + grd for grd in guards.negative]
 
-def get_top_applied_patch_for_file(filepath):
+def get_top_patch_for_file(filepath):
     if not patch_db.is_readable():
         return None
-    return patch_db.get_top_applied_patch_for_file(filepath)
+    return patch_db.get_top_patch_for_file(filepath)
 
 def get_kept_patch_names():
     if not patch_db.is_readable():
@@ -194,7 +194,7 @@ def get_extdiff_files_for(filepath, patchname):
     if not patch_db.is_readable():
         return None
     if patchname is None:
-        patchname = patch_db.get_top_applied_patch_for_file(filepath)
+        patchname = patch_db.get_top_patch_for_file(filepath)
     return patch_db.get_extdiff_files_for(filepath, patchname)
 
 def get_reconciliation_paths(filepath):
@@ -421,7 +421,7 @@ def is_pushable():
 def is_poppable():
     return get_in_progress()
 
-def is_top_applied_patch(patchname):
+def is_top_patch(patchname):
     if not patch_db.is_readable():
         return False
     return patch_db.is_top_patch(patchname)

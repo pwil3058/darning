@@ -250,7 +250,7 @@ class ForFileDialog(dialogue.AmodalDialog):
             return str(diff)
     def __init__(self, filepath, patchname):
         if patchname is None:
-            patchname = ifce.PM.get_top_applied_patch_for_file(filepath)
+            patchname = ifce.PM.get_top_patch_for_file(filepath)
         assert patchname is not None
         title = _('diff: "{0}" in "{1}": {2}').format(filepath, patchname, os.getcwd())
         flags = gtk.DIALOG_DESTROY_WITH_PARENT

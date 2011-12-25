@@ -403,7 +403,7 @@ _LAST_TABLE = []
 
 def auto_update_cb(_arg=None):
     global _LAST_TABLE
-    if dialogue.is_busy:
+    if dialogue.is_busy():
         return
     dialogue.show_busy()
     table = patch_db.get_combined_patch_file_table() if patch_db.is_readable() else []
