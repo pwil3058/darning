@@ -45,7 +45,7 @@ GROUP.add_argument(
 
 def run_export(args):
     '''Execute the "export" sub command using the supplied args'''
-    db_utils.open_db(modifiable=True)
+    db_utils.open_db(modifiable=False)
     db_utils.set_report_context(verbose=True)
     patchname = patch_db.get_patch_name(args.patchname)
     if patchname is None:
