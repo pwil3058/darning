@@ -16,28 +16,16 @@
 Test the 'darn move' command.
 
 Create some test files.
-$ mkfile file1
-< file one
-$ mkfile file2
-< file two
-$ mkfile file3
-< file three
-$ mkfile file4
-< file four
-$ mkfile file5
-< file five
+$ darn_test_tree create
 
 Make a playground and patch
 $ darn init
 $ darn new first
 $ darn add file4
 > file4: file added to patch "first".
-$ patch -e file4
-< a
-< a change which will be lost
-< .
+$ darn_test_tree modify file4
 
-Copy nonexistent file
+Try to move a nonexistent file
 $ darn move nonexistent nonexistent.moved
 ? 1
 ! nonexistent: file does not exist.
@@ -66,12 +54,9 @@ $ darn diff --notimestamp
 > --- a/file4
 > +++ b/file4
 > @@ -1 +1,2 @@
->  file four
-> +a change which will be lost
-$ patch -e file1.moved
-< a
-< a change
-<.
+>  file4: is a text file.
+> +Patch: "first"; Path: "file4"
+$ darn_test_tree modify file1.moved
 $ darn diff --notimestamp
 > diff --git a/file1 b/file1
 > # Renamed to: file1.moved
@@ -81,14 +66,14 @@ $ darn diff --notimestamp
 > --- a/file1.moved
 > +++ b/file1.moved
 > @@ -1 +1,2 @@
->  file one
-> +a change
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.moved"
 > diff --git a/file4 b/file4
 > --- a/file4
 > +++ b/file4
 > @@ -1 +1,2 @@
->  file four
-> +a change which will be lost
+>  file4: is a text file.
+> +Patch: "first"; Path: "file4"
 $ darn files
 > -:+: file1 -> file1.moved
 > +:?: file1.moved <- file1
@@ -110,14 +95,14 @@ $ darn diff --notimestamp
 > --- a/file1.moved.moved
 > +++ b/file1.moved.moved
 > @@ -1 +1,2 @@
->  file one
-> +a change
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.moved"
 > diff --git a/file4 b/file4
 > --- a/file4
 > +++ b/file4
 > @@ -1 +1,2 @@
->  file four
-> +a change which will be lost
+>  file4: is a text file.
+> +Patch: "first"; Path: "file4"
 
 Simple overwrite
 $ darn move file2 file3
@@ -129,10 +114,7 @@ $ darn files
 > -:+: file2 -> file3
 >  :+: file3 <- file2
 >  :?: file4
-$ patch -e file3
-< a
-< modify overwritten
-<.
+$ darn_test_tree modify file3
 $ darn files
 > -:+: file1 -> file1.moved.moved
 > +:?: file1.moved.moved <- file1
@@ -148,8 +130,8 @@ $ darn diff --notimestamp
 > --- a/file1.moved.moved
 > +++ b/file1.moved.moved
 > @@ -1 +1,2 @@
->  file one
-> +a change
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.moved"
 > diff --git a/file2 b/file2
 > # Renamed to: file3
 > diff --git a/file2 b/file3
@@ -158,14 +140,14 @@ $ darn diff --notimestamp
 > --- a/file3
 > +++ b/file3
 > @@ -1 +1,2 @@
->  file two
-> +modify overwritten
+>  file2: is a text file.
+> +Patch: "first"; Path: "file3"
 > diff --git a/file4 b/file4
 > --- a/file4
 > +++ b/file4
 > @@ -1 +1,2 @@
->  file four
-> +a change which will be lost
+>  file4: is a text file.
+> +Patch: "first"; Path: "file4"
 
 Overwrite a tracked file
 $ darn move file5 file4
@@ -183,8 +165,8 @@ $ darn diff --notimestamp
 > --- a/file1.moved.moved
 > +++ b/file1.moved.moved
 > @@ -1 +1,2 @@
->  file one
-> +a change
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.moved"
 > diff --git a/file2 b/file2
 > # Renamed to: file3
 > diff --git a/file2 b/file3
@@ -193,19 +175,19 @@ $ darn diff --notimestamp
 > --- a/file3
 > +++ b/file3
 > @@ -1 +1,2 @@
->  file two
-> +modify overwritten
+>  file2: is a text file.
+> +Patch: "first"; Path: "file3"
 > diff --git a/file5 b/file4
 > rename from file5
 > rename to file4
 > diff --git a/file5 b/file5
 > # Renamed to: file4
 $ cat file4
-> file five
+> file5: is a text file.
 
 Refresh, pop and push
 $ darn refresh
-$ ls
+$ ls --ignore=dir* --ignore=binary*
 > file1.moved.moved
 > file3
 > file4
@@ -219,16 +201,16 @@ $ darn files first
 >  : : file4 <- file5
 > -: : file5 -> file4
 $ cat file1
-> file one
+> file1: is a text file.
 $ cat file2
-> file two
+> file2: is a text file.
 $ cat file3
-> file three
+> file3: is a text file.
 $ cat file4
-> file four
+> file4: is a text file.
 $ cat file5
-> file five
-$ ls
+> file5: is a text file.
+$ ls --ignore=dir* --ignore=binary*
 > file1
 > file2
 > file3
@@ -258,8 +240,8 @@ $ darn diff --notimestamp
 > --- a/file1.moved.moved
 > +++ b/file1.moved.moved
 > @@ -1 +1,2 @@
->  file one
-> +a change
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.moved"
 > diff --git a/file2 b/file2
 > # Renamed to: file3
 > diff --git a/file2 b/file3
@@ -268,14 +250,14 @@ $ darn diff --notimestamp
 > --- a/file3
 > +++ b/file3
 > @@ -1 +1,2 @@
->  file two
-> +modify overwritten
+>  file2: is a text file.
+> +Patch: "first"; Path: "file3"
 > diff --git a/file5 b/file4
 > rename from file5
 > rename to file4
 > diff --git a/file5 b/file5
 > # Renamed to: file4
-$ ls
+$ ls --ignore=dir* --ignore=binary*
 > file1.moved.moved
 > file3
 > file4
@@ -290,7 +272,7 @@ $ darn files
 >  :+: file3 <- file2
 > -:+: file5
 $ cat file4
-> file four
+> file4: is a text file.
 $ darn diff --notimestamp
 > diff --git a/file1 b/file1
 > # Renamed to: file1.moved.moved
@@ -300,8 +282,8 @@ $ darn diff --notimestamp
 > --- a/file1.moved.moved
 > +++ b/file1.moved.moved
 > @@ -1 +1,2 @@
->  file one
-> +a change
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.moved"
 > diff --git a/file2 b/file2
 > # Renamed to: file3
 > diff --git a/file2 b/file3
@@ -310,14 +292,14 @@ $ darn diff --notimestamp
 > --- a/file3
 > +++ b/file3
 > @@ -1 +1,2 @@
->  file two
-> +modify overwritten
+>  file2: is a text file.
+> +Patch: "first"; Path: "file3"
 > diff --git a/file5 b/file5
 > deleted file mode 0100664
 > --- a/file5
 > +++ /dev/null
 > @@ -1 +0,0 @@
-> -file five
+> -file5: is a text file.
 
 Drop the overwritten "untracked" file
 $ darn drop file3
@@ -328,7 +310,7 @@ $ darn files
 > -:+: file2
 > -:+: file5
 $ cat file3
-> file three
+> file3: is a text file.
 $ darn diff --notimestamp
 > diff --git a/file1 b/file1
 > # Renamed to: file1.moved.moved
@@ -338,20 +320,20 @@ $ darn diff --notimestamp
 > --- a/file1.moved.moved
 > +++ b/file1.moved.moved
 > @@ -1 +1,2 @@
->  file one
-> +a change
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.moved"
 > diff --git a/file2 b/file2
 > deleted file mode 0100664
 > --- a/file2
 > +++ /dev/null
 > @@ -1 +0,0 @@
-> -file two
+> -file2: is a text file.
 > diff --git a/file5 b/file5
 > deleted file mode 0100664
 > --- a/file5
 > +++ /dev/null
 > @@ -1 +0,0 @@
-> -file five
+> -file5: is a text file.
 
 Drop a simple move
 $ darn drop file1.moved.moved
@@ -360,7 +342,7 @@ $ darn files
 > -:+: file1
 > -:+: file2
 > -:+: file5
-$ ls
+$ ls --ignore=dir* --ignore=binary*
 > file3
 > file4
 $ darn diff --notimestamp
@@ -369,34 +351,34 @@ $ darn diff --notimestamp
 > --- a/file1
 > +++ /dev/null
 > @@ -1 +0,0 @@
-> -file one
+> -file1: is a text file.
 > diff --git a/file2 b/file2
 > deleted file mode 0100664
 > --- a/file2
 > +++ /dev/null
 > @@ -1 +0,0 @@
-> -file two
+> -file2: is a text file.
 > diff --git a/file5 b/file5
 > deleted file mode 0100664
 > --- a/file5
 > +++ /dev/null
 > @@ -1 +0,0 @@
-> -file five
+> -file5: is a text file.
 
 Pop and we should be back to the start
 $ darn pop
 > There are now no patches applied.
 $ cat file1
-> file one
+> file1: is a text file.
 $ cat file2
-> file two
+> file2: is a text file.
 $ cat file3
-> file three
+> file3: is a text file.
 $ cat file4
-> file four
+> file4: is a text file.
 $ cat file5
-> file five
-$ ls
+> file5: is a text file.
+$ ls --ignore=dir* --ignore=binary*
 > file1
 > file2
 > file3
@@ -407,18 +389,15 @@ Now test moving a tracked file
 $ darn new second
 $ darn add file1
 > file1: file added to patch "second".
-$ patch -e file1
-< a
-< add a line
-< .
+$ darn_test_tree modify file1
 $ darn refresh
 $ darn diff --notimestamp
 > diff --git a/file1 b/file1
 > --- a/file1
 > +++ b/file1
 > @@ -1 +1,2 @@
->  file one
-> +add a line
+>  file1: is a text file.
+> +Patch: "second"; Path: "file1"
 $ darn move file1 file1.moved
 > file1: file renamed to "file1.moved" in patch "second".
 $ darn diff --notimestamp
@@ -430,8 +409,8 @@ $ darn diff --notimestamp
 > --- a/file1.moved
 > +++ b/file1.moved
 > @@ -1 +1,2 @@
->  file one
-> +add a line
+>  file1: is a text file.
+> +Patch: "second"; Path: "file1"
 $ darn refresh
 $ darn pop
 > There are now no patches applied.
@@ -448,8 +427,8 @@ $ darn diff --notimestamp
 > --- a/file1.moved
 > +++ b/file1.moved
 > @@ -1 +1,2 @@
->  file one
-> +add a line
+>  file1: is a text file.
+> +Patch: "second"; Path: "file1"
 $ darn files
 > -:+: file1 -> file1.moved
 > +:+: file1.moved <- file1
@@ -464,10 +443,10 @@ $ darn diff --notimestamp
 > --- a/file1.moved
 > +++ b/file1.moved
 > @@ -1 +1,2 @@
->  file one
-> +add a line
+>  file1: is a text file.
+> +Patch: "second"; Path: "file1"
 $ cat file1
-> file one
+> file1: is a text file.
 $ darn pop
 > There are now no patches applied.
 $ darn push
@@ -480,8 +459,8 @@ $ darn diff --notimestamp
 > --- a/file1.moved
 > +++ b/file1.moved
 > @@ -1 +1,2 @@
->  file one
-> +add a line
+>  file1: is a text file.
+> +Patch: "second"; Path: "file1"
 $ darn files
 > +:+: file1.moved <<- file1
 
@@ -578,9 +557,9 @@ $ darn diff --notimestamp
 > rename from file1
 > rename to file2
 $ cat file1
-> file two
+> file2: is a text file.
 $ cat file2
-> file one
+> file1: is a text file.
 $ darn pop
 > There are now no patches applied.
 $ darn push
@@ -598,6 +577,6 @@ $ darn diff --notimestamp
 > rename from file1
 > rename to file2
 $ cat file1
-> file two
+> file2: is a text file.
 $ cat file2
-> file one
+> file1: is a text file.

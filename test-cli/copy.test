@@ -15,25 +15,14 @@
 
 Test the 'darn copy' command.
 
-Create some test files.
-$ mkfile file1
-< file one
-$ mkfile file2
-< file two
-$ mkfile file3
-< file three
-$ mkfile file4
-< file four
+Create test file tree.
+$ darn_test_tree create
 
 Make a playground and patch
 $ darn init
 $ darn new first
-$ darn add file4
-> file4: file added to patch "first".
-$ patch -e file4
-< a
-< a change which will be lost
-< .
+$ darn add file4 > /dev/null
+$ darn_test_tree modify file4
 
 Copy nonexistent file
 $ darn copy nonexistent nonexistent.copy
@@ -60,12 +49,9 @@ $ darn diff --notimestamp
 > --- a/file4
 > +++ b/file4
 > @@ -1 +1,2 @@
->  file four
-> +a change which will be lost
-$ patch -e file1.copy
-< a
-< a change
-<.
+>  file4: is a text file.
+> +Patch: "first"; Path: "file4"
+$ darn_test_tree modify file1.copy
 $ darn diff --notimestamp
 > diff --git a/file1 b/file1.copy
 > copy from file1
@@ -73,14 +59,14 @@ $ darn diff --notimestamp
 > --- a/file1.copy
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
->  file one
-> +a change
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.copy"
 > diff --git a/file4 b/file4
 > --- a/file4
 > +++ b/file4
 > @@ -1 +1,2 @@
->  file four
-> +a change which will be lost
+>  file4: is a text file.
+> +Patch: "first"; Path: "file4"
 $ darn files
 > +:?: file1.copy <<- file1
 >  :?: file4
@@ -99,22 +85,22 @@ $ darn diff --notimestamp
 > --- a/file1.copy
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
->  file one
-> +a change
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.copy"
 > diff --git a/file1 b/file1.copy.copy
 > copy from file1
 > copy to file1.copy.copy
 > --- a/file1.copy.copy
 > +++ b/file1.copy.copy
 > @@ -1 +1,2 @@
->  file one
-> +a change
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.copy"
 > diff --git a/file4 b/file4
 > --- a/file4
 > +++ b/file4
 > @@ -1 +1,2 @@
->  file four
-> +a change which will be lost
+>  file4: is a text file.
+> +Patch: "first"; Path: "file4"
 
 Simple overwrite
 $ darn copy file2 file3
@@ -124,10 +110,7 @@ $ darn files
 > +:?: file1.copy.copy <<- file1
 >  :+: file3 <<- file2
 >  :?: file4
-$ patch -e file3
-< a
-< modify overwritten
-<.
+$ darn_test_tree modify file3
 $ darn files
 > +:?: file1.copy <<- file1
 > +:?: file1.copy.copy <<- file1
@@ -140,30 +123,30 @@ $ darn diff --notimestamp
 > --- a/file1.copy
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
->  file one
-> +a change
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.copy"
 > diff --git a/file1 b/file1.copy.copy
 > copy from file1
 > copy to file1.copy.copy
 > --- a/file1.copy.copy
 > +++ b/file1.copy.copy
 > @@ -1 +1,2 @@
->  file one
-> +a change
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.copy"
 > diff --git a/file2 b/file3
 > copy from file2
 > copy to file3
 > --- a/file3
 > +++ b/file3
 > @@ -1 +1,2 @@
->  file two
-> +modify overwritten
+>  file2: is a text file.
+> +Patch: "first"; Path: "file3"
 > diff --git a/file4 b/file4
 > --- a/file4
 > +++ b/file4
 > @@ -1 +1,2 @@
->  file four
-> +a change which will be lost
+>  file4: is a text file.
+> +Patch: "first"; Path: "file4"
 
 Overwrite a tracked file
 $ darn copy file2 file4
@@ -178,39 +161,40 @@ $ darn diff --notimestamp
 > --- a/file1.copy
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
->  file one
-> +a change
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.copy"
 > diff --git a/file1 b/file1.copy.copy
 > copy from file1
 > copy to file1.copy.copy
 > --- a/file1.copy.copy
 > +++ b/file1.copy.copy
 > @@ -1 +1,2 @@
->  file one
-> +a change
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.copy"
 > diff --git a/file2 b/file3
 > copy from file2
 > copy to file3
 > --- a/file3
 > +++ b/file3
 > @@ -1 +1,2 @@
->  file two
-> +modify overwritten
+>  file2: is a text file.
+> +Patch: "first"; Path: "file3"
 > diff --git a/file2 b/file4
 > copy from file2
 > copy to file4
 $ cat file4
-> file two
+> file2: is a text file.
 
 Refresh, pop and push
 $ darn refresh
-$ ls
+$ ls --ignore=dir* --ignore=binary*
 > file1
 > file1.copy
 > file1.copy.copy
 > file2
 > file3
 > file4
+> file5
 $ darn pop
 > There are now no patches applied.
 $ darn files first
@@ -219,20 +203,16 @@ $ darn files first
 >  : : file3 <<- file2
 >  : : file4 <<- file2
 $ cat file3
-> file three
+> file3: is a text file.
 $ cat file4
-> file four
-$ ls
+> file4: is a text file.
+$ ls --ignore=dir* --ignore=binary*
 > file1
 > file2
 > file3
 > file4
-$ darn push
-> Patching file "file3".
-> Patching file "file1.copy".
-> Patching file "file1.copy.copy".
-> Processing file "file4".
-> Patch "first" is now on top.
+> file5
+$ darn push > /dev/null
 $ darn files
 > +:+: file1.copy <<- file1
 > +:+: file1.copy.copy <<- file1
@@ -245,44 +225,44 @@ $ darn diff --notimestamp
 > --- a/file1.copy
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
->  file one
-> +a change
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.copy"
 > diff --git a/file1 b/file1.copy.copy
 > copy from file1
 > copy to file1.copy.copy
 > --- a/file1.copy.copy
 > +++ b/file1.copy.copy
 > @@ -1 +1,2 @@
->  file one
-> +a change
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.copy"
 > diff --git a/file2 b/file3
 > copy from file2
 > copy to file3
 > --- a/file3
 > +++ b/file3
 > @@ -1 +1,2 @@
->  file two
-> +modify overwritten
+>  file2: is a text file.
+> +Patch: "first"; Path: "file3"
 > diff --git a/file2 b/file4
 > copy from file2
 > copy to file4
-$ ls
+$ ls --ignore=dir* --ignore=binary*
 > file1
 > file1.copy
 > file1.copy.copy
 > file2
 > file3
 > file4
+> file5
 
 Drop the overwritten "tracked" file
-$ darn drop file4
-> file4: file dropped from patch "first".
+$ darn drop file4 > /dev/null
 $ darn files
 > +:+: file1.copy <<- file1
 > +:+: file1.copy.copy <<- file1
 >  :+: file3 <<- file2
 $ cat file4
-> file four
+> file4: is a text file.
 $ darn diff --notimestamp
 > diff --git a/file1 b/file1.copy
 > copy from file1
@@ -290,33 +270,32 @@ $ darn diff --notimestamp
 > --- a/file1.copy
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
->  file one
-> +a change
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.copy"
 > diff --git a/file1 b/file1.copy.copy
 > copy from file1
 > copy to file1.copy.copy
 > --- a/file1.copy.copy
 > +++ b/file1.copy.copy
 > @@ -1 +1,2 @@
->  file one
-> +a change
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.copy"
 > diff --git a/file2 b/file3
 > copy from file2
 > copy to file3
 > --- a/file3
 > +++ b/file3
 > @@ -1 +1,2 @@
->  file two
-> +modify overwritten
+>  file2: is a text file.
+> +Patch: "first"; Path: "file3"
 
 Drop the overwritten "untracked" file
-$ darn drop file3
-> file3: file dropped from patch "first".
+$ darn drop file3 > /dev/null
 $ darn files
 > +:+: file1.copy <<- file1
 > +:+: file1.copy.copy <<- file1
 $ cat file3
-> file three
+> file3: is a text file.
 $ darn diff --notimestamp
 > diff --git a/file1 b/file1.copy
 > copy from file1
@@ -324,24 +303,23 @@ $ darn diff --notimestamp
 > --- a/file1.copy
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
->  file one
-> +a change
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.copy"
 > diff --git a/file1 b/file1.copy.copy
 > copy from file1
 > copy to file1.copy.copy
 > --- a/file1.copy.copy
 > +++ b/file1.copy.copy
 > @@ -1 +1,2 @@
->  file one
-> +a change
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.copy"
 
 Drop a simple copy
-$ darn drop file1.copy
-> file1.copy: file dropped from patch "first".
+$ darn drop file1.copy > /dev/null
 $ darn files
 > +:+: file1.copy.copy <<- file1
 $ cat file1
-> file one
+> file1: is a text file.
 $ darn diff --notimestamp
 > diff --git a/file1 b/file1.copy.copy
 > copy from file1
@@ -349,42 +327,39 @@ $ darn diff --notimestamp
 > --- a/file1.copy.copy
 > +++ b/file1.copy.copy
 > @@ -1 +1,2 @@
->  file one
-> +a change
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.copy"
 
 Pop and we should be back to the start
 $ darn pop
 > There are now no patches applied.
 $ cat file1
-> file one
+> file1: is a text file.
 $ cat file2
-> file two
+> file2: is a text file.
 $ cat file3
-> file three
+> file3: is a text file.
 $ cat file4
-> file four
-$ ls
+> file4: is a text file.
+$ ls --ignore=dir* --ignore=binary*
 > file1
 > file2
 > file3
 > file4
+> file5
 
 Now test copying a tracked file
 $ darn new second
-$ darn add file1
-> file1: file added to patch "second".
-$ patch -e file1
-< a
-< add a line
-< .
+$ darn add file1 > /dev/null
+$ darn_test_tree modify file1
 $ darn refresh
 $ darn diff --notimestamp
 > diff --git a/file1 b/file1
 > --- a/file1
 > +++ b/file1
 > @@ -1 +1,2 @@
->  file one
-> +add a line
+>  file1: is a text file.
+> +Patch: "second"; Path: "file1"
 $ darn copy file1 file1.copy
 > file1: file copied to "file1.copy" in patch "second".
 $ darn diff --notimestamp
@@ -392,43 +367,38 @@ $ darn diff --notimestamp
 > --- a/file1
 > +++ b/file1
 > @@ -1 +1,2 @@
->  file one
-> +add a line
+>  file1: is a text file.
+> +Patch: "second"; Path: "file1"
 > diff --git a/file1 b/file1.copy
 > copy from file1
 > copy to file1.copy
 > --- a/file1.copy
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
->  file one
-> +add a line
+>  file1: is a text file.
+> +Patch: "second"; Path: "file1"
 $ darn refresh
-$ darn pop
-> There are now no patches applied.
-$ darn push
-> Patching file "file1".
-> Patching file "file1.copy".
-> Patch "second" is now on top.
+$ darn pop > /dev/null
+$ darn push > /dev/null
 $ darn diff --notimestamp
 > diff --git a/file1 b/file1
 > --- a/file1
 > +++ b/file1
 > @@ -1 +1,2 @@
->  file one
-> +add a line
+>  file1: is a text file.
+> +Patch: "second"; Path: "file1"
 > diff --git a/file1 b/file1.copy
 > copy from file1
 > copy to file1.copy
 > --- a/file1.copy
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
->  file one
-> +add a line
+>  file1: is a text file.
+> +Patch: "second"; Path: "file1"
 $ darn files
 >  :+: file1
 > +:+: file1.copy <<- file1
-$ darn drop file1
-> file1: file dropped from patch "second".
+$ darn drop file1 > /dev/null
 $ darn files
 > +:+: file1.copy <<- file1
 $ darn diff --notimestamp
@@ -438,15 +408,12 @@ $ darn diff --notimestamp
 > --- a/file1.copy
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
->  file one
-> +add a line
+>  file1: is a text file.
+> +Patch: "second"; Path: "file1"
 $ cat file1
-> file one
-$ darn pop
-> There are now no patches applied.
-$ darn push
-> Patching file "file1.copy".
-> Patch "second" is now on top.
+> file1: is a text file.
+$ darn pop > /dev/null
+$ darn push > /dev/null
 $ darn diff --notimestamp
 > diff --git a/file1 b/file1.copy
 > copy from file1
@@ -454,7 +421,7 @@ $ darn diff --notimestamp
 > --- a/file1.copy
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
->  file one
-> +add a line
+>  file1: is a text file.
+> +Patch: "second"; Path: "file1"
 $ darn files
 > +:+: file1.copy <<- file1

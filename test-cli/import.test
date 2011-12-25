@@ -16,33 +16,7 @@
 Test the 'darn diff' command.
 
 Set up a small file tree and initialise a playground therein
-$ mkdir sub1
-$ mkdir sub2
-$ mkdir sub2/sub1
-$ mkfile file1
-< File 1: arbitrary content
-$ mkfile file2
-< File 2: arbitrary content
-$ mkfile file3
-< File 3: arbitrary content
-$ mkfile sub1/file1
-< File 1-1: arbitrary content
-$ mkfile sub1/file2
-< File 1-2: arbitrary content
-$ mkfile sub1/file3
-< File 1-3: arbitrary content
-$ mkfile sub2/file1
-< File 2-1: arbitrary content
-$ mkfile sub2/file2
-< File 2-2: arbitrary content
-$ mkfile sub2/file3
-< File 2-3: arbitrary content
-$ mkfile sub2/sub1/file1
-< File 2-1-1: arbitrary content
-$ mkfile sub2/sub1/file2
-< File 2-1-2: arbitrary content
-$ mkfile sub2/sub1/file3
-< File 2-1-3: arbitrary content
+$ darn_test_tree create
 
 Create some patch files
 $ mkfile patch1
@@ -52,28 +26,28 @@ $ mkfile patch1
 < --- a/file1
 < +++ b/file1
 < @@ -1 +1,2 @@
-<  File 1: arbitrary content
-< +a new line
-< diff --git a/sub1/file1 b/sub1/file1
-< --- a/sub1/file1
-< +++ b/sub1/file1
+<  file1: is a text file.
+< +Patch: "patch1"; Path: "file1"
+< diff --git a/dir1/file1 b/dir1/file1
+< --- a/dir1/file1
+< +++ b/dir1/file1
 < @@ -1 +1,2 @@
-<  File 1-1: arbitrary content
-< +a new line
-< diff --git a/sub2/file1 b/sub2/file1
-< --- a/sub2/file1
-< +++ b/sub2/file1
+<  dir1/file1: is a text file.
+< +Patch: "patch1"; Path: "dir1/file1"
+< diff --git a/dir2/file1 b/dir2/file1
+< --- a/dir2/file1
+< +++ b/dir2/file1
 < @@ -1 +1,2 @@
-<  File 2-1: arbitrary content
-< +a new line
-< diff --git a/sub2/sub1/file1 b/sub2/sub1/file1
-< --- a/sub2/sub1/file1
-< +++ b/sub2/sub1/file1
+<  dir2/file1: is a text file.
+< +Patch: "patch1"; Path: "dir2/file1"
+< diff --git a/dir2/subdir1/file1 b/dir2/subdir1/file1
+< --- a/dir2/subdir1/file1
+< +++ b/dir2/subdir1/file1
 < @@ -1 +1,2 @@
-<  File 2-1-1: arbitrary content
-< +a new line
+<  dir2/subdir1/file1: is a text file.
+< +Patch: "patch1"; Path: "dir2/subdir1/file1"
 
-A patch ehich will require merging
+A patch which will require merging
 $ mkfile patch2
 < Second patch
 < --
@@ -81,156 +55,156 @@ $ mkfile patch2
 < --- a/file1
 < +++ b/file1
 < @@ -1,2 +1,3 @@
-<  File 1: arbitrary content KKKKK
-<  a new line
-< +another new line
-< diff --git a/sub1/file1 b/sub1/file1
-< --- a/sub1/file1
-< +++ b/sub1/file1
+<  file1: is a text file. KKKKK
+<  Patch: "patch1"; Path: "file1"
+< +Patch: "patch2"; Path: "file1"
+< diff --git a/dir1/file1 b/dir1/file1
+< --- a/dir1/file1
+< +++ b/dir1/file1
 < @@ -1,2 +1,3 @@
-<  File 1-1: arbitrary content
-<  a new line
-< +another new line
-< diff --git a/sub2/file1 b/sub2/file1
-< --- a/sub2/file1
-< +++ b/sub2/file1
+<  dir1/file1: is a text file.
+<  Patch: "patch1"; Path: "dir1/file1"
+< +Patch: "patch2"; Path: "dir1/file1"
+< diff --git a/dir2/file1 b/dir2/file1
+< --- a/dir2/file1
+< +++ b/dir2/file1
 < @@ -1,2 +1,3 @@
-<  File 2-1: arbitrary content
-<  a new line
-< +another new line
-< diff --git a/sub2/sub1/file1 b/sub2/sub1/file1
-< --- a/sub2/sub1/file1
-< +++ b/sub2/sub1/file1
+<  dir2/file1: is a text file.
+<  Patch: "patch1"; Path: "dir2/file1"
+< +Patch: "patch2"; Path: "dir2/file1"
+< diff --git a/dir2/subdir1/file1 b/dir2/subdir1/file1
+< --- a/dir2/subdir1/file1
+< +++ b/dir2/subdir1/file1
 < @@ -1,2 +1,3 @@
-<  File 2-1-1: arbitrary content
-<  a new line
-< +another new line
+<  dir2/subdir1/file1: is a text file.
+<  Patch: "patch1"; Path: "dir2/subdir1/file1"
+< +Patch: "patch2"; Path: "dir2/subdir1/file1"
 
 $ darn init
 $ darn import patch1
 > file1: file added to patch "patch1".
-> sub1/file1: file added to patch "patch1".
-> sub2/file1: file added to patch "patch1".
-> sub2/sub1/file1: file added to patch "patch1".
+> dir1/file1: file added to patch "patch1".
+> dir2/file1: file added to patch "patch1".
+> dir2/subdir1/file1: file added to patch "patch1".
 > patch1: patch inserted at start of series.
 > Imported "patch1" as patch "patch1".
 $ darn push
-> Patching file "sub2/file1".
-> Patching file "sub2/sub1/file1".
+> Patching file "dir2/subdir1/file1".
 > Patching file "file1".
-> Patching file "sub1/file1".
+> Patching file "dir1/file1".
+> Patching file "dir2/file1".
 > Patch "patch1" is now on top.
 $ darn files
+>  :+: dir1/file1
+>  :+: dir2/file1
+>  :+: dir2/subdir1/file1
 >  :+: file1
->  :+: sub1/file1
->  :+: sub2/file1
->  :+: sub2/sub1/file1
 $ darn diff --notimestamps
+> diff --git a/dir1/file1 b/dir1/file1
+> --- a/dir1/file1
+> +++ b/dir1/file1
+> @@ -1 +1,2 @@
+>  dir1/file1: is a text file.
+> +Patch: "patch1"; Path: "dir1/file1"
+> diff --git a/dir2/file1 b/dir2/file1
+> --- a/dir2/file1
+> +++ b/dir2/file1
+> @@ -1 +1,2 @@
+>  dir2/file1: is a text file.
+> +Patch: "patch1"; Path: "dir2/file1"
+> diff --git a/dir2/subdir1/file1 b/dir2/subdir1/file1
+> --- a/dir2/subdir1/file1
+> +++ b/dir2/subdir1/file1
+> @@ -1 +1,2 @@
+>  dir2/subdir1/file1: is a text file.
+> +Patch: "patch1"; Path: "dir2/subdir1/file1"
 > diff --git a/file1 b/file1
 > --- a/file1
 > +++ b/file1
 > @@ -1 +1,2 @@
->  File 1: arbitrary content
-> +a new line
-> diff --git a/sub1/file1 b/sub1/file1
-> --- a/sub1/file1
-> +++ b/sub1/file1
-> @@ -1 +1,2 @@
->  File 1-1: arbitrary content
-> +a new line
-> diff --git a/sub2/file1 b/sub2/file1
-> --- a/sub2/file1
-> +++ b/sub2/file1
-> @@ -1 +1,2 @@
->  File 2-1: arbitrary content
-> +a new line
-> diff --git a/sub2/sub1/file1 b/sub2/sub1/file1
-> --- a/sub2/sub1/file1
-> +++ b/sub2/sub1/file1
-> @@ -1 +1,2 @@
->  File 2-1-1: arbitrary content
-> +a new line
+>  file1: is a text file.
+> +Patch: "patch1"; Path: "file1"
 
 $ darn import patch2
 > file1: file added to patch "patch2".
-> sub1/file1: file added to patch "patch2".
-> sub2/file1: file added to patch "patch2".
-> sub2/sub1/file1: file added to patch "patch2".
+> dir1/file1: file added to patch "patch2".
+> dir2/file1: file added to patch "patch2".
+> dir2/subdir1/file1: file added to patch "patch2".
 > patch2: patch inserted after patch "patch1".
 > Imported "patch2" as patch "patch2".
 $ darn push
-> Patching file "sub2/file1".
-> Patching file "sub2/sub1/file1".
+> Patching file "dir2/subdir1/file1".
 > Patching file "file1".
 ! file1: Hunk #1 merged at 3.
-> Patching file "sub1/file1".
+> Patching file "dir1/file1".
+> Patching file "dir2/file1".
 > Patch "patch2" is now on top.
 $ darn files
+>  :+: dir1/file1
+>  :+: dir2/file1
+>  :+: dir2/subdir1/file1
 >  :?: file1
->  :+: sub1/file1
->  :+: sub2/file1
->  :+: sub2/sub1/file1
 $ darn refresh
 $ darn files
+>  :+: dir1/file1
+>  :+: dir2/file1
+>  :+: dir2/subdir1/file1
 >  :+: file1
->  :+: sub1/file1
->  :+: sub2/file1
->  :+: sub2/sub1/file1
 $ darn diff --notimestamps
+> diff --git a/dir1/file1 b/dir1/file1
+> --- a/dir1/file1
+> +++ b/dir1/file1
+> @@ -1,2 +1,3 @@
+>  dir1/file1: is a text file.
+>  Patch: "patch1"; Path: "dir1/file1"
+> +Patch: "patch2"; Path: "dir1/file1"
+> diff --git a/dir2/file1 b/dir2/file1
+> --- a/dir2/file1
+> +++ b/dir2/file1
+> @@ -1,2 +1,3 @@
+>  dir2/file1: is a text file.
+>  Patch: "patch1"; Path: "dir2/file1"
+> +Patch: "patch2"; Path: "dir2/file1"
+> diff --git a/dir2/subdir1/file1 b/dir2/subdir1/file1
+> --- a/dir2/subdir1/file1
+> +++ b/dir2/subdir1/file1
+> @@ -1,2 +1,3 @@
+>  dir2/subdir1/file1: is a text file.
+>  Patch: "patch1"; Path: "dir2/subdir1/file1"
+> +Patch: "patch2"; Path: "dir2/subdir1/file1"
 > diff --git a/file1 b/file1
 > --- a/file1
 > +++ b/file1
 > @@ -1,2 +1,3 @@
->  File 1: arbitrary content
->  a new line
-> +another new line
-> diff --git a/sub1/file1 b/sub1/file1
-> --- a/sub1/file1
-> +++ b/sub1/file1
-> @@ -1,2 +1,3 @@
->  File 1-1: arbitrary content
->  a new line
-> +another new line
-> diff --git a/sub2/file1 b/sub2/file1
-> --- a/sub2/file1
-> +++ b/sub2/file1
-> @@ -1,2 +1,3 @@
->  File 2-1: arbitrary content
->  a new line
-> +another new line
-> diff --git a/sub2/sub1/file1 b/sub2/sub1/file1
-> --- a/sub2/sub1/file1
-> +++ b/sub2/sub1/file1
-> @@ -1,2 +1,3 @@
->  File 2-1-1: arbitrary content
->  a new line
-> +another new line
+>  file1: is a text file.
+>  Patch: "patch1"; Path: "file1"
+> +Patch: "patch2"; Path: "file1"
 $ darn diff --notimestamps --combined
+> diff --git a/dir1/file1 b/dir1/file1
+> --- a/dir1/file1
+> +++ b/dir1/file1
+> @@ -1 +1,3 @@
+>  dir1/file1: is a text file.
+> +Patch: "patch1"; Path: "dir1/file1"
+> +Patch: "patch2"; Path: "dir1/file1"
+> diff --git a/dir2/file1 b/dir2/file1
+> --- a/dir2/file1
+> +++ b/dir2/file1
+> @@ -1 +1,3 @@
+>  dir2/file1: is a text file.
+> +Patch: "patch1"; Path: "dir2/file1"
+> +Patch: "patch2"; Path: "dir2/file1"
+> diff --git a/dir2/subdir1/file1 b/dir2/subdir1/file1
+> --- a/dir2/subdir1/file1
+> +++ b/dir2/subdir1/file1
+> @@ -1 +1,3 @@
+>  dir2/subdir1/file1: is a text file.
+> +Patch: "patch1"; Path: "dir2/subdir1/file1"
+> +Patch: "patch2"; Path: "dir2/subdir1/file1"
 > diff --git a/file1 b/file1
 > --- a/file1
 > +++ b/file1
 > @@ -1 +1,3 @@
->  File 1: arbitrary content
-> +a new line
-> +another new line
-> diff --git a/sub1/file1 b/sub1/file1
-> --- a/sub1/file1
-> +++ b/sub1/file1
-> @@ -1 +1,3 @@
->  File 1-1: arbitrary content
-> +a new line
-> +another new line
-> diff --git a/sub2/file1 b/sub2/file1
-> --- a/sub2/file1
-> +++ b/sub2/file1
-> @@ -1 +1,3 @@
->  File 2-1: arbitrary content
-> +a new line
-> +another new line
-> diff --git a/sub2/sub1/file1 b/sub2/sub1/file1
-> --- a/sub2/sub1/file1
-> +++ b/sub2/sub1/file1
-> @@ -1 +1,3 @@
->  File 2-1-1: arbitrary content
-> +a new line
-> +another new line
+>  file1: is a text file.
+> +Patch: "patch1"; Path: "file1"
+> +Patch: "patch2"; Path: "file1"

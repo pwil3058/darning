@@ -16,46 +16,15 @@
 Test darning's combined patch data.
 
 Set up a small file tree and initialise a playground therein
-$ create_file_tree
+$ darn_test_tree create
 
 $ darn init
 $ darn new first --descr "First patch"
-$ darn add file1 dir1/file1 dir2/file1 dir2/subdir1/file1
-> file1: file added to patch "first".
-> dir1/file1: file added to patch "first".
-> dir2/file1: file added to patch "first".
-> dir2/subdir1/file1: file added to patch "first".
-$ darn copy file1 file1.copy
-> file1: file copied to "file1.copy" in patch "first".
-$ darn copy file2 file2.copy
-> file2: file copied to "file2.copy" in patch "first".
-$ darn move file3 file3.ren1
-> file3: file added to patch "first".
-> file3: file renamed to "file3.ren1" in patch "first".
-$ patch -e file1
-< a
-< change in first patch
-< .
-$ patch -e file2.copy
-< a
-< change in first patch
-< .
-$ patch -e file3.ren1
-< a
-< change in first patch
-< .
-$ patch -e dir1/file1
-< a
-< change in first patch
-< .
-$ patch -e dir2/file1
-< a
-< change in first patch
-< .
-$ patch -e dir2/subdir1/file1
-< a
-< change in first patch
-< .
+$ darn add file1 dir1/file1 dir2/file1 dir2/subdir1/file1 > /dev/null
+$ darn copy file1 file1.copy > /dev/null
+$ darn copy file2 file2.copy > /dev/null
+$ darn move file3 file3.ren1 > /dev/null
+$ darn_test_tree modify file1 file2.copy file3.ren1 dir1/file1 dir2/file1 dir2/subdir1/file1
 $ darn files
 >  :?: dir1/file1
 >  :?: dir2/file1
@@ -97,113 +66,62 @@ $ darn diff --combined --notimestamps
 > diff --git a/dir1/file1 b/dir1/file1
 > --- a/dir1/file1
 > +++ b/dir1/file1
-> @@ -1,2 +1,3 @@
->  dir1/file1:
->  is a text file.
-> +change in first patch
+> @@ -1 +1,2 @@
+>  dir1/file1: is a text file.
+> +Patch: "first"; Path: "dir1/file1"
 > diff --git a/dir2/file1 b/dir2/file1
 > --- a/dir2/file1
 > +++ b/dir2/file1
-> @@ -1,2 +1,3 @@
->  dir2/file1:
->  is a text file.
-> +change in first patch
+> @@ -1 +1,2 @@
+>  dir2/file1: is a text file.
+> +Patch: "first"; Path: "dir2/file1"
 > diff --git a/dir2/subdir1/file1 b/dir2/subdir1/file1
 > --- a/dir2/subdir1/file1
 > +++ b/dir2/subdir1/file1
-> @@ -1,2 +1,3 @@
->  dir2/subdir1/file1:
->  is a text file.
-> +change in first patch
+> @@ -1 +1,2 @@
+>  dir2/subdir1/file1: is a text file.
+> +Patch: "first"; Path: "dir2/subdir1/file1"
 > diff --git a/file1 b/file1
 > --- a/file1
 > +++ b/file1
-> @@ -1,2 +1,3 @@
->  file1:
->  is a text file.
-> +change in first patch
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1"
 > diff --git a/file1.copy b/file1.copy
 > new file mode 0100664
 > --- /dev/null
 > +++ a/file1.copy
-> @@ -0,0 +1,2 @@
-> +file1:
-> +is a text file.
+> @@ -0,0 +1 @@
+> +file1: is a text file.
 > diff --git a/file2.copy b/file2.copy
 > new file mode 0100664
 > --- /dev/null
 > +++ a/file2.copy
-> @@ -0,0 +1,3 @@
-> +file2:
-> +is a text file.
-> +change in first patch
+> @@ -0,0 +1,2 @@
+> +file2: is a text file.
+> +Patch: "first"; Path: "file2.copy"
 > diff --git a/file3 b/file3
 > deleted file mode 0100664
 > --- a/file3
 > +++ /dev/null
-> @@ -1,2 +0,0 @@
-> -file3:
-> -is a text file.
+> @@ -1 +0,0 @@
+> -file3: is a text file.
 > diff --git a/file3.ren1 b/file3.ren1
 > new file mode 0100664
 > --- /dev/null
 > +++ a/file3.ren1
-> @@ -0,0 +1,3 @@
-> +file3:
-> +is a text file.
-> +change in first patch
+> @@ -0,0 +1,2 @@
+> +file3: is a text file.
+> +Patch: "first"; Path: "file3.ren1"
 
 $ darn new second --descr "Second patch"
-$ darn add file1 dir1/file1 dir2/file1 dir2/subdir1/file1 file1.copy file2.copy
-> file1: file added to patch "second".
-> dir1/file1: file added to patch "second".
-> dir2/file1: file added to patch "second".
-> dir2/subdir1/file1: file added to patch "second".
-> file1.copy: file added to patch "second".
-> file2.copy: file added to patch "second".
-$ darn move file3.ren1 file3.ren2
-> file3.ren1: file added to patch "second".
-> file3.ren1: file renamed to "file3.ren2" in patch "second".
-$ darn add file1 dir1/file2 dir2/file2
+$ darn add file1 dir1/file1 dir2/file1 dir2/subdir1/file1 file1.copy file2.copy > /dev/null
+$ darn move file3.ren1 file3.ren2 > /dev/null
+$ darn add file1 dir1/file2 dir2/file2 > /dev/null
 ! file1: file already in patch "second". Ignored.
-> dir1/file2: file added to patch "second".
-> dir2/file2: file added to patch "second".
-$ darn copy file1.copy file1.copy.copy
-> file1.copy: file copied to "file1.copy.copy" in patch "second".
-$ darn copy file2.copy file2.copy.copy
-> file2.copy: file copied to "file2.copy.copy" in patch "second".
-$ patch -e file1
-< a
-< change in second patch
-< .
-$ patch -e file2.copy
-< a
-< change in second patch
-< .
-$ patch -e file3.ren2
-< a
-< change in second patch
-< .
-$ patch -e dir1/file1
-< a
-< change in second patch
-< .
-$ patch -e dir2/file1
-< a
-< change in second patch
-< .
-$ patch -e dir1/file2
-< a
-< change in second patch
-< .
-$ patch -e dir2/file2
-< a
-< change in second patch
-< .
-$ patch -e dir2/subdir1/file1
-< a
-< change in second patch
-< .
+$ darn copy file1.copy file1.copy.copy > /dev/null
+$ darn copy file2.copy file2.copy.copy > /dev/null
+$ darn_test_tree modify file1 file2.copy file3.ren2 dir1/file1 dir2/file1 dir1/file2 dir2/file2 dir2/subdir1/file1
 $ darn files
 >  :?: dir1/file1
 >  :?: dir1/file2
@@ -261,135 +179,92 @@ $ darn diff --combined --notimestamps
 > diff --git a/dir1/file1 b/dir1/file1
 > --- a/dir1/file1
 > +++ b/dir1/file1
-> @@ -1,2 +1,4 @@
->  dir1/file1:
->  is a text file.
-> +change in first patch
-> +change in second patch
+> @@ -1 +1,3 @@
+>  dir1/file1: is a text file.
+> +Patch: "first"; Path: "dir1/file1"
+> +Patch: "second"; Path: "dir1/file1"
 > diff --git a/dir1/file2 b/dir1/file2
 > --- a/dir1/file2
 > +++ b/dir1/file2
-> @@ -1,2 +1,3 @@
->  dir1/file2:
->  is a text file.
-> +change in second patch
+> @@ -1 +1,2 @@
+>  dir1/file2: is a text file.
+> +Patch: "second"; Path: "dir1/file2"
 > diff --git a/dir2/file1 b/dir2/file1
 > --- a/dir2/file1
 > +++ b/dir2/file1
-> @@ -1,2 +1,4 @@
->  dir2/file1:
->  is a text file.
-> +change in first patch
-> +change in second patch
+> @@ -1 +1,3 @@
+>  dir2/file1: is a text file.
+> +Patch: "first"; Path: "dir2/file1"
+> +Patch: "second"; Path: "dir2/file1"
 > diff --git a/dir2/file2 b/dir2/file2
 > --- a/dir2/file2
 > +++ b/dir2/file2
-> @@ -1,2 +1,3 @@
->  dir2/file2:
->  is a text file.
-> +change in second patch
+> @@ -1 +1,2 @@
+>  dir2/file2: is a text file.
+> +Patch: "second"; Path: "dir2/file2"
 > diff --git a/dir2/subdir1/file1 b/dir2/subdir1/file1
 > --- a/dir2/subdir1/file1
 > +++ b/dir2/subdir1/file1
-> @@ -1,2 +1,4 @@
->  dir2/subdir1/file1:
->  is a text file.
-> +change in first patch
-> +change in second patch
+> @@ -1 +1,3 @@
+>  dir2/subdir1/file1: is a text file.
+> +Patch: "first"; Path: "dir2/subdir1/file1"
+> +Patch: "second"; Path: "dir2/subdir1/file1"
 > diff --git a/file1 b/file1
 > --- a/file1
 > +++ b/file1
-> @@ -1,2 +1,4 @@
->  file1:
->  is a text file.
-> +change in first patch
-> +change in second patch
+> @@ -1 +1,3 @@
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1"
+> +Patch: "second"; Path: "file1"
 > diff --git a/file1.copy b/file1.copy
 > new file mode 0100664
 > --- /dev/null
 > +++ a/file1.copy
-> @@ -0,0 +1,2 @@
-> +file1:
-> +is a text file.
+> @@ -0,0 +1 @@
+> +file1: is a text file.
 > diff --git a/file1.copy.copy b/file1.copy.copy
 > new file mode 0100664
 > --- /dev/null
 > +++ a/file1.copy.copy
-> @@ -0,0 +1,2 @@
-> +file1:
-> +is a text file.
+> @@ -0,0 +1 @@
+> +file1: is a text file.
 > diff --git a/file2.copy b/file2.copy
 > new file mode 0100664
 > --- /dev/null
 > +++ a/file2.copy
-> @@ -0,0 +1,4 @@
-> +file2:
-> +is a text file.
-> +change in first patch
-> +change in second patch
+> @@ -0,0 +1,3 @@
+> +file2: is a text file.
+> +Patch: "first"; Path: "file2.copy"
+> +Patch: "second"; Path: "file2.copy"
 > diff --git a/file2.copy.copy b/file2.copy.copy
 > new file mode 0100664
 > --- /dev/null
 > +++ a/file2.copy.copy
-> @@ -0,0 +1,3 @@
-> +file2:
-> +is a text file.
-> +change in first patch
+> @@ -0,0 +1,2 @@
+> +file2: is a text file.
+> +Patch: "first"; Path: "file2.copy"
 > diff --git a/file3 b/file3
 > deleted file mode 0100664
 > --- a/file3
 > +++ /dev/null
-> @@ -1,2 +0,0 @@
-> -file3:
-> -is a text file.
+> @@ -1 +0,0 @@
+> -file3: is a text file.
 > diff --git a/file3.ren2 b/file3.ren2
 > new file mode 0100664
 > --- /dev/null
 > +++ a/file3.ren2
-> @@ -0,0 +1,4 @@
-> +file3:
-> +is a text file.
-> +change in first patch
-> +change in second patch
+> @@ -0,0 +1,3 @@
+> +file3: is a text file.
+> +Patch: "first"; Path: "file3.ren1"
+> +Patch: "second"; Path: "file3.ren2"
 
 $ darn new third --descr "Third patch"
-$ darn add dir2/file1 dir2/subdir1/file1
-> dir2/file1: file added to patch "third".
-> dir2/subdir1/file1: file added to patch "third".
-$ darn move file3.ren2 file3
-> file3.ren2: file added to patch "third".
-> file3.ren2: file renamed to "file3" in patch "third".
-$ darn add dir1/file3 dir2/file3
-> dir1/file3: file added to patch "third".
-> dir2/file3: file added to patch "third".
-$ darn copy file1.copy.copy file1.copy.copy.copy
-> file1.copy.copy: file copied to "file1.copy.copy.copy" in patch "third".
-$ darn copy file2.copy.copy file2.copy.copy.copy
-> file2.copy.copy: file copied to "file2.copy.copy.copy" in patch "third".
-$ patch -e file3
-< a
-< change in third patch
-< .
-$ patch -e dir1/file3
-< a
-< change in third patch
-< .
-$ patch -e dir2/file3
-< a
-< change in third patch
-< .
-$ patch -e dir1/file2
-< a
-< change in third patch
-< .
-$ patch -e dir2/file1
-< a
-< change in third patch
-< .
-$ patch -e dir2/subdir1/file1
-< a
-< change in third patch
-< .
+$ darn add dir2/file1 dir2/subdir1/file1 > /dev/null
+$ darn move file3.ren2 file3 > /dev/null
+$ darn add dir1/file3 dir2/file3 > /dev/null
+$ darn copy file1.copy.copy file1.copy.copy.copy > /dev/null
+$ darn copy file2.copy.copy file2.copy.copy.copy > /dev/null
+$ darn_test_tree modify file3 dir1/file3 dir2/file3 dir1/file2 dir2/file1 dir2/subdir1/file1
 $ darn files
 >  :?: dir1/file3
 >  :?: dir2/file1
@@ -445,136 +320,121 @@ $ darn diff --combined --notimestamps
 > diff --git a/dir1/file1 b/dir1/file1
 > --- a/dir1/file1
 > +++ b/dir1/file1
-> @@ -1,2 +1,4 @@
->  dir1/file1:
->  is a text file.
-> +change in first patch
-> +change in second patch
+> @@ -1 +1,3 @@
+>  dir1/file1: is a text file.
+> +Patch: "first"; Path: "dir1/file1"
+> +Patch: "second"; Path: "dir1/file1"
 > diff --git a/dir1/file2 b/dir1/file2
 > --- a/dir1/file2
 > +++ b/dir1/file2
-> @@ -1,2 +1,4 @@
->  dir1/file2:
->  is a text file.
-> +change in second patch
-> +change in third patch
+> @@ -1 +1,3 @@
+>  dir1/file2: is a text file.
+> +Patch: "second"; Path: "dir1/file2"
+> +Patch: "third"; Path: "dir1/file2"
 > diff --git a/dir1/file3 b/dir1/file3
 > --- a/dir1/file3
 > +++ b/dir1/file3
-> @@ -1,2 +1,3 @@
->  dir1/file3:
->  is a text file.
-> +change in third patch
+> @@ -1 +1,2 @@
+>  dir1/file3: is a text file.
+> +Patch: "third"; Path: "dir1/file3"
 > diff --git a/dir2/file1 b/dir2/file1
 > --- a/dir2/file1
 > +++ b/dir2/file1
-> @@ -1,2 +1,5 @@
->  dir2/file1:
->  is a text file.
-> +change in first patch
-> +change in second patch
-> +change in third patch
+> @@ -1 +1,4 @@
+>  dir2/file1: is a text file.
+> +Patch: "first"; Path: "dir2/file1"
+> +Patch: "second"; Path: "dir2/file1"
+> +Patch: "third"; Path: "dir2/file1"
 > diff --git a/dir2/file2 b/dir2/file2
 > --- a/dir2/file2
 > +++ b/dir2/file2
-> @@ -1,2 +1,3 @@
->  dir2/file2:
->  is a text file.
-> +change in second patch
+> @@ -1 +1,2 @@
+>  dir2/file2: is a text file.
+> +Patch: "second"; Path: "dir2/file2"
 > diff --git a/dir2/file3 b/dir2/file3
 > --- a/dir2/file3
 > +++ b/dir2/file3
-> @@ -1,2 +1,3 @@
->  dir2/file3:
->  is a text file.
-> +change in third patch
+> @@ -1 +1,2 @@
+>  dir2/file3: is a text file.
+> +Patch: "third"; Path: "dir2/file3"
 > diff --git a/dir2/subdir1/file1 b/dir2/subdir1/file1
 > --- a/dir2/subdir1/file1
 > +++ b/dir2/subdir1/file1
-> @@ -1,2 +1,5 @@
->  dir2/subdir1/file1:
->  is a text file.
-> +change in first patch
-> +change in second patch
-> +change in third patch
+> @@ -1 +1,4 @@
+>  dir2/subdir1/file1: is a text file.
+> +Patch: "first"; Path: "dir2/subdir1/file1"
+> +Patch: "second"; Path: "dir2/subdir1/file1"
+> +Patch: "third"; Path: "dir2/subdir1/file1"
 > diff --git a/file1 b/file1
 > --- a/file1
 > +++ b/file1
-> @@ -1,2 +1,4 @@
->  file1:
->  is a text file.
-> +change in first patch
-> +change in second patch
+> @@ -1 +1,3 @@
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1"
+> +Patch: "second"; Path: "file1"
 > diff --git a/file1.copy b/file1.copy
 > new file mode 0100664
 > --- /dev/null
 > +++ a/file1.copy
-> @@ -0,0 +1,2 @@
-> +file1:
-> +is a text file.
+> @@ -0,0 +1 @@
+> +file1: is a text file.
 > diff --git a/file1.copy.copy b/file1.copy.copy
 > new file mode 0100664
 > --- /dev/null
 > +++ a/file1.copy.copy
-> @@ -0,0 +1,2 @@
-> +file1:
-> +is a text file.
+> @@ -0,0 +1 @@
+> +file1: is a text file.
 > diff --git a/file1.copy.copy.copy b/file1.copy.copy.copy
 > new file mode 0100664
 > --- /dev/null
 > +++ a/file1.copy.copy.copy
-> @@ -0,0 +1,2 @@
-> +file1:
-> +is a text file.
+> @@ -0,0 +1 @@
+> +file1: is a text file.
 > diff --git a/file2.copy b/file2.copy
 > new file mode 0100664
 > --- /dev/null
 > +++ a/file2.copy
-> @@ -0,0 +1,4 @@
-> +file2:
-> +is a text file.
-> +change in first patch
-> +change in second patch
+> @@ -0,0 +1,3 @@
+> +file2: is a text file.
+> +Patch: "first"; Path: "file2.copy"
+> +Patch: "second"; Path: "file2.copy"
 > diff --git a/file2.copy.copy b/file2.copy.copy
 > new file mode 0100664
 > --- /dev/null
 > +++ a/file2.copy.copy
-> @@ -0,0 +1,3 @@
-> +file2:
-> +is a text file.
-> +change in first patch
+> @@ -0,0 +1,2 @@
+> +file2: is a text file.
+> +Patch: "first"; Path: "file2.copy"
 > diff --git a/file2.copy.copy.copy b/file2.copy.copy.copy
 > new file mode 0100664
 > --- /dev/null
 > +++ a/file2.copy.copy.copy
-> @@ -0,0 +1,3 @@
-> +file2:
-> +is a text file.
-> +change in first patch
+> @@ -0,0 +1,2 @@
+> +file2: is a text file.
+> +Patch: "first"; Path: "file2.copy"
 > diff --git a/file3 b/file3
 > --- a/file3
 > +++ b/file3
-> @@ -1,2 +1,5 @@
->  file3:
->  is a text file.
-> +change in first patch
-> +change in second patch
-> +change in third patch
+> @@ -1 +1,4 @@
+>  file3: is a text file.
+> +Patch: "first"; Path: "file3.ren1"
+> +Patch: "second"; Path: "file3.ren2"
+> +Patch: "third"; Path: "file3"
 
-$ darn pop
-> Patch "second" is now on top.
-$ darn pop
+$ darn pop > /dev/null
+$ darn pop > /dev/null
 ? 5
 ! Top patch ("second") needs to be refreshed.
 $ darn refresh
-$ darn pop
-> Patch "first" is now on top.
-$ darn pop
-> There are now no patches applied.
-$ darn push --quiet
-$ darn push --quiet
-$ darn push --quiet
-$ darn push --quiet
+$ darn pop > /dev/null
+$ darn pop > /dev/null
+$ darn pop > /dev/null
+? 1
+! No patches applied.
+$ darn push > /dev/null
+$ darn push > /dev/null
+$ darn push > /dev/null
+$ darn push > /dev/null
 ? 1
 ! No pushable patches. "third" is on top.
 $ darn files
@@ -606,132 +466,117 @@ $ darn diff --combined --notimestamps
 > diff --git a/dir1/file1 b/dir1/file1
 > --- a/dir1/file1
 > +++ b/dir1/file1
-> @@ -1,2 +1,4 @@
->  dir1/file1:
->  is a text file.
-> +change in first patch
-> +change in second patch
+> @@ -1 +1,3 @@
+>  dir1/file1: is a text file.
+> +Patch: "first"; Path: "dir1/file1"
+> +Patch: "second"; Path: "dir1/file1"
 > diff --git a/dir1/file2 b/dir1/file2
 > --- a/dir1/file2
 > +++ b/dir1/file2
-> @@ -1,2 +1,4 @@
->  dir1/file2:
->  is a text file.
-> +change in second patch
-> +change in third patch
+> @@ -1 +1,3 @@
+>  dir1/file2: is a text file.
+> +Patch: "second"; Path: "dir1/file2"
+> +Patch: "third"; Path: "dir1/file2"
 > diff --git a/dir1/file3 b/dir1/file3
 > --- a/dir1/file3
 > +++ b/dir1/file3
-> @@ -1,2 +1,3 @@
->  dir1/file3:
->  is a text file.
-> +change in third patch
+> @@ -1 +1,2 @@
+>  dir1/file3: is a text file.
+> +Patch: "third"; Path: "dir1/file3"
 > diff --git a/dir2/file1 b/dir2/file1
 > --- a/dir2/file1
 > +++ b/dir2/file1
-> @@ -1,2 +1,5 @@
->  dir2/file1:
->  is a text file.
-> +change in first patch
-> +change in second patch
-> +change in third patch
+> @@ -1 +1,4 @@
+>  dir2/file1: is a text file.
+> +Patch: "first"; Path: "dir2/file1"
+> +Patch: "second"; Path: "dir2/file1"
+> +Patch: "third"; Path: "dir2/file1"
 > diff --git a/dir2/file2 b/dir2/file2
 > --- a/dir2/file2
 > +++ b/dir2/file2
-> @@ -1,2 +1,3 @@
->  dir2/file2:
->  is a text file.
-> +change in second patch
+> @@ -1 +1,2 @@
+>  dir2/file2: is a text file.
+> +Patch: "second"; Path: "dir2/file2"
 > diff --git a/dir2/file3 b/dir2/file3
 > --- a/dir2/file3
 > +++ b/dir2/file3
-> @@ -1,2 +1,3 @@
->  dir2/file3:
->  is a text file.
-> +change in third patch
+> @@ -1 +1,2 @@
+>  dir2/file3: is a text file.
+> +Patch: "third"; Path: "dir2/file3"
 > diff --git a/dir2/subdir1/file1 b/dir2/subdir1/file1
 > --- a/dir2/subdir1/file1
 > +++ b/dir2/subdir1/file1
-> @@ -1,2 +1,5 @@
->  dir2/subdir1/file1:
->  is a text file.
-> +change in first patch
-> +change in second patch
-> +change in third patch
+> @@ -1 +1,4 @@
+>  dir2/subdir1/file1: is a text file.
+> +Patch: "first"; Path: "dir2/subdir1/file1"
+> +Patch: "second"; Path: "dir2/subdir1/file1"
+> +Patch: "third"; Path: "dir2/subdir1/file1"
 > diff --git a/file1 b/file1
 > --- a/file1
 > +++ b/file1
-> @@ -1,2 +1,4 @@
->  file1:
->  is a text file.
-> +change in first patch
-> +change in second patch
+> @@ -1 +1,3 @@
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1"
+> +Patch: "second"; Path: "file1"
 > diff --git a/file1.copy b/file1.copy
 > new file mode 0100664
 > --- /dev/null
 > +++ a/file1.copy
-> @@ -0,0 +1,2 @@
-> +file1:
-> +is a text file.
+> @@ -0,0 +1 @@
+> +file1: is a text file.
 > diff --git a/file1.copy.copy b/file1.copy.copy
 > new file mode 0100664
 > --- /dev/null
 > +++ a/file1.copy.copy
-> @@ -0,0 +1,2 @@
-> +file1:
-> +is a text file.
+> @@ -0,0 +1 @@
+> +file1: is a text file.
 > diff --git a/file1.copy.copy.copy b/file1.copy.copy.copy
 > new file mode 0100664
 > --- /dev/null
 > +++ a/file1.copy.copy.copy
-> @@ -0,0 +1,2 @@
-> +file1:
-> +is a text file.
+> @@ -0,0 +1 @@
+> +file1: is a text file.
 > diff --git a/file2.copy b/file2.copy
 > new file mode 0100664
 > --- /dev/null
 > +++ a/file2.copy
-> @@ -0,0 +1,4 @@
-> +file2:
-> +is a text file.
-> +change in first patch
-> +change in second patch
+> @@ -0,0 +1,3 @@
+> +file2: is a text file.
+> +Patch: "first"; Path: "file2.copy"
+> +Patch: "second"; Path: "file2.copy"
 > diff --git a/file2.copy.copy b/file2.copy.copy
 > new file mode 0100664
 > --- /dev/null
 > +++ a/file2.copy.copy
-> @@ -0,0 +1,3 @@
-> +file2:
-> +is a text file.
-> +change in first patch
+> @@ -0,0 +1,2 @@
+> +file2: is a text file.
+> +Patch: "first"; Path: "file2.copy"
 > diff --git a/file2.copy.copy.copy b/file2.copy.copy.copy
 > new file mode 0100664
 > --- /dev/null
 > +++ a/file2.copy.copy.copy
-> @@ -0,0 +1,3 @@
-> +file2:
-> +is a text file.
-> +change in first patch
+> @@ -0,0 +1,2 @@
+> +file2: is a text file.
+> +Patch: "first"; Path: "file2.copy"
 > diff --git a/file3 b/file3
 > --- a/file3
 > +++ b/file3
-> @@ -1,2 +1,5 @@
->  file3:
->  is a text file.
-> +change in first patch
-> +change in second patch
-> +change in third patch
+> @@ -1 +1,4 @@
+>  file3: is a text file.
+> +Patch: "first"; Path: "file3.ren1"
+> +Patch: "second"; Path: "file3.ren2"
+> +Patch: "third"; Path: "file3"
 $ darn diff --notimestamps file3
 > diff --git a/file3.ren2 b/file3
 > rename from file3.ren2
 > rename to file3
 > --- a/file3
 > +++ b/file3
-> @@ -2,3 +2,4 @@
->  is a text file.
->  change in first patch
->  change in second patch
-> +change in third patch
+> @@ -1,3 +1,4 @@
+>  file3: is a text file.
+>  Patch: "first"; Path: "file3.ren1"
+>  Patch: "second"; Path: "file3.ren2"
+> +Patch: "third"; Path: "file3"
 
 Now drop some files in the second patch (one in first patch and one not)
 $ darn pop
