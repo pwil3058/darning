@@ -291,7 +291,7 @@ class FileData(PickeExtensibleObject):
             self.orig_mode = None
     def get_reconciliation_paths(self):
         assert is_readable()
-        assert self.patch.is_top_applied_patch()
+        assert self.patch == _DB.top_patch
         # make it hard for the user to (accidentally) create these files if they don't exist
         before = self.before_file_path if os.path.exists(self.before_file_path) else '/dev/null'
         stashed = self.stashed_path if os.path.exists(self.stashed_path) else '/dev/null'
@@ -540,8 +540,8 @@ class PatchData(PickeExtensibleObject):
             old_cached_orig_dir_path = self.cached_orig_dir_path
             old_stash_dir_path = self.stash_dir_path
         self.name = newname
-        self.cached_orig_dir_path = _cached_original_dir_path(self.name)
-        self.stash_dir_path = _stash_dir_path(self.name)
+        self.cached_orig_dir_path = DataBase.cached_original_dir_path(self.name)
+        self.stash_dir_path = DataBase.stash_dir_path(self.name)
         if not first and os.path.exists(old_cached_orig_dir_path):
             os.rename(old_cached_orig_dir_path, self.cached_orig_dir_path)
         if not first:
@@ -639,8 +639,6 @@ class PatchData(PickeExtensibleObject):
     def is_applied(self):
         '''Is this patch applied?'''
         return self in _DB.applied_patches
-    def is_top_applied_patch(self):
-        return False if not _DB.applied_patches else (self == _DB.applied_patches[-1])
     def is_blocked_by_guard(self):
         '''Is the this patch blocked from being applied by any guards?'''
         if (self.pos_guards & _DB.selected_guards) != self.pos_guards:
@@ -673,6 +671,11 @@ class PatchData(PickeExtensibleObject):
 class DataBase(PickeExtensibleObject):
     '''Storage for an ordered sequence/series of patches'''
     NEW_FIELDS = { 'applied_patches' : None }
+    _DIR = '.darning.dbd'
+    _ORIGINALS_DIR = os.path.join(_DIR, 'orig')
+    _STASH_DIR = os.path.join(_DIR, 'stash')
+    _FILE = os.path.join(_DIR, 'database')
+    _LOCK_FILE = os.path.join(_DIR, 'lock')
     def __init__(self, description, host_scm=None):
         self.description = _tidy_text(description) if description else ''
         self.selected_guards = set()
@@ -680,22 +683,95 @@ class DataBase(PickeExtensibleObject):
         self.applied_patches = list()
         self.kept_patches = dict()
         self.host_scm = host_scm
+    @staticmethod
+    def cached_original_dir_path(patchname):
+        '''Return the path of the cached originals' directory for the given patch name'''
+        return os.path.join(DataBase._ORIGINALS_DIR, patchname)
+    @staticmethod
+    def stash_dir_path(patchname):
+        '''Return the path of the cached originals' directory for the given patch name'''
+        return os.path.join(DataBase._STASH_DIR, patchname)
+    @staticmethod
+    def exists():
+        '''Does the current directory contain a patch database?'''
+        return os.path.isfile(DataBase._FILE)
+    @staticmethod
+    def is_my_lock():
+        '''Am I the process holding the lock?'''
+        try:
+            lock_pid = open(DataBase._LOCK_FILE).read()
+        except IOError:
+            lock_pid = False
+        return lock_pid and lock_pid == str(os.getpid())
+    @staticmethod
+    def lock():
+        '''Lock the database in the given (or current) directory'''
+        try:
+            lf_fd = os.open(DataBase._LOCK_FILE, os.O_WRONLY|os.O_EXCL|os.O_CREAT, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
+        except OSError as edata:
+            if edata.errno == errno.EEXIST:
+                return False
+            else:
+                return Failure('%s: %s' % (DataBase._LOCK_FILE, edata.strerror))
+        if lf_fd == -1:
+            return Failure(_('{0}: Unable to open').format(DataBase._LOCK_FILE))
+        os.write(lf_fd, str(os.getpid()))
+        os.close(lf_fd)
+        return True
+    @staticmethod
+    def unlock():
+        '''Unock the database in the given (or current) directory'''
+        assert DataBase.is_my_lock()
+        os.remove(DataBase._LOCK_FILE)
+    def get_top_patch(self):
+        return self.applied_patches[-1] if self.applied_patches else None
+    def series_index_for_patchname(self, patchname):
+        '''Get the series index for the patch with the given name'''
+        index = 0
+        for patch in self.series:
+            if patch.name == patchname:
+                return index
+            index += 1
+        return None
+    def series_index_for_top(self):
+        '''Get the index in series of the top applied patch'''
+        return self.series.index(self.applied_patches[-1]) if len(self.applied_patches) > 0 else None
+    def series_index_for_next(self):
+        '''Get the index of the next patch to be applied'''
+        top = self.series_index_for_top()
+        index = 0 if top is None else top + 1
+        while index < len(self.series):
+            if self.series[index].is_blocked_by_guard():
+                index += 1
+                continue
+            return index
+        return None
+    def patch_fm_name(self, patchname):
+        '''Get the patch with the given name'''
+        patch_index = self.series_index_for_patchname(patchname)
+        if patch_index is not None:
+            return self.series[patch_index]
+        else:
+            return None
+    def has_patch_with_name(self, patchname):
+        return self.series_index_for_patchname(patchname) is not None
+    def is_named_patch_applied(self, patchname):
+        '''Is the named patch currently applied?'''
+        return self.patch_fm_name(patchname) in self.applied_patches
+    def insert_patch(self, patch, after=None):
+        '''Insert given patch into series after the top or nominated patch'''
+        assert is_writable()
+        assert self.series_index_for_patchname(patch.name) is None
+        if after is not None:
+            index = self.series_index_for_patchname(after) + 1
+            assert self.patches[index] not in self.applied_patches or self.applied_patches[-1] == self.patches[index]
+        else:
+            top_index = self.series_index_for_top()
+            index = top_index + 1 if top_index is not None else 0
+        self.series.insert(index, patch)
 
-_DB_DIR = '.darning.dbd'
-_ORIGINALS_DIR = os.path.join(_DB_DIR, 'orig')
-_STASH_DIR = os.path.join(_DB_DIR, 'stash')
-_DB_FILE = os.path.join(_DB_DIR, 'database')
-_DB_LOCK_FILE = os.path.join(_DB_DIR, 'lock')
 _DB = None
 _SUB_DIR = None
-
-def _cached_original_dir_path(patchname):
-    '''Return the path of the cached originals' directory for the given patch name'''
-    return os.path.join(_ORIGINALS_DIR, patchname)
-
-def _stash_dir_path(patchname):
-    '''Return the path of the cached originals' directory for the given patch name'''
-    return os.path.join(_STASH_DIR, patchname)
 
 def rel_subdir(filepath):
     return filepath if _SUB_DIR is None else os.path.relpath(filepath, _SUB_DIR)
@@ -718,7 +794,7 @@ def find_base_dir(remember_sub_dir=False):
     dirpath = os.getcwd()
     subdir_parts = []
     while True:
-        if os.path.isdir(os.path.join(dirpath, _DB_DIR)):
+        if os.path.isdir(os.path.join(dirpath, DataBase._DIR)):
             _SUB_DIR = None if not subdir_parts else os.path.join(*subdir_parts)
             return dirpath
         else:
@@ -729,82 +805,48 @@ def find_base_dir(remember_sub_dir=False):
                 subdir_parts.insert(0, basename)
     return None
 
-def exists():
-    '''Does the current directory contain a patch database?'''
-    return os.path.isfile(_DB_FILE)
-
 def is_readable():
     '''Is the database open for reading?'''
-    return exists() and _DB is not None
-
-def is_my_lock():
-    '''Am I the process holding the lock?'''
-    try:
-        lock_pid = open(_DB_LOCK_FILE).read()
-    except IOError:
-        lock_pid = False
-    return lock_pid and lock_pid == str(os.getpid())
+    return DataBase.exists() and _DB is not None
 
 def is_writable():
     '''Is the databas modifiable?'''
-    if not is_readable():
-        return False
-    return is_my_lock()
-
-def _lock_db():
-    '''Lock the database in the given (or current) directory'''
-    try:
-        lf_fd = os.open(_DB_LOCK_FILE, os.O_WRONLY|os.O_EXCL|os.O_CREAT, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
-    except OSError as edata:
-        if edata.errno == errno.EEXIST:
-            return False
-        else:
-            return Failure('%s: %s' % (_DB_LOCK_FILE, edata.strerror))
-    if lf_fd == -1:
-        return Failure(_('{0}: Unable to open').format(_DB_LOCK_FILE))
-    os.write(lf_fd, str(os.getpid()))
-    os.close(lf_fd)
-    return True
-
-def _unlock_db():
-    '''Unock the database in the given (or current) directory'''
-    assert is_my_lock()
-    os.remove(_DB_LOCK_FILE)
+    return is_readable() and DataBase.is_my_lock()
 
 def do_create_db(description):
     '''Create a patch database in the current directory?'''
     def rollback():
         '''Undo steps that were completed before failure occured'''
-        for filnm in [_DB_FILE, _DB_LOCK_FILE ]:
+        for filnm in [DataBase._FILE, DataBase._LOCK_FILE ]:
             if os.path.exists(filnm):
                 os.remove(filnm)
-        for dirnm in [_ORIGINALS_DIR, _DB_DIR]:
+        for dirnm in [DataBase._ORIGINALS_DIR, DataBase._DIR]:
             if os.path.exists(dirnm):
                 os.rmdir(dirnm)
     root = find_base_dir(remember_sub_dir=False)
     if root is not None:
         RCTX.stderr.write(_('Inside existing playground: "{0}".\n').format(os.path.relpath(root)))
         return cmd_result.ERROR
-    elif os.path.exists(_DB_DIR):
-        if os.path.exists(_ORIGINALS_DIR) and os.path.exists(_DB_FILE):
+    elif os.path.exists(DataBase._DIR):
+        if os.path.exists(DataBase._ORIGINALS_DIR) and os.path.exists(DataBase._FILE):
             RCTX.stderr.write(_('Database already exists.\n'))
         else:
             RCTX.stderr.write(_('Database directory exists.\n'))
         return cmd_result.ERROR
     try:
         dir_mode = stat.S_IRWXU|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH
-        os.mkdir(_DB_DIR, dir_mode)
-        os.mkdir(_ORIGINALS_DIR, dir_mode)
-        os.mkdir(_STASH_DIR, dir_mode)
-        lock_state = _lock_db()
+        os.mkdir(DataBase._DIR, dir_mode)
+        os.mkdir(DataBase._ORIGINALS_DIR, dir_mode)
+        os.mkdir(DataBase._STASH_DIR, dir_mode)
+        lock_state = DataBase.lock()
         assert lock_state is True
         db_obj = DataBase(description, None)
-        fobj = open(_DB_FILE, 'wb', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
+        fobj = open(DataBase._FILE, 'wb', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
         try:
             cPickle.dump(db_obj, fobj)
         finally:
             fobj.close()
-            _unlock_db()
+            DataBase.unlock()
     except OSError as edata:
         rollback()
         RCTX.stderr.write(edata.strerror)
@@ -821,23 +863,23 @@ def release_db():
     writeable = is_writable()
     _DB = None
     if writeable:
-        _unlock_db()
+        DataBase.unlock()
 
 def load_db(lock=True):
     '''Load the database for access (read only unless lock is True)'''
     global _DB
-    assert exists()
+    assert DataBase.exists()
     assert not is_readable()
     def _isdir(item):
         '''Is item a directory?'''
-        return os.path.isdir(os.path.join(_ORIGINALS_DIR, item))
+        return os.path.isdir(os.path.join(DataBase._ORIGINALS_DIR, item))
     def _generate_applied_patch_list():
         '''Get an ordered list of applied patches'''
         def isdir(item):
             '''Is item a directory?'''
-            return os.path.isdir(os.path.join(_ORIGINALS_DIR, item))
+            return os.path.isdir(os.path.join(DataBase._ORIGINALS_DIR, item))
         applied = list()
-        applied_set = set([item for item in os.listdir(_ORIGINALS_DIR) if _isdir(item)])
+        applied_set = set([item for item in os.listdir(DataBase._ORIGINALS_DIR) if _isdir(item)])
         if len(applied_set) == 0:
             return []
         for patch in _DB.series:
@@ -849,24 +891,24 @@ def load_db(lock=True):
         assert len(applied_set) == 0, 'Series/applied patches discrepency'
         return applied
     def _verify_applied_patch_list(applied):
-        '''Verify that the applied list is consistent with _ORIGINALS_DIR.'''
-        applied_set = set([item for item in os.listdir(_ORIGINALS_DIR) if _isdir(item)])
+        '''Verify that the applied list is consistent with DataBase._ORIGINALS_DIR.'''
+        applied_set = set([item for item in os.listdir(DataBase._ORIGINALS_DIR) if _isdir(item)])
         #print 'XXX:', [a.name for a in applied], applied_set
         assert len(applied_set) == len(applied), 'Series/applied patches discrepency'
         for patch in applied:
             assert patch.name in applied_set, 'Series/applied patches discrepency'
     while lock:
-        lock_state = _lock_db()
+        lock_state = DataBase.lock()
         if isinstance(lock_state, Failure):
             return lock_state
         elif lock_state is False:
             try:
-                holder = open(_DB_LOCK_FILE).read()
+                holder = open(DataBase._LOCK_FILE).read()
             except OSError as edata:
                 if edata.errno == errno.ENOENT:
                     continue
         break
-    fobj = open(_DB_FILE, 'rb')
+    fobj = open(DataBase._FILE, 'rb')
     try:
         _DB = cPickle.load(fobj)
     except Exception:
@@ -886,74 +928,51 @@ def load_db(lock=True):
 def dump_db():
     '''Dump in memory database to file'''
     assert is_writable()
-    fobj = open(_DB_FILE, 'wb')
+    fobj = open(DataBase._FILE, 'wb')
     try:
         cPickle.dump(_DB, fobj)
     finally:
         fobj.close()
 
-def get_series_index(patchname):
-    '''Get the series index for the patch with the given name'''
-    assert is_readable()
-    index = 0
-    for patch in _DB.series:
-        if patch.name == patchname:
-            return index
-        index += 1
-    return None
-
-def get_series_index_for_top():
-    '''Get the index in series of the top applied patch'''
-    assert is_readable()
-    return _DB.series.index(_DB.applied_patches[-1]) if len(_DB.applied_patches) > 0 else None
-
-def get_series_index_for_next():
-    '''Get the index of the next patch to be applied'''
-    assert is_readable()
-    top = get_series_index_for_top()
-    index = 0 if top is None else top + 1
-    while index < len(_DB.series):
-        if _DB.series[index].is_blocked_by_guard():
-            index += 1
-            continue
-        return index
-    return None
-
-def get_patch(patchname):
-    '''Get the patch with the given name'''
-    assert is_readable()
-    patch_index = get_series_index(patchname)
-    if patch_index is not None:
-        return _DB.series[patch_index]
-    else:
+# The next three functions are wrappers for common functionality in
+# modules exported functions.  They may emit output to stderr and
+# should only be used where that is a requirement.  Use DataBase
+# methods otherwise.
+def _get_patch(patchname):
+    '''Return the named patch'''
+    patch_index = _DB.series_index_for_patchname(patchname)
+    if patch_index is None:
+        RCTX.stderr.write(_('{0}: patch is NOT known.\n').format(patchname))
         return None
+    return  _DB.series[patch_index]
 
-def get_patch_series_names():
-    '''Get a list of patch names in series order (names only)'''
-    assert is_readable()
-    return [patch.name for patch in _DB.series]
+def _get_top_patch():
+    '''Return the top applied patch'''
+    top_patch = _DB.get_top_patch()
+    if top_patch is None:
+        RCTX.stderr.write(_('No patches applied.\n'))
+        return None
+    return top_patch
+
+def _get_named_or_top_patch(patchname):
+    '''Return the named or top applied patch'''
+    return _get_patch(patchname) if patchname is not None else _get_top_patch()
 
 def get_kept_patch_names():
     '''Get a list of names for patches that have been kept on removal'''
     assert is_readable()
     return [kept_patch_name for kept_patch_name in sorted(_DB.kept_patches)]
 
-def get_applied_patch_name_list():
-    '''Get an ordered list of applied patch names'''
-    assert is_readable()
-    return [patch.name for patch in _DB.applied_patches]
-
-def get_patch_series_index(patchname):
-    '''Get the index in series for the patch with the given name'''
-    assert is_readable()
-    return get_series_index(patchname)
-
-def get_patch_file_table(patchname):
+def get_patch_file_table(patchname=None):
     assert is_readable()
     if len(_DB.series) == 0:
         return []
-    index = get_series_index(patchname)
-    return _DB.series[index].get_files_table()
+    if patchname is None:
+        top_patch = _DB.get_top_patch()
+        return top_patch.get_files_table() if top_patch else []
+    else:
+        index = _DB.series_index_for_patchname(patchname)
+        return _DB.series[index].get_files_table()
 
 def get_combined_patch_file_table():
     '''Get a table of file data for all applied patches'''
@@ -986,65 +1005,34 @@ def get_combined_patch_file_table():
         table.append(fsdb.Data(filepath, FileData.Status(data.presence, data.validity), data.related_file))
     return table
 
-def patch_is_in_series(patchname):
-    '''Is there a patch with the given name in the series?'''
-    return get_patch_series_index(patchname) is not None
-
-def is_applied(patchname):
-    '''Is the named patch currently applied?'''
-    return get_patch(patchname).is_applied()
-
-def is_top_applied_patch(patchname):
+def is_top_patch(patchname):
     '''Is the named patch the top applied patch?'''
-    if not _DB.applied_patches:
-        return False
-    return _DB.applied_patches[-1].name == patchname
-
-def patch_needs_refresh(patchname):
-    '''Does the named patch need to be refreshed?'''
-    assert is_readable()
-    assert get_patch_series_index(patchname) is not None
-    return get_patch(patchname).needs_refresh()
-
-def _insert_patch(patch, after=None):
-    '''Insert given patch into series after the top or nominated patch'''
-    assert is_writable()
-    assert get_series_index(patch.name) is None
-    assert after is None or get_series_index(after) is not None
-    if after is not None:
-        assert not is_applied(after) or is_top_applied_patch(after)
-        index = get_series_index(after) + 1
-    else:
-        top_index = get_series_index_for_top()
-        index = top_index + 1 if top_index is not None else 0
-    _DB.series.insert(index, patch)
-    dump_db()
+    top_patch = _DB.get_top_patch()
+    return top_patch and top_patch.name == patchname
 
 def do_create_new_patch(patchname, description):
     '''Create a new patch with the given name and description (after the top patch)'''
     assert is_writable()
-    if get_patch_series_index(patchname) is not None:
+    if _DB.series_index_for_patchname(patchname) is not None:
         RCTX.stderr.write(_('patch "{0}" already exists.\n').format(patchname))
         return cmd_result.ERROR|cmd_result.SUGGEST_RENAME
     elif not utils.is_valid_dir_name(patchname):
         RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(patchname, utils.ALLOWED_DIR_NAME_CHARS_MSG))
         return cmd_result.ERROR|cmd_result.SUGGEST_RENAME
     patch = PatchData(patchname, description)
-    _insert_patch(patch)
+    _DB.insert_patch(patch)
     dump_db()
-    warn = top_patch_needs_refresh()
-    if warn:
-        old_top = get_top_patch_name()
-    # Ignore result of apply as it cannot fail
+    old_top = _DB.get_top_patch()
+    # Ignore result of apply as it cannot fail with no files in the patch
     do_apply_next_patch()
-    if warn:
-        RCTX.stderr.write(_('Previous top patch ("{0}") needs refreshing.\n').format(old_top))
+    if old_top and old_top.needs_refresh():
+        RCTX.stderr.write(_('Previous top patch ("{0}") needs refreshing.\n').format(old_top.name))
     return cmd_result.OK
 
 def do_rename_patch(patchname, newname):
     '''Rename an existing patch.'''
     assert is_writable()
-    if get_patch_series_index(newname) is not None:
+    if _DB.series_index_for_patchname(newname) is not None:
         RCTX.stderr.write(_('patch "{0}" already exists\n').format(newname))
         return cmd_result.ERROR|cmd_result.SUGGEST_RENAME
     elif not utils.is_valid_dir_name(newname):
@@ -1061,14 +1049,14 @@ def do_rename_patch(patchname, newname):
 def do_import_patch(epatch, patchname, overwrite=False):
     '''Import an external patch with the given name (after the top patch)'''
     assert is_writable()
-    if patch_is_in_series(patchname):
+    if _DB.has_patch_with_name(patchname):
         if not overwrite:
             RCTX.stderr.write(_('patch "{0}" already exists\n').format(patchname))
             result = cmd_result.ERROR | cmd_result.SUGGEST_RENAME
-            if not is_applied(patchname):
+            if not _DB.is_named_patch_applied(patchname):
                 result |= cmd_result.SUGGEST_FORCE
             return result
-        elif is_applied(patchname):
+        elif _DB.is_named_patch_applied(patchname):
             RCTX.stderr.write(_('patch "{0}" already exists and is applied. Cannot be overwritten.\n').format(patchname))
             return cmd_result.ERROR | cmd_result.SUGGEST_RENAME
         else:
@@ -1129,11 +1117,10 @@ def do_import_patch(epatch, patchname, overwrite=False):
             RCTX.stdout.write(_('{0}: file added to patch "{1}".\n').format(rel_subdir(old_path), patchname))
         patch.files[old_path].renamed_to = renames[old_path]
         patch.files[old_path].set_before_file_path()
-    _insert_patch(patch)
+    _DB.insert_patch(patch)
     dump_db()
-    top_patchname = get_top_patch_name()
-    if top_patchname:
-        RCTX.stdout.write(_('{0}: patch inserted after patch "{1}".\n').format(patchname, top_patchname))
+    if _DB.applied_patches:
+        RCTX.stdout.write(_('{0}: patch inserted after patch "{1}".\n').format(patchname, _DB.get_top_patch().name))
     else:
         RCTX.stdout.write(_('{0}: patch inserted at start of series.\n').format(patchname))
     return cmd_result.OK
@@ -1260,8 +1247,8 @@ def do_fold_epatch(epatch, absorb=False, force=False):
     for file_data in top_patch.files.values():
         # This is necessary because renamed files may have been overwritten
         file_data.set_before_file_path()
-    if top_patch_needs_refresh():
-        RCTX.stdout.write(_('{0}: patch needs refreshing.\n').format(top_patch.name))
+    if top_patch.needs_refresh():
+        RCTX.stdout.write(_('{0}: (top) patch needs refreshing.\n').format(top_patch.name))
     return cmd_result.OK
 
 def do_fold_named_patch(patchname, absorb=False, force=False):
@@ -1280,21 +1267,8 @@ def do_fold_named_patch(patchname, absorb=False, force=False):
         return result
     _DB.series.remove(patch)
     dump_db()
-    RCTX.stdout.write(_('"{0}": patch folded into patch "{0}".\n').format(patchname, get_top_patch_name()))
+    RCTX.stdout.write(_('"{0}": patch folded into patch "{0}".\n').format(patchname, _DB.get_top_patch().name))
     return cmd_result.OK
-
-def top_patch_needs_refresh():
-    '''Does the top applied patch need a refresh?'''
-    assert is_readable()
-    top = get_series_index_for_top()
-    if top is not None:
-        return _DB.series[top].needs_refresh()
-    return False
-
-def _get_next_patch_index():
-    '''Get the next patch to be applied'''
-    assert is_readable()
-    return get_series_index_for_next()
 
 def get_outstanding_changes_below_top():
     '''Get the data detailing unfrefreshed/uncommitted files below the
@@ -1346,7 +1320,7 @@ def get_overlap_data(filepaths, patch=None):
 
 def get_file_diff(filepath, patchname, with_timestamps=True):
     assert is_readable()
-    patch_index = get_patch_series_index(patchname)
+    patch_index = _DB.series_index_for_patchname(patchname)
     assert patch_index is not None
     patch = _DB.series[patch_index]
     assert filepath in patch.files
@@ -1516,11 +1490,11 @@ def do_apply_next_patch(absorb=False, force=False):
             RCTX.stdout.write(_('Uncommited changes incorporated.\n'))
         dump_db()
         return biggest_ecode
-    next_index = _get_next_patch_index()
+    next_index = _DB.series_index_for_next()
     if next_index is None:
-        top_patch = get_top_patch_name()
+        top_patch = _DB.get_top_patch()
         if top_patch:
-            RCTX.stderr.write(_('No pushable patches. "{0}" is on top.\n').format(top_patch))
+            RCTX.stderr.write(_('No pushable patches. "{0}" is on top.\n').format(top_patch.name))
         else:
             RCTX.stderr.write(_('No pushable patches.\n'))
         return cmd_result.ERROR
@@ -1598,41 +1572,31 @@ def do_apply_next_patch(absorb=False, force=False):
     RCTX.stdout.write(_('Patch "{0}" is now on top.\n').format(next_patch.name))
     return cmd_result.ERROR if biggest_ecode > 1 else cmd_result.OK
 
-def get_top_applied_patch_for_file(filepath):
+def get_applied_patch_count():
+    return len(_DB.applied_patches)
+
+def get_top_patch_for_file(filepath):
     assert is_readable()
     for applied_patch in reversed(_DB.applied_patches):
         if filepath in applied_patch.files:
             return applied_patch.name
     return None
 
-def _get_top_patch():
-    '''Return the top applied patch'''
-    assert is_readable()
-    if not _DB.applied_patches:
-        RCTX.stderr.write(_('No patches applied.\n'))
-        return None
-    return _DB.applied_patches[-1]
-
-def get_top_patch_name():
-    '''Return the name of the top applied patch'''
-    assert is_readable()
-    return None if not _DB.applied_patches else _DB.applied_patches[-1].name
-
 def is_blocked_by_guard(patchname):
     '''Is the named patch blocked from being applied by any guards?'''
     assert is_readable()
-    assert get_patch_series_index(patchname) is not None
-    return get_patch(patchname).is_blocked_by_guard()
+    assert _DB.series_index_for_patchname(patchname) is not None
+    return _DB.patch_fm_name(patchname).is_blocked_by_guard()
 
 def is_pushable():
     '''Is there a pushable patch?'''
     assert is_readable()
-    return _get_next_patch_index() is not None
+    return _DB.series_index_for_next() is not None
 
 def is_patch_pushable(patchname):
     '''Is the named patch pushable?'''
     assert is_readable()
-    return get_patch(patchname).is_pushable()
+    return _DB.patch_fm_name(patchname).is_pushable()
 
 def do_unapply_top_patch():
     '''Unapply the top applied patch'''
@@ -1662,11 +1626,11 @@ def do_unapply_top_patch():
     shutil.rmtree(top_patch.cached_orig_dir_path)
     _DB.applied_patches.remove(top_patch)
     dump_db()
-    new_top_patch_name = get_top_patch_name()
-    if new_top_patch_name is None:
+    new_top_patch= _DB.get_top_patch()
+    if new_top_patch is None:
         RCTX.stdout.write(_('There are now no patches applied.\n'))
     else:
-         RCTX.stdout.write(_('Patch "{0}" is now on top.\n').format(new_top_patch_name))
+         RCTX.stdout.write(_('Patch "{0}" is now on top.\n').format(new_top_patch.name))
     return cmd_result.OK
 
 def get_filepaths_in_patch(patchname, filepaths=None):
@@ -1676,7 +1640,7 @@ def get_filepaths_in_patch(patchname, filepaths=None):
     are also in filepaths.
     '''
     assert is_readable()
-    patch_index = get_patch_series_index(patchname) if patchname else get_series_index_for_top()
+    patch_index = _DB.series_index_for_patchname(patchname) if patchname else _DB.series_index_for_top()
     assert patch_index is not None
     return _DB.series[patch_index].get_filepaths(filepaths)
 
@@ -1687,21 +1651,12 @@ def get_filepaths_in_next_patch(filepaths=None):
     are also in filepaths.
     '''
     assert is_readable()
-    patch_index = _get_next_patch_index()
+    patch_index = _DB.series_index_for_next()
     assert patch_index is not None
     return _DB.series[patch_index].get_filepaths(filepaths)
 
-def _get_patch(patchname):
-    patch_index = get_patch_series_index(patchname)
-    if patch_index is None:
-        RCTX.stderr.write(_('{0}: patch is NOT known.\n').format(patchname))
-        return None
-    return  _DB.series[patch_index]
-
-def _get_named_or_top_patch(patchname):
-    return _get_patch(patchname) if patchname is not None else _get_top_patch()
-
-def get_patch_name(arg):
+def get_named_or_top_patch_name(arg):
+    '''Return the name of the named or top patch if arg is None or None if arg is not a valid patchname'''
     patch = _get_named_or_top_patch(arg)
     return None if patch is None else patch.name
 
@@ -1899,7 +1854,7 @@ def do_duplicate_patch(patchname, as_patchname, newdescription):
         RCTX.stderr.write(_('{0}: patch needs refresh.\n').format(patch.name))
         RCTX.stderr.write(_('Aborted.\n'))
         return cmd_result.ERROR_SUGGEST_REFRESH
-    if patch_is_in_series(as_patchname):
+    if _DB.has_patch_with_name(as_patchname):
         RCTX.stderr.write(_('{0}: patch already in series.\n').format(as_patchname))
         RCTX.stderr.write(_('Aborted.\n'))
         return cmd_result.ERROR | cmd_result.SUGGEST_RENAME
@@ -1909,7 +1864,7 @@ def do_duplicate_patch(patchname, as_patchname, newdescription):
     newpatch = copy.deepcopy(patch)
     newpatch.set_name(as_patchname)
     newpatch.description = _tidy_text(newdescription)
-    _insert_patch(newpatch)
+    _DB.insert_patch(newpatch)
     dump_db()
     RCTX.stdout.write(_('{0}: patch duplicated as "{1}"\n').format(patch.name, as_patchname))
     return cmd_result.OK
@@ -1974,7 +1929,7 @@ def do_restore_patch(patchname, as_patchname):
     if not patchname in _DB.kept_patches:
         RCTX.stderr.write(_('{0}: is NOT available for restoration\n').format(patchname))
         return cmd_result.ERROR|cmd_result.SUGGEST_RENAME
-    if patch_is_in_series(as_patchname):
+    if _DB.has_patch_with_name(as_patchname):
         RCTX.stderr.write(_('{0}: Already exists in database\n').format(as_patchname))
         return cmd_result.ERROR|cmd_result.SUGGEST_RENAME
     elif not utils.is_valid_dir_name(as_patchname):
@@ -1983,7 +1938,7 @@ def do_restore_patch(patchname, as_patchname):
     patch = _DB.kept_patches[patchname]
     if as_patchname:
         patch.set_name(as_patchname)
-    _insert_patch(patch)
+    _DB.insert_patch(patch)
     del _DB.kept_patches[patchname]
     dump_db()
     return cmd_result.OK
@@ -2013,7 +1968,7 @@ def do_set_patch_description(patchname, text):
 
 def get_patch_description(patchname):
     assert is_readable()
-    patch_index = get_patch_series_index(patchname)
+    patch_index = _DB.series_index_for_patchname(patchname)
     assert patch_index is not None
     return _DB.series[patch_index].description
 
@@ -2043,7 +1998,7 @@ def get_selected_guards():
 
 def get_patch_guards(patchname):
     assert is_readable()
-    patch_index = get_patch_series_index(patchname)
+    patch_index = _DB.series_index_for_patchname(patchname)
     assert patch_index is not None
     patch_data = _DB.series[patch_index]
     return PatchData.Guards(positive=patch_data.pos_guards, negative=patch_data.neg_guards)
@@ -2089,8 +2044,8 @@ def do_select_guards(guards):
 
 def get_extdiff_files_for(filepath, patchname):
     assert is_readable()
-    assert is_applied(patchname)
-    patch =  _DB.series[get_patch_series_index(patchname)]
+    assert _DB.is_named_patch_applied(patchname)
+    patch =  _DB.series[_DB.series_index_for_patchname(patchname)]
     assert filepath in patch.files
     assert patch.get_overlapping_patch_for_path(filepath) is None
     before = patch.files[filepath].before_file_path
@@ -2132,7 +2087,7 @@ class TextPatch(patchlib.Patch):
 
 def get_textpatch(patchname, with_timestamps=True):
     assert is_readable()
-    patch_index = get_patch_series_index(patchname)
+    patch_index = _DB.series_index_for_patchname(patchname)
     assert patch_index is not None
     patch = _DB.series[patch_index]
     return TextPatch(patch, with_timestamps=with_timestamps)
@@ -2181,6 +2136,6 @@ class CombinedTextPatch(patchlib.Patch):
 
 def get_combined_textpatch(with_timestamps=True):
     assert is_readable()
-    if get_series_index_for_top() is None:
+    if _DB.series_index_for_top() is None:
         return None
     return CombinedTextPatch(with_timestamps=with_timestamps)

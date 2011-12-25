@@ -73,7 +73,7 @@ def do_initialization(description):
     return cmd_result.Result(eflags, RCTX.message)
 
 def get_in_progress():
-    return patch_db.is_readable() and patch_db.get_top_patch_name() is not None
+    return patch_db.is_readable() and patch_db.get_applied_patch_count() > 0
 
 def get_all_patches_data():
     if not patch_db.is_readable():
@@ -127,9 +127,7 @@ class FileDb(fsdb.GenFileDb):
 def get_file_db(patch=None):
     if not patch_db.is_readable():
         return fsdb.NullFileDb()
-    if patch is None:
-        patch = patch_db.get_top_patch_name()
-    return fsdb.NullFileDb() if patch is None else FileDb(patch_db.get_patch_file_table(patch))
+    return FileDb(patch_db.get_patch_file_table(patch))
 
 def get_combined_patch_file_db():
     if not patch_db.is_readable():
@@ -426,7 +424,7 @@ def is_poppable():
 def is_top_applied_patch(patchname):
     if not patch_db.is_readable():
         return False
-    return patch_db.is_top_applied_patch(patchname)
+    return patch_db.is_top_patch(patchname)
 
 def is_blocked_by_guard(patchname):
     if not patch_db.is_readable():

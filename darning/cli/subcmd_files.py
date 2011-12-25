@@ -62,7 +62,7 @@ def run_files(args):
     '''Execute the "files" sub command using the supplied args'''
     db_utils.open_db(modifiable=True)
     db_utils.set_report_context(verbose=True)
-    patchname = patch_db.get_patch_name(args.patchname)
+    patchname = patch_db.get_named_or_top_patch_name(args.patchname)
     if patchname is None:
         return cmd_result.ERROR
     if args.opt_combined:
