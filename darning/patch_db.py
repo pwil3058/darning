@@ -558,12 +558,12 @@ class PatchData(PickeExtensibleObject):
         '''Return the applied patch above me (if any) which contains this file'''
         assert is_readable()
         try:
-            index = _APPLIED_PATCHES.index(self) + 1
+            index = _DB.applied_patches.index(self) + 1
         except ValueError:
             return None
-        while index < len(_APPLIED_PATCHES):
-            if filepath in _APPLIED_PATCHES[index].files:
-                return _APPLIED_PATCHES[index]
+        while index < len(_DB.applied_patches):
+            if filepath in _DB.applied_patches[index].files:
+                return _DB.applied_patches[index]
             index += 1
         return None
     def do_drop_file(self, filepath):
@@ -638,9 +638,9 @@ class PatchData(PickeExtensibleObject):
         return PatchTable.Row(name=self.name, state=state, pos_guards=self.pos_guards, neg_guards=self.neg_guards)
     def is_applied(self):
         '''Is this patch applied?'''
-        return self in _APPLIED_PATCHES
+        return self in _DB.applied_patches
     def is_top_applied_patch(self):
-        return False if not _APPLIED_PATCHES else (self == _APPLIED_PATCHES[-1])
+        return False if not _DB.applied_patches else (self == _DB.applied_patches[-1])
     def is_blocked_by_guard(self):
         '''Is the this patch blocked from being applied by any guards?'''
         if (self.pos_guards & _DB.selected_guards) != self.pos_guards:
@@ -672,10 +672,12 @@ class PatchData(PickeExtensibleObject):
 
 class DataBase(PickeExtensibleObject):
     '''Storage for an ordered sequence/series of patches'''
+    NEW_FIELDS = { 'applied_patches' : None }
     def __init__(self, description, host_scm=None):
         self.description = _tidy_text(description) if description else ''
         self.selected_guards = set()
         self.series = list()
+        self.applied_patches = list()
         self.kept_patches = dict()
         self.host_scm = host_scm
 
@@ -686,7 +688,6 @@ _DB_FILE = os.path.join(_DB_DIR, 'database')
 _DB_LOCK_FILE = os.path.join(_DB_DIR, 'lock')
 _DB = None
 _SUB_DIR = None
-_APPLIED_PATCHES = None
 
 def _cached_original_dir_path(patchname):
     '''Return the path of the cached originals' directory for the given patch name'''
@@ -817,26 +818,26 @@ def release_db():
     '''Release access to the database'''
     assert is_readable()
     global _DB
-    global _APPLIED_PATCHES
     writeable = is_writable()
     _DB = None
-    _APPLIED_PATCHES = None
     if writeable:
         _unlock_db()
 
 def load_db(lock=True):
     '''Load the database for access (read only unless lock is True)'''
     global _DB
-    global _APPLIED_PATCHES
     assert exists()
     assert not is_readable()
+    def _isdir(item):
+        '''Is item a directory?'''
+        return os.path.isdir(os.path.join(_ORIGINALS_DIR, item))
     def _generate_applied_patch_list():
         '''Get an ordered list of applied patches'''
         def isdir(item):
             '''Is item a directory?'''
             return os.path.isdir(os.path.join(_ORIGINALS_DIR, item))
         applied = list()
-        applied_set = set([item for item in os.listdir(_ORIGINALS_DIR) if isdir(item)])
+        applied_set = set([item for item in os.listdir(_ORIGINALS_DIR) if _isdir(item)])
         if len(applied_set) == 0:
             return []
         for patch in _DB.series:
@@ -847,6 +848,13 @@ def load_db(lock=True):
                     break
         assert len(applied_set) == 0, 'Series/applied patches discrepency'
         return applied
+    def _verify_applied_patch_list(applied):
+        '''Verify that the applied list is consistent with _ORIGINALS_DIR.'''
+        applied_set = set([item for item in os.listdir(_ORIGINALS_DIR) if _isdir(item)])
+        #print 'XXX:', [a.name for a in applied], applied_set
+        assert len(applied_set) == len(applied), 'Series/applied patches discrepency'
+        for patch in applied:
+            assert patch.name in applied_set, 'Series/applied patches discrepency'
     while lock:
         lock_state = _lock_db()
         if isinstance(lock_state, Failure):
@@ -869,7 +877,10 @@ def load_db(lock=True):
         fobj.close()
     if lock and lock_state is not True:
         return Failure(_('Database is read only. Lock held by: {0}').format(holder))
-    _APPLIED_PATCHES = _generate_applied_patch_list()
+    if _DB.applied_patches is None:
+        _DB.applied_patches = _generate_applied_patch_list()
+    else:
+        _verify_applied_patch_list(_DB.applied_patches)
     return True
 
 def dump_db():
@@ -894,7 +905,7 @@ def get_series_index(patchname):
 def get_series_index_for_top():
     '''Get the index in series of the top applied patch'''
     assert is_readable()
-    return _DB.series.index(_APPLIED_PATCHES[-1]) if len(_APPLIED_PATCHES) > 0 else None
+    return _DB.series.index(_DB.applied_patches[-1]) if len(_DB.applied_patches) > 0 else None
 
 def get_series_index_for_next():
     '''Get the index of the next patch to be applied'''
@@ -930,7 +941,7 @@ def get_kept_patch_names():
 def get_applied_patch_name_list():
     '''Get an ordered list of applied patch names'''
     assert is_readable()
-    return [patch.name for patch in _APPLIED_PATCHES]
+    return [patch.name for patch in _DB.applied_patches]
 
 def get_patch_series_index(patchname):
     '''Get the index in series for the patch with the given name'''
@@ -953,10 +964,10 @@ def get_combined_patch_file_table():
             self.validity = validity
             self.related_file = related_file
     assert is_readable()
-    if len(_APPLIED_PATCHES) == 0:
+    if len(_DB.applied_patches) == 0:
         return []
     file_map = {}
-    for patch in _APPLIED_PATCHES:
+    for patch in _DB.applied_patches:
         for fde in patch.files.values():
             if fde.needs_refresh():
                 if fde.has_unresolved_merges():
@@ -985,9 +996,9 @@ def is_applied(patchname):
 
 def is_top_applied_patch(patchname):
     '''Is the named patch the top applied patch?'''
-    if not _APPLIED_PATCHES:
+    if not _DB.applied_patches:
         return False
-    return _APPLIED_PATCHES[-1].name == patchname
+    return _DB.applied_patches[-1].name == patchname
 
 def patch_needs_refresh(patchname):
     '''Does the named patch need to be refreshed?'''
@@ -1290,12 +1301,12 @@ def get_outstanding_changes_below_top():
     top patch.  I.e. outstanding changes.
     '''
     assert is_readable()
-    if not _APPLIED_PATCHES:
+    if not _DB.applied_patches:
         return OverlapData()
-    top_patch = _APPLIED_PATCHES[-1]
+    top_patch = _DB.applied_patches[-1]
     skip_set = set([filepath for filepath in top_patch.files])
     unrefreshed = {}
-    for applied_patch in reversed(_APPLIED_PATCHES[:-1]):
+    for applied_patch in reversed(_DB.applied_patches[:-1]):
         apfiles = applied_patch.get_filepaths()
         if apfiles:
             apfiles_set = set(apfiles) - skip_set
@@ -1316,7 +1327,7 @@ def get_overlap_data(filepaths, patch=None):
     assert patch is None or patch.is_applied()
     if not filepaths:
         return OverlapData()
-    applied_patches = _APPLIED_PATCHES if patch is None else _APPLIED_PATCHES[:_APPLIED_PATCHES.index(patch)]
+    applied_patches = _DB.applied_patches if patch is None else _DB.applied_patches[:_DB.applied_patches.index(patch)]
     uncommitted = set(scm_ifce.get_files_with_uncommitted_changes(filepaths))
     remaining_files = set(filepaths)
     unrefreshed = {}
@@ -1368,7 +1379,7 @@ def get_diff_for_files(filepaths, patchname, with_timestamps=True):
 def get_file_combined_diff(filepath, with_timestamps=True):
     assert is_readable()
     patch = None
-    for applied_patch in _APPLIED_PATCHES:
+    for applied_patch in _DB.applied_patches:
         if filepath in applied_patch.files:
             patch = applied_patch
             break
@@ -1383,7 +1394,7 @@ def get_combined_diff_for_files(filepaths, with_timestamps=True):
         prepend_subdir(filepaths)
         for filepath in filepaths:
             found = False
-            for applied_patch in _APPLIED_PATCHES:
+            for applied_patch in _DB.applied_patches:
                 if filepath in applied_patch.files:
                     file_list.append(applied_patch.files[filepath])
                     found = True
@@ -1395,7 +1406,7 @@ def get_combined_diff_for_files(filepaths, with_timestamps=True):
             return False
     else:
         file_set = set()
-        for applied_patch in _APPLIED_PATCHES:
+        for applied_patch in _DB.applied_patches:
             for filepath in sorted(applied_patch.files):
                 if filepath in file_set:
                     continue
@@ -1522,8 +1533,9 @@ def do_apply_next_patch(absorb=False, force=False):
         if not absorb and len(overlaps):
             return overlaps.report_and_abort()
     os.mkdir(next_patch.cached_orig_dir_path)
-    _APPLIED_PATCHES.append(next_patch)
+    _DB.applied_patches.append(next_patch)
     if len(next_patch.files) == 0:
+    	dump_db()
         return cmd_result.OK
     drop_atws = options.get('push', 'drop_added_tws')
     copies = []
@@ -1573,6 +1585,7 @@ def do_apply_next_patch(absorb=False, force=False):
                 os.chmod(file_data.path, file_data.before_mode)
             except OSError as edata:
                 RCTX.stderr.write(edata)
+    dump_db()
     # and finally apply any patches
     for file_data in next_patch.files.values():
         if file_data in creates:
@@ -1587,7 +1600,7 @@ def do_apply_next_patch(absorb=False, force=False):
 
 def get_top_applied_patch_for_file(filepath):
     assert is_readable()
-    for applied_patch in reversed(_APPLIED_PATCHES):
+    for applied_patch in reversed(_DB.applied_patches):
         if filepath in applied_patch.files:
             return applied_patch.name
     return None
@@ -1595,15 +1608,15 @@ def get_top_applied_patch_for_file(filepath):
 def _get_top_patch():
     '''Return the top applied patch'''
     assert is_readable()
-    if not _APPLIED_PATCHES:
+    if not _DB.applied_patches:
         RCTX.stderr.write(_('No patches applied.\n'))
         return None
-    return _APPLIED_PATCHES[-1]
+    return _DB.applied_patches[-1]
 
 def get_top_patch_name():
     '''Return the name of the top applied patch'''
     assert is_readable()
-    return None if not _APPLIED_PATCHES else _APPLIED_PATCHES[-1].name
+    return None if not _DB.applied_patches else _DB.applied_patches[-1].name
 
 def is_blocked_by_guard(patchname):
     '''Is the named patch blocked from being applied by any guards?'''
@@ -1647,7 +1660,8 @@ def do_unapply_top_patch():
                 if aws_lines:
                     RCTX.stderr.write(_('"{0}": adds trailing white space to "{1}" at line(s) {{{2}}}.\n').format(top_patch.name, rel_subdir(file_data.path), ', '.join([str(line) for line in aws_lines])))
     shutil.rmtree(top_patch.cached_orig_dir_path)
-    _APPLIED_PATCHES.remove(top_patch)
+    _DB.applied_patches.remove(top_patch)
+    dump_db()
     new_top_patch_name = get_top_patch_name()
     if new_top_patch_name is None:
         RCTX.stdout.write(_('There are now no patches applied.\n'))
@@ -1904,10 +1918,10 @@ def do_refresh_overlapped_files(file_list):
     '''Refresh any files in the list which are in an applied patch
     (within the topmost such patch).'''
     assert is_writable()
-    assert len(_APPLIED_PATCHES) > 0
+    assert len(_DB.applied_patches) > 0
     file_set = set(file_list)
     eflags = 0
-    for applied_patch in reversed(_APPLIED_PATCHES):
+    for applied_patch in reversed(_DB.applied_patches):
         for file_data in applied_patch.files.values():
             if file_data.path in file_set:
                 eflags |= file_data.do_refresh(quiet=False)
@@ -2153,7 +2167,7 @@ class CombinedTextPatch(patchlib.Patch):
         patchlib.Patch.__init__(self, num_strip_levels=1)
         description = ''
         file_first_patch = {}
-        for applied_patch in _APPLIED_PATCHES:
+        for applied_patch in _DB.applied_patches:
             description += applied_patch.description
             for filepath in applied_patch.files:
                 if filepath not in file_first_patch:
