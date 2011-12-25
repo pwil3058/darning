@@ -21,7 +21,9 @@ $ mkfile file1
 $ mkfile file2
 < file two
 $ mkfile file3
-< file two
+< file three
+$ mkfile file4
+< file four
 
 Initialiaze a playground, create some patches and add the files to the patches
 $ darn init
@@ -41,7 +43,7 @@ $ patch -e file3
 <.
 $ darn refresh
 $ darn new second
-$ darn add file1 file2 file3 nonexistent > /dev/null
+$ darn add file1 file2 file3 file4 nonexistent > /dev/null
 $ patch -e file1
 < a
 < second change
@@ -54,7 +56,40 @@ $ patch -e file3
 < a
 < second change
 <.
+$ patch -e file4
+< a
+< second change
+<.
 $ darn refresh
+$ darn diff --notimestamp
+> diff --git a/file1 b/file1
+> --- a/file1
+> +++ b/file1
+> @@ -1,2 +1,3 @@
+>  file one
+>  first change
+> +second change
+> diff --git a/file2 b/file2
+> --- a/file2
+> +++ b/file2
+> @@ -1,2 +1,3 @@
+>  file two
+>  first change
+> +second change
+> diff --git a/file3 b/file3
+> --- a/file3
+> +++ b/file3
+> @@ -1,2 +1,3 @@
+>  file three
+>  first change
+> +second change
+> diff --git a/file4 b/file4
+> --- a/file4
+> +++ b/file4
+> @@ -1 +1,2 @@
+>  file four
+> +second change
+> diff --git a/nonexistent b/nonexistent
 $ darn new third
 $ darn add file1 file2 file3 nonexistent > /dev/null
 $ patch -e file1
@@ -76,26 +111,47 @@ $ darn series
 > +: third
 
 Now test dropping files from an applied but non top patches
-$ darn drop -P second file2 file3
-> file2: file dropped from patch "second".
-> file3: file dropped from patch "second".
+$ darn drop -P second file2 file3 file4
+! file2: file overlapped by patch "third": ignored.
+! file3: file overlapped by patch "third": ignored.
+> file4: file dropped from patch "second".
 $ darn files second
 >  :+: file1
+>  :+: file2
+>  :+: file3
 > +:+: nonexistent
 $ ls .darning.dbd/orig/second
 > file1
+> file2
+> file3
 $ ls .darning.dbd/stash/second
 > file1
+> file2
+> file3
 $ darn series
 > +: first
 > +: second
-> ?: third
+> +: third
 $ darn diff --notimestamp -P second
 > diff --git a/file1 b/file1
 > --- a/file1
 > +++ b/file1
 > @@ -1,2 +1,3 @@
 >  file one
+>  first change
+> +second change
+> diff --git a/file2 b/file2
+> --- a/file2
+> +++ b/file2
+> @@ -1,2 +1,3 @@
+>  file two
+>  first change
+> +second change
+> diff --git a/file3 b/file3
+> --- a/file3
+> +++ b/file3
+> @@ -1,2 +1,3 @@
+>  file three
 >  first change
 > +second change
 > diff --git a/nonexistent b/nonexistent
@@ -111,34 +167,41 @@ $ darn diff --notimestamp
 > diff --git a/file2 b/file2
 > --- a/file2
 > +++ b/file2
-> @@ -1,2 +1,4 @@
+> @@ -1,3 +1,4 @@
 >  file two
 >  first change
-> +second change
+>  second change
 > +third change
 > diff --git a/file3 b/file3
 > --- a/file3
 > +++ b/file3
-> @@ -1,2 +1,4 @@
->  file two
+> @@ -1,3 +1,4 @@
+>  file three
 >  first change
-> +second change
+>  second change
 > +third change
 > diff --git a/nonexistent b/nonexistent
 
-Now test dropping nonexistent file
+Now test dropping nonexistent overlapped file
 $ darn drop -P second nonexistent
-> nonexistent: file dropped from patch "second".
+! nonexistent: file overlapped by patch "third": ignored.
 $ darn files second
 >  :+: file1
+>  :+: file2
+>  :+: file3
+> +:+: nonexistent
 $ ls .darning.dbd/orig/second
 > file1
+> file2
+> file3
 $ ls .darning.dbd/stash/second
 > file1
+> file2
+> file3
 $ darn series
 > +: first
 > +: second
-> ?: third
+> +: third
 
 Now test dropping a file from an unapplied patch
 $ darn refresh
@@ -161,3 +224,11 @@ $ ls .darning.dbd/orig/
 $ ls .darning.dbd/stash/third
 > file2
 > file3
+
+Now test dropping nonexistent non overlapped file
+$ darn drop -P second nonexistent
+> nonexistent: file dropped from patch "second".
+$ darn files second
+>  :+: file1
+>  :+: file2
+>  :+: file3

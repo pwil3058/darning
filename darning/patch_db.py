@@ -360,14 +360,7 @@ class FileData(PickeExtensibleObject):
         '''Return the applied patch (if any) which overlaps the this file'''
         assert is_readable()
         assert self.patch.is_applied()
-        after = False
-        for apatch in _APPLIED_PATCHES:
-            if after:
-                if self.path in apatch.files:
-                    return apatch
-            else:
-                after = apatch.name == self.patch.name
-        return None
+        return self.patch.get_overlapping_patch_for_path(self.path)
     @property
     def related_file(self):
         if self.came_from_path:
@@ -559,10 +552,23 @@ class PatchData(PickeExtensibleObject):
     def generate_cached_original_path(self, filepath):
         '''Return the path of the cached original for the given file path'''
         return os.path.join(self.cached_orig_dir_path, filepath)
+    def get_overlapping_patch_for_path(self, filepath):
+        '''Return the applied patch above me (if any) which contains this file'''
+        assert is_readable()
+        try:
+            index = _APPLIED_PATCHES.index(self) + 1
+        except ValueError:
+            return None
+        while index < len(_APPLIED_PATCHES):
+            if filepath in _APPLIED_PATCHES[index].files:
+                return _APPLIED_PATCHES[index]
+            index += 1
+        return None
     def do_drop_file(self, filepath):
         '''Drop the named file from this patch'''
         assert is_writable()
         assert filepath in self.files
+        assert self.get_overlapping_patch_for_path(filepath) is None
         renamed_from = self.files[filepath].came_from_path if self.files[filepath].came_as_rename else None
         self.files[filepath].do_delete_stash()
         if not self.is_applied():
@@ -573,24 +579,11 @@ class PatchData(PickeExtensibleObject):
                 self.files[renamed_from].reset_renamed_to(None)
             return
         corig_f_path = self.files[filepath].cached_orig_path
-        overlapped_by = self.files[filepath].get_overlapping_patch()
-        if overlapped_by is None:
-            if os.path.exists(filepath):
-                os.remove(filepath)
-            if os.path.exists(corig_f_path):
-                os.chmod(corig_f_path, self.files[filepath].orig_mode)
-                shutil.move(corig_f_path, filepath)
-        else:
-            overlapping_corig_f_path = overlapped_by.files[filepath].cached_orig_path
-            if os.path.exists(corig_f_path):
-                shutil.move(corig_f_path, overlapping_corig_f_path)
-                overlapped_by.files[filepath].before_mode = self.files[filepath].before_mode
-            else:
-                if os.path.exists(overlapping_corig_f_path):
-                    os.remove(overlapping_corig_f_path)
-                overlapped_by.files[filepath].before_mode = None
-            # Make sure that the overlapping file gets refreshed
-            overlapped_by.files[filepath].after_hash = False
+        if os.path.exists(filepath):
+            os.remove(filepath)
+        if os.path.exists(corig_f_path):
+            os.chmod(corig_f_path, self.files[filepath].orig_mode)
+            shutil.move(corig_f_path, filepath)
         renamed_to = self.files[filepath].renamed_to
         renamed_from = self.files[filepath].came_from_path if self.files[filepath].came_as_rename else None
         del self.files[filepath]
@@ -1889,8 +1882,12 @@ def do_drop_files_fm_patch(patchname, filepaths):
     prepend_subdir(filepaths)
     for filepath in filepaths:
         if filepath in patch.files:
-            patch.do_drop_file(filepath)
-            RCTX.stdout.write(_('{0}: file dropped from patch "{1}".\n').format(rel_subdir(filepath), patch.name))
+            overlapped_by = patch.get_overlapping_patch_for_path(filepath)
+            if overlapped_by:
+                RCTX.stderr.write(_('{0}: file overlapped by patch "{1}": ignored.\n').format(rel_subdir(filepath), overlapped_by.name))
+            else:
+                patch.do_drop_file(filepath)
+                RCTX.stdout.write(_('{0}: file dropped from patch "{1}".\n').format(rel_subdir(filepath), patch.name))
         elif os.path.isdir(filepath):
             RCTX.stderr.write(_('{0}: is a directory: ignored.\n').format(rel_subdir(filepath)))
         else:
@@ -2100,7 +2097,7 @@ def get_extdiff_files_for(filepath, patchname):
     assert is_applied(patchname)
     patch =  _DB.series[get_patch_series_index(patchname)]
     assert filepath in patch.files
-    assert patch.files[filepath].get_overlapping_patch() is None
+    assert patch.get_overlapping_patch_for_path(filepath) is None
     before = patch.files[filepath].before_file_path
     return _O_IP_PAIR(original_version=before, patched_version=filepath)
 
