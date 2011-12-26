@@ -688,7 +688,7 @@ class PatchData(PickeExtensibleObject):
         for file_data in self.files.values():
             if file_data.came_from_path == filepath:
                 assert file_data.came_as_rename == False
-                file_data.before_file_path = filepath
+                file_data.set_before_file_path()
         dump_db()
         if renamed_from is not None:
             self.files[renamed_from].reset_renamed_to(None)
@@ -1351,15 +1351,12 @@ def do_fold_epatch(epatch, absorb=False, force=False):
     # Do any copying
     for diff_plus in copies:
         filepath = diff_plus.get_file_path(epatch.num_strip_levels)
-        file_data = top_patch.files.get(filepath, None)
-        assert file_data is not None
-        copied_file_data = top_patch.files.get(file_data.came_from_path, None)
-        if copied_file_data is None:
-            file_data.before_file_path = file_data.came_from_path
-            file_data.before_mode = utils.get_mode_for_file(file_data.came_from_path)
+        file_data = top_patch.files[filepath]
+        file_data.set_before_file_path()
+        if file_data.came_from_path in self.patch.files:
+            file_data.before_mode = top_patch.files[file_data.came_from_path].orig_mode
         else:
-            file_data.before_file_path = copied_file_data.cached_orig_path
-            file_data.before_mode = copied_file_data.orig_mode
+            file_data.before_mode = utils.get_mode_for_file(file_data.came_from_path)
         if not os.path.exists(file_data.before_file_path):
             RCTX.stderr.write(_('{0}: failed to copy {1}.\n').format(rel_subdir(file_data.path), rel_subdir(file_data.came_from_path)))
         else:
@@ -1371,11 +1368,10 @@ def do_fold_epatch(epatch, absorb=False, force=False):
     # Do any renaming
     for diff_plus in renames:
         filepath = diff_plus.get_file_path(epatch.num_strip_levels)
-        file_data = top_patch.files.get(filepath, None)
-        assert file_data is not None
+        file_data = top_patch.files[filepath]
         renamed_file_data = top_patch.files.get(file_data.came_from_path, None)
+        file_data.set_before_file_path()
         file_data.before_mode = renamed_file_data.orig_mode
-        file_data.before_file_path = renamed_file_data.cached_orig_path
         renamed_file_data.renamed_to = file_data.path
         if not os.path.exists(file_data.before_file_path):
             RCTX.stderr.write(_('{0}: failed to rename {1}.\n').format(rel_subdir(file_data.path), rel_subdir(file_data.came_from_path)))
