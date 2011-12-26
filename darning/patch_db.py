@@ -276,6 +276,17 @@ class FileData(GenericFileData):
             self.before_file_path = '/dev/null'
         else:
             self.before_file_path = self.cached_orig_path
+    def set_before_mode(self):
+        # came_from has precedence over renamed_to
+        if self.came_from_path is None:
+            if self.renamed_to is None:
+                self.before_mode = self.orig_mode
+            else:
+                self.before_mode = None
+        elif self.came_from_path in self.patch.files:
+            self.before_mode = self.patch.files[self.came_from_path].orig_mode
+        else:
+            self.before_mode = utils.get_mode_for_file(self.before_file_path)
     def reset_reference_paths(self):
         # have this as a function to make patch renaming easier
         self.cached_orig_path = self.patch.generate_cached_original_path(self.path)
@@ -284,30 +295,14 @@ class FileData(GenericFileData):
     def reset_renamed_to(self, renamed_to):
         self.renamed_to = renamed_to
         self.reset_reference_paths()
-        if self.renamed_to is None:
-            if self.came_from_path is None:
-                self.before_mode = self.orig_mode
-            elif self.came_from_path in self.patch.files:
-                self.before_mode = self.patch.files[self.came_from_path].orig_mode
-            else:
-                self.before_mode = utils.get_mode_for_file(self.before_file_path)
-        elif self.renamed_to == self.came_from_path:
-            # This may be too specific (added to handle file name swap)
-            self.before_mode = self.patch.files[self.came_from_path].orig_mode
-        else:
-            self.before_mode = None
+        self.set_before_mode()
         if self.patch.is_applied():
             self.do_refresh()
     def reset_came_from(self, came_from_path, came_as_rename):
         self.came_from_path = came_from_path
         self.came_as_rename = came_as_rename
         self.reset_reference_paths()
-        if self.came_from_path is None:
-            self.before_mode = self.orig_mode
-        elif self.came_from_path in self.patch.files:
-            self.before_mode = self.patch.files[self.came_from_path].orig_mode
-        else:
-            self.before_mode = utils.get_mode_for_file(self.before_file_path)
+        self.set_before_mode()
         if self.patch.is_applied():
             self.do_refresh()
     def do_stash_current(self, overlapping_patch):
@@ -1353,10 +1348,7 @@ def do_fold_epatch(epatch, absorb=False, force=False):
         filepath = diff_plus.get_file_path(epatch.num_strip_levels)
         file_data = top_patch.files[filepath]
         file_data.set_before_file_path()
-        if file_data.came_from_path in self.patch.files:
-            file_data.before_mode = top_patch.files[file_data.came_from_path].orig_mode
-        else:
-            file_data.before_mode = utils.get_mode_for_file(file_data.came_from_path)
+        file_data.set_before_mode()
         if not os.path.exists(file_data.before_file_path):
             RCTX.stderr.write(_('{0}: failed to copy {1}.\n').format(rel_subdir(file_data.path), rel_subdir(file_data.came_from_path)))
         else:
@@ -1371,7 +1363,7 @@ def do_fold_epatch(epatch, absorb=False, force=False):
         file_data = top_patch.files[filepath]
         renamed_file_data = top_patch.files.get(file_data.came_from_path, None)
         file_data.set_before_file_path()
-        file_data.before_mode = renamed_file_data.orig_mode
+        file_data.set_before_mode()
         renamed_file_data.renamed_to = file_data.path
         if not os.path.exists(file_data.before_file_path):
             RCTX.stderr.write(_('{0}: failed to rename {1}.\n').format(rel_subdir(file_data.path), rel_subdir(file_data.came_from_path)))
@@ -1705,11 +1697,9 @@ def do_apply_next_patch(absorb=False, force=False):
                 renames.append(file_data)
             else:
                 copies.append(file_data)
-        elif os.path.exists(file_data.path):
-            file_data.before_mode = file_data.orig_mode
-        else:
+        elif not os.path.exists(file_data.path):
             creates.append(file_data)
-            file_data.before_mode = None
+        file_data.set_before_mode()
         _DB.add_to_combined_patch(file_data)
     biggest_ecode = 0
     # Next do the files that are created by this patch as they may have been copied
@@ -1717,11 +1707,6 @@ def do_apply_next_patch(absorb=False, force=False):
         biggest_ecode = _apply_file_data_patch(file_data, biggest_ecode)
     # Now do the copying
     for file_data in copies:
-        copied_file_data = next_patch.files.get(file_data.came_from_path, None)
-        if copied_file_data is not None:
-            file_data.before_mode = copied_file_data.orig_mode
-        else:
-            file_data.before_mode = utils.get_mode_for_file(file_data.before_file_path)
         if not os.path.exists(file_data.before_file_path):
             RCTX.stderr.write(_('{0}: failed to copy {1}.\n').format(rel_subdir(file_data.path), rel_subdir(file_data.came_from_path)))
         else:
@@ -1736,7 +1721,6 @@ def do_apply_next_patch(absorb=False, force=False):
         if not os.path.exists(next_patch.files[file_data.came_from_path].cached_orig_path):
             RCTX.stderr.write(_('{0}: failed to rename {1} (not found).\n').format(rel_subdir(file_data.path), rel_subdir(file_data.came_from_path)))
         else:
-            file_data.before_mode = next_patch.files[file_data.came_from_path].orig_mode
             try:
                 shutil.copy2(file_data.before_file_path, file_data.path)
                 os.chmod(file_data.path, file_data.before_mode)
