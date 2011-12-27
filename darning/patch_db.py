@@ -648,9 +648,14 @@ class PatchData(PickeExtensibleObject):
         self.files[file_data.path] = file_data
         if self.is_applied():
             _DB.add_to_combined_patch(file_data)
+        for cf_fd in [fd for fd in self.files.values() if fd.came_from_path == file_data.path]:
+            cf_fd.set_before_file_path()
     def drop_file(self, filepath):
-        _DB.drop_fm_combined_patch(filepath)
+        if self.is_applied():
+            _DB.drop_fm_combined_patch(filepath)
         del self.files[filepath]
+        for cf_fd in [fd for fd in self.files.values() if fd.came_from_path == filepath]:
+            cf_fd.set_before_file_path()
     def do_drop_file(self, filepath):
         '''Drop the named file from this patch'''
         assert is_writable()
@@ -659,10 +664,10 @@ class PatchData(PickeExtensibleObject):
         self.files[filepath].do_delete_stash()
         if not self.is_applied():
             # not much to do here
-            del self.files[filepath]
-            dump_db()
+            self.drop_file(filepath)
             if renamed_from is not None:
                 self.files[renamed_from].reset_renamed_to(None)
+            dump_db()
             return
         assert _DB.applied_patches[-1] == self
         corig_f_path = self.files[filepath].cached_orig_path
@@ -680,10 +685,6 @@ class PatchData(PickeExtensibleObject):
             self.files[renamed_to].reset_came_from(filepath, False)
         if renamed_from is not None and renamed_from in self.files:
             self.files[renamed_from].reset_renamed_to(None)
-        for file_data in self.files.values():
-            if file_data.came_from_path == filepath:
-                assert file_data.came_as_rename == False
-                file_data.set_before_file_path()
         dump_db()
         if renamed_from is not None:
             self.files[renamed_from].reset_renamed_to(None)

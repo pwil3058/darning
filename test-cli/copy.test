@@ -426,26 +426,34 @@ $ darn diff --notimestamp
 $ darn files
 > +:+: file1.copy <<- file1
 
+Bug #3465707
 Test copying an untracked file and then adding the original
-#$ darn refresh
-#$ darn new third
-#$ darn copy dir5/file1 dir5/file1.copy
-#$ darn_test_tree modify dir5/file1.copy
-#$ darn add dir5/file1
-#$ darn_test_tree modify dir5/file1
-#$ darn refresh
-#$ darn diff --notimestamp
-#> diff --git a/dir5/file1 b/dir5/file1
-#> --- a/dir5/file1
-#> +++ b/dir5/file1
-#> @@ -1 +1,2 @@
-#>  dir5/file1: is a text file.
-#> +Patch: "third"; Path: "dir5/file1"
-#> diff --git a/dir5/file1 b/dir5/file1.copy
-#> copy from dir5/file1
-#> copy to dir5/file1.copy
-#> --- a/dir5/file1.copy
-#> +++ b/dir5/file1.copy
-#> @@ -1 +1,2 @@
-#>  dir5/file1: is a text file.
-#> +Patch: "third"; Path: "dir5/file1.copy"
+$ darn refresh
+$ darn new third
+$ darn copy dir5/file1 dir5/file1.copy
+> dir5/file1: file copied to "dir5/file1.copy" in patch "third".
+$ darn_test_tree modify dir5/file1.copy
+$ darn add dir5/file1
+> dir5/file1: file added to patch "third".
+$ darn_test_tree modify dir5/file1
+$ darn refresh
+$ darn diff --notimestamp
+> diff --git a/dir5/file1 b/dir5/file1
+> --- a/dir5/file1
+> +++ b/dir5/file1
+> @@ -1 +1,2 @@
+>  dir5/file1: is a text file.
+> +Patch: "third"; Path: "dir5/file1"
+> diff --git a/dir5/file1 b/dir5/file1.copy
+> copy from dir5/file1
+> copy to dir5/file1.copy
+> --- a/dir5/file1.copy
+> +++ b/dir5/file1.copy
+> @@ -1 +1,2 @@
+>  dir5/file1: is a text file.
+> +Patch: "third"; Path: "dir5/file1.copy"
+$ darn pop > /dev/null
+$ darn push
+> Patching file "dir5/file1.copy".
+> Patching file "dir5/file1".
+> Patch "third" is now on top.
