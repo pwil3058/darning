@@ -34,6 +34,7 @@ class View(gtk.TreeView):
         @classmethod
         def col_index(cls, label):
             return cls.Row._fields.index(label)
+        @classmethod
         def col_indices(cls, labels):
             return [cls.Row._fields.index(label) for label in labels]
         def get_values(self, model_iter, cols):
@@ -77,7 +78,7 @@ class View(gtk.TreeView):
                 else:
                     model_iter = self.iter_next(model_iter)
             return None
-        template = None
+    template = None
     def __init__(self, model=None):
         if model is None:
             model = self.Model()
