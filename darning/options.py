@@ -106,3 +106,13 @@ def get(section, oname):
 
 define('user', 'name', Defn(str, None, _('User\'s display name e.g. Fred Bloggs')))
 define('user', 'email', Defn(str, None, _('User\'s email address e.g. fred@bloggs.com')))
+
+define('pop', 'drop_added_tws', Defn(str_to_bool, True, _('Remove added trailing white space (TWS) from patch after pop')))
+define('push', 'drop_added_tws', Defn(str_to_bool, True, _('Remove added trailing white space (TWS) from patch before push')))
+define('remove', 'keep_patch_backup', Defn(str_to_bool, True, _('Keep back up copies of removed patches.  Facilitates restoration at a later time.')))
+
+define('diff', 'extdiff', Defn(str, None, _('The name of external application for viewing diffs')))
+
+define('reconcile', 'tool', Defn(str, 'meld', _('The name of external application for reconciling conflicts')))
+
+define('export', 'replace_spc_in_name_with', Defn(str, None, _('Character to replace spaces in patch names with during export')))

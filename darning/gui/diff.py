@@ -289,8 +289,6 @@ class CombinedForFileDialog(dialogue.AmodalDialog):
     def _close_cb(self, dialog, response_id):
         dialog.destroy()
 
-options.define('diff', 'extdiff', options.Defn(str, None, _('The name of external application for viewing diffs')))
-
 def launch_external_diff(file_a, file_b):
     extdiff = options.get('diff', 'extdiff')
     if not extdiff:
@@ -300,8 +298,6 @@ def launch_external_diff(file_a, file_b):
     except OSError as edata:
         return cmd_result.Result(cmd_result.ERROR, _('Error lanuching external viewer "{0}": {1}\n').format(extdiff, edata.strerror))
     return cmd_result.Result(cmd_result.OK, '')
-
-options.define('reconcile', 'tool', options.Defn(str, 'meld', _('The name of external application for reconciling conflicts')))
 
 def launch_reconciliation_tool(file_a, file_b, file_c):
     reconciler = options.get('reconcile', 'tool')

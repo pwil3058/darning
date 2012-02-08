@@ -43,10 +43,6 @@ from darning import options
 from darning import gitbase85
 from darning import gitdelta
 
-options.define('pop', 'drop_added_tws', options.Defn(options.str_to_bool, True, _('Remove added trailing white space (TWS) from patch after pop')))
-options.define('push', 'drop_added_tws', options.Defn(options.str_to_bool, True, _('Remove added trailing white space (TWS) from patch before push')))
-options.define('remove', 'keep_patch_backup', options.Defn(options.str_to_bool, True, _('Keep back up copies of removed patches.  Facilitates restoration at a later time.')))
-
 # A convenience tuple for sending an original and patched version of something
 _O_IP_PAIR = collections.namedtuple('_O_IP_PAIR', ['original_version', 'patched_version'])
 # A convenience tuple for sending original, patched and stashed versions of something

@@ -131,8 +131,6 @@ def ensure_file_dir_exists(filepath):
     if not os.path.exists(file_dir):
         os.makedirs(file_dir)
 
-options.define('export', 'replace_spc_in_name_with', options.Defn(str, None, _('Character to replace spaces in patch names with during export')))
-
 def convert_patchname_to_filename(patchname):
     repl = options.get('export', 'replace_spc_in_name_with')
     if isinstance(repl, str):
