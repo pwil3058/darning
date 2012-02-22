@@ -67,3 +67,98 @@ $ darn push
 > Patching file "file1".
 > Patching file "file4".
 > Patch "patch1" is now on top.
+$ darn refresh
+$ darn pop
+> There are now no patches applied.
+
+
+Create a context patch file
+$ mkfile patch2
+< diff a/file1 b/file1
+< *** a/file1
+< --- b/file1
+< ***************
+< *** 1,2 ****
+<   file1: is a text file.
+< ! No Patches Applied; Path: "file1"
+< \ No newline at end of file
+< --- 1,2 ----
+<   file1: is a text file.
+< ! No Patches Applied; Path: "file1"Patch: "first"; Path: "file1"
+< diff a/file2 b/file2
+< *** a/file2
+< --- b/file2
+< ***************
+< *** 1,2 ****
+<   file2: is a text file.
+< ! No Patches Applied; Path: "file2"
+< \ No newline at end of file
+< --- 1,2 ----
+<   file2: is a text file.
+< ! No Patches Applied; Path: "file2"Patch: "first"; Path: "file2"
+< \ No newline at end of file
+< diff a/file3 b/file3
+< *** a/file3
+< --- b/file3
+< ***************
+< *** 1,1 ****
+<   file3: is a text file.
+< --- 1,2 ----
+<   file3: is a text file.
+< + Patch: "first"; Path: "file3"
+< diff a/file4 b/file4
+< *** a/file4
+< --- b/file4
+< ***************
+< *** 1,1 ****
+<   file4: is a text file.
+< --- 1,2 ----
+<   file4: is a text file.
+< + Patch: "first"; Path: "file4"
+< \ No newline at end of file
+
+$ darn import -p 1 patch2
+> file1: file added to patch "patch2".
+> file2: file added to patch "patch2".
+> file3: file added to patch "patch2".
+> file4: file added to patch "patch2".
+> patch2: patch inserted at start of series.
+> Imported "patch2" as patch "patch2".
+$ darn push
+> Patching file "file3".
+> Patching file "file2".
+> Patching file "file1".
+> Patching file "file4".
+> Patch "patch2" is now on top.
+$ darn refresh
+$ darn diff --notimestamps
+> diff --git a/file1 b/file1
+> --- a/file1
+> +++ b/file1
+> @@ -1,2 +1,2 @@
+>  file1: is a text file.
+> -No Patches Applied; Path: "file1"
+> \ No newline at end of file
+> +No Patches Applied; Path: "file1"Patch: "first"; Path: "file1"
+> diff --git a/file2 b/file2
+> --- a/file2
+> +++ b/file2
+> @@ -1,2 +1,2 @@
+>  file2: is a text file.
+> -No Patches Applied; Path: "file2"
+> \ No newline at end of file
+> +No Patches Applied; Path: "file2"Patch: "first"; Path: "file2"
+> \ No newline at end of file
+> diff --git a/file3 b/file3
+> --- a/file3
+> +++ b/file3
+> @@ -1 +1,2 @@
+>  file3: is a text file.
+> +Patch: "first"; Path: "file3"
+> diff --git a/file4 b/file4
+> --- a/file4
+> +++ b/file4
+> @@ -1 +1,2 @@
+>  file4: is a text file.
+> +Patch: "first"; Path: "file4"
+> \ No newline at end of file

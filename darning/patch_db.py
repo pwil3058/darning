@@ -218,7 +218,14 @@ class GenericFileData(PickeExtensibleObject):
             return BinaryDiff(fm_contents, to_contents)
         diffgen = difflib.unified_diff(fm_contents.splitlines(True), to_contents.splitlines(True),
             fromfile=fm_name_label, tofile=to_name_label, fromfiledate=fm_time_stamp, tofiledate=to_time_stamp)
-        return patchlib.Diff.parse_lines(list(diffgen))
+        diff_lines = list()
+        for diff_line in diffgen:
+            if diff_line.endswith((os.linesep, '\n')):
+                diff_lines.append(diff_line)
+            else:
+                diff_lines.append(diff_line + '\n')
+                diff_lines.append('\ No newline at end of file\n')
+        return patchlib.Diff.parse_lines(diff_lines)
 
 class FileData(GenericFileData):
     '''Change data for a single file'''

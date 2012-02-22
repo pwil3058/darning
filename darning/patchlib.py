@@ -686,8 +686,10 @@ class UnifiedDiff(Diff):
                 elif lines[index].startswith(' '):
                     before_count += 1
                     after_count += 1
-                else:
+                elif not lines[index].startswith('\\'):
                     raise ParseError(_('Unexpected end of unified diff hunk.'), index)
+                index += 1
+            if index < len(lines) and lines[index].startswith('\\'):
                 index += 1
         except IndexError:
             raise ParseError(_('Unexpected end of patch text.'))
@@ -793,15 +795,21 @@ class ContextDiff(Diff):
                 before_count += 1
                 index += 1
             if after_chunk is None:
+                if lines[index].startswith('\ '):
+                    before_count += 1
+                    index += 1
                 after_start_index = index
                 after_chunk, index = ContextDiff._get_after_chunk_at(lines, index)
                 if after_chunk is None:
                     raise ParseError(_('Failed to find context diff "after" hunk.'), index)
             while after_count < after_chunk.length:
-                if not (lines[index].startswith('! ') or lines[index].startswith('+ ') or lines[index].startswith('  ')):
+                if not lines[index].startswith(('! ', '+ ', '  ')):
                     if after_count == 0:
                         break
                     raise ParseError(_('Unexpected end of context diff hunk.'), index)
+                after_count += 1
+                index += 1
+            if lines[index].startswith('\ '):
                 after_count += 1
                 index += 1
         except IndexError:
