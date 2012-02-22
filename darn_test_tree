@@ -73,6 +73,13 @@ MODIFY_PARSER = SUB_CMD_PARSER.add_parser(
 )
 
 MODIFY_PARSER.add_argument(
+    '--no_newline',
+    dest='opt_no_newline',
+    action='store_true',
+    help=_('suppress the newline at the end of the change(s).'),
+)
+
+MODIFY_PARSER.add_argument(
     'filepaths',
     metavar=_('file'),
     nargs='*',
@@ -84,10 +91,11 @@ def modify_cmd(args):
     db_utils.open_db(modifiable=False)
     db_utils.set_report_context(verbose=False)
     top_patch_name = patch_db.get_named_or_top_patch_name(None)
+    ending = '' if args.opt_no_newline else '\n'
     if top_patch_name is None:
-        template = 'No Patches Applied; Path: "{0}"\n'
+        template = 'No Patches Applied; Path: "{{0}}"{0}'.format(ending)
     else:
-        template = 'Patch: "{0}"; Path: "{{0}}"\n'.format(top_patch_name)
+        template = 'Patch: "{0}"; Path: "{{0}}"{1}'.format(top_patch_name, ending)
     if not args.filepaths:
         pass # TODO: generate list of all files in dir (exclude .darning.dbd)
     for filepath in args.filepaths:
