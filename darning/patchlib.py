@@ -918,7 +918,7 @@ class DiffPlus(object):
     def __init__(self, preambles=None, diff=None, trailing_junk=None):
         self.preambles = preambles if isinstance(preambles, Preambles) else Preambles(preambles)
         self.diff = diff
-        self.trailing_junk = _Lines()
+        self.trailing_junk = _Lines(trailing_junk)
         if DEBUG:
             assert isinstance(self.preambles, Preambles) and (self.diff is None or isinstance(self.diff, Diff))
     def __str__(self):
