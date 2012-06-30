@@ -80,7 +80,7 @@ def define(section, oname, odefn):
     if not section in DEFINITIONS:
         DEFINITIONS[section] = {oname: odefn,}
     elif oname in DEFINITIONS[section]:
-        raise DuplicateDefn('{0}:{1} already defined'.format(section, name))
+        raise DuplicateDefn('{0}:{1} already defined'.format(section, oname))
     else:
         DEFINITIONS[section][oname] = odefn
 
