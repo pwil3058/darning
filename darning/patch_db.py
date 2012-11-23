@@ -370,7 +370,7 @@ class FileData(GenericFileData):
             self.orig_mode = None
     def get_reconciliation_paths(self):
         assert is_readable()
-        assert self.patch == _DB.top_patch
+        assert self.patch == _DB.get_top_patch()
         # make it hard for the user to (accidentally) create these files if they don't exist
         before = self.before_file_path if os.path.exists(self.before_file_path) else '/dev/null'
         stashed = self.stashed_path if os.path.exists(self.stashed_path) else '/dev/null'
@@ -478,7 +478,7 @@ class FileData(GenericFileData):
     def get_diff_plus(self, old_combined=False, as_refreshed=False, with_timestamps=True):
         assert is_readable()
         assert not (old_combined and as_refreshed)
-        overlapping_patch = None if old_combined else self.get_overlapping_patch()
+        overlapping_patch = None if (old_combined or not self.patch.is_applied()) else self.get_overlapping_patch()
         preamble = self.generate_diff_preamble(overlapping_patch=overlapping_patch, old_combined=old_combined)
         if self.patch.is_applied() and not as_refreshed:
             diff = self.generate_diff(overlapping_patch=overlapping_patch, old_combined=old_combined, with_timestamps=with_timestamps)
