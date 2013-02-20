@@ -192,7 +192,7 @@ class GenericFileData(PickeExtensibleObject):
             hash_line += ' {0:07o}\n'.format(after_mode) if self.before_mode == after_mode else '\n'
             lines.append(hash_line)
         return patchlib.Preamble.parse_lines(lines)
-    def _generate_diff(self, fm_file, to_file, with_timestamps=True):
+    def _generate_diff(self, fm_file, to_file, with_timestamps=False):
         fm_exists = os.path.exists(fm_file)
         if os.path.exists(to_file):
             to_name_label = os.path.join('b' if fm_exists else 'a', self.path)
@@ -204,7 +204,7 @@ class GenericFileData(PickeExtensibleObject):
             to_time_stamp = _PTS_ZERO if with_timestamps else None
             to_contents = ''
         if fm_exists:
-            fm_name_label = os.path.join('a', self.path)
+            fm_name_label = os.path.join('a', self.came_from_path if self.came_from_path else self.path)
             fm_time_stamp = _pts_for_path(fm_file) if with_timestamps else None
             with open(fm_file, 'rb') as fobj:
                 fm_contents = fobj.read()
@@ -468,14 +468,14 @@ class FileData(GenericFileData):
             after_mode = self.after_mode
             after_hash = self.after_hash
         return self._generate_diff_preamble(after_mode, after_hash, old_combined=old_combined)
-    def generate_diff(self, overlapping_patch, old_combined=False, with_timestamps=True):
+    def generate_diff(self, overlapping_patch, old_combined=False, with_timestamps=False):
         assert is_readable()
         assert self.patch.is_applied()
         assert overlapping_patch is None or not old_combined
         to_file = self.path if overlapping_patch is None else overlapping_patch.files[self.path].cached_orig_path
         fm_file = self.cached_orig_path if old_combined else self.before_file_path
         return self._generate_diff(fm_file, to_file, with_timestamps=with_timestamps)
-    def get_diff_plus(self, old_combined=False, as_refreshed=False, with_timestamps=True):
+    def get_diff_plus(self, old_combined=False, as_refreshed=False, with_timestamps=False):
         assert is_readable()
         assert not (old_combined and as_refreshed)
         overlapping_patch = None if (old_combined or not self.patch.is_applied()) else self.get_overlapping_patch()
@@ -488,7 +488,7 @@ class FileData(GenericFileData):
         if not old_combined and self.renamed_to and self.after_mode is None:
             diff_plus.trailing_junk.append(_('# Renamed to: {0}\n').format(self.renamed_to))
         return diff_plus
-    def do_refresh(self, quiet=True, with_timestamps=True):
+    def do_refresh(self, quiet=True, with_timestamps=False):
         '''Refresh the named file in this patch'''
         assert is_writable()
         assert self.patch.is_applied()
@@ -557,12 +557,12 @@ class CombinedFileData(GenericFileData):
             after_mode = self.before_mode if self.renamed_to else None
             after_hash = None
         return self._generate_diff_preamble(after_mode, after_hash)
-    def generate_diff(self, with_timestamps=True):
+    def generate_diff(self, with_timestamps=False):
         assert is_readable()
         to_file = self.path
         fm_file = self.cached_orig_path
         return self._generate_diff(fm_file, to_file, with_timestamps=with_timestamps)
-    def get_diff_plus(self, with_timestamps=True):
+    def get_diff_plus(self, with_timestamps=False):
         assert is_readable()
         assert not self.was_ephemeral()
         preamble = self.generate_diff_preamble()
@@ -1456,7 +1456,7 @@ def get_overlap_data(filepaths, patch=None):
                     unrefreshed[apfile] = applied_patch
     return OverlapData(unrefreshed=unrefreshed, uncommitted=uncommitted)
 
-def get_file_diff(filepath, patchname, with_timestamps=True):
+def get_file_diff(filepath, patchname, with_timestamps=False):
     assert is_readable()
     patch_index = _DB.series_index_for_patchname(patchname)
     assert patch_index is not None
@@ -1464,7 +1464,7 @@ def get_file_diff(filepath, patchname, with_timestamps=True):
     assert filepath in patch.files
     return patch.files[filepath].get_diff_plus(with_timestamps=with_timestamps)
 
-def get_diff_for_files(filepaths, patchname, with_timestamps=True):
+def get_diff_for_files(filepaths, patchname, with_timestamps=False):
     assert is_readable()
     patch = _get_named_or_top_patch(patchname)
     if patch is None:
@@ -1488,7 +1488,7 @@ def get_diff_for_files(filepaths, patchname, with_timestamps=True):
         diff += str(file_data.get_diff_plus(with_timestamps=with_timestamps))
     return diff
 
-def get_file_combined_diff_old(filepath, with_timestamps=True):
+def get_file_combined_diff_old(filepath, with_timestamps=False):
     assert is_readable()
     patch = None
     for applied_patch in _DB.applied_patches:
@@ -1498,7 +1498,7 @@ def get_file_combined_diff_old(filepath, with_timestamps=True):
     assert patch is not None
     return patch.files[filepath].get_diff_plus(combined=True, with_timestamps=with_timestamps)
 
-def get_file_combined_diff(filepath, with_timestamps=True):
+def get_file_combined_diff(filepath, with_timestamps=False):
     assert is_readable()
     if _DB.combined_patch is False:
         # Still using old DB
@@ -1507,7 +1507,7 @@ def get_file_combined_diff(filepath, with_timestamps=True):
         return None
     return _DB.combined_patch.files[filepath].get_diff_plus(with_timestamps=with_timestamps)
 
-def get_combined_diff_for_files_old(filepaths, with_timestamps=True):
+def get_combined_diff_for_files_old(filepaths, with_timestamps=False):
     assert is_readable()
     file_list = []
     if filepaths:
@@ -1538,7 +1538,7 @@ def get_combined_diff_for_files_old(filepaths, with_timestamps=True):
         diff += str(file_data.get_diff_plus(combined=True, with_timestamps=with_timestamps))
     return diff
 
-def get_combined_diff_for_files(filepaths, with_timestamps=True):
+def get_combined_diff_for_files(filepaths, with_timestamps=False):
     assert is_readable()
     if _DB.combined_patch is False:
         # Still using old DB
@@ -2230,13 +2230,13 @@ def get_reconciliation_paths(filepath):
     return top_patch.files[filepath].get_reconciliation_paths()
 
 class TextDiffPlus(patchlib.DiffPlus):
-    def __init__(self, file_data, with_timestamps=True):
+    def __init__(self, file_data, with_timestamps=False):
         diff_plus = file_data.get_diff_plus(as_refreshed=True, with_timestamps=with_timestamps)
         patchlib.DiffPlus.__init__(self, preambles=diff_plus.preambles, diff=diff_plus.diff)
         self.validity = file_data.get_validity()
 
 class TextPatch(patchlib.Patch):
-    def __init__(self, patch, with_timestamps=True):
+    def __init__(self, patch, with_timestamps=False):
         patchlib.Patch.__init__(self, num_strip_levels=1)
         self.source_name = patch.name
         self.state = PatchState.APPLIED_REFRESHED if patch.is_applied() else PatchState.UNAPPLIED
@@ -2255,14 +2255,14 @@ class TextPatch(patchlib.Patch):
                 self.state = PatchState.APPLIED_UNREFRESHABLE
         self.set_header_diffstat(strip_level=self.num_strip_levels)
 
-def get_textpatch(patchname, with_timestamps=True):
+def get_textpatch(patchname, with_timestamps=False):
     assert is_readable()
     patch_index = _DB.series_index_for_patchname(patchname)
     assert patch_index is not None
     patch = _DB.series[patch_index]
     return TextPatch(patch, with_timestamps=with_timestamps)
 
-def do_export_patch_as(patchname, export_filename, force=False, overwrite=False, with_timestamps=True):
+def do_export_patch_as(patchname, export_filename, force=False, overwrite=False, with_timestamps=False):
     assert is_writable()
     patch = _get_named_or_top_patch(patchname)
     if not patch:
@@ -2288,7 +2288,7 @@ def do_export_patch_as(patchname, export_filename, force=False, overwrite=False,
     return cmd_result.OK
 
 class CombinedTextPatch(patchlib.Patch):
-    def __init__(self, with_timestamps=True):
+    def __init__(self, with_timestamps=False):
         patchlib.Patch.__init__(self, num_strip_levels=1)
         if _DB.combined_patch is False:
             # Still using old DB
@@ -2315,7 +2315,7 @@ class CombinedTextPatch(patchlib.Patch):
                 self.diff_pluses.append(file_data.get_diff_plus(with_timestamps=with_timestamps))
             self.set_header_diffstat(strip_level=self.num_strip_levels)
 
-def get_combined_textpatch(with_timestamps=True):
+def get_combined_textpatch(with_timestamps=False):
     assert is_readable()
     if _DB.series_index_for_top() is None:
         return None
