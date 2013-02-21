@@ -22,7 +22,7 @@ $ darn new first --descr "First patch"
 $ darn add binary1 dir1/binary1 dir2/binary1 dir2/subdir1/binary1 > /dev/null
 $ darn_test_tree modify binary1 dir1/binary1 dir2/binary1 dir2/subdir1/binary1
 $ darn refresh
-$ darn diff --notimestamps
+$ darn diff
 > diff --git a/binary1 b/binary1
 > index 21172b42b3158210ce66f1ad674a8dc5bd82ac06..bc6019fed77d07ea61df25ae3e5b2c8353f06a21 0100664
 > GIT binary patch
@@ -59,17 +59,17 @@ $ darn diff --notimestamps
 > delta 4
 > Lc$^E>n4kdw0~i4|
 > 
-$ darn diff --notimestamps > first.diff
+$ darn diff > first.diff
 
 $ darn new second --descr "Second patch"
 $ darn add binary1 dir1/binary1 dir2/binary1 dir2/subdir1/binary1 > /dev/null
 $ darn_test_tree modify binary1 dir1/binary1 dir2/binary1 dir2/subdir1/binary1
-$ darn diff --notimestamps -P first > first.diff-1
+$ darn diff -P first > first.diff-1
 $ diff first.diff first.diff-1
 $ darn refresh
-$ darn diff --notimestamps -P first > first.diff-2
+$ darn diff -P first > first.diff-2
 $ diff first.diff first.diff-2
-$ darn diff --notimestamps
+$ darn diff
 > diff --git a/binary1 b/binary1
 > index bc6019fed77d07ea61df25ae3e5b2c8353f06a21..9d2a53fd08aa9664b6f6b588e3c666c1583b8ffe 0100664
 > GIT binary patch
@@ -106,8 +106,8 @@ $ darn diff --notimestamps
 > delta 5
 > Mc${ly44n`P00j&IzW@LL
 > 
-$ darn diff --notimestamps > second.diff
-$ darn diff --notimestamps --combined
+$ darn diff > second.diff
+$ darn diff --combined
 > diff --git a/binary1 b/binary1
 > index 21172b42b3158210ce66f1ad674a8dc5bd82ac06..9d2a53fd08aa9664b6f6b588e3c666c1583b8ffe 0100664
 > GIT binary patch
@@ -149,7 +149,7 @@ $ darn diff --notimestamps --combined
 $ diff -q first.diff second.diff
 ? 1
 > Files first.diff and second.diff differ
-$ darn diff --notimestamps --combined > combined.diff
+$ darn diff --combined > combined.diff
 $ diff -q first.diff combined.diff
 ? 1
 > Files first.diff and combined.diff differ
@@ -158,7 +158,7 @@ $ diff -q second.diff combined.diff
 > Files second.diff and combined.diff differ
 
 Now check for individual files
-$ darn diff --notimestamps dir1/binary1
+$ darn diff dir1/binary1
 > diff --git a/dir1/binary1 b/dir1/binary1
 > index b2dd93b4af097f9fa23b13e85dd872dbf329eb94..65ab209b67bd4be8699172f8e717a07e48cc49a9 0100664
 > GIT binary patch
@@ -168,7 +168,7 @@ $ darn diff --notimestamps dir1/binary1
 > delta 4
 > Lc$~|2o!|-p1LOgQ
 >
-$ darn diff --notimestamps --combined dir1/binary1
+$ darn diff --combined dir1/binary1
 > diff --git a/dir1/binary1 b/dir1/binary1
 > index 91dc798f94f5d73a83ef2cfa2818c5c32a901bc3..65ab209b67bd4be8699172f8e717a07e48cc49a9 0100664
 > GIT binary patch
@@ -179,7 +179,7 @@ $ darn diff --notimestamps --combined dir1/binary1
 > delta 4
 > Lc$~{tn4kav15g1x
 > 
-$ darn diff --notimestamps dir1/binary1 binary1
+$ darn diff dir1/binary1 binary1
 > diff --git a/dir1/binary1 b/dir1/binary1
 > index b2dd93b4af097f9fa23b13e85dd872dbf329eb94..65ab209b67bd4be8699172f8e717a07e48cc49a9 0100664
 > GIT binary patch
@@ -198,7 +198,7 @@ $ darn diff --notimestamps dir1/binary1 binary1
 > delta 4
 > Lc$|x|o?s0C1AqZz
 > 
-$ darn diff --notimestamps --combined dir1/binary1 binary1
+$ darn diff --combined dir1/binary1 binary1
 > diff --git a/dir1/binary1 b/dir1/binary1
 > index 91dc798f94f5d73a83ef2cfa2818c5c32a901bc3..65ab209b67bd4be8699172f8e717a07e48cc49a9 0100664
 > GIT binary patch
@@ -221,7 +221,7 @@ $ darn diff --notimestamps --combined dir1/binary1 binary1
 
 And make sure it works in a sub directory
 $ cd dir2
-$ darn diff --notimestamps binary1 subdir1/binary1
+$ darn diff binary1 subdir1/binary1
 > diff --git a/dir2/binary1 b/dir2/binary1
 > index aa06105d7495f53f674cbd3355abda73ca1c47d9..0224b2bd00f9a28a3e71b2f431b8f3361a557219 0100664
 > GIT binary patch

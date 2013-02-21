@@ -99,7 +99,7 @@ $ darn files
 >  :+: dir2/file1
 >  :+: dir2/subdir1/file1
 >  :+: file1
-$ darn diff --notimestamps
+$ darn diff
 > diff --git a/dir1/file1 b/dir1/file1
 > --- a/dir1/file1
 > +++ b/dir1/file1
@@ -150,7 +150,7 @@ $ darn files
 >  :+: dir2/file1
 >  :+: dir2/subdir1/file1
 >  :+: file1
-$ darn diff --notimestamps
+$ darn diff
 > diff --git a/dir1/file1 b/dir1/file1
 > --- a/dir1/file1
 > +++ b/dir1/file1
@@ -179,7 +179,7 @@ $ darn diff --notimestamps
 >  file1: is a text file.
 >  Patch: "patch1"; Path: "file1"
 > +Patch: "patch2"; Path: "file1"
-$ darn diff --notimestamps --combined
+$ darn diff --combined
 > diff --git a/dir1/file1 b/dir1/file1
 > --- a/dir1/file1
 > +++ b/dir1/file1

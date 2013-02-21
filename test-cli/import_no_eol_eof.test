@@ -131,7 +131,7 @@ $ darn push
 > Patching file "file4".
 > Patch "patch2" is now on top.
 $ darn refresh
-$ darn diff --notimestamps
+$ darn diff
 > diff --git a/file1 b/file1
 > --- a/file1
 > +++ b/file1

@@ -43,7 +43,7 @@ $ darn files --combined
 >  :+: dir2/file1
 >  :+: dir2/subdir1/file1
 >  :+: file1
-$ darn diff --notimestamps
+$ darn diff
 > diff --git a/dir1/file1 b/dir1/file1
 > --- a/dir1/file1
 > +++ b/dir1/file1
@@ -68,7 +68,7 @@ $ darn diff --notimestamps
 > @@ -1 +1,2 @@
 >  file1: is a text file.
 > +Patch: "first"; Path: "file1"
-$ darn diff --notimestamps > first.diff
+$ darn diff > first.diff
 
 $ darn new second --descr "Second patch"
 $ darn add file1 dir1/file1 dir2/file1 dir2/subdir1/file1 > /dev/null
@@ -78,12 +78,12 @@ $ darn files --combined
 >  :+: dir2/subdir1/file1
 >  :+: file1
 $ darn_test_tree modify file1 dir1/file1 dir2/file1 dir2/subdir1/file1
-$ darn diff --notimestamps -P first > first.diff-1
+$ darn diff -P first > first.diff-1
 $ diff first.diff first.diff-1
 $ darn refresh
-$ darn diff --notimestamps -P first > first.diff-2
+$ darn diff -P first > first.diff-2
 $ diff first.diff first.diff-2
-$ darn diff --notimestamps
+$ darn diff
 > diff --git a/dir1/file1 b/dir1/file1
 > --- a/dir1/file1
 > +++ b/dir1/file1
@@ -112,8 +112,8 @@ $ darn diff --notimestamps
 >  file1: is a text file.
 >  Patch: "first"; Path: "file1"
 > +Patch: "second"; Path: "file1"
-$ darn diff --notimestamps > second.diff
-$ darn diff --notimestamps --combined
+$ darn diff > second.diff
+$ darn diff --combined
 > diff --git a/dir1/file1 b/dir1/file1
 > --- a/dir1/file1
 > +++ b/dir1/file1
@@ -145,7 +145,7 @@ $ darn diff --notimestamps --combined
 $ diff -q first.diff second.diff
 ? 1
 > Files first.diff and second.diff differ
-$ darn diff --notimestamps --combined > combined.diff
+$ darn diff --combined > combined.diff
 $ diff -q first.diff combined.diff
 ? 1
 > Files first.diff and combined.diff differ
@@ -154,7 +154,7 @@ $ diff -q second.diff combined.diff
 > Files second.diff and combined.diff differ
 
 Now check for individual files
-$ darn diff --notimestamps dir1/file1
+$ darn diff dir1/file1
 > diff --git a/dir1/file1 b/dir1/file1
 > --- a/dir1/file1
 > +++ b/dir1/file1
@@ -162,7 +162,7 @@ $ darn diff --notimestamps dir1/file1
 >  dir1/file1: is a text file.
 >  Patch: "first"; Path: "dir1/file1"
 > +Patch: "second"; Path: "dir1/file1"
-$ darn diff --notimestamps --combined dir1/file1
+$ darn diff --combined dir1/file1
 > diff --git a/dir1/file1 b/dir1/file1
 > --- a/dir1/file1
 > +++ b/dir1/file1
@@ -170,7 +170,7 @@ $ darn diff --notimestamps --combined dir1/file1
 >  dir1/file1: is a text file.
 > +Patch: "first"; Path: "dir1/file1"
 > +Patch: "second"; Path: "dir1/file1"
-$ darn diff --notimestamps dir1/file1 file1
+$ darn diff dir1/file1 file1
 > diff --git a/dir1/file1 b/dir1/file1
 > --- a/dir1/file1
 > +++ b/dir1/file1
@@ -185,7 +185,7 @@ $ darn diff --notimestamps dir1/file1 file1
 >  file1: is a text file.
 >  Patch: "first"; Path: "file1"
 > +Patch: "second"; Path: "file1"
-$ darn diff --notimestamps --combined dir1/file1 file1
+$ darn diff --combined dir1/file1 file1
 > diff --git a/dir1/file1 b/dir1/file1
 > --- a/dir1/file1
 > +++ b/dir1/file1
@@ -203,7 +203,7 @@ $ darn diff --notimestamps --combined dir1/file1 file1
 
 And make sure it works in a sub directory
 $ cd dir2
-$ darn diff --notimestamps file1 subdir1/file1
+$ darn diff file1 subdir1/file1
 > diff --git a/dir2/file1 b/dir2/file1
 > --- a/dir2/file1
 > +++ b/dir2/file1
@@ -218,4 +218,3 @@ $ darn diff --notimestamps file1 subdir1/file1
 >  dir2/subdir1/file1: is a text file.
 >  Patch: "first"; Path: "dir2/subdir1/file1"
 > +Patch: "second"; Path: "dir2/subdir1/file1"
-

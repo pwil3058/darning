@@ -27,7 +27,7 @@ $ darn new first --descr "First patch"
 $ darn add file1 file2 file3 file4 > /dev/null
 $ darn_test_tree modify file1 file3
 $ darn_test_tree modify --no_newline file2 file4
-$ darn diff --notimestamps
+$ darn diff
 > diff --git a/file1 b/file1
 > --- a/file1
 > +++ b/file1
@@ -59,7 +59,7 @@ $ darn diff --notimestamps
 > +Patch: "first"; Path: "file4"
 > \ No newline at end of file
 $ darn refresh
-$ darn diff --notimestamps
+$ darn diff
 > diff --git a/file1 b/file1
 > --- a/file1
 > +++ b/file1

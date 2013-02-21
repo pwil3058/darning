@@ -41,7 +41,7 @@ $ darn copy file1 file1.copy
 $ darn files
 > +:+: file1.copy <<- file1
 >  :?: file4
-$ darn diff --notimestamp
+$ darn diff
 > diff --git a/file1 b/file1.copy
 > copy from file1
 > copy to file1.copy
@@ -52,11 +52,11 @@ $ darn diff --notimestamp
 >  file4: is a text file.
 > +Patch: "first"; Path: "file4"
 $ darn_test_tree modify file1.copy
-$ darn diff --notimestamp
+$ darn diff
 > diff --git a/file1 b/file1.copy
 > copy from file1
 > copy to file1.copy
-> --- a/file1.copy
+> --- a/file1
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
 >  file1: is a text file.
@@ -78,11 +78,11 @@ $ darn files
 > +:?: file1.copy <<- file1
 > +:?: file1.copy.copy <<- file1
 >  :?: file4
-$ darn diff --notimestamp
+$ darn diff
 > diff --git a/file1 b/file1.copy
 > copy from file1
 > copy to file1.copy
-> --- a/file1.copy
+> --- a/file1
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
 >  file1: is a text file.
@@ -90,7 +90,7 @@ $ darn diff --notimestamp
 > diff --git a/file1 b/file1.copy.copy
 > copy from file1
 > copy to file1.copy.copy
-> --- a/file1.copy.copy
+> --- a/file1
 > +++ b/file1.copy.copy
 > @@ -1 +1,2 @@
 >  file1: is a text file.
@@ -116,11 +116,11 @@ $ darn files
 > +:?: file1.copy.copy <<- file1
 >  :?: file3 <<- file2
 >  :?: file4
-$ darn diff --notimestamp
+$ darn diff
 > diff --git a/file1 b/file1.copy
 > copy from file1
 > copy to file1.copy
-> --- a/file1.copy
+> --- a/file1
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
 >  file1: is a text file.
@@ -128,7 +128,7 @@ $ darn diff --notimestamp
 > diff --git a/file1 b/file1.copy.copy
 > copy from file1
 > copy to file1.copy.copy
-> --- a/file1.copy.copy
+> --- a/file1
 > +++ b/file1.copy.copy
 > @@ -1 +1,2 @@
 >  file1: is a text file.
@@ -136,7 +136,7 @@ $ darn diff --notimestamp
 > diff --git a/file2 b/file3
 > copy from file2
 > copy to file3
-> --- a/file3
+> --- a/file2
 > +++ b/file3
 > @@ -1 +1,2 @@
 >  file2: is a text file.
@@ -154,11 +154,11 @@ $ darn copy file2 file4
 ! file4: file already in patch.
 $ darn copy --overwrite file2 file4
 > file2: file copied to "file4" in patch "first".
-$ darn diff --notimestamp
+$ darn diff
 > diff --git a/file1 b/file1.copy
 > copy from file1
 > copy to file1.copy
-> --- a/file1.copy
+> --- a/file1
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
 >  file1: is a text file.
@@ -166,7 +166,7 @@ $ darn diff --notimestamp
 > diff --git a/file1 b/file1.copy.copy
 > copy from file1
 > copy to file1.copy.copy
-> --- a/file1.copy.copy
+> --- a/file1
 > +++ b/file1.copy.copy
 > @@ -1 +1,2 @@
 >  file1: is a text file.
@@ -174,7 +174,7 @@ $ darn diff --notimestamp
 > diff --git a/file2 b/file3
 > copy from file2
 > copy to file3
-> --- a/file3
+> --- a/file2
 > +++ b/file3
 > @@ -1 +1,2 @@
 >  file2: is a text file.
@@ -218,11 +218,11 @@ $ darn files
 > +:+: file1.copy.copy <<- file1
 >  :+: file3 <<- file2
 >  :+: file4 <<- file2
-$ darn diff --notimestamp
+$ darn diff
 > diff --git a/file1 b/file1.copy
 > copy from file1
 > copy to file1.copy
-> --- a/file1.copy
+> --- a/file1
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
 >  file1: is a text file.
@@ -230,7 +230,7 @@ $ darn diff --notimestamp
 > diff --git a/file1 b/file1.copy.copy
 > copy from file1
 > copy to file1.copy.copy
-> --- a/file1.copy.copy
+> --- a/file1
 > +++ b/file1.copy.copy
 > @@ -1 +1,2 @@
 >  file1: is a text file.
@@ -238,7 +238,7 @@ $ darn diff --notimestamp
 > diff --git a/file2 b/file3
 > copy from file2
 > copy to file3
-> --- a/file3
+> --- a/file2
 > +++ b/file3
 > @@ -1 +1,2 @@
 >  file2: is a text file.
@@ -263,11 +263,11 @@ $ darn files
 >  :+: file3 <<- file2
 $ cat file4
 > file4: is a text file.
-$ darn diff --notimestamp
+$ darn diff
 > diff --git a/file1 b/file1.copy
 > copy from file1
 > copy to file1.copy
-> --- a/file1.copy
+> --- a/file1
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
 >  file1: is a text file.
@@ -275,7 +275,7 @@ $ darn diff --notimestamp
 > diff --git a/file1 b/file1.copy.copy
 > copy from file1
 > copy to file1.copy.copy
-> --- a/file1.copy.copy
+> --- a/file1
 > +++ b/file1.copy.copy
 > @@ -1 +1,2 @@
 >  file1: is a text file.
@@ -283,7 +283,7 @@ $ darn diff --notimestamp
 > diff --git a/file2 b/file3
 > copy from file2
 > copy to file3
-> --- a/file3
+> --- a/file2
 > +++ b/file3
 > @@ -1 +1,2 @@
 >  file2: is a text file.
@@ -296,11 +296,11 @@ $ darn files
 > +:+: file1.copy.copy <<- file1
 $ cat file3
 > file3: is a text file.
-$ darn diff --notimestamp
+$ darn diff
 > diff --git a/file1 b/file1.copy
 > copy from file1
 > copy to file1.copy
-> --- a/file1.copy
+> --- a/file1
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
 >  file1: is a text file.
@@ -308,7 +308,7 @@ $ darn diff --notimestamp
 > diff --git a/file1 b/file1.copy.copy
 > copy from file1
 > copy to file1.copy.copy
-> --- a/file1.copy.copy
+> --- a/file1
 > +++ b/file1.copy.copy
 > @@ -1 +1,2 @@
 >  file1: is a text file.
@@ -320,11 +320,11 @@ $ darn files
 > +:+: file1.copy.copy <<- file1
 $ cat file1
 > file1: is a text file.
-$ darn diff --notimestamp
+$ darn diff
 > diff --git a/file1 b/file1.copy.copy
 > copy from file1
 > copy to file1.copy.copy
-> --- a/file1.copy.copy
+> --- a/file1
 > +++ b/file1.copy.copy
 > @@ -1 +1,2 @@
 >  file1: is a text file.
@@ -353,7 +353,7 @@ $ darn new second
 $ darn add file1 > /dev/null
 $ darn_test_tree modify file1
 $ darn refresh
-$ darn diff --notimestamp
+$ darn diff
 > diff --git a/file1 b/file1
 > --- a/file1
 > +++ b/file1
@@ -362,7 +362,7 @@ $ darn diff --notimestamp
 > +Patch: "second"; Path: "file1"
 $ darn copy file1 file1.copy
 > file1: file copied to "file1.copy" in patch "second".
-$ darn diff --notimestamp
+$ darn diff
 > diff --git a/file1 b/file1
 > --- a/file1
 > +++ b/file1
@@ -372,7 +372,7 @@ $ darn diff --notimestamp
 > diff --git a/file1 b/file1.copy
 > copy from file1
 > copy to file1.copy
-> --- a/file1.copy
+> --- a/file1
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
 >  file1: is a text file.
@@ -380,7 +380,7 @@ $ darn diff --notimestamp
 $ darn refresh
 $ darn pop > /dev/null
 $ darn push > /dev/null
-$ darn diff --notimestamp
+$ darn diff
 > diff --git a/file1 b/file1
 > --- a/file1
 > +++ b/file1
@@ -390,7 +390,7 @@ $ darn diff --notimestamp
 > diff --git a/file1 b/file1.copy
 > copy from file1
 > copy to file1.copy
-> --- a/file1.copy
+> --- a/file1
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
 >  file1: is a text file.
@@ -401,11 +401,11 @@ $ darn files
 $ darn drop file1 > /dev/null
 $ darn files
 > +:+: file1.copy <<- file1
-$ darn diff --notimestamp
+$ darn diff
 > diff --git a/file1 b/file1.copy
 > copy from file1
 > copy to file1.copy
-> --- a/file1.copy
+> --- a/file1
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
 >  file1: is a text file.
@@ -414,11 +414,11 @@ $ cat file1
 > file1: is a text file.
 $ darn pop > /dev/null
 $ darn push > /dev/null
-$ darn diff --notimestamp
+$ darn diff
 > diff --git a/file1 b/file1.copy
 > copy from file1
 > copy to file1.copy
-> --- a/file1.copy
+> --- a/file1
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
 >  file1: is a text file.
@@ -437,7 +437,7 @@ $ darn add dir5/file1
 > dir5/file1: file added to patch "third".
 $ darn_test_tree modify dir5/file1
 $ darn refresh
-$ darn diff --notimestamp
+$ darn diff
 > diff --git a/dir5/file1 b/dir5/file1
 > --- a/dir5/file1
 > +++ b/dir5/file1
@@ -447,7 +447,7 @@ $ darn diff --notimestamp
 > diff --git a/dir5/file1 b/dir5/file1.copy
 > copy from dir5/file1
 > copy to dir5/file1.copy
-> --- a/dir5/file1.copy
+> --- a/dir5/file1
 > +++ b/dir5/file1.copy
 > @@ -1 +1,2 @@
 >  dir5/file1: is a text file.

@@ -42,9 +42,9 @@ GROUP.add_argument(
 cli_args.add_patch_option(GROUP, 'the name of the patch for which the "diff" should be printed.')
 
 PARSER.add_argument(
-    '--notimestamps',
-    dest='opt_notimestamps',
-    help=_('omit timestamp data from the generated "diff".'),
+    '--withtimestamps',
+    dest='opt_withtimestamps',
+    help=_('add timestamp data to the generated "diff".'),
     action='store_true'
 )
 
@@ -60,9 +60,9 @@ def run_diff(args):
     db_utils.open_db(modifiable=False)
     db_utils.set_report_context(verbose=True)
     if args.opt_combined:
-        diff = patch_db.get_combined_diff_for_files(args.filepaths, not args.opt_notimestamps)
+        diff = patch_db.get_combined_diff_for_files(args.filepaths, args.opt_withtimestamps)
     else:
-        diff = patch_db.get_diff_for_files(args.filepaths, args.opt_patch, not args.opt_notimestamps)
+        diff = patch_db.get_diff_for_files(args.filepaths, args.opt_patch, args.opt_withtimestamps)
     if diff is False:
         return cmd_result.ERROR
     sys.stdout.write(diff)
