@@ -2241,7 +2241,6 @@ class TextPatch(patchlib.Patch):
         self.source_name = patch.name
         self.state = PatchState.APPLIED_REFRESHED if patch.is_applied() else PatchState.UNAPPLIED
         self.set_description(patch.description)
-        self.set_comments('# created by: Darning\n')
         for filepath in sorted(patch.files):
             edp = TextDiffPlus(patch.files[filepath], with_timestamps=with_timestamps)
             if edp.diff is None and (patch.files[filepath].renamed_to and not patch.files[filepath].came_from_path):
@@ -2300,14 +2299,12 @@ class CombinedTextPatch(patchlib.Patch):
                     if filepath not in file_first_patch:
                         file_first_patch[filepath] = applied_patch
             self.set_description(description)
-            self.set_comments('# created by: Darning\n')
             for filepath in sorted(file_first_patch):
                 file_data = file_first_patch[filepath].files[filepath]
                 self.diff_pluses.append(file_data.get_diff_plus(old_combined=True, with_timestamps=with_timestamps))
             self.set_header_diffstat(strip_level=self.num_strip_levels)
         elif _DB.combined_patch is not None:
             self.set_description(''.join([obj.description for obj in [_DB] + _DB.applied_patches]))
-            self.set_comments('# created by: Darning\n')
             for filepath in sorted(_DB.combined_patch.files):
                 file_data = _DB.combined_patch.files[filepath]
                 if file_data.was_ephemeral():
