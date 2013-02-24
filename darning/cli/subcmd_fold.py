@@ -13,7 +13,7 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-'''Unapply the current top patch.'''
+'''Fold the nominated patch into the current top patch.'''
 
 from darning import patch_db
 from darning.cli import cli_args
@@ -21,26 +21,30 @@ from darning.cli import db_utils
 from darning.cli import msg
 
 PARSER = cli_args.SUB_CMD_PARSER.add_parser(
-    'add',
-    description=_('Add nominated file(s) to the top patch.'),
-    epilog=_('''If any of the nominated files have uncommitted changes from
+    'fold',
+    description=_('fold nominated patch into the top patch.'),
+    epilog=_('''If any overlapped files have uncommitted changes from
     the point of view of the SCM controlling the sources or unrefreshed changes
-    in an applied patch below the top patch the addition will be aborted unless
+    in an applied patch below the top patch the fold will be aborted unless
     either the force or the absorb option is specified.'''),
 )
 
 GROUP = PARSER.add_mutually_exclusive_group()
 
-cli_args.add_force_option(GROUP, helptext=_('force the operation and leave uncommitted/unrefreshed changes to named files out of the top patch.'))
+cli_args.add_force_option(GROUP, helptext=_('force the operation and discard uncommitted/unrefreshed changes in overlapped files in the top patch.'))
 
-cli_args.add_absorb_option(GROUP, helptext=_('absorb/incorporate uncommitted/unrefreshed changes to named files into the top patch.'))
+cli_args.add_absorb_option(GROUP, helptext=_('absorb/incorporate uncommitted/unrefreshed changes in overlapped files in the top patch.'))
 
-cli_args.add_files_argument(PARSER, helptext=_('the file(s) to be added.'))
+PARSER.add_argument(
+    'patchname',
+    metavar=_('patchname'),
+    help=_('the name of the patch to be folded.'),
+)
 
-def run_add(args):
-    '''Execute the "add" sub command using the supplied args'''
+def run_fold(args):
+    '''Execute the "fold" sub command using the supplied args'''
     db_utils.open_db(modifiable=True)
     db_utils.set_report_context(verbose=True)
-    return patch_db.do_add_files_to_top_patch(args.filepaths, absorb=args.opt_absorb, force=args.opt_force)
+    return patch_db.do_fold_named_patch(args.patchname, absorb=args.opt_absorb, force=args.opt_force)
 
-PARSER.set_defaults(run_cmd=run_add)
+PARSER.set_defaults(run_cmd=run_fold)

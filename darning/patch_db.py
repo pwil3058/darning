@@ -1289,18 +1289,19 @@ def do_fold_epatch(epatch, absorb=False, force=False):
             aws_lines = diff_plus.report_trailing_whitespace()
             if aws_lines:
                 RCTX.stderr.write(_('Added trailing white space to "{1}" at line(s) {{{2}}}.\n').format(rel_subdir(filepath), ', '.join([str(line) for line in aws_lines])))
-        result = _do_apply_diff_to_file(filepath, diff_plus.diff)
-        if result.ecode == 0:
-            RCTX.stderr.write(result.stdout)
-        else:
-            RCTX.stdout.write(result.stdout)
-        RCTX.stderr.write(result.stderr)
+        if diff_plus.diff:
+            result = _do_apply_diff_to_file(filepath, diff_plus.diff)
+            if result.ecode == 0:
+                RCTX.stderr.write(result.stdout)
+            else:
+                RCTX.stdout.write(result.stdout)
+            RCTX.stderr.write(result.stderr)
         if os.path.exists(filepath):
             git_preamble = diff_plus.get_preamble_for_type('git')
             if git_preamble is not None:
                 for key in ['new mode', 'new file mode']:
-                    if key in preamble.extras:
-                        os.chmod(filepath, int(preamble.extras[key], 8))
+                    if key in git_preamble.extras:
+                        os.chmod(filepath, int(git_preamble.extras[key], 8))
                         break
     if not force:
         new_file_list = []
@@ -1327,56 +1328,90 @@ def do_fold_epatch(epatch, absorb=False, force=False):
         git_preamble = diff_plus.get_preamble_for_type('git')
         copied_from = git_preamble.extras.get('copy from', None) if git_preamble else None
         renamed_from = git_preamble.extras.get('rename from', None) if git_preamble else None
-        came_from_path = copied_from if copied_from else renamed_from
         file_data = top_patch.files.get(filepath, None)
         if file_data is None:
-            file_data = FileData(filepath, top_patch, overlaps=overlaps, came_from_path=came_from_path, as_rename=renamed_from is not None)
+            file_data = FileData(filepath, top_patch, overlaps=overlaps)
             top_patch.add_file(file_data)
-        elif came_from_path:
-            file_data.came_from_path = came_from_path
-            file_data.came_as_rename = renamed_from is not None
-            file_data.reset_reference_paths()
         if renamed_from is not None:
             if renamed_from not in top_patch.files:
                 top_patch.add_file(FileData(renamed_from, top_patch, overlaps=overlaps))
-            renames.append(diff_plus)
+            renames.append((diff_plus, renamed_from))
         elif copied_from is not None:
-            copies.append(diff_plus)
+            copies.append((diff_plus, copied_from))
         elif not os.path.exists(filepath):
             creates.append(diff_plus)
     # Now use patch to create any file created by the fold
     for diff_plus in creates:
         _apply_diff_plus(diff_plus)
     # Do any copying
-    for diff_plus in copies:
-        filepath = diff_plus.get_file_path(epatch.num_strip_levels)
-        file_data = top_patch.files[filepath]
-        file_data.set_before_file_path()
-        file_data.set_before_mode()
-        if not os.path.exists(file_data.before_file_path):
-            RCTX.stderr.write(_('{0}: failed to copy {1}.\n').format(rel_subdir(file_data.path), rel_subdir(file_data.came_from_path)))
-        else:
+    for diff_plus, came_from_path in copies:
+        new_file_path = diff_plus.get_file_path(epatch.num_strip_levels)
+        new_file_data = top_patch.files[new_file_path]
+        record_copy = True
+        src_file_path = came_from_path
+        if src_file_path in top_patch.files:
+            src_file_data = top_patch.files[src_file_path]
+            if src_file_data.came_from_path:
+                # this file was a copy or rename so refer to the original
+                came_from_path = src_file_data.came_from_path
+            else:
+                # if this file was created by the patch we don't record the copy
+                record_copy = os.path.exists(src_file_data.cached_orig_path)
+        # We copy the current version here not the original
+        # TODO: think about force/absorb ramifications HERE
+        if os.path.exists(src_file_path):
             try:
-                shutil.copy2(file_data.before_file_path, file_data.path)
-                os.chmod(file_data.path, file_data.before_mode)
+                shutil.copy2(src_file_path, new_file_path)
             except OSError as edata:
                 RCTX.stderr.write(edata)
+        else:
+            RCTX.stderr.write(_('{0}: failed to copy {1}.\n').format(rel_subdir(new_file_data.path), rel_subdir(new_file_data.came_from_path)))
+        new_file_data.reset_came_from(came_from_path if record_copy else None, False)
     # Do any renaming
-    for diff_plus in renames:
-        filepath = diff_plus.get_file_path(epatch.num_strip_levels)
-        file_data = top_patch.files[filepath]
-        renamed_file_data = top_patch.files.get(file_data.came_from_path, None)
-        file_data.set_before_file_path()
-        file_data.set_before_mode()
-        renamed_file_data.renamed_to = file_data.path
-        if not os.path.exists(file_data.before_file_path):
-            RCTX.stderr.write(_('{0}: failed to rename {1}.\n').format(rel_subdir(file_data.path), rel_subdir(file_data.came_from_path)))
+    for diff_plus, came_from_path in renames:
+        new_file_path = diff_plus.get_file_path(epatch.num_strip_levels)
+        new_file_data = top_patch.files[new_file_path]
+        src_file_path = came_from_path
+        as_rename = True
+        is_boomerang = False
+        src_file_data = top_patch.files.get(src_file_path, None)
+        if src_file_data.came_from_path:
+            if src_file_data.came_from_path == new_file_path:
+                came_from_path = None
+                as_rename = False
+                is_boomerang = True
+            else:
+                came_from_path = src_file_data.came_from_path
+                as_rename = src_file_data.came_as_rename
+            if as_rename:
+                top_patch.files[came_from_path].renamed_to = new_file_path
+            if not os.path.exists(src_file_data.cached_orig_path):
+                # Never existed so just forget about it
+                if os.path.exists(src_file_data.stashed_path):
+                    os.remove(src_file_data.stashed_path)
+                top_patch.drop_file(src_file_path)
+            else:
+                # Becomes a deleted file unless user restores it (their choice)
+                src_file_data.reset_came_from(None, False)
+        elif not os.path.exists(src_file_data.cached_orig_path):
+            # we're just renaming a file that was created in the top patch
+            came_from_path = None
+            as_rename = False
+            if os.path.exists(src_file_data.stashed_path):
+                os.remove(src_file_data.stashed_path)
+            top_patch.drop_file(filepath)
+        if not os.path.exists(src_file_path):
+            RCTX.stderr.write(_('{0}: failed to rename {1}.\n').format(rel_subdir(new_file_data.path), rel_subdir(new_file_data.came_from_path)))
         else:
             try:
-                shutil.copy2(file_data.before_file_path, file_data.path)
-                os.chmod(file_data.path, file_data.before_mode)
+                os.rename(src_file_path, new_file_path)
             except OSError as edata:
                 RCTX.stderr.write(edata)
+        if came_from_path:
+            new_file_data.reset_came_from(came_from_path, as_rename)
+            top_patch.files[came_from_path].reset_renamed_to(new_file_path if as_rename else None)
+        elif is_boomerang:
+            new_file_data.reset_renamed_to(None)
     # Apply the remaining changes
     for diff_plus in epatch.diff_pluses:
         if diff_plus not in creates:
@@ -1405,7 +1440,7 @@ def do_fold_named_patch(patchname, absorb=False, force=False):
         return result
     _DB.series.remove(patch)
     dump_db()
-    RCTX.stdout.write(_('"{0}": patch folded into patch "{0}".\n').format(patchname, _DB.get_top_patch().name))
+    RCTX.stdout.write(_('"{0}": patch folded into patch "{1}".\n').format(patchname, _DB.get_top_patch().name))
     return cmd_result.OK
 
 def get_outstanding_changes_below_top():
@@ -1910,7 +1945,7 @@ def do_copy_file_to_top_patch(filepath, as_filepath, overwrite=False):
             # this file was a copy or rename so refer to the original
             came_from_path = top_patch.files[filepath].came_from_path
         else:
-            # if this file was created by the patch so don't record the copy
+            # if this file was created by the patch we don't record the copy
             record_copy = os.path.exists(top_patch.files[filepath].cached_orig_path)
     if as_filepath in top_patch.files:
         needs_refresh = True
