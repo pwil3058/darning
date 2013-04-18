@@ -846,7 +846,7 @@ class GitBinaryDiff(Diff):
     BLANK_LINE_CRE = re.compile("^\s*$")
     @staticmethod
     def get_data_at(lines, start_index):
-        smatch = GitBinaryDiff.DATA_START_CRE.match(lines[start_index])
+        smatch = False if start_index >= len(lines) else GitBinaryDiff.DATA_START_CRE.match(lines[start_index])
         if not smatch:
             return (None, start_index)
         method = smatch.group(1)
