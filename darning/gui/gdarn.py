@@ -49,17 +49,17 @@ class Darning(gtk.Window, dialogue.BusyIndicator, actions.AGandUIManager):
         </menubar>
         <toolbar name="gdarn_patches_toolbar">
            <separator/>
-            <toolitem action="file_list_add_new"/>
+            <toolitem name="New" action="patch_list_new_patch"/>
+            <toolitem name="Import" action="patch_list_import_patch"/>
+            <toolitem name="Fold" action="patch_list_fold_external_patch"/>
            <separator/>
             <toolitem name="Refresh" action="patch_list_refresh_top_patch"/>
             <toolitem name="Push" action="patch_list_push"/>
             <toolitem name="Pop" action="patch_list_pop"/>
            <separator/>
-            <toolitem name="New" action="patch_list_new_patch"/>
-            <toolitem name="Import" action="patch_list_import_patch"/>
-            <toolitem name="Fold" action="patch_list_fold_external_patch"/>
-           <separator/>
             <toolitem name="Select" action="patch_list_select_guards"/>
+           <separator/>
+            <toolitem action="file_list_add_new"/>
         </toolbar>
     </ui>
     '''
@@ -113,4 +113,3 @@ class Darning(gtk.Window, dialogue.BusyIndicator, actions.AGandUIManager):
         self.set_title("gdarn: %s" % utils.path_rel_home(os.getcwd()))
     def _change_pgnd_ncb(self, _arg=None):
         self._update_title()
-
