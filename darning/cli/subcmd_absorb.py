@@ -13,26 +13,21 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-'''
-Library functions that are ony of interest CLI programs
-'''
+'''Have the underlying SCM absorb the applied patches.'''
 
-# This should be the only place that subcmd_* modules should be imported
-# as this is sufficient to activate them.
-import darning.cli.subcmd_init
-import darning.cli.subcmd_new
-import darning.cli.subcmd_push
-import darning.cli.subcmd_pop
-import darning.cli.subcmd_add
-import darning.cli.subcmd_refresh
-import darning.cli.subcmd_import
-import darning.cli.subcmd_drop
-import darning.cli.subcmd_remove
-import darning.cli.subcmd_files
-import darning.cli.subcmd_series
-import darning.cli.subcmd_export
-import darning.cli.subcmd_diff
-import darning.cli.subcmd_copy
-import darning.cli.subcmd_move
-import darning.cli.subcmd_fold
-import darning.cli.subcmd_absorb
+from darning import patch_db
+from darning.cli import cli_args
+from darning.cli import db_utils
+
+PARSER = cli_args.SUB_CMD_PARSER.add_parser(
+    'absorb',
+    description=_('Have underlying SCM import/absorb all applied patches.'),
+)
+
+def run_absorb(args):
+    '''Execute the "absorb" sub command using the supplied args'''
+    db_utils.open_db(modifiable=True)
+    db_utils.set_report_context(verbose=True)
+    return patch_db.do_scm_absorb_applied_patches()
+
+PARSER.set_defaults(run_cmd=run_absorb)

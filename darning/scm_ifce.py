@@ -97,3 +97,10 @@ def copy_clean_version_to(filepath, target_name):
     '''
     assert _CURRENT_BACK_END is not None
     return _CURRENT_BACK_END.copy_clean_version_to(filepath, target_name)
+
+def do_import_patch(patch_filepath):
+    '''
+    Copy a clean version of the named file to the specified target
+    '''
+    assert _CURRENT_BACK_END is not None
+    return _CURRENT_BACK_END.do_import_patch(patch_filepath)

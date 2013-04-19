@@ -30,6 +30,7 @@ import difflib
 import errno
 import sys
 import zlib
+import tempfile
 
 from darning import rctx as RCTX
 from darning import i18n
@@ -195,7 +196,7 @@ class GenericFileData(PickeExtensibleObject):
     def _generate_diff(self, fm_file, to_file, with_timestamps=False):
         fm_exists = os.path.exists(fm_file)
         if os.path.exists(to_file):
-            to_name_label = os.path.join('b' if fm_exists else 'a', self.path)
+            to_name_label = os.path.join('b', self.path)
             to_time_stamp = _pts_for_path(to_file) if with_timestamps else None
             with open(to_file, 'rb') as fobj:
                 to_contents = fobj.read()
@@ -2320,6 +2321,51 @@ def do_export_patch_as(patchname, export_filename, force=False, overwrite=False,
         RCTX.stderr.write(str(edata) + '\n')
         return cmd_result.ERROR
     return cmd_result.OK
+
+def do_scm_absorb_applied_patches(with_timestamps=False):
+    assert is_writable()
+    if not scm_ifce.is_valid_repo():
+        RCTX.stderr.write(_('Sources not under control of known SCM\n'))
+        return cmd_result.ERROR
+    if get_applied_patch_count() == 0:
+        RCTX.stderr.write(_('There are no patches applied.\n'))
+        return cmd_result.ERROR
+    count_needing_refresh = 0
+    for applied_patch in _DB.applied_patches:
+        if applied_patch.needs_refresh():
+            count_needing_refresh += 1
+            RCTX.stderr.write('{0}: requires refreshing\n'.format(applied_patch.name))
+    if count_needing_refresh > 0:
+        return cmd_result.ERROR
+    tempdir = tempfile.mkdtemp()
+    patch_file_names = list()
+    applied_patch_names = list()
+    for applied_patch in _DB.applied_patches:
+        fhandle, patch_file_name = tempfile.mkstemp(dir=tempdir)
+        os.write(fhandle, str(TextPatch(applied_patch, with_timestamps=with_timestamps)))
+        os.close(fhandle)
+        patch_file_names.append(patch_file_name)
+        applied_patch_names.append(applied_patch.name)
+    while len(_DB.applied_patches) > 0:
+        if do_unapply_top_patch() != cmd_result.OK:
+            return cmd_result.ERROR
+    ret_code = cmd_result.OK
+    count = 0
+    for patch_file_name in patch_file_names:
+        result = scm_ifce.do_import_patch(patch_file_name)
+        RCTX.stdout.write(result.stdout)
+        RCTX.stderr.write(result.stderr)
+        if result.ecode != 0:
+            RCTX.stderr.write('Aborting')
+            ret_code = cmd_result.ERROR
+            break
+        count += 1
+    for patch_name in applied_patch_names[0:count]:
+        ret_code = do_remove_patch(patch_name)
+        if ret_code != cmd_result.OK:
+            break
+    shutil.rmtree(tempdir)
+    return ret_code
 
 class CombinedTextPatch(patchlib.Patch):
     def __init__(self, with_timestamps=False):

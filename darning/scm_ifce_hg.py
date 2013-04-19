@@ -166,5 +166,8 @@ class Mercurial(object):
             utils.ensure_file_dir_exists(target_name)
             with open(target_name, 'w') as fobj:
                 fobj.write(result.stdout)
+    @staticmethod
+    def do_import_patch(patch_filepath):
+        return runext.run_cmd(['hg', 'import', '-q', patch_filepath])
 
 scm_ifce.add_back_end(Mercurial)
