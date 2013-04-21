@@ -2272,7 +2272,7 @@ class TextDiffPlus(patchlib.DiffPlus):
         self.validity = file_data.get_validity()
 
 class TextPatch(patchlib.Patch):
-    def __init__(self, patch, with_timestamps=False):
+    def __init__(self, patch, with_timestamps=False, with_stats=True):
         patchlib.Patch.__init__(self, num_strip_levels=1)
         self.source_name = patch.name
         self.state = PatchState.APPLIED_REFRESHED if patch.is_applied() else PatchState.UNAPPLIED
@@ -2288,7 +2288,8 @@ class TextPatch(patchlib.Patch):
                 self.state = PatchState.APPLIED_NEEDS_REFRESH if edp.validity == FileData.Validity.NEEDS_REFRESH else PatchState.APPLIED_UNREFRESHABLE
             elif self.state == PatchState.APPLIED_NEEDS_REFRESH and edp.validity == FileData.Validity.UNREFRESHABLE:
                 self.state = PatchState.APPLIED_UNREFRESHABLE
-        self.set_header_diffstat(strip_level=self.num_strip_levels)
+        if with_stats:
+            self.set_header_diffstat(strip_level=self.num_strip_levels)
 
 def get_textpatch(patchname, with_timestamps=False):
     assert is_readable()
@@ -2342,7 +2343,7 @@ def do_scm_absorb_applied_patches(with_timestamps=False):
     applied_patch_names = list()
     for applied_patch in _DB.applied_patches:
         fhandle, patch_file_name = tempfile.mkstemp(dir=tempdir)
-        os.write(fhandle, str(TextPatch(applied_patch, with_timestamps=with_timestamps)))
+        os.write(fhandle, str(TextPatch(applied_patch, with_timestamps=with_timestamps, with_stats=False)))
         os.close(fhandle)
         patch_file_names.append(patch_file_name)
         applied_patch_names.append(applied_patch.name)
@@ -2364,6 +2365,9 @@ def do_scm_absorb_applied_patches(with_timestamps=False):
         ret_code = do_remove_patch(patch_name)
         if ret_code != cmd_result.OK:
             break
+    while count < len(applied_patch_names):
+        do_apply_next_patch()
+        count += 1
     shutil.rmtree(tempdir)
     return ret_code
 

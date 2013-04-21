@@ -72,13 +72,13 @@ $ darn diff --combined
 > diff --git a/file1.copy b/file1.copy
 > new file mode 0100664
 > --- /dev/null
-> +++ a/file1.copy
+> +++ b/file1.copy
 > @@ -0,0 +1 @@
 > +file1: is a text file.
 > diff --git a/file2.copy b/file2.copy
 > new file mode 0100664
 > --- /dev/null
-> +++ a/file2.copy
+> +++ b/file2.copy
 > @@ -0,0 +1,2 @@
 > +file2: is a text file.
 > +Patch: "first"; Path: "file2.copy"
@@ -91,7 +91,7 @@ $ darn diff --combined
 > diff --git a/file3.ren1 b/file3.ren1
 > new file mode 0100664
 > --- /dev/null
-> +++ a/file3.ren1
+> +++ b/file3.ren1
 > @@ -0,0 +1,2 @@
 > +file3: is a text file.
 > +Patch: "first"; Path: "file3.ren1"
@@ -221,19 +221,19 @@ $ darn diff --combined
 > diff --git a/file1.copy b/file1.copy
 > new file mode 0100664
 > --- /dev/null
-> +++ a/file1.copy
+> +++ b/file1.copy
 > @@ -0,0 +1 @@
 > +file1: is a text file.
 > diff --git a/file1.copy.copy b/file1.copy.copy
 > new file mode 0100664
 > --- /dev/null
-> +++ a/file1.copy.copy
+> +++ b/file1.copy.copy
 > @@ -0,0 +1 @@
 > +file1: is a text file.
 > diff --git a/file2.copy b/file2.copy
 > new file mode 0100664
 > --- /dev/null
-> +++ a/file2.copy
+> +++ b/file2.copy
 > @@ -0,0 +1,3 @@
 > +file2: is a text file.
 > +Patch: "first"; Path: "file2.copy"
@@ -241,7 +241,7 @@ $ darn diff --combined
 > diff --git a/file2.copy.copy b/file2.copy.copy
 > new file mode 0100664
 > --- /dev/null
-> +++ a/file2.copy.copy
+> +++ b/file2.copy.copy
 > @@ -0,0 +1,2 @@
 > +file2: is a text file.
 > +Patch: "first"; Path: "file2.copy"
@@ -254,7 +254,7 @@ $ darn diff --combined
 > diff --git a/file3.ren2 b/file3.ren2
 > new file mode 0100664
 > --- /dev/null
-> +++ a/file3.ren2
+> +++ b/file3.ren2
 > @@ -0,0 +1,3 @@
 > +file3: is a text file.
 > +Patch: "first"; Path: "file3.ren1"
@@ -418,25 +418,25 @@ $ darn diff --combined
 > diff --git a/file1.copy b/file1.copy
 > new file mode 0100664
 > --- /dev/null
-> +++ a/file1.copy
+> +++ b/file1.copy
 > @@ -0,0 +1 @@
 > +file1: is a text file.
 > diff --git a/file1.copy.copy b/file1.copy.copy
 > new file mode 0100664
 > --- /dev/null
-> +++ a/file1.copy.copy
+> +++ b/file1.copy.copy
 > @@ -0,0 +1 @@
 > +file1: is a text file.
 > diff --git a/file1.copy.copy.copy b/file1.copy.copy.copy
 > new file mode 0100664
 > --- /dev/null
-> +++ a/file1.copy.copy.copy
+> +++ b/file1.copy.copy.copy
 > @@ -0,0 +1 @@
 > +file1: is a text file.
 > diff --git a/file2.copy b/file2.copy
 > new file mode 0100664
 > --- /dev/null
-> +++ a/file2.copy
+> +++ b/file2.copy
 > @@ -0,0 +1,3 @@
 > +file2: is a text file.
 > +Patch: "first"; Path: "file2.copy"
@@ -444,14 +444,14 @@ $ darn diff --combined
 > diff --git a/file2.copy.copy b/file2.copy.copy
 > new file mode 0100664
 > --- /dev/null
-> +++ a/file2.copy.copy
+> +++ b/file2.copy.copy
 > @@ -0,0 +1,2 @@
 > +file2: is a text file.
 > +Patch: "first"; Path: "file2.copy"
 > diff --git a/file2.copy.copy.copy b/file2.copy.copy.copy
 > new file mode 0100664
 > --- /dev/null
-> +++ a/file2.copy.copy.copy
+> +++ b/file2.copy.copy.copy
 > @@ -0,0 +1,2 @@
 > +file2: is a text file.
 > +Patch: "first"; Path: "file2.copy"
@@ -626,25 +626,25 @@ $ darn diff --combined
 > diff --git a/file1.copy b/file1.copy
 > new file mode 0100664
 > --- /dev/null
-> +++ a/file1.copy
+> +++ b/file1.copy
 > @@ -0,0 +1 @@
 > +file1: is a text file.
 > diff --git a/file1.copy.copy b/file1.copy.copy
 > new file mode 0100664
 > --- /dev/null
-> +++ a/file1.copy.copy
+> +++ b/file1.copy.copy
 > @@ -0,0 +1 @@
 > +file1: is a text file.
 > diff --git a/file1.copy.copy.copy b/file1.copy.copy.copy
 > new file mode 0100664
 > --- /dev/null
-> +++ a/file1.copy.copy.copy
+> +++ b/file1.copy.copy.copy
 > @@ -0,0 +1 @@
 > +file1: is a text file.
 > diff --git a/file2.copy b/file2.copy
 > new file mode 0100664
 > --- /dev/null
-> +++ a/file2.copy
+> +++ b/file2.copy
 > @@ -0,0 +1,3 @@
 > +file2: is a text file.
 > +Patch: "first"; Path: "file2.copy"
@@ -652,14 +652,14 @@ $ darn diff --combined
 > diff --git a/file2.copy.copy b/file2.copy.copy
 > new file mode 0100664
 > --- /dev/null
-> +++ a/file2.copy.copy
+> +++ b/file2.copy.copy
 > @@ -0,0 +1,2 @@
 > +file2: is a text file.
 > +Patch: "first"; Path: "file2.copy"
 > diff --git a/file2.copy.copy.copy b/file2.copy.copy.copy
 > new file mode 0100664
 > --- /dev/null
-> +++ a/file2.copy.copy.copy
+> +++ b/file2.copy.copy.copy
 > @@ -0,0 +1,2 @@
 > +file2: is a text file.
 > +Patch: "first"; Path: "file2.copy"
@@ -875,25 +875,25 @@ $ darn diff --combined
 > diff --git a/file1.copy b/file1.copy
 > new file mode 0100664
 > --- /dev/null
-> +++ a/file1.copy
+> +++ b/file1.copy
 > @@ -0,0 +1 @@
 > +file1: is a text file.
 > diff --git a/file1.copy.copy b/file1.copy.copy
 > new file mode 0100664
 > --- /dev/null
-> +++ a/file1.copy.copy
+> +++ b/file1.copy.copy
 > @@ -0,0 +1 @@
 > +file1: is a text file.
 > diff --git a/file1.copy.copy.copy b/file1.copy.copy.copy
 > new file mode 0100664
 > --- /dev/null
-> +++ a/file1.copy.copy.copy
+> +++ b/file1.copy.copy.copy
 > @@ -0,0 +1 @@
 > +file1: is a text file.
 > diff --git a/file2.copy b/file2.copy
 > new file mode 0100664
 > --- /dev/null
-> +++ a/file2.copy
+> +++ b/file2.copy
 > @@ -0,0 +1,3 @@
 > +file2: is a text file.
 > +Patch: "first"; Path: "file2.copy"
@@ -901,14 +901,14 @@ $ darn diff --combined
 > diff --git a/file2.copy.copy b/file2.copy.copy
 > new file mode 0100664
 > --- /dev/null
-> +++ a/file2.copy.copy
+> +++ b/file2.copy.copy
 > @@ -0,0 +1,2 @@
 > +file2: is a text file.
 > +Patch: "first"; Path: "file2.copy"
 > diff --git a/file2.copy.copy.copy b/file2.copy.copy.copy
 > new file mode 0100664
 > --- /dev/null
-> +++ a/file2.copy.copy.copy
+> +++ b/file2.copy.copy.copy
 > @@ -0,0 +1,2 @@
 > +file2: is a text file.
 > +Patch: "first"; Path: "file2.copy"

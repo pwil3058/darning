@@ -17,10 +17,10 @@ Test the 'darn absorb' command.
 
 Create some test files and start a mercurial repository.
 $ darn_test_tree create
-$ hg init
-$ hg add > /dev/null
-$ hg commit -m "test"
-$ hg status -mard
+$ git init > /dev/null
+$ git add .
+$ git commit -m "test" > /dev/null
+$ git status --short
 
 Initialise a playground and try again without creating a patch
 $ darn init
@@ -34,11 +34,12 @@ $ darn files
 >  :+: file1
 >  :+: file2
 $ darn_test_tree modify file1 file2
-$ hg status -mard
-> M file1
-> M file2
-$ hg log --template "{rev}:{desc|firstline}\n"
-> 0:test
+$ git status --short
+>  M file1
+>  M file2
+> ?? .darning.dbd/
+$ git log --pretty=format:"%s"
+> test
 $ darn series
 > ?: first
 
@@ -47,11 +48,13 @@ $ ls > lsop_start
 $ darn absorb
 ? 1
 ! first: requires refreshing
-$ hg status -mard
-> M file1
-> M file2
-$ hg log --template "{rev}:{desc|firstline}\n"
-> 0:test
+$ git status --short
+>  M file1
+>  M file2
+> ?? .darning.dbd/
+> ?? lsop_start
+$ git log --pretty=format:"%s"
+> test
 $ darn series
 > ?: first
 $ ls > lsop_now
@@ -65,10 +68,13 @@ $ darn refresh
 $ darn absorb
 > There are now no patches applied.
 > Patch "first" removed (but available for restoration).
-$ hg status -mard
-$ hg log --template "{rev}:{desc|firstline}\n"
-> 1:First patch created.
-> 0:test
+$ git status --short
+> ?? .darning.dbd/
+> ?? lsop_now
+> ?? lsop_start
+$ git log --pretty=format:"%s"
+> First patch created.
+> test
 $ darn series
 $ ls > lsop_now
 $ diff lsop_now lsop_start
@@ -76,21 +82,36 @@ $ diff lsop_now lsop_start
 > 16,17d15
 > < lsop_now
 > < lsop_start
-Now check hg status more throroughly
-$ hg status --change 1
-> M file1
-> M file2
-$ hg diff -c 1
+Now check git status more throroughly
+$ git show --pretty=format:"%s" master@{0}
+> First patch created.
 > diff --git a/file1 b/file1
+> index 9d588ef..ad6359c 100644
 > --- a/file1
 > +++ b/file1
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  file1: is a text file.
 > +Patch: "first"; Path: "file1"
 > diff --git a/file2 b/file2
+> index cd1c1e8..b30b9de 100644
 > --- a/file2
 > +++ b/file2
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
+>  file2: is a text file.
+> +Patch: "first"; Path: "file2"
+$ git diff master@{1} master@{0}
+> diff --git a/file1 b/file1
+> index 9d588ef..ad6359c 100644
+> --- a/file1
+> +++ b/file1
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1"
+> diff --git a/file2 b/file2
+> index cd1c1e8..b30b9de 100644
+> --- a/file2
+> +++ b/file2
+> @@ -1 +1,2 @@
 >  file2: is a text file.
 > +Patch: "first"; Path: "file2"
 
@@ -101,11 +122,10 @@ $ mkfile nonexistent
 < "create a new file"
 $ darn refresh
 $ darn new third --desc "Third patch"
-TODO: add a binary file to a test patch when Mercurial is fixed
-$ darn add dir1/file1 file3
+$ darn add dir1/file1 binary3
 > dir1/file1: file added to patch "third".
-> file3: file added to patch "third".
-$ darn_test_tree modify dir1/file1 file3
+> binary3: file added to patch "third".
+$ darn_test_tree modify dir1/file1 binary3
 $ darn refresh
 $ darn new fourth --desc "Fourth patch"
 $ darn add dir1/file1 dir2/file3 file1
@@ -117,44 +137,62 @@ $ darn refresh
 $ darn pop
 > Patch "third" is now on top.
 
-$ hg status -mard
-> M dir1/file1
-> M file3
+$ git status --short
+>  M binary3
+>  M dir1/file1
+> ?? .darning.dbd/
+> ?? lsop_now
+> ?? lsop_start
+> ?? nonexistent
 $ darn absorb
 > Patch "second" is now on top.
 > There are now no patches applied.
 > Patch "second" removed (but available for restoration).
 > Patch "third" removed (but available for restoration).
-$ hg status --change 2
-> A nonexistent
-$ hg diff -c 2
-> diff --git a/nonexistent b/nonexistent
-> new file mode 100644
-> --- /dev/null
-> +++ b/nonexistent
-> @@ -0,0 +1,1 @@
-> +"create a new file"
-$ hg status --change 3
-> M dir1/file1
-> M file3
-$ hg diff -c 3
+$ git log --pretty=format:"%s"
+> Third patch
+> Second patch
+> First patch created.
+> test
+$ git status --short
+> ?? .darning.dbd/
+> ?? lsop_now
+> ?? lsop_start
+$ git show --pretty=format:"%s" master@{0}
+> Third patch
+> diff --git a/binary3 b/binary3
+> index 182eeac..64db301 100644
+> Binary files a/binary3 and b/binary3 differ
 > diff --git a/dir1/file1 b/dir1/file1
+> index 35ecb4c..a3bfc72 100644
 > --- a/dir1/file1
 > +++ b/dir1/file1
-> @@ -1,1 +1,2 @@
+> @@ -1 +1,2 @@
 >  dir1/file1: is a text file.
 > +Patch: "third"; Path: "dir1/file1"
-> diff --git a/file3 b/file3
-> --- a/file3
-> +++ b/file3
-> @@ -1,1 +1,2 @@
->  file3: is a text file.
-> +Patch: "third"; Path: "file3"
-$ hg status --change 4
-? 255
-! abort: unknown revision '4'!
+$ git show --pretty=format:"%s" master@{1}
+> Second patch
+> diff --git a/nonexistent b/nonexistent
+> new file mode 100644
+> index 0000000..3fcf851
+> --- /dev/null
+> +++ b/nonexistent
+> @@ -0,0 +1 @@
+> +"create a new file"
 $ darn push
 > Patching file "dir1/file1".
 > Patching file "file1".
 > Patching file "dir2/file3".
 > Patch "fourth" is now on top.
+$ darn_test_tree modify file4
+$ git add file4
+$ darn_test_tree modify file4
+$ darn absorb
+? 1
+> There are now no patches applied.
+> Patching file "dir1/file1".
+> Patching file "file1".
+> Patching file "dir2/file3".
+> Patch "fourth" is now on top.
+! Index is NOT empty
+! Aborting

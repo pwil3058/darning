@@ -24,6 +24,7 @@ from darning import runext
 from darning import scm_ifce
 from darning import fsdb
 from darning import utils
+from darning import patchlib
 
 class Git(object):
     name = 'git'
@@ -170,5 +171,25 @@ class Git(object):
             utils.ensure_file_dir_exists(target_name)
             with open(target_name, 'w') as fobj:
                 fobj.write(result.stdout)
+    @staticmethod
+    def do_import_patch(patch_filepath):
+        if not index_is_empty():
+            return runext.Result(-1, '', _('Index is NOT empty\n'))
+        epatch = patchlib.Patch.parse_text_file(patch_filepath)
+        result = runext.run_cmd(['git', 'apply', patch_filepath])
+        if result.ecode != 0:
+            return result
+        result = runext.run_cmd(['git', 'add'] + epatch.get_file_paths(1))
+        if result.ecode != 0:
+            return result
+        return runext.run_cmd(['git', 'commit', '-q', '-m', epatch.get_description()])
+
+def index_is_empty():
+    result = runext.run_cmd(['git', 'status', '--porcelain', '--untracked-files=no'])
+    for line in result.stdout.splitlines():
+        if line[0] != ' ':
+            return False
+    return True
+
 
 scm_ifce.add_back_end(Git)

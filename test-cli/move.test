@@ -477,7 +477,7 @@ $ darn diff
 > diff --git a/nonexistent b/nonexistent
 > new file mode 0100664
 > --- /dev/null
-> +++ a/nonexistent
+> +++ b/nonexistent
 > @@ -0,0 +1 @@
 > +content
 $ darn move nonexistent nonexistent.moved
@@ -488,7 +488,7 @@ $ darn diff
 > diff --git a/nonexistent.moved b/nonexistent.moved
 > new file mode 0100664
 > --- /dev/null
-> +++ a/nonexistent.moved
+> +++ b/nonexistent.moved
 > @@ -0,0 +1 @@
 > +content
 
