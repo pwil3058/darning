@@ -22,6 +22,7 @@ from darning import runext
 from darning import scm_ifce
 from darning import fsdb
 from darning import utils
+from darning import cmd_result
 
 class Mercurial(object):
     name = 'hg'
@@ -168,6 +169,20 @@ class Mercurial(object):
                 fobj.write(result.stdout)
     @staticmethod
     def do_import_patch(patch_filepath):
+        ok_to_import, msg = Mercurial.is_ready_for_import()
+        if not ok_to_import:
+            return runext.Result(-1, '', msg)
         return runext.run_cmd(['hg', 'import', '-q', patch_filepath])
+    @staticmethod
+    def is_ready_for_import():
+        result = runext.run_cmd(['hg', 'qtop'])
+        if result.ecode == 0:
+            return cmd_result.Result(False, _('There are "mq" patches applied.'))
+        result = runext.run_cmd(['hg', 'parents', '--template', '{rev}\\n'])
+        if result.ecode != 0:
+            return cmd_result.Result(False, result.stdout + result.stderr)
+        elif len(result.stdout.splitlines()) > 1:
+            return cmd_result.Result(False, _('There is an incomplete merge in progress.'))
+        return cmd_result.Result(True, '')
 
 scm_ifce.add_back_end(Mercurial)

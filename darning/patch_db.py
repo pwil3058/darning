@@ -2331,6 +2331,10 @@ def do_scm_absorb_applied_patches(with_timestamps=False):
     if get_applied_patch_count() == 0:
         RCTX.stderr.write(_('There are no patches applied.\n'))
         return cmd_result.ERROR
+    is_ready, msg = scm_ifce.is_ready_for_import()
+    if not is_ready:
+        RCTX.stderr.write(_(msg))
+        return cmd_result.ERROR
     count_needing_refresh = 0
     for applied_patch in _DB.applied_patches:
         if applied_patch.needs_refresh():

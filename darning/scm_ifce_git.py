@@ -25,6 +25,7 @@ from darning import scm_ifce
 from darning import fsdb
 from darning import utils
 from darning import patchlib
+from darning import cmd_result
 
 class Git(object):
     name = 'git'
@@ -173,8 +174,9 @@ class Git(object):
                 fobj.write(result.stdout)
     @staticmethod
     def do_import_patch(patch_filepath):
-        if not index_is_empty():
-            return runext.Result(-1, '', _('Index is NOT empty\n'))
+        ok_to_import, msg = Git.is_ready_for_import()
+        if not ok_to_import:
+            return runext.Result(-1, '', msg)
         epatch = patchlib.Patch.parse_text_file(patch_filepath)
         result = runext.run_cmd(['git', 'apply', patch_filepath])
         if result.ecode != 0:
@@ -183,6 +185,12 @@ class Git(object):
         if result.ecode != 0:
             return result
         return runext.run_cmd(['git', 'commit', '-q', '-m', epatch.get_description()])
+    @staticmethod
+    def is_ready_for_import():
+        result = runext.run_cmd(['hg', 'qtop'])
+        if not index_is_empty():
+            return cmd_result.Result(False, _('Index is NOT empty\n'))
+        return cmd_result.Result(True, '')
 
 def index_is_empty():
     result = runext.run_cmd(['git', 'status', '--porcelain', '--untracked-files=no'])

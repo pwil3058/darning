@@ -150,9 +150,6 @@ $ hg diff -c 3
 > @@ -1,1 +1,2 @@
 >  file3: is a text file.
 > +Patch: "third"; Path: "file3"
-$ hg status --change 4
-? 255
-! abort: unknown revision '4'!
 $ darn push
 > Patching file "dir1/file1".
 > Patching file "file1".

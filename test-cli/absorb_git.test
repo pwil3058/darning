@@ -189,10 +189,4 @@ $ git add file4
 $ darn_test_tree modify file4
 $ darn absorb
 ? 1
-> There are now no patches applied.
-> Patching file "dir1/file1".
-> Patching file "file1".
-> Patching file "dir2/file3".
-> Patch "fourth" is now on top.
 ! Index is NOT empty
-! Aborting
