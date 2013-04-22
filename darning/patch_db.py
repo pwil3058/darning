@@ -1782,6 +1782,14 @@ def do_apply_next_patch(absorb=False, force=False):
 def get_applied_patch_count():
     return len(_DB.applied_patches)
 
+def is_absorbable():
+    if _DB is None or len(_DB.applied_patches) == 0:
+        return False
+    for applied_patch in _DB.applied_patches:
+        if applied_patch.needs_refresh():
+            return False
+    return True
+
 def get_top_patch_for_file(filepath):
     assert is_readable()
     for applied_patch in reversed(_DB.applied_patches):

@@ -35,13 +35,14 @@ from darning.gui import gutils
 from darning.gui import patch_view
 
 class Condns(actions.Condns):
-    _NEXTRACONDS = 5
+    _NEXTRACONDS = 6
     POP_POSSIBLE = actions.Condns.PMIC
     APPLIED, \
     UNAPPLIED, \
     APPLIED_FLAG, \
     APPLIED_NOT_FLAG, \
-    PUSH_POSSIBLE = [2 ** (n + actions.Condns.NCONDS) for n in range(_NEXTRACONDS)]
+    PUSH_POSSIBLE, \
+    IS_ABSORBABLE = [2 ** (n + actions.Condns.NCONDS) for n in range(_NEXTRACONDS)]
     APPLIED_TOP = APPLIED | APPLIED_FLAG
     APPLIED_NOT_TOP = APPLIED | APPLIED_NOT_FLAG
     UNAPPLIED_BLOCKED = UNAPPLIED | APPLIED_FLAG
@@ -119,6 +120,7 @@ class List(table.MapManagedTable):
           <menuitem action="patch_list_push_all"/>
           <menuitem action="patch_list_pop_all"/>
           <menuitem action="patch_list_restore_patch"/>
+          <menuitem action="patch_list_scm_absorb_applied_patches"/>
           <separator/>
           <menuitem action="pm_refresh_patch_list"/>
         </menu>
@@ -789,6 +791,12 @@ def _update_class_indep_pushable_cb(_arg=None):
 
 ws_event.add_notification_cb(ws_event.CHANGE_WD|ws_event.PATCH_CHANGES, _update_class_indep_pushable_cb)
 
+def _update_class_indep_absorbable_cb(_arg=None):
+    condns = actions.MaskedCondns(Condns.IS_ABSORBABLE if ifce.PM.is_absorbable() else 0, Condns.IS_ABSORBABLE)
+    actions.set_class_indep_sensitivity_for_condns(condns)
+
+ws_event.add_notification_cb(ws_event.CHANGE_WD|ws_event.FILE_CHANGES|ws_event.PATCH_CHANGES|ws_event.AUTO_UPDATE, _update_class_indep_absorbable_cb)
+
 def new_playground_acb(_arg):
     newpg = dialogue.ask_dir_name(_('Select/create playground ..'))
     if newpg is not None:
@@ -996,6 +1004,13 @@ def select_guards_acb(_arg):
             dialog.destroy()
         break
 
+def scm_absorb_applied_patches_acb(_arg):
+    dialogue.show_busy()
+    result = ifce.PM.do_scm_absorb_applied_patches()
+    dialogue.unshow_busy()
+    dialogue.report_any_problems(result)
+    return cmd_result.is_ok(result)
+
 actions.add_class_indep_actions(actions.Condns.DONT_CARE,
     [
         ("config_new_playground", icons.STOCK_NEW_PLAYGROUND, _('_New'), "",
@@ -1048,4 +1063,10 @@ actions.add_class_indep_actions(Condns.PMIC | Condns.IN_PGND_MUTABLE,
     [
         ("patch_list_refresh_top_patch", icons.STOCK_REFRESH_PATCH, None, None,
          _('Refresh the top patch'), refresh_top_patch_acb),
+    ])
+
+actions.add_class_indep_actions(Condns.IS_ABSORBABLE | Condns.IN_REPO | Condns.IN_PGND_MUTABLE,
+    [
+        ("patch_list_scm_absorb_applied_patches", icons.STOCK_FINISH_PATCH, _('Absorb All'), None,
+         _('Absorb all applied patches into underlying SCM repository'), scm_absorb_applied_patches_acb),
     ])

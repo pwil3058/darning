@@ -413,6 +413,15 @@ def do_fold_named_patch(patchname, absorb=False, force=False):
         ws_event.notify_events(ws_event.FILE_CHANGES|ws_event.PATCH_DELETE)
     return cmd_result.Result(eflags, RCTX.message)
 
+def do_scm_absorb_applied_patches():
+    RCTX.reset()
+    console.LOG.start_cmd('absorb\n')
+    eflags = patch_db.do_scm_absorb_applied_patches()
+    console.LOG.end_cmd()
+    # notify events regardless of return value as partial success is possible
+    ws_event.notify_events(ws_event.PATCH_POP|ws_event.FILE_CHANGES)
+    return cmd_result.Result(eflags, RCTX.message)
+
 def is_pushable():
     if not patch_db.is_readable():
         return False
@@ -436,3 +445,6 @@ def is_readable():
 
 def is_writable():
     return patch_db.is_writable()
+
+def is_absorbable():
+    return patch_db.is_absorbable()
