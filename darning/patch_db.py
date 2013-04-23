@@ -193,6 +193,14 @@ class GenericFileData(PickeExtensibleObject):
             hash_line += ' {0:07o}\n'.format(after_mode) if self.before_mode == after_mode else '\n'
             lines.append(hash_line)
         return patchlib.Preamble.parse_lines(lines)
+    def _has_actionable_preamble(self, after_mode, old_combined=False):
+        if self.before_mode is None and after_mode is not None:
+            return True
+        elif self.before_mode != after_mode:
+            return True
+        elif not old_combined and self.came_from_path:
+            return True
+        return False
     def _generate_diff(self, fm_file, to_file, with_timestamps=False):
         fm_exists = os.path.exists(fm_file)
         if os.path.exists(to_file):
@@ -469,6 +477,19 @@ class FileData(GenericFileData):
             after_mode = self.after_mode
             after_hash = self.after_hash
         return self._generate_diff_preamble(after_mode, after_hash, old_combined=old_combined)
+    def has_actionable_preamble(self, old_combined=False):
+        assert is_readable()
+        if self.patch.is_applied():
+            overlapping_patch = None if old_combined else self.get_overlapping_patch()
+            if overlapping_patch is not None:
+                after_mode = overlapping_patch.files[self.path].before_mode
+            elif os.path.exists(self.path):
+                after_mode = utils.get_mode_for_file(self.path)
+            else:
+                after_mode = self.before_mode if self.renamed_to else None
+        else:
+            after_mode = self.after_mode
+        return self._has_actionable_preamble(after_mode, old_combined)
     def generate_diff(self, overlapping_patch, old_combined=False, with_timestamps=False):
         assert is_readable()
         assert self.patch.is_applied()
@@ -558,6 +579,13 @@ class CombinedFileData(GenericFileData):
             after_mode = self.before_mode if self.renamed_to else None
             after_hash = None
         return self._generate_diff_preamble(after_mode, after_hash)
+    def has_actionable_preamble(self, old_combined=False):
+        assert is_readable()
+        if os.path.exists(self.path):
+            after_mode = utils.get_mode_for_file(self.path)
+        else:
+            after_mode = self.before_mode if self.renamed_to else None
+        return self._has_actionable_preamble(after_mode, old_combined)
     def generate_diff(self, with_timestamps=False):
         assert is_readable()
         to_file = self.path
@@ -2286,6 +2314,8 @@ class TextPatch(patchlib.Patch):
         self.state = PatchState.APPLIED_REFRESHED if patch.is_applied() else PatchState.UNAPPLIED
         self.set_description(patch.description)
         for filepath in sorted(patch.files):
+            if patch.files[filepath].diff is None and not patch.files[filepath].has_actionable_preamble():
+                continue
             edp = TextDiffPlus(patch.files[filepath], with_timestamps=with_timestamps)
             if edp.diff is None and (patch.files[filepath].renamed_to and not patch.files[filepath].came_from_path):
                 continue

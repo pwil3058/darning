@@ -610,7 +610,6 @@ $ darn fold second
 > Patching file "dir2/file2".
 > Patching file "dir2/subdir1/file1".
 > Patching file "file1".
-> Patching file "file1.copy".
 > Patching file "file1.copy.copy".
 > Patching file "file2.copy".
 > Patching file "file2.copy.copy".
