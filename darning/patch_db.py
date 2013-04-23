@@ -1283,13 +1283,13 @@ def do_fold_epatch(epatch, absorb=False, force=False):
         dump_db()
         RCTX.stdout.write(_('Patching file "{0}".\n').format(rel_subdir(filepath)))
         if drop_atws:
-            aws_lines = diff_plus.fix_trailing_whitespace()
-            if aws_lines:
-                RCTX.stdout.write(_('Added trailing white space to "{0}" at line(s) {{{1}}}: removed before application.\n').format(rel_subdir(filepath), ', '.join([str(line) for line in aws_lines])))
+            atws_lines = diff_plus.fix_trailing_whitespace()
+            if atws_lines:
+                RCTX.stdout.write(_('Added trailing white space to "{0}" at line(s) {{{1}}}: removed before application.\n').format(rel_subdir(filepath), ', '.join([str(line) for line in atws_lines])))
         else:
-            aws_lines = diff_plus.report_trailing_whitespace()
-            if aws_lines:
-                RCTX.stderr.write(_('Added trailing white space to "{1}" at line(s) {{{2}}}.\n').format(rel_subdir(filepath), ', '.join([str(line) for line in aws_lines])))
+            atws_lines = diff_plus.report_trailing_whitespace()
+            if atws_lines:
+                RCTX.stderr.write(_('Added trailing white space to "{1}" at line(s) {{{2}}}.\n').format(rel_subdir(filepath), ', '.join([str(line) for line in atws_lines])))
         if diff_plus.diff:
             result = _do_apply_diff_to_file(filepath, diff_plus.diff)
             if result.ecode == 0:
@@ -1649,13 +1649,13 @@ def do_apply_next_patch(absorb=False, force=False):
         elif file_data.diff:
             RCTX.stdout.write(_('Patching file "{0}".\n').format(rel_subdir(file_data.path)))
             if drop_atws:
-                aws_lines = file_data.diff.fix_trailing_whitespace()
-                if aws_lines:
-                    RCTX.stdout.write(_('"{0}": added trailing white space to "{1}" at line(s) {{{2}}}: removed before application.\n').format(next_patch.name, rel_subdir(file_data.path), ', '.join([str(line) for line in aws_lines])))
+                atws_lines = file_data.diff.fix_trailing_whitespace()
+                if atws_lines:
+                    RCTX.stdout.write(_('"{0}": added trailing white space to "{1}" at line(s) {{{2}}}: removed before application.\n').format(next_patch.name, rel_subdir(file_data.path), ', '.join([str(line) for line in atws_lines])))
             else:
-                aws_lines = file_data.diff.report_trailing_whitespace()
-                if aws_lines:
-                    RCTX.stderr.write(_('"{0}": added trailing white space to "{1}" at line(s) {{{2}}}.\n').format(next_patch.name, rel_subdir(file_data.path), ', '.join([str(line) for line in aws_lines])))
+                atws_lines = file_data.diff.report_trailing_whitespace()
+                if atws_lines:
+                    RCTX.stderr.write(_('"{0}": added trailing white space to "{1}" at line(s) {{{2}}}.\n').format(next_patch.name, rel_subdir(file_data.path), ', '.join([str(line) for line in atws_lines])))
             result = _do_apply_diff_to_file(file_data.path, file_data.diff, delete_empty=file_data.after_mode is None)
             biggest_ecode = max(biggest_ecode, result.ecode)
             patch_ok = result.ecode == 0 and not result.stderr
@@ -1831,13 +1831,13 @@ def do_unapply_top_patch():
             shutil.move(file_data.cached_orig_path, file_data.path)
         if file_data.diff:
             if drop_atws:
-                aws_lines = file_data.diff.fix_trailing_whitespace()
-                if aws_lines:
-                    RCTX.stdout.write(_('"{0}": adds trailing white space to "{1}" at line(s) {{{2}}}: removed.\n').format(top_patch.name, rel_subdir(file_data.path), ', '.join([str(line) for line in aws_lines])))
+                atws_lines = file_data.diff.fix_trailing_whitespace()
+                if atws_lines:
+                    RCTX.stdout.write(_('"{0}": adds trailing white space to "{1}" at line(s) {{{2}}}: removed.\n').format(top_patch.name, rel_subdir(file_data.path), ', '.join([str(line) for line in atws_lines])))
             else:
-                aws_lines = file_data.diff.report_trailing_whitespace()
-                if aws_lines:
-                    RCTX.stderr.write(_('"{0}": adds trailing white space to "{1}" at line(s) {{{2}}}.\n').format(top_patch.name, rel_subdir(file_data.path), ', '.join([str(line) for line in aws_lines])))
+                atws_lines = file_data.diff.report_trailing_whitespace()
+                if atws_lines:
+                    RCTX.stderr.write(_('"{0}": adds trailing white space to "{1}" at line(s) {{{2}}}.\n').format(top_patch.name, rel_subdir(file_data.path), ', '.join([str(line) for line in atws_lines])))
     shutil.rmtree(top_patch.cached_orig_dir_path)
     _DB.pop_top_patch()
     dump_db()
@@ -2331,7 +2331,7 @@ def do_export_patch_as(patchname, export_filename, force=False, overwrite=False,
         return cmd_result.ERROR
     return cmd_result.OK
 
-def do_scm_absorb_applied_patches(with_timestamps=False):
+def do_scm_absorb_applied_patches(force=False, with_timestamps=False):
     assert is_writable()
     if not scm_ifce.is_valid_repo():
         RCTX.stderr.write(_('Sources not under control of known SCM\n'))
@@ -2353,12 +2353,26 @@ def do_scm_absorb_applied_patches(with_timestamps=False):
     tempdir = tempfile.mkdtemp()
     patch_file_names = list()
     applied_patch_names = list()
+    drop_atws = options.get('absorb', 'drop_added_tws')
+    has_atws = False
     for applied_patch in _DB.applied_patches:
         fhandle, patch_file_name = tempfile.mkstemp(dir=tempdir)
-        os.write(fhandle, str(TextPatch(applied_patch, with_timestamps=with_timestamps, with_stats=False)))
+        text_patch = TextPatch(applied_patch, with_timestamps=with_timestamps, with_stats=False)
+        if drop_atws:
+            atws_reports = text_patch.fix_trailing_whitespace()
+            for file_path, atws_lines in atws_reports:
+                RCTX.stdout.write(_('"{0}": adds trailing white space to "{1}" at line(s) {{{2}}}: removed.\n').format(applied_patch.name, rel_subdir(file_path), ', '.join([str(line) for line in atws_lines])))
+        else:
+            atws_reports = text_patch.report_trailing_whitespace()
+            for file_path, atws_lines in atws_reports:
+                RCTX.stderr.write(_('"{0}": adds trailing white space to "{1}" at line(s) {{{2}}}.\n').format(applied_patch.name, rel_subdir(file_path), ', '.join([str(line) for line in atws_lines])))
+            has_atws = has_atws or len(atws_reports) > 0
+        os.write(fhandle, str(text_patch))
         os.close(fhandle)
         patch_file_names.append(patch_file_name)
         applied_patch_names.append(applied_patch.name)
+    if not force and has_atws:
+        return cmd_result.ERROR
     while len(_DB.applied_patches) > 0:
         if do_unapply_top_patch() != cmd_result.OK:
             return cmd_result.ERROR
