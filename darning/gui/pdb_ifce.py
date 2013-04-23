@@ -446,5 +446,5 @@ def is_readable():
 def is_writable():
     return patch_db.is_writable()
 
-def is_absorbable():
-    return patch_db.is_absorbable()
+def all_applied_patches_refreshed():
+    return patch_db.all_applied_patches_refreshed()

@@ -1810,7 +1810,7 @@ def do_apply_next_patch(absorb=False, force=False):
 def get_applied_patch_count():
     return len(_DB.applied_patches)
 
-def is_absorbable():
+def all_applied_patches_refreshed():
     if _DB is None or len(_DB.applied_patches) == 0:
         return False
     for applied_patch in _DB.applied_patches:
@@ -2373,18 +2373,22 @@ def do_scm_absorb_applied_patches(force=False, with_timestamps=False):
     if not is_ready:
         RCTX.stderr.write(_(msg))
         return cmd_result.ERROR
-    count_needing_refresh = 0
+    problem_count = 0
     for applied_patch in _DB.applied_patches:
         if applied_patch.needs_refresh():
-            count_needing_refresh += 1
+            problem_count += 1
             RCTX.stderr.write('{0}: requires refreshing\n'.format(applied_patch.name))
-    if count_needing_refresh > 0:
+        if not applied_patch.description:
+            problem_count += 1
+            RCTX.stderr.write('{0}: has no description\n'.format(applied_patch.name))
+    if problem_count > 0:
         return cmd_result.ERROR
     tempdir = tempfile.mkdtemp()
     patch_file_names = list()
     applied_patch_names = list()
     drop_atws = options.get('absorb', 'drop_added_tws')
     has_atws = False
+    empty_patch_count = 0
     for applied_patch in _DB.applied_patches:
         fhandle, patch_file_name = tempfile.mkstemp(dir=tempdir)
         text_patch = TextPatch(applied_patch, with_timestamps=with_timestamps, with_stats=False)
@@ -2399,9 +2403,16 @@ def do_scm_absorb_applied_patches(force=False, with_timestamps=False):
             has_atws = has_atws or len(atws_reports) > 0
         os.write(fhandle, str(text_patch))
         os.close(fhandle)
+        if len(text_patch.diff_pluses) == 0:
+            RCTX.stderr.write(_('"{0}": has no absorbable content.\n').format(applied_patch.name))
+            empty_patch_count += 1
         patch_file_names.append(patch_file_name)
         applied_patch_names.append(applied_patch.name)
     if not force and has_atws:
+        shutil.rmtree(tempdir)
+        return cmd_result.ERROR
+    if empty_patch_count > 0:
+        shutil.rmtree(tempdir)
         return cmd_result.ERROR
     while len(_DB.applied_patches) > 0:
         if do_unapply_top_patch() != cmd_result.OK:

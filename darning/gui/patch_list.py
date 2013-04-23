@@ -42,7 +42,7 @@ class Condns(actions.Condns):
     APPLIED_FLAG, \
     APPLIED_NOT_FLAG, \
     PUSH_POSSIBLE, \
-    IS_ABSORBABLE = [2 ** (n + actions.Condns.NCONDS) for n in range(_NEXTRACONDS)]
+    ALL_APPLIED_REFRESHED = [2 ** (n + actions.Condns.NCONDS) for n in range(_NEXTRACONDS)]
     APPLIED_TOP = APPLIED | APPLIED_FLAG
     APPLIED_NOT_TOP = APPLIED | APPLIED_NOT_FLAG
     UNAPPLIED_BLOCKED = UNAPPLIED | APPLIED_FLAG
@@ -792,7 +792,7 @@ def _update_class_indep_pushable_cb(_arg=None):
 ws_event.add_notification_cb(ws_event.CHANGE_WD|ws_event.PATCH_CHANGES, _update_class_indep_pushable_cb)
 
 def _update_class_indep_absorbable_cb(_arg=None):
-    condns = actions.MaskedCondns(Condns.IS_ABSORBABLE if ifce.PM.is_absorbable() else 0, Condns.IS_ABSORBABLE)
+    condns = actions.MaskedCondns(Condns.ALL_APPLIED_REFRESHED if ifce.PM.all_applied_patches_refreshed() else 0, Condns.ALL_APPLIED_REFRESHED)
     actions.set_class_indep_sensitivity_for_condns(condns)
 
 ws_event.add_notification_cb(ws_event.CHANGE_WD|ws_event.FILE_CHANGES|ws_event.PATCH_CHANGES|ws_event.AUTO_UPDATE, _update_class_indep_absorbable_cb)
@@ -1065,7 +1065,7 @@ actions.add_class_indep_actions(Condns.PMIC | Condns.IN_PGND_MUTABLE,
          _('Refresh the top patch'), refresh_top_patch_acb),
     ])
 
-actions.add_class_indep_actions(Condns.IS_ABSORBABLE | Condns.IN_REPO | Condns.IN_PGND_MUTABLE,
+actions.add_class_indep_actions(Condns.ALL_APPLIED_REFRESHED | Condns.IN_REPO | Condns.IN_PGND_MUTABLE,
     [
         ("patch_list_scm_absorb_applied_patches", icons.STOCK_FINISH_PATCH, _('Absorb All'), None,
          _('Absorb all applied patches into underlying SCM repository'), scm_absorb_applied_patches_acb),
