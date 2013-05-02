@@ -15,7 +15,8 @@
 
 import gtk
 
-from darning.gui import ws_event, gutils
+from darning.gui import ws_event
+from darning.gui import gutils
 from darning.gui import ifce
 
 class Condns(int):
