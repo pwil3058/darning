@@ -72,7 +72,7 @@ class Widget(gtk.VBox):
         hbox.pack_start(self.status_box, expand=False)
         hbox.pack_start(gtk.Label(self.patchname), expand=False)
         hbox.pack_end(self.tws_display, expand=False)
-        self.pack_start(hbox)
+        self.pack_start(hbox, expand=False)
         #
         pane = gtk.VPaned()
         self.pack_start(pane, expand=True, fill=True)
