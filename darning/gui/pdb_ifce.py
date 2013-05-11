@@ -105,20 +105,22 @@ DECO_MAP = {
 def get_status_deco(status):
     return DECO_MAP[status.presence]
 
-class FileDb(fsdb.GenFileDb):
-    class Dir(fsdb.GenDir):
-        def __init__(self):
-            fsdb.GenDir.__init__(self)
+class FileDir(fsdb.GenDir):
+    def __init__(self):
+        fsdb.GenDir.__init__(self)
+        self.status = patch_db.FileData.Status(None, None)
+    def _new_dir(self):
+        return FileDir()
+    def _update_own_status(self):
+        if len(self.status_set) == 1:
+            self.status = list(self.status_set)[0]
+        else:
             self.status = patch_db.FileData.Status(None, None)
-        def _new_dir(self):
-            return FileDb.Dir()
-        def _update_own_status(self):
-            if len(self.status_set) == 1:
-                self.status = list(self.status_set)[0]
-            else:
-                self.status = patch_db.FileData.Status(None, None)
+
+class FileDb(fsdb.GenFileDb):
+    DIR_TYPE = FileDir
     def __init__(self, file_list):
-        fsdb.GenFileDb.__init__(self, FileDb.Dir)
+        fsdb.GenFileDb.__init__(self)
         for item in file_list:
             parts = fsdb.split_path(item.name)
             self.base_dir.add_file(parts, item.status, item.related_file)

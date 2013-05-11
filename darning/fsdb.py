@@ -15,6 +15,7 @@
 
 import collections
 import os
+import hashlib
 
 class Relation(object):
     COPIED_FROM = '<<-'
@@ -28,11 +29,10 @@ Deco = collections.namedtuple('Deco', ['style', 'foreground'])
 def split_path(path):
     if os.path.isabs(path):
         path = os.path.relpath(path)
-    dirpart, part = os.path.split(path)
-    parts = [] if not part else [part]
-    while dirpart:
-        dirpart, part = os.path.split(dirpart)
-        parts.insert(0, part)
+    parts = []
+    while path:
+        path, tail = os.path.split(path)
+        parts.insert(0, tail)
     return parts
 
 class NullFileDb:
@@ -123,8 +123,9 @@ class GenDir:
         return (dirs, files)
 
 class GenFileDb:
-    def __init__(self, dir_type=GenDir):
-        self.base_dir = dir_type()
+    DIR_TYPE = GenDir
+    def __init__(self):
+        self.base_dir = self.DIR_TYPE()
     def _set_contents(self, file_list, unresolved_file_list=list()):
         for item in file_list:
             self.base_dir.add_file(split_path(item), status=None, related_file=None)
@@ -137,3 +138,33 @@ class GenFileDb:
         if not tdir:
             return ([], [])
         return tdir.dirs_and_files(show_hidden)
+
+class OsSnapshotFileDb:
+    DIR_TYPE = GenDir
+    def __init__(self, default_status=None):
+        self.tree_hash = hashlib.sha1()
+        self.base_dir = self.DIR_TYPE()
+        for root, dirs, files in os.walk('.'):
+            self.tree_hash.update(root)
+            rparts = split_path(root)[1:] # get rid of the leading './'
+            dir_data = self.base_dir._find_dir(rparts)
+            for d in dirs:
+                dir_data.subdirs[d] = self.DIR_TYPE()
+            for f in files:
+                self.tree_hash.update(f)
+                dir_data.files[f] = Data(f, default_status, None)
+    def dir_contents(self, dirpath='', show_hidden=False):
+        tdir = self.base_dir.find_dir(dirpath)
+        if not tdir:
+            return ([], [])
+        return tdir.dirs_and_files(show_hidden)
+    def _get_current_tree_hash(self):
+        h = hashlib.sha1()
+        for root, dirs, files in os.walk('.'):
+            h.update(root)
+            for f in files:
+                h.update(f)
+        return h
+    def is_current(self):
+        h = self._get_current_tree_hash()
+        return h.digest() == self.tree_hash.digest()
