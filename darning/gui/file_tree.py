@@ -91,42 +91,42 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener):
             return
         name += store.get_value(tree_iter, store.col_index('related_file_str'))
         cell_renderer.set_property('text', name)
-    template =tlview.TreeView.Template(
+    specification = tlview.ViewSpec(
         properties={'headers-visible' : False},
         selection_mode=gtk.SELECTION_MULTIPLE,
         columns=[
-            tlview.TreeView.Column(
+            tlview.ColumnSpec(
                 title=_('File Name'),
                 properties={},
                 cells=[
-                    tlview.TreeView.Cell(
-                        creator=tlview.TreeView.CellCreator(
-                            function=gtk.CellRendererPixbuf,
+                    tlview.CellSpec(
+                        cell_renderer_spec=tlview.CellRendererSpec(
+                            cell_renderer=gtk.CellRendererPixbuf,
                             expand=False,
                             start=True
                         ),
                         properties={},
-                        renderer=None,
+                        cell_data_function_spec=None,
                         attributes={'stock-id' : Model.col_index('icon')}
                     ),
-                    tlview.TreeView.Cell(
-                        creator=tlview.TreeView.CellCreator(
-                            function=gtk.CellRendererText,
+                    tlview.CellSpec(
+                        cell_renderer_spec=tlview.CellRendererSpec(
+                            cell_renderer=gtk.CellRendererText,
                             expand=False,
                             start=True
                         ),
                         properties={},
-                        renderer=None,
+                        cell_data_function_spec=None,
                         attributes={'text' : Model.col_index('status'), 'style' : Model.col_index('style'), 'foreground' : Model.col_index('foreground')}
                     ),
-                    tlview.TreeView.Cell(
-                        creator=tlview.TreeView.CellCreator(
-                            function=gtk.CellRendererText,
+                    tlview.CellSpec(
+                        cell_renderer_spec=tlview.CellRendererSpec(
+                            cell_renderer=gtk.CellRendererText,
                             expand=False,
                             start=True
                         ),
                         properties={},
-                        renderer=tlview.TreeView.Renderer(function=_format_file_name_crcb, user_data=None),
+                        cell_data_function_spec=tlview.CellDataFunctionSpec(function=_format_file_name_crcb, user_data=None),
                         attributes={'style' : Model.col_index('style'), 'foreground' : Model.col_index('foreground')}
                     )
                 ]

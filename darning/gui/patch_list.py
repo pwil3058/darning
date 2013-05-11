@@ -27,6 +27,7 @@ from darning.gui import ifce
 from darning.gui import actions
 from darning.gui import ws_actions
 from darning.gui import ws_event
+from darning.gui import tlview
 from darning.gui import table
 from darning.gui import icons
 from darning.gui import dialogue
@@ -68,7 +69,7 @@ class ListView(table.MapManagedTableView):
             return self.get_value_named(plist_iter, 'name')
         def get_patch_is_applied(self, plist_iter):
             return self.get_value_named(plist_iter, 'icon') is not None
-    template = table.MapManagedTableView.Template(
+    specification = tlview.ViewSpec(
         properties={
             'enable-grid-lines' : False,
             'reorderable' : False,
@@ -77,28 +78,28 @@ class ListView(table.MapManagedTableView):
         },
         selection_mode=gtk.SELECTION_SINGLE,
         columns=[
-            table.MapManagedTableView.Column(
+            tlview.ColumnSpec(
                 title=_('Patch List'),
                 properties={'expand': False, 'resizable' : True},
                 cells=[
-                    table.MapManagedTableView.Cell(
-                        creator=table.MapManagedTableView.CellCreator(
-                            function=gtk.CellRendererPixbuf,
+                    tlview.CellSpec(
+                        cell_renderer_spec=tlview.CellRendererSpec(
+                            cell_renderer=gtk.CellRendererPixbuf,
                             expand=False,
                             start=True
                         ),
                         properties={},
-                        renderer=None,
+                        cell_data_function_spec=None,
                         attributes = {'stock_id' : Model.col_index('icon')}
                     ),
-                    table.MapManagedTableView.Cell(
-                        creator=table.MapManagedTableView.CellCreator(
-                            function=gtk.CellRendererText,
+                    tlview.CellSpec(
+                        cell_renderer_spec=tlview.CellRendererSpec(
+                            cell_renderer=gtk.CellRendererText,
                             expand=False,
                             start=True
                         ),
                         properties={'editable' : False},
-                        renderer=None,
+                        cell_data_function_spec=None,
                         attributes = {'markup' : Model.col_index('markup')}
                     ),
                 ],
@@ -696,7 +697,7 @@ class RestorePatchDialog(dialogue.Dialog):
             class Model(table.Table.View.Model):
                 Row = collections.namedtuple('Row', ['PatchName'])
                 types = Row(PatchName=gobject.TYPE_STRING)
-            template = table.Table.View.Template(
+            specification = tlview.ViewSpec(
                 properties={
                     'enable-grid-lines' : False,
                     'reorderable' : False,
@@ -705,18 +706,18 @@ class RestorePatchDialog(dialogue.Dialog):
                 },
                 selection_mode=gtk.SELECTION_SINGLE,
                 columns=[
-                    table.Table.View.Column(
+                    tlview.ColumnSpec(
                         title=_('Patch Name'),
                         properties={'expand': False, 'resizable' : True},
                         cells=[
-                            table.Table.View.Cell(
-                                creator=table.Table.View.CellCreator(
-                                    function=gtk.CellRendererText,
+                            tlview.CellSpec(
+                                cell_renderer_spec=tlview.CellRendererSpec(
+                                    cell_renderer=gtk.CellRendererText,
                                     expand=False,
                                     start=True
                                 ),
                                 properties={'editable' : False},
-                                renderer=None,
+                                cell_data_function_spec=None,
                                 attributes = {'text' : Model.col_index('PatchName')}
                             ),
                         ],

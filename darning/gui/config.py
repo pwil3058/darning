@@ -31,6 +31,7 @@ from darning.gui import actions
 from darning.gui import ifce
 from darning.gui import icons
 from darning.gui import ws_event
+from darning.gui import tlview
 
 CONFIG_DIR_NAME = os.sep.join([utils.HOME, ".darning.d"])
 SAVED_PGND_FILE_NAME = os.sep.join([CONFIG_DIR_NAME, "playgrounds"])
@@ -102,7 +103,7 @@ class AliasPathTable(table.Table):
         class Model(table.Table.View.Model):
             Row = collections.namedtuple('Row', ['Alias', 'Path'])
             types = Row(Alias=gobject.TYPE_STRING, Path=gobject.TYPE_STRING)
-        template = table.Table.View.Template(
+        specification = tlview.ViewSpec(
             properties={
                 'enable-grid-lines' : False,
                 'reorderable' : False,
@@ -111,34 +112,34 @@ class AliasPathTable(table.Table):
             },
             selection_mode=gtk.SELECTION_SINGLE,
             columns=[
-                table.Table.View.Column(
+                tlview.ColumnSpec(
                     title=_('Alias'),
                     properties={'expand': False, 'resizable' : True},
                     cells=[
-                        table.Table.View.Cell(
-                            creator=table.Table.View.CellCreator(
-                                function=gtk.CellRendererText,
+                        tlview.CellSpec(
+                            cell_renderer_spec=tlview.CellRendererSpec(
+                                cell_renderer=gtk.CellRendererText,
                                 expand=False,
                                 start=True
                             ),
                             properties={'editable' : True},
-                            renderer=None,
+                            cell_data_function_spec=None,
                             attributes = {'text' : Model.col_index('Alias')}
                         ),
                     ],
                 ),
-                table.Table.View.Column(
+                tlview.ColumnSpec(
                     title=_('Path'),
                     properties={'expand': False, 'resizable' : True},
                     cells=[
-                        table.Table.View.Cell(
-                            creator=table.Table.View.CellCreator(
-                                function=gtk.CellRendererText,
+                        tlview.CellSpec(
+                            cell_renderer_spec=tlview.CellRendererSpec(
+                                cell_renderer=gtk.CellRendererText,
                                 expand=False,
                                 start=True
                             ),
                             properties={'editable' : False},
-                            renderer=None,
+                            cell_data_function_spec=None,
                             attributes = {'text' : Model.col_index('Path')}
                         ),
                     ],
@@ -315,41 +316,41 @@ class EditorAllocationTable(table.Table):
         class Model(table.Table.View.Model):
             Row = collections.namedtuple('Row', ['globs', 'editor'])
             types = Row(globs=gobject.TYPE_STRING, editor=gobject.TYPE_STRING)
-        template = table.Table.View.Template(
+        specification = tlview.ViewSpec(
             properties={
                 'enable-grid-lines' : True,
                 'reorderable' : True,
             },
             selection_mode=gtk.SELECTION_MULTIPLE,
             columns=[
-                table.Table.View.Column(
+                tlview.ColumnSpec(
                     title=_('File Pattern(s)'),
                     properties={'expand' : True},
                     cells=[
-                        table.Table.View.Cell(
-                            creator=table.Table.View.CellCreator(
-                                function=gtk.CellRendererText,
+                        tlview.CellSpec(
+                            cell_renderer_spec=tlview.CellRendererSpec(
+                                cell_renderer=gtk.CellRendererText,
                                 expand=False,
                                 start=True
                             ),
                             properties={'editable' : True},
-                            renderer=None,
+                            cell_data_function_spec=None,
                             attributes={'text' : Model.col_index('globs')}
                         ),
                     ],
                 ),
-                table.Table.View.Column(
+                tlview.ColumnSpec(
                     title=_('Editor Command'),
                     properties={'expand' : True},
                     cells=[
-                        table.Table.View.Cell(
-                            creator=table.Table.View.CellCreator(
-                                function=gtk.CellRendererText,
+                        tlview.CellSpec(
+                            cell_renderer_spec=tlview.CellRendererSpec(
+                                cell_renderer=gtk.CellRendererText,
                                 expand=False,
                                 start=True
                             ),
                             properties={'editable' : True},
-                            renderer=None,
+                            cell_data_function_spec=None,
                             attributes={'text' : Model.col_index('editor')}
                         ),
                     ],
