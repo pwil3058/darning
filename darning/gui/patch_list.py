@@ -800,7 +800,7 @@ def _update_class_indep_absorbable_cb(_arg=None):
 ws_event.add_notification_cb(ws_event.CHANGE_WD|ws_event.FILE_CHANGES|ws_event.PATCH_CHANGES, _update_class_indep_absorbable_cb)
 
 def new_playground_acb(_arg):
-    newpg = dialogue.ask_dir_name(_('Select/create playground ..'))
+    newpg = dialogue.ask_dir_name(_('Select/create playground ..'), existing=False, suggestion='.')
     if newpg is not None:
         dlg = NewSeriesDescrDialog(parent=dialogue.main_window)
         if dlg.run() == gtk.RESPONSE_OK:
