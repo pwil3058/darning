@@ -149,6 +149,13 @@ def get_sha1_for_file(filepath):
         return hashlib.sha1(open(filepath).read()).hexdigest()
     return None
 
+def get_digest_for_file_list(file_list):
+    h = hashlib.sha1()
+    for filepath in file_list:
+        if os.path.isfile(filepath):
+            h.update(open(filepath).read())
+    return h.digest()
+
 def get_git_hash_for_file(filepath):
     if os.path.isfile(filepath):
         hash = hashlib.sha1('blob {0}\000'.format(os.path.getsize(filepath)))

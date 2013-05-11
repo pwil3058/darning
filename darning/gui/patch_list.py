@@ -226,7 +226,7 @@ class List(table.MapManagedTable):
         self.header.lhs.pack_start(self.ui_manager.get_widget('/patch_list_menubar'), expand=True, fill=True)
         self.seln.connect("changed", self._selection_changed_cb)
         self.add_notification_cb(ws_event.CHANGE_WD, self._repopulate_list_cb)
-        self.add_notification_cb(ws_event.PATCH_CHANGES|ws_event.AUTO_UPDATE, self._update_list_cb)
+        self.add_notification_cb(ws_event.PATCH_CHANGES|ws_event.FILE_CHANGES, self._update_list_cb)
         self.repopulate_list()
     def _selection_changed_cb(self, selection):
         self.set_sensitivity_for_condns(MaskedCondns.get_applied_condns(self.seln))
@@ -795,7 +795,7 @@ def _update_class_indep_absorbable_cb(_arg=None):
     condns = actions.MaskedCondns(Condns.ALL_APPLIED_REFRESHED if ifce.PM.all_applied_patches_refreshed() else 0, Condns.ALL_APPLIED_REFRESHED)
     actions.set_class_indep_sensitivity_for_condns(condns)
 
-ws_event.add_notification_cb(ws_event.CHANGE_WD|ws_event.FILE_CHANGES|ws_event.PATCH_CHANGES|ws_event.AUTO_UPDATE, _update_class_indep_absorbable_cb)
+ws_event.add_notification_cb(ws_event.CHANGE_WD|ws_event.FILE_CHANGES|ws_event.PATCH_CHANGES, _update_class_indep_absorbable_cb)
 
 def new_playground_acb(_arg):
     newpg = dialogue.ask_dir_name(_('Select/create playground ..'))

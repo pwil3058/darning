@@ -180,7 +180,7 @@ class Dialogue(dialogue.AmodalDialog):
         self.action_area.pack_start(save_button)
         self.add_buttons(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
         self.connect("response", self._close_cb)
-        self.add_notification_cb(ws_event.PATCH_CHANGES|ws_event.FILE_CHANGES|ws_event.AUTO_UPDATE, self._update_display_cb)
+        self.add_notification_cb(ws_event.PATCH_CHANGES|ws_event.FILE_CHANGES, self._update_display_cb)
         self.show_all()
     def _close_cb(self, dialog, response_id):
         dialog.destroy()

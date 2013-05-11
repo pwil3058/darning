@@ -501,7 +501,7 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
                 ])
             self.ui_manager.add_ui_from_string(self.UI_DESCR)
             self.add_notification_cb(ws_event.CHECKOUT|ws_event.CHANGE_WD, self.repopulate)
-            self.add_notification_cb(ws_event.FILE_CHANGES|ws_event.AUTO_UPDATE, self.update)
+            self.add_notification_cb(ws_event.FILE_CHANGES|ws_event.WD_FILE_TREE_CHANGES|ws_event.REPO_FILE_STATUS_CHANGES, self.update)
         def _toggle_hide_clean_cb(self, toggleaction):
             dialogue.show_busy()
             self._update_dir('', None)
@@ -625,7 +625,7 @@ class PatchFileTreeWidget(gtk.VBox):
                      _('Launch external diff viewer for selected file'), self.extdiff_selected_file_acb),
                 ])
             self.add_notification_cb(ws_event.CHECKOUT|ws_event.CHANGE_WD|ws_event.PATCH_PUSH|ws_event.PATCH_POP, self.repopulate)
-            self.add_notification_cb(ws_event.FILE_CHANGES|ws_event.PATCH_REFRESH|ws_event.AUTO_UPDATE, self.update)
+            self.add_notification_cb(ws_event.FILE_CHANGES|ws_event.PATCH_REFRESH, self.update)
         def _get_file_db(self):
             return ifce.PM.get_file_db(self.patch)
         def edit_selected_files_acb(self, _action):

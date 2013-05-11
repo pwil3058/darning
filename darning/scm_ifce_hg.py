@@ -17,6 +17,7 @@
 
 import errno
 import pango
+import hashlib
 
 from darning import runext
 from darning import scm_ifce
@@ -149,6 +150,14 @@ class Mercurial(object):
         scm_file_db = FileDb(result.stdout.splitlines(), unresolved_file_list())
         scm_file_db.decorate_dirs()
         return scm_file_db
+    @staticmethod
+    def get_file_status_digest():
+        h = hashlib.sha1()
+        for cmd in [['hg', 'resolve', '--list', '.'], ['hg', 'status', '-AC', '.']]:
+            result = runext.run_cmd(cmd)
+            if result.ecode == 0:
+                h.update(result.stdout)
+        return h.digest()
     @staticmethod
     def get_status_deco(status):
         '''

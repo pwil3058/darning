@@ -22,12 +22,14 @@ to update their displayed/cached data
 
 import gobject
 
-_NFLAGS = 17
+_NFLAGS = 19
 AUTO_UPDATE, \
 FILE_ADD, \
 FILE_DEL, \
 FILE_MOD, \
 FILE_HGIGNORE, \
+WD_FILE_TREE_CHANGES, \
+REPO_FILE_STATUS_CHANGES, \
 REPO_MOD, \
 REPO_HGRC, \
 USER_HGRC, \
@@ -127,4 +129,3 @@ class Listener(gobject.GObject):
         """Remove all of my callbacks from the notification database"""
         for cb_token in self._listener_cbs:
             del_notification_cb(cb_token)
-

@@ -813,6 +813,8 @@ class CombinedPatchData(PickeExtensibleObject):
             status = FileData.Status(file_data.get_presence(), file_data.get_applied_validity())
             table.append(fsdb.Data(file_data.path, status, None))
         return table
+    def get_files_digest(self):
+        return utils.get_digest_for_file_list(self.files.keys())
 
 class DataBase(PickeExtensibleObject):
     '''Storage for an ordered sequence/series of patches'''
@@ -2469,3 +2471,8 @@ def get_combined_textpatch(with_timestamps=False):
     if _DB.series_index_for_top() is None:
         return None
     return CombinedTextPatch(with_timestamps=with_timestamps)
+
+def get_combined_patch_files_digest():
+    if _DB is None or _DB.series_index_for_top() is None:
+        return None
+    return _DB.combined_patch.get_files_digest()

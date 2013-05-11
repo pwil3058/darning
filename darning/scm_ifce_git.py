@@ -20,6 +20,7 @@ import errno
 import pango
 import os
 import re
+import hashlib
 
 from darning import runext
 from darning import scm_ifce
@@ -201,6 +202,12 @@ class Git(object):
         Get the SCM view of the current directory
         '''
         return WDFileDB()
+    @staticmethod
+    def get_file_status_digest():
+        result = runext.run_cmd(['git', 'status', '--porcelain', '--ignored', '--untracked=all'])
+        if result.ecode == 0:
+            return hashlib.sha1(result.stdout).digest()
+        return None
     @staticmethod
     def get_status_deco(status):
         '''

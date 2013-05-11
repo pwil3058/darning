@@ -67,6 +67,14 @@ def get_file_db():
         return fsdb.OsFileDb()
     return _CURRENT_BACK_END.get_file_db()
 
+def get_file_status_digest():
+    '''
+    Get the Sha1 digest of the SCM view of the files' status
+    '''
+    if _CURRENT_BACK_END is None:
+        return None
+    return _CURRENT_BACK_END.get_file_status_digest()
+
 def get_status_deco(status):
     '''
     Get the SCM specific decoration for the given status
