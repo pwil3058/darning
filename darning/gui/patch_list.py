@@ -418,7 +418,7 @@ def do_export_named_patch(parent, patchname, suggestion=None, busy_indicator=Non
         break
 
 class PatchDescrEditDialog(dialogue.Dialog):
-    class Widget(text_edit.Widget):
+    class Widget(text_edit.DbMessageWidget):
         UI_DESCR = '''
             <ui>
               <menubar name="menubar">
@@ -435,11 +435,13 @@ class PatchDescrEditDialog(dialogue.Dialog):
             </ui>
         '''
         def __init__(self, patch):
-            text_edit.Widget.__init__(self)
+            text_edit.DbMessageWidget.__init__(self)
             self.view.set_editable(ifce.PM.is_writable())
             self._patch = patch
             self.load_text_fm_db()
-            self.action_group.add_actions(
+        def populate_action_groups(self):
+            text_edit.DbMessageWidget.populate_action_groups(self)
+            self.action_groups[0].add_actions(
                 [
                     ("load_menu", None, _('_File')),
                 ])
@@ -481,7 +483,7 @@ class PatchDescrEditDialog(dialogue.Dialog):
                 self.destroy()
 
 class SeriesDescrEditDialog(dialogue.Dialog):
-    class Widget(text_edit.Widget):
+    class Widget(text_edit.DbMessageWidget):
         UI_DESCR = '''
             <ui>
               <menubar name="menubar">
@@ -498,10 +500,12 @@ class SeriesDescrEditDialog(dialogue.Dialog):
             </ui>
         '''
         def __init__(self):
-            text_edit.Widget.__init__(self)
+            text_edit.DbMessageWidget.__init__(self)
             self.view.set_editable(ifce.PM.is_writable())
             self.load_text_fm_db()
-            self.action_group.add_actions(
+        def populate_action_groups(self):
+            text_edit.DbMessageWidget.populate_action_groups(self)
+            self.action_groups[0].add_actions(
                 [
                     ("load_menu", None, _('_File')),
                 ])
@@ -543,7 +547,7 @@ class SeriesDescrEditDialog(dialogue.Dialog):
                 self.destroy()
 
 class NewSeriesDescrDialog(dialogue.Dialog):
-    class Widget(text_edit.Widget):
+    class Widget(text_edit.DbMessageWidget):
         UI_DESCR = '''
             <ui>
               <menubar name="menubar">
@@ -560,8 +564,10 @@ class NewSeriesDescrDialog(dialogue.Dialog):
             </ui>
         '''
         def __init__(self):
-            text_edit.Widget.__init__(self)
-            self.action_group.add_actions(
+            text_edit.DbMessageWidget.__init__(self)
+        def populate_action_groups(self):
+            text_edit.DbMessageWidget.populate_action_groups(self)
+            self.action_groups[0].add_actions(
                 [
                     ("load_menu", None, _('_File')),
                 ])

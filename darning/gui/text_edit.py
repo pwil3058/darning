@@ -26,6 +26,7 @@ from darning.gui import gutils
 from darning.gui import dialogue
 from darning.gui import ifce
 from darning.gui import config
+from darning.gui import actions
 
 def edit_files_extern(file_list):
     def _edit_files_extern(filelist, edstr=config.DEFAULT_EDITOR):
@@ -41,14 +42,12 @@ def edit_files_extern(file_list):
     for edstr in list(ed_assigns.keys()):
         _edit_files_extern(ed_assigns[edstr], edstr)
 
-class Widget(textview.Widget):
+class MessageWidget(textview.Widget, actions.CAGandUIManager):
     UI_DESCR = ''
-    def get_text_fm_db(self):
-        raise NotImplentedError('Must be defined in child')
-    def set_text_in_db(self, text):
-        raise NotImplentedError('Must be defined in child')
+    AC_SAVE_OK = actions.ActionCondns.new_flag()
     def __init__(self, save_file_name=None, auto_save=False):
         textview.Widget.__init__(self)
+        actions.CAGandUIManager.__init__(self)
         self.view.set_right_margin_position(72)
         self.view.set_show_right_margin(True)
         self.view.set_cursor_visible(True)
@@ -57,10 +56,13 @@ class Widget(textview.Widget):
         self._save_interval = 1000 # milliseconds
         self._save_file_name = save_file_name
         self._save_file_digest = None
+        self.save_toggle_action.set_active(auto_save)
+        self._update_action_sensitivities()
+    def populate_action_groups(self):
         # Set up action groups
         self.action_group = gtk.ActionGroup("always on")
         self.conditional_action_group = gtk.ActionGroup("save file dependent")
-        self.action_group.add_actions(
+        self.action_groups[0].add_actions(
             [
                 ("text_edit_ack", None, _('_Ack'), None,
                  _('Insert Acked-by tag at cursor position'), self._insert_ack_acb),
@@ -79,7 +81,7 @@ class Widget(textview.Widget):
                 ("text_edit_insert_from", gtk.STOCK_PASTE, _('_Insert from'), '',
                  _('Insert the contents of a file at cursor position'), self._insert_text_from_acb),
             ])
-        self.conditional_action_group.add_actions(
+        self.action_groups[self.AC_SAVE_OK].add_actions(
             [
                 ("text_edit_save_to_file", gtk.STOCK_SAVE, _('_Save'), "",
                  _('Save summary to file'), self._save_text_to_file_acb),
@@ -91,19 +93,10 @@ class Widget(textview.Widget):
                 _('Automatically/periodically save summary to file'), gtk.STOCK_SAVE
             )
         self.save_toggle_action.connect("toggled", self._toggle_auto_save_acb)
-        self.save_toggle_action.set_active(auto_save)
-        self.conditional_action_group.add_action(self.save_toggle_action)
-        self._update_action_sensitivities()
-        # Make some buttons
-        self.save_button = gutils.ActionButton(self.action_group.get_action("text_edit_save"), use_underline=False)
-        self.reload_button = gutils.ActionButton(self.action_group.get_action("text_edit_load"), use_underline=False)
-        # Set up UI manager
-        self.ui_manager = gutils.UIManager()
-        self.ui_manager.insert_action_group(self.action_group)
-        self.ui_manager.insert_action_group(self.conditional_action_group)
-        self.ui_manager.add_ui_from_string(self.UI_DESCR)
+        self.action_groups[self.AC_SAVE_OK].add_action(self.save_toggle_action)
     def _update_action_sensitivities(self):
-        self.conditional_action_group.set_sensitive(self._save_file_name is not None)
+        mcondn = actions.MaskedCondns(0 if self._save_file_name is not None else self.AC_SAVE_OK, self.AC_SAVE_OK)
+        self.action_groups.update_condns(mcondn)
     @staticmethod
     def _inform_user_data_problem():
         dialogue.inform_user(_('Unable to determine user\'s data'))
@@ -125,29 +118,10 @@ class Widget(textview.Widget):
             self.bfr.insert_at_cursor("Author: %s\n" % data)
         else:
             self._inform_user_data_problem()
-    def _save_text_acb(self, _action=None):
-        text = self.bfr.get_text(self.bfr.get_start_iter(), self.bfr.get_end_iter())
-        result = self.set_text_in_db(text)
-        if result.eflags:
-            dialogue.report_any_problems(result)
-        else:
-            # get the tidied up version of the text
-            self.load_text_fm_db(False)
-    def load_text_fm_db(self, clear_digest=True):
-        try:
-            self.set_contents(self.get_text_fm_db())
-            self.bfr.set_modified(False)
-            if clear_digest:
-                self._save_file_digest = None
-        except cmd_result.Failure as failure:
-            dialogue.report_failure(failure)
     def _ok_to_overwrite_summary(self):
         if self.bfr.get_char_count():
             return dialogue.ask_ok_cancel(_('Buffer contents will be destroyed. Continue?'))
         return True
-    def _reload_text_acb(self, _action=None):
-        if self._ok_to_overwrite_summary():
-            self.load_text_fm_db()
     def save_text_to_file(self, file_name=None):
         if not file_name:
             file_name = self._save_file_name
@@ -215,3 +189,51 @@ class Widget(textview.Widget):
             self.do_auto_save()
         if clear_save and self._save_file_name:
             self.save_text_to_file(content="")
+
+class DbMessageWidget(MessageWidget):
+    UI_DESCR = ''
+    def get_text_fm_db(self):
+        raise NotImplentedError('Must be defined in child')
+    def set_text_in_db(self, text):
+        raise NotImplentedError('Must be defined in child')
+    def __init__(self, save_file_name=None, auto_save=False):
+        MessageWidget.__init__(self)
+        self.view.set_right_margin_position(72)
+        self.view.set_show_right_margin(True)
+        self.view.set_cursor_visible(True)
+        self.view.set_editable(True)
+        # Set up file stuff
+        self._save_interval = 1000 # milliseconds
+        self._save_file_name = save_file_name
+        self._save_file_digest = None
+        # Make some buttons
+        self.save_button = gutils.ActionButton(self.action_groups.get_action("text_edit_save"), use_underline=False)
+        self.reload_button = gutils.ActionButton(self.action_groups.get_action("text_edit_load"), use_underline=False)
+    def populate_action_groups(self):
+        MessageWidget.populate_action_groups(self)
+        self.action_group.add_actions(
+            [
+                ("text_edit_save", gtk.STOCK_SAVE, _('_Save'), "",
+                 _('Save summary to database'), self._save_text_acb),
+                ("text_edit_load", gtk.STOCK_REVERT_TO_SAVED, _('_Reload'), "",
+                 _('Reload summary from database'), self._reload_text_acb),
+            ])
+    def _save_text_acb(self, _action=None):
+        text = self.bfr.get_text(self.bfr.get_start_iter(), self.bfr.get_end_iter())
+        result = self.set_text_in_db(text)
+        if result.eflags:
+            dialogue.report_any_problems(result)
+        else:
+            # get the tidied up version of the text
+            self.load_text_fm_db(False)
+    def load_text_fm_db(self, clear_digest=True):
+        try:
+            self.set_contents(self.get_text_fm_db())
+            self.bfr.set_modified(False)
+            if clear_digest:
+                self._save_file_digest = None
+        except cmd_result.Failure as failure:
+            dialogue.report_failure(failure)
+    def _reload_text_acb(self, _action=None):
+        if self._ok_to_overwrite_summary():
+            self.load_text_fm_db()

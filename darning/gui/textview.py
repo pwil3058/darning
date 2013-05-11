@@ -1,14 +1,14 @@
 ### Copyright (C) 2007 Peter Williams <peter_ono@users.sourceforge.net>
-
+###
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
 ### the Free Software Foundation; version 2 of the License only.
-
+###
 ### This program is distributed in the hope that it will be useful,
 ### but WITHOUT ANY WARRANTY; without even the implied warranty of
 ### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ### GNU General Public License for more details.
-
+###
 ### You should have received a copy of the GNU General Public License
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
@@ -98,11 +98,12 @@ class View(_View):
         self._adjust_size_request()
 
 class Widget(gtk.ScrolledWindow):
+    TEXT_VIEW = View
     def __init__(self, width_in_chars=81, aspect_ratio=0.33, fdesc=None):
         gtk.ScrolledWindow.__init__(self)
         # Set up text buffer and view
         self.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
-        self.view = View(width_in_chars=width_in_chars, aspect_ratio=aspect_ratio, fdesc=fdesc)
+        self.view = self.TEXT_VIEW(width_in_chars=width_in_chars, aspect_ratio=aspect_ratio, fdesc=fdesc)
         self._initialize_contents()
         self.add(self.view)
     @property

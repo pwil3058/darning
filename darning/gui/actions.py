@@ -1,14 +1,14 @@
 ### Copyright (C) 2011 Peter Williams <peter_ono@users.sourceforge.net>
-
+###
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
 ### the Free Software Foundation; version 2 of the License only.
-
+###
 ### This program is distributed in the hope that it will be useful,
 ### but WITHOUT ANY WARRANTY; without even the implied warranty of
 ### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ### GNU General Public License for more details.
-
+###
 ### You should have received a copy of the GNU General Public License
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
@@ -39,7 +39,6 @@ class MaskedCondns(collections.namedtuple('MaskedCondns', ['condns', 'mask'])):
 
 class ActionCondns(object):
     _flag_generator = create_flag_generator()
-
     @staticmethod
     def new_flags_and_mask(count):
         """
@@ -48,6 +47,9 @@ class ActionCondns(object):
         flags = [ActionCondns._flag_generator.next() for _i in range(count)]
         mask = sum(flags)
         return tuple(flags + [mask])
+    @staticmethod
+    def new_flag():
+        return ActionCondns._flag_generator.next()
 
 AC_DONT_CARE = 0
 AC_SELN_NONE, \
