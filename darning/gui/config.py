@@ -155,9 +155,9 @@ class AliasPathTable(table.Table):
         if self._extant_path(path):
             model_iter = self.model.get_iter_first()
             while model_iter:
-                if self._same_paths(self.model.get_labelled_value(model_iter, 'Path'), path):
+                if self._same_paths(self.model.get_value_named(model_iter, 'Path'), path):
                     if alias:
-                        self.model.set_labelled_value(model_iter, 'Alias', alias)
+                        self.model.set_value_named(model_iter, 'Alias', alias)
                     return
                 model_iter = self.model.iter_next(model_iter)
             if not alias:

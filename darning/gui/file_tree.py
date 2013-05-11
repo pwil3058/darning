@@ -59,13 +59,13 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener):
             return self.remove(fsobj_iter)
         def remove_place_holder(self, dir_iter):
             child_iter = self.iter_children(dir_iter)
-            if child_iter and self.get_labelled_value(child_iter, 'name') is None:
+            if child_iter and self.get_value_named(child_iter, 'name') is None:
                 self.remove(child_iter)
         def fs_path(self, fsobj_iter):
             if fsobj_iter is None:
                 return None
             parent_iter = self.iter_parent(fsobj_iter)
-            name = self.get_labelled_value(fsobj_iter, 'name')
+            name = self.get_value_named(fsobj_iter, 'name')
             if parent_iter is None:
                 return name
             else:
@@ -198,7 +198,7 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener):
             ])
     def _dirs_not_selectable(self, selection, model, path, is_selected, _arg=None):
         if not is_selected:
-            return not model.get_labelled_value(model.get_iter(path), 'is_dir')
+            return not model.get_value_named(model.get_iter(path), 'is_dir')
         return True
     def _toggle_show_hidden_cb(self, toggleaction):
         dialogue.show_busy()
@@ -229,7 +229,7 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener):
         child_iter = self.model.get_iter_first()
         for index in range(len(pathparts) - 1):
             while child_iter is not None:
-                if self.model.get_labelled_value(child_iter, 'name') == pathparts[index]:
+                if self.model.get_value_named(child_iter, 'name') == pathparts[index]:
                     tpath = self.model.get_path(child_iter)
                     if not self.row_expanded(tpath):
                         self.expand_row(tpath, False)
@@ -237,7 +237,7 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener):
                     break
                 child_iter = self.model.iter_next(child_iter)
         while child_iter is not None:
-            if self.model.get_labelled_value(child_iter, 'name') == pathparts[-1]:
+            if self.model.get_value_named(child_iter, 'name') == pathparts[-1]:
                 return child_iter
             child_iter = self.model.iter_next(child_iter)
         return None
@@ -253,13 +253,13 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener):
         else:
             child_iter = self.model.iter_children(parent_iter)
             if child_iter:
-                if self.model.get_labelled_value(child_iter, 'name') is None:
+                if self.model.get_value_named(child_iter, 'name') is None:
                     child_iter = self.model.iter_next(child_iter)
         dirs, files = self._get_dir_contents(dirpath)
         dead_entries = []
         for dirdata in dirs:
             row_tuple = self._generate_row_tuple(dirdata, True)
-            while (child_iter is not None) and self.model.get_labelled_value(child_iter, 'is_dir') and (self.model.get_labelled_value(child_iter, 'name') < dirdata.name):
+            while (child_iter is not None) and self.model.get_value_named(child_iter, 'is_dir') and (self.model.get_value_named(child_iter, 'name') < dirdata.name):
                 dead_entries.append(child_iter)
                 child_iter = self.model.iter_next(child_iter)
             if child_iter is None:
@@ -272,8 +272,8 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener):
                 else:
                     self.model.insert_place_holder(dir_iter)
                 continue
-            name = self.model.get_labelled_value(child_iter, 'name')
-            if (not self.model.get_labelled_value(child_iter, 'is_dir')) or (name > dirdata.name):
+            name = self.model.get_value_named(child_iter, 'name')
+            if (not self.model.get_value_named(child_iter, 'is_dir')) or (name > dirdata.name):
                 dir_iter = self.model.insert_before(parent_iter, child_iter, row_tuple)
                 changed = True
                 if self._populate_all:
@@ -283,28 +283,28 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener):
                 else:
                     self.model.insert_place_holder(dir_iter)
                 continue
-            changed |= self.model.get_labelled_value(child_iter, 'icon') != row_tuple.icon
+            changed |= self.model.get_value_named(child_iter, 'icon') != row_tuple.icon
             self.model.update_iter_row_tuple(child_iter, row_tuple)
             if self._populate_all or self._row_expanded(child_iter):
                 changed |= self._update_dir(os.path.join(dirpath, name), child_iter)
             child_iter = self.model.iter_next(child_iter)
-        while (child_iter is not None) and self.model.get_labelled_value(child_iter, 'is_dir'):
+        while (child_iter is not None) and self.model.get_value_named(child_iter, 'is_dir'):
             dead_entries.append(child_iter)
             child_iter = self.model.iter_next(child_iter)
         for filedata in files:
             row_tuple = self._generate_row_tuple(filedata, False)
-            while (child_iter is not None) and (self.model.get_labelled_value(child_iter, 'name') < filedata.name):
+            while (child_iter is not None) and (self.model.get_value_named(child_iter, 'name') < filedata.name):
                 dead_entries.append(child_iter)
                 child_iter = self.model.iter_next(child_iter)
             if child_iter is None:
                 dummy = self.model.append(parent_iter, row_tuple)
                 changed = True
                 continue
-            if self.model.get_labelled_value(child_iter, 'name') > filedata.name:
+            if self.model.get_value_named(child_iter, 'name') > filedata.name:
                 dummy = self.model.insert_before(parent_iter, child_iter, row_tuple)
                 changed = True
                 continue
-            changed |= self.model.get_labelled_value(child_iter, 'icon') != row_tuple.icon
+            changed |= self.model.get_value_named(child_iter, 'icon') != row_tuple.icon
             self.model.update_iter_row_tuple(child_iter, row_tuple)
             child_iter = self.model.iter_next(child_iter)
         while child_iter is not None:

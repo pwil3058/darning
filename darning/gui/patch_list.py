@@ -65,9 +65,9 @@ class ListView(table.MapManagedTableView):
         Row = collections.namedtuple('Row',    ['name', 'icon', 'markup'])
         types = Row(name=gobject.TYPE_STRING, icon=gobject.TYPE_STRING, markup=gobject.TYPE_STRING,)
         def get_patch_name(self, plist_iter):
-            return self.get_labelled_value(plist_iter, 'name')
+            return self.get_value_named(plist_iter, 'name')
         def get_patch_is_applied(self, plist_iter):
-            return self.get_labelled_value(plist_iter, 'icon') is not None
+            return self.get_value_named(plist_iter, 'icon') is not None
     template = table.MapManagedTableView.Template(
         properties={
             'enable-grid-lines' : False,

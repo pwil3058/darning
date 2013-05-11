@@ -1,83 +1,97 @@
 ### Copyright (C) 2010 Peter Williams <peter_ono@users.sourceforge.net>
-
+###
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
 ### the Free Software Foundation; version 2 of the License only.
-
+###
 ### This program is distributed in the hope that it will be useful,
 ### but WITHOUT ANY WARRANTY; without even the implied warranty of
 ### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ### GNU General Public License for more details.
-
+###
 ### You should have received a copy of the GNU General Public License
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """
-Provide generic enhancements to Textview widgets primarily to create
+Provide generic enhancements to Tree and List View widgets primarily to create
 them from templates and allow easier access to named contents.
 """
 
-import gtk
 import collections
 
+import gtk
+import gobject
+
+class NamedTreeModel(gtk.TreeModel):
+    # TODO: trim and improve NamedTreeModel
+    Row = None # this is a namedtuple type
+    types = None # this is an instance of Row defining column types
+    @classmethod
+    def col_index(cls, label):
+        return cls.Row._fields.index(label)
+    @classmethod
+    def col_indices(cls, labels):
+        return [cls.Row._fields.index(label) for label in labels]
+    @staticmethod
+    def get_selected_rows(selection):
+        model, paths = selection.get_selected_rows()
+        return [model.Row(*model[p]) for p in paths]
+    def get_row(self, model_iter):
+        return self.Row(*self[model_iter])
+    def get_named(self, model_iter, *labels):
+        return self.get(model_iter, *self.col_indices(labels))
+    def get_value_named(self, model_iter, label):
+        return self.get_value(model_iter, self.col_index(label))
+    def set_value_named(self, model_iter, label, value):
+        self.set_value(model_iter, self.col_index(label), value)
+    def set_named(self, model_iter, *label_values):
+        col_values = []
+        for index in len(label_values):
+            if (index % 2) == 0:
+                col_values.append(self.col_index(label_values[index]))
+            else:
+                col_values.append(label_values[index])
+        self.set(model_iter, *col_values)
+    def named(self):
+        # Iterate over rows as instances of type Row()
+        model_iter = self.get_iter_first()
+        while model_iter is not None:
+            yield self.get_row(model_iter)
+            model_iter = self.iter_next(model_iter)
+        return
+    def find_named(self, select_func):
+        model_iter = self.get_iter_first()
+        while model_iter:
+            if select_func(self.get_row(model_iter)):
+                return model_iter
+            else:
+                model_iter = self.iter_next(model_iter)
+        return None
+
+class NamedListStore(gtk.ListStore, NamedTreeModel):
+    def __init__(self):
+        gtk.ListStore.__init__(*[self] + list(self.types))
+    def append_contents(self, rows):
+        for row in rows:
+            self.append(row)
+    def set_contents(self, rows):
+        self.clear()
+        for row in rows:
+            self.append(row)
+
+class NamedTreeStore(gtk.TreeStore, NamedTreeModel):
+    def __init__(self):
+        gtk.TreeStore.__init__(*[self] + list(self.types))
+
 class View(gtk.TreeView):
+    Model = None
     Template = collections.namedtuple('ViewTemplate', ['properties', 'selection_mode', 'columns'])
     Column = collections.namedtuple('Column', ['title', 'properties', 'cells'])
     CellCreator = collections.namedtuple('CellCreator', ['function', 'expand', 'start'])
     Renderer = collections.namedtuple('Renderer', ['function', 'user_data'])
     Cell = collections.namedtuple('Cell', ['creator', 'properties', 'renderer', 'attributes'])
     ColumnAndCells = collections.namedtuple('ColumnAndCells', ['column', 'cells'])
-    class Model(gtk.TreeModel):
-        Row = None # this is a namedtuple type
-        types = None # this is an instance of Row defining column types
-        @classmethod
-        def col_index(cls, label):
-            return cls.Row._fields.index(label)
-        @classmethod
-        def col_indices(cls, labels):
-            return [cls.Row._fields.index(label) for label in labels]
-        def get_values(self, model_iter, cols):
-            return self.get(*([model_iter] + cols))
-        def set_values(self, model_iter, col_vals):
-            return self.set(*([model_iter] + col_vals))
-        def get_row(self, model_iter):
-            return self.get_values(model_iter, list(range(self.get_n_columns())))
-        def get_labelled_value(self, model_iter, label):
-            return self.get_value(model_iter, self.col_index(label))
-        def get_labelled_values(self, model_iter, labels):
-            return self.get_values(model_iter, self.col_indices(labels))
-        def set_labelled_value(self, model_iter, label, value):
-            self.set_value(model_iter, self.col_index(label), value)
-        def set_labelled_values(self, model_iter, label_values):
-            col_values = []
-            for index in len(label_values):
-                if (index % 2) == 0:
-                    col_values.append(self.col_index(label_values[index]))
-                else:
-                    col_values.append(label_values[index])
-            self.set_values(model_iter, col_values)
-        def get_contents(self):
-            contents = []
-            model_iter = self.get_iter_first()
-            while model_iter:
-                contents.append(self.get_row(model_iter))
-                model_iter = self.iter_next(model_iter)
-            return contents
-        def get_row_with_key_value(self, key_value, key=None):
-            if key is None:
-                index = 0
-            elif isinstance(key, int):
-                index = key
-            else:
-                index = self.col_index(key)
-            model_iter = self.get_iter_first()
-            while model_iter:
-                if self.get_value(model_iter, index) == key_value:
-                    return model_iter
-                else:
-                    model_iter = self.iter_next(model_iter)
-            return None
     template = None
     def __init__(self, model=None):
         if model is None:
@@ -109,15 +123,6 @@ class View(gtk.TreeView):
             else:
                 column.pack_end(cell)
         return cell
-    @property
-    def model(self):
-        return self.get_model()
-    @model.setter
-    def model(self, new_model):
-        self.set_model(new_model)
-    def set_model(self, model):
-        assert model is None or isinstance(model, self.Model)
-        gtk.TreeView.set_model(self, model)
     def _view_add_column(self, col_d):
         col = gtk.TreeViewColumn(col_d.title)
         col_cells = View.ColumnAndCells(col, [])
@@ -140,6 +145,15 @@ class View(gtk.TreeView):
                 cell.connect('edited', self._cell_text_edited_cb, attr_index)
             elif attr_name == 'active':
                 cell.connect('toggled', self._cell_toggled_cb, attr_index)
+    @property
+    def model(self):
+        return self.get_model()
+    @model.setter
+    def model(self, new_model):
+        self.set_model(new_model)
+    def set_model(self, model):
+        assert model is None or isinstance(model, self.Model)
+        gtk.TreeView.set_model(self, model)
     def _notify_modification(self):
         for cbk, data in self._modified_cbs:
             if data is None:
@@ -169,18 +183,7 @@ class View(gtk.TreeView):
         return self._columns[key].cells[cell_index]
 
 class ListView(View):
-    class Model(View.Model, gtk.ListStore):
-        def __init__(self):
-            gtk.ListStore.__init__(*[self] + list(self.types))
-        def append_contents(self, rows):
-            for row in rows:
-                self.append(row)
-        def set_contents(self, rows):
-            self.clear()
-            for row in rows:
-                self.append(row)
+    Model = NamedListStore
 
 class TreeView(View):
-    class Model(View.Model, gtk.TreeStore):
-        def __init__(self):
-            gtk.TreeStore.__init__(*[self] + list(self.types))
+    Model = NamedTreeStore

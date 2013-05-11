@@ -1,14 +1,14 @@
 ### Copyright (C) 2007 Peter Williams <peter_ono@users.sourceforge.net>
-
+###
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
 ### the Free Software Foundation; version 2 of the License only.
-
+###
 ### This program is distributed in the hope that it will be useful,
 ### but WITHOUT ANY WARRANTY; without even the implied warranty of
 ### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ### GNU General Public License for more details.
-
+###
 ### You should have received a copy of the GNU General Public License
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
@@ -89,7 +89,7 @@ class Table(gtk.VBox):
         self.model.set_contents(self._fetch_contents())
         self._set_modified(False)
     def get_contents(self):
-        return self.model.get_contents()
+        return [row for row in self.model.named()]
     def apply_changes(self):
         pass # define in child
     def _row_inserted_cb(self, model, path, model_iter):
@@ -129,7 +129,7 @@ class Table(gtk.VBox):
         for row in selected_rows:
             model_iter = store.get_iter(row)
             assert model_iter is not None
-            result.append(store.get_values(model_iter, columns))
+            result.append(store.get(model_iter, *columns))
         return result
     def get_selected_data_by_label(self, labels):
         columns = self.model.col_indices(labels)
@@ -193,11 +193,11 @@ class TableView(tlview.ListView, ws_actions.AGandUIManager, dialogue.BusyIndicat
             middle_key = self.model.get_value(self.model.get_iter(middle), 0)
         self._set_contents()
         for key in selected_keys:
-            model_iter = self.model.get_row_with_key_value(key_value=key)
+            model_iter = self.model.find_named(lambda x: x[0] == key)
             if model_iter is not None:
                 self.seln.select_iter(model_iter)
         if visible_range is not None:
-            middle_iter = self.model.get_row_with_key_value(key_value=middle_key)
+            middle_iter = self.model.find_named(lambda x: x[0] == middle_key)
             if middle_iter is not None:
                 middle = self.model.get_path(middle_iter)
                 self.scroll_to_cell(middle, use_align=True, row_align=align)
@@ -205,7 +205,7 @@ class TableView(tlview.ListView, ws_actions.AGandUIManager, dialogue.BusyIndicat
     def _refresh_contents_acb(self, _action):
         self.refresh_contents()
     def get_contents(self):
-        return self.model.get_contents()
+        return [row for row in self.model.named()]
     def get_selected_data(self, columns=None):
         store, selected_rows = self.seln.get_selected_rows()
         if not columns:
@@ -214,7 +214,7 @@ class TableView(tlview.ListView, ws_actions.AGandUIManager, dialogue.BusyIndicat
         for row in selected_rows:
             model_iter = store.get_iter(row)
             assert model_iter is not None
-            result.append(store.get_values(model_iter, columns))
+            result.append(store.get(model_iter, *columns))
         return result
     def get_selected_keys(self, keycol=0):
         store, selected_rows = self.seln.get_selected_rows()
@@ -238,7 +238,8 @@ class TableView(tlview.ListView, ws_actions.AGandUIManager, dialogue.BusyIndicat
     def get_selected_key_by_label(self, label):
         return self.get_selected_key(self.model.col_index(label))
     def select_and_scroll_to_row_with_key_value(self, key_value, key=None):
-        model_iter = self.model.get_row_with_key_value(key_value, key)
+        index = 0 if key is None else (key if isinstance(key, int) else self.model.col_index(key))
+        model_iter = self.model.find_named(lambda x: x[index] == key_value)
         if not model_iter:
             return False
         self.seln.select_iter(model_iter)
