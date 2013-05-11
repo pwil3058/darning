@@ -23,12 +23,12 @@ from darning.gui import dialogue
 from darning.gui import console
 from darning.gui import ifce
 from darning.gui import icons
-from darning.gui import actions
+from darning.gui import ws_actions
 from darning.gui import ws_event
 from darning.gui import patch_list
 from darning.gui import file_tree
 
-class Darning(gtk.Window, dialogue.BusyIndicator, actions.AGandUIManager):
+class Darning(gtk.Window, dialogue.BusyIndicator, ws_actions.AGandUIManager):
     count = 0
     UI_DESCR = '''
     <ui>
@@ -72,7 +72,7 @@ class Darning(gtk.Window, dialogue.BusyIndicator, actions.AGandUIManager):
         self._update_title()
         dialogue.init(self)
         dialogue.BusyIndicator.__init__(self)
-        actions.AGandUIManager.__init__(self)
+        ws_actions.AGandUIManager.__init__(self)
         self.ui_manager.add_ui_from_string(Darning.UI_DESCR)
         vbox = gtk.VBox()
         self.add(vbox)
@@ -109,6 +109,8 @@ class Darning(gtk.Window, dialogue.BusyIndicator, actions.AGandUIManager):
             vpane.add2(console.LOG)
         self.add_notification_cb(ws_event.CHANGE_WD, self._change_pgnd_ncb)
         self.show_all()
+    def populate_action_groups(self):
+        pass
     def _update_title(self):
         self.set_title("gdarn: %s" % utils.path_rel_home(os.getcwd()))
     def _change_pgnd_ncb(self, _arg=None):

@@ -21,7 +21,8 @@ them from templates and allow easier access to named contents.
 import gtk
 
 from darning.gui import gutils
-from darning.gui import actions
+from darning.gui import ws_actions
+from darning.gui import ws_event
 from darning.gui import tlview
 from darning.gui import icons
 from darning.gui import dialogue
@@ -133,7 +134,7 @@ class Table(gtk.VBox):
         columns = self.model.col_indices(labels)
         return self.get_selected_data(columns)
 
-class TableWithAGandUI(gtk.VBox, actions.AGandUIManager, dialogue.BusyIndicatorUser):
+class TableWithAGandUI(gtk.VBox, ws_actions.AGandUIManager, dialogue.BusyIndicatorUser):
     View = tlview.ListView
     def __init__(self, popup=None, scroll_bar=True, busy_indicator=None, size_req=None):
         self._popup = popup
@@ -142,32 +143,30 @@ class TableWithAGandUI(gtk.VBox, actions.AGandUIManager, dialogue.BusyIndicatorU
         self.header = gutils.SplitBar()
         self.pack_start(self.header, expand=False)
         self.view = self.View()
-        actions.AGandUIManager.__init__(self, self.view.get_selection())
+        ws_actions.AGandUIManager.__init__(self, selection=self.view.get_selection(), popup=popup)
         if size_req:
             self.view.set_size_request(size_req[0], size_req[1])
         if scroll_bar:
             self.pack_start(gutils.wrap_in_scrolled_window(self.view))
         else:
             self.pack_start(self.view)
-        self.view.connect("button_press_event", self._handle_button_press_cb)
-        self.view.connect("key_press_event", self._handle_key_press_cb)
+        self.view.connect("button_press_event", self._handle_clear_selection_cb)
+        self.view.connect("key_press_event", self._handle_clear_selection_cb)
     @property
     def model(self):
         return self.view.get_model()
-    def _handle_button_press_cb(self, widget, event):
+    @property
+    def seln(self):
+        return self.view.get_selection()
+    def _handle_clear_selection_cb(self, widget, event):
         if event.type == gtk.gdk.BUTTON_PRESS:
-            if event.button == 3 and self._popup:
-                menu = self.ui_manager.get_widget(self._popup)
-                menu.popup(None, None, None, event.button, event.time)
-                return True
-            elif event.button == 2:
+            if event.button == 2:
                 self.seln.unselect_all()
                 return True
-        return False
-    def _handle_key_press_cb(self, widget, event):
-        if event.keyval == gtk.gdk.keyval_from_name('Escape'):
-            self.seln.unselect_all()
-            return True
+        elif event.type == gtk.gdk.KEY_PRESS:
+            if event.keyval == gtk.gdk.keyval_from_name('Escape'):
+                self.seln.unselect_all()
+                return True
         return False
     def _fetch_contents(self):
         pass # define in child
@@ -256,23 +255,24 @@ class MapManagedTable(TableWithAGandUI, gutils.MappedManager):
                                   scroll_bar=scroll_bar)
         gutils.MappedManager.__init__(self)
         self._needs_refresh = True
-        self.add_conditional_actions(actions.Condns.IN_REPO,
+        self.add_notification_cb(ws_event.CHANGE_WD, self.reset_contents_if_mapped)
+    def populate_action_groups(self):
+        self.action_groups[ws_actions.AC_IN_REPO].add_actions(
             [
                 ("table_refresh_contents", gtk.STOCK_REFRESH, _('Refresh'), None,
                  _('Refresh the tables contents'), self._refresh_contents_acb),
             ])
-        from darning.gui import ws_event
-        self.add_notification_cb(ws_event.CHANGE_WD, self.reset_contents_if_mapped)
     def map_action(self):
-        if self._needs_refresh:
+        if self._needs_refresh == _NEEDS_RESET:
+            self.show_busy()
+            self.set_contents()
+            self.unshow_busy()
+        elif self._needs_refresh:
             self.show_busy()
             self.refresh_contents()
             self.unshow_busy()
     def unmap_action(self):
         pass
-    def _refresh_contents(self):
-        self.set_contents()
-        self._needs_refresh = False
     def set_contents(self):
         TableWithAGandUI.set_contents(self)
         self._needs_refresh = False

@@ -25,6 +25,7 @@ from darning.patch_db import PatchState
 
 from darning.gui import ifce
 from darning.gui import actions
+from darning.gui import ws_actions
 from darning.gui import ws_event
 from darning.gui import table
 from darning.gui import icons
@@ -34,38 +35,29 @@ from darning.gui import textview
 from darning.gui import gutils
 from darning.gui import patch_view
 
-class Condns(actions.Condns):
-    _NEXTRACONDS = 6
-    POP_POSSIBLE = actions.Condns.PMIC
-    APPLIED, \
-    UNAPPLIED, \
-    APPLIED_FLAG, \
-    APPLIED_NOT_FLAG, \
-    PUSH_POSSIBLE, \
-    ALL_APPLIED_REFRESHED = [2 ** (n + actions.Condns.NCONDS) for n in range(_NEXTRACONDS)]
-    APPLIED_TOP = APPLIED | APPLIED_FLAG
-    APPLIED_NOT_TOP = APPLIED | APPLIED_NOT_FLAG
-    UNAPPLIED_BLOCKED = UNAPPLIED | APPLIED_FLAG
-    UNAPPLIED_NOT_BLOCKED = UNAPPLIED | APPLIED_NOT_FLAG
-    APPLIED_CONDNS = APPLIED | UNAPPLIED | APPLIED_FLAG | APPLIED_NOT_FLAG
+AC_POP_POSSIBLE = ws_actions.AC_PMIC
+AC_APPLIED, AC_UNAPPLIED, AC_APPLIED_FLAG, AC_APPLIED_NOT_FLAG, AC_APPLIED_MASK = actions.ActionCondns.new_flags_and_mask(4)
+AC_PUSH_POSSIBLE, AC_PUSH_POSSIBLE_MASK = actions.ActionCondns.new_flags_and_mask(1)
+AC_ALL_APPLIED_REFRESHED, AC_ALL_APPLIED_REFRESHED_MASK = actions.ActionCondns.new_flags_and_mask(1)
+AC_APPLIED_TOP = AC_APPLIED | AC_APPLIED_FLAG
+AC_APPLIED_NOT_TOP = AC_APPLIED | AC_APPLIED_NOT_FLAG
+AC_UNAPPLIED_BLOCKED = AC_UNAPPLIED | AC_APPLIED_FLAG
+AC_UNAPPLIED_NOT_BLOCKED = AC_UNAPPLIED | AC_APPLIED_NOT_FLAG
 
-class MaskedCondns(actions.MaskedCondns):
-    @staticmethod
-    def get_applied_condns(seln):
-        model, model_iter = seln.get_selected()
-        if model_iter is None:
-            return actions.MaskedCondns(Condns.DONT_CARE, Condns.APPLIED_CONDNS)
-        patchname = model.get_patch_name(model_iter)
-        if model.get_patch_is_applied(model_iter):
-            cond = Condns.APPLIED_TOP if ifce.PM.is_top_patch(patchname) else Condns.APPLIED_NOT_TOP
-        elif ifce.PM.is_blocked_by_guard(patchname):
-            cond = Condns.UNAPPLIED_BLOCKED
-        else:
-            cond = Condns.UNAPPLIED_NOT_BLOCKED
-        return actions.MaskedCondns(cond, Condns.APPLIED_CONDNS)
-    @staticmethod
-    def get_pushable_condns():
-        return actions.MaskedCondns(Condns.PUSH_POSSIBLE if ifce.PM.is_pushable() else 0, Condns.PUSH_POSSIBLE)
+def get_applied_condns(seln):
+    model, model_iter = seln.get_selected()
+    if model_iter is None:
+        return actions.MaskedCondns(actions.AC_DONT_CARE, AC_APPLIED_MASK)
+    patchname = model.get_patch_name(model_iter)
+    if model.get_patch_is_applied(model_iter):
+        cond = AC_APPLIED_TOP if ifce.PM.is_top_patch(patchname) else AC_APPLIED_NOT_TOP
+    elif ifce.PM.is_blocked_by_guard(patchname):
+        cond = AC_UNAPPLIED_BLOCKED
+    else:
+        cond = AC_UNAPPLIED_NOT_BLOCKED
+    return actions.MaskedCondns(cond, AC_APPLIED_MASK)
+def get_pushable_condns():
+    return actions.MaskedCondns(AC_PUSH_POSSIBLE if ifce.PM.is_pushable() else 0, AC_PUSH_POSSIBLE)
 
 class List(table.MapManagedTable):
     class View(table.MapManagedTable.View):
@@ -173,13 +165,20 @@ class List(table.MapManagedTable):
                                        scroll_bar=True,
                                        busy_indicator=busy_indicator,
                                        size_req=None)
-        self.add_conditional_action(Condns.DONT_CARE, gtk.Action("menu_patch_list", _('Patch _List'), None, None))
-        self.add_conditional_actions(Condns.IN_PGND,
+        self.header.lhs.pack_start(self.ui_manager.get_widget('/patch_list_menubar'), expand=True, fill=True)
+        self.view.get_selection().connect("changed", self._selection_changed_cb)
+        self.add_notification_cb(ws_event.CHANGE_WD, self._repopulate_list_cb)
+        self.add_notification_cb(ws_event.PATCH_CHANGES|ws_event.FILE_CHANGES, self._update_list_cb)
+        self.repopulate_list()
+    def populate_action_groups(self):
+        table.MapManagedTable.populate_action_groups(self)
+        self.action_groups[actions.AC_DONT_CARE].add_action(gtk.Action("menu_patch_list", _('Patch _List'), None, None))
+        self.action_groups[ws_actions.AC_IN_PGND].add_actions(
             [
                 ("pm_refresh_patch_list", gtk.STOCK_REFRESH, _('Update Patch List'), None,
                  _('Refresh/update the patch list display'), self._update_list_cb),
             ])
-        self.add_conditional_actions(Condns.UNIQUE_SELN | Condns.IN_PGND,
+        self.action_groups[actions.AC_SELN_UNIQUE | ws_actions.AC_IN_PGND].add_actions(
             [
                 ("pm_edit_patch_descr", gtk.STOCK_EDIT, _('Description'), None,
                  _('Edit the selected patch\'s description'), self.do_edit_description),
@@ -188,7 +187,7 @@ class List(table.MapManagedTable):
                 ("patch_list_export_patch", gtk.STOCK_SAVE_AS, _('Export'), None,
                  _('Export the selected patch to a text file'), self.do_export),
             ])
-        self.add_conditional_actions(Condns.UNIQUE_SELN | Condns.IN_PGND_MUTABLE,
+        self.action_groups[actions.AC_SELN_UNIQUE | ws_actions.AC_IN_PGND_MUTABLE].add_actions(
             [
                 ("pm_set_patch_guards", icons.STOCK_PATCH_GUARD, None, None,
                  _('Set guards on the selected patch'), self.do_set_guards),
@@ -197,39 +196,33 @@ class List(table.MapManagedTable):
                 ("patch_list_duplicate", gtk.STOCK_COPY, _('Duplicate'), None,
                  _('Duplicate the selected patch after the top applied patch'), self.do_duplicate),
             ])
-        self.add_conditional_actions(Condns.UNIQUE_SELN | Condns.PUSH_POSSIBLE | Condns.IN_PGND_MUTABLE | Condns.UNAPPLIED_NOT_BLOCKED,
+        self.action_groups[actions.AC_SELN_UNIQUE | AC_PUSH_POSSIBLE | ws_actions.AC_IN_PGND_MUTABLE | AC_UNAPPLIED_NOT_BLOCKED].add_actions(
             [
                 ("patch_list_push_to", icons.STOCK_PUSH_PATCH, _('Push To'), None,
                  _('Apply all unguarded unapplied patches up to the selected patch.'), self.do_push_patches_to),
             ])
-        self.add_conditional_actions(Condns.UNIQUE_SELN | Condns.IN_PGND_MUTABLE | Condns.UNAPPLIED,
+        self.action_groups[actions.AC_SELN_UNIQUE | ws_actions.AC_IN_PGND_MUTABLE | AC_UNAPPLIED].add_actions(
             [
                 ("patch_list_remove", gtk.STOCK_DELETE, _('Remove'), None,
                  _('Remove the selected patch from the series.'), self.do_remove),
             ])
-        self.add_conditional_actions(Condns.UNIQUE_SELN | Condns.POP_POSSIBLE | Condns.IN_PGND_MUTABLE | Condns.APPLIED_NOT_TOP,
+        self.action_groups[actions.AC_SELN_UNIQUE | AC_POP_POSSIBLE | ws_actions.AC_IN_PGND_MUTABLE | AC_APPLIED_NOT_TOP].add_actions(
             [
                 ("patch_list_pop_to", icons.STOCK_POP_PATCH, _('Pop To'), None,
                  _('Apply all applied patches down to the selected patch.'), self.do_pop_patches_to),
             ])
-        self.add_conditional_actions(Condns.UNIQUE_SELN | Condns.POP_POSSIBLE | Condns.IN_PGND_MUTABLE | Condns.APPLIED,
+        self.action_groups[actions.AC_SELN_UNIQUE | AC_POP_POSSIBLE | ws_actions.AC_IN_PGND_MUTABLE | AC_APPLIED].add_actions(
             [
                 ("patch_list_refresh_selected", icons.STOCK_PUSH_PATCH, _('Refresh'), None,
                  _('Refresh the selected patch.'), self.do_refresh_selected_patch_acb),
             ])
-        self.add_conditional_actions(Condns.UNIQUE_SELN | Condns.POP_POSSIBLE | Condns.IN_PGND_MUTABLE | Condns.UNAPPLIED,
+        self.action_groups[actions.AC_SELN_UNIQUE | AC_POP_POSSIBLE | ws_actions.AC_IN_PGND_MUTABLE | AC_UNAPPLIED].add_actions(
             [
                 ("patch_list_fold_selected", icons.STOCK_FOLD_PATCH, _('Fold'), None,
                  _('Fold the selected patch into the top applied patch.'), self.do_fold_patch_acb),
             ])
-        self.ui_manager.add_ui_from_string(self.UI_DESCR)
-        self.header.lhs.pack_start(self.ui_manager.get_widget('/patch_list_menubar'), expand=True, fill=True)
-        self.seln.connect("changed", self._selection_changed_cb)
-        self.add_notification_cb(ws_event.CHANGE_WD, self._repopulate_list_cb)
-        self.add_notification_cb(ws_event.PATCH_CHANGES|ws_event.FILE_CHANGES, self._update_list_cb)
-        self.repopulate_list()
     def _selection_changed_cb(self, selection):
-        self.set_sensitivity_for_condns(MaskedCondns.get_applied_condns(self.seln))
+        self.action_groups.update_condns(get_applied_condns(self.seln))
     def get_selected_patch(self):
         store, store_iter = self.seln.get_selected()
         return None if store_iter is None else store.get_patch_name(store_iter)
@@ -243,14 +236,14 @@ class List(table.MapManagedTable):
             icon = self.status_icons[patch_data.state]
             markup = self.patch_markup(patch_data, selected)
             contents.append([patch_data.name, icon, markup])
-        condns = MaskedCondns.get_pushable_condns()
-        self.set_sensitivity_for_condns(condns)
+        condns = get_pushable_condns()
+        self.action_groups.update_condns(condns)
         return contents
     def repopulate_list(self):
         self.set_contents()
-        condns = MaskedCondns.get_applied_condns(self.seln)
-        condns |= MaskedCondns.get_in_pgnd_condns()
-        self.set_sensitivity_for_condns(condns)
+        condns = get_applied_condns(self.seln)
+        condns |= ws_actions.get_in_pgnd_condns()
+        self.action_groups.update_condns(condns)
     def _repopulate_list_cb(self, _arg=None):
         self.show_busy()
         self.repopulate_list()
@@ -786,14 +779,14 @@ class RestorePatchDialog(dialogue.Dialog):
         return self.as_name.get_text()
 
 def _update_class_indep_pushable_cb(_arg=None):
-    condns = MaskedCondns.get_pushable_condns()
-    actions.set_class_indep_sensitivity_for_condns(condns)
+    condns = get_pushable_condns()
+    actions.CLASS_INDEP_AGS.update_condns(condns)
 
 ws_event.add_notification_cb(ws_event.CHANGE_WD|ws_event.PATCH_CHANGES, _update_class_indep_pushable_cb)
 
 def _update_class_indep_absorbable_cb(_arg=None):
-    condns = actions.MaskedCondns(Condns.ALL_APPLIED_REFRESHED if ifce.PM.all_applied_patches_refreshed() else 0, Condns.ALL_APPLIED_REFRESHED)
-    actions.set_class_indep_sensitivity_for_condns(condns)
+    condns = actions.MaskedCondns(AC_ALL_APPLIED_REFRESHED if ifce.PM.all_applied_patches_refreshed() else 0, AC_ALL_APPLIED_REFRESHED)
+    actions.CLASS_INDEP_AGS.update_condns(condns)
 
 ws_event.add_notification_cb(ws_event.CHANGE_WD|ws_event.FILE_CHANGES|ws_event.PATCH_CHANGES, _update_class_indep_absorbable_cb)
 
@@ -1011,19 +1004,19 @@ def scm_absorb_applied_patches_acb(_arg):
     dialogue.report_any_problems(result)
     return cmd_result.is_ok(result)
 
-actions.add_class_indep_actions(actions.Condns.DONT_CARE,
+actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_actions(
     [
         ("config_new_playground", icons.STOCK_NEW_PLAYGROUND, _('_New'), "",
          _('Create a new intitialized playground'), new_playground_acb),
     ])
 
-actions.add_class_indep_actions(actions.Condns.NOT_IN_PGND,
+actions.CLASS_INDEP_AGS[ws_actions.AC_NOT_IN_PGND].add_actions(
     [
         ("config_init_cwd", icons.STOCK_INIT, _('_Initialize'), "",
          _('Create a patch series in the current directory'), init_cwd_acb),
     ])
 
-actions.add_class_indep_actions(Condns.IN_PGND_MUTABLE,
+actions.CLASS_INDEP_AGS[ws_actions.AC_IN_PGND_MUTABLE].add_actions(
     [
         ("patch_list_new_patch", icons.STOCK_NEW_PATCH, None, None,
          _('Create a new patch'), new_patch_acb),
@@ -1035,13 +1028,13 @@ actions.add_class_indep_actions(Condns.IN_PGND_MUTABLE,
          _('Select which guards are in force'), select_guards_acb),
     ])
 
-actions.add_class_indep_actions(Condns.IN_PGND,
+actions.CLASS_INDEP_AGS[ws_actions.AC_IN_PGND].add_actions(
     [
         ("patch_list_edit_series_descr", gtk.STOCK_EDIT, _('Description'), None,
          _('Edit the series\' description'), edit_series_description_acb),
     ])
 
-actions.add_class_indep_actions(Condns.PUSH_POSSIBLE | Condns.IN_PGND_MUTABLE,
+actions.CLASS_INDEP_AGS[AC_PUSH_POSSIBLE | ws_actions.AC_IN_PGND_MUTABLE].add_actions(
     [
         ("patch_list_push", icons.STOCK_PUSH_PATCH, _('Push'), None,
          _('Apply the next unapplied patch'), push_next_patch_acb),
@@ -1049,7 +1042,7 @@ actions.add_class_indep_actions(Condns.PUSH_POSSIBLE | Condns.IN_PGND_MUTABLE,
          _('Apply all unguarded unapplied patches.'), push_all_patches_acb),
     ])
 
-actions.add_class_indep_actions(Condns.POP_POSSIBLE | Condns.IN_PGND_MUTABLE,
+actions.CLASS_INDEP_AGS[AC_POP_POSSIBLE | ws_actions.AC_IN_PGND_MUTABLE].add_actions(
     [
         ("patch_list_fold_external_patch", icons.STOCK_FOLD_PATCH, None, None,
          _('Fold an external patch into the top applied patch'), fold_patch_acb),
@@ -1059,13 +1052,13 @@ actions.add_class_indep_actions(Condns.POP_POSSIBLE | Condns.IN_PGND_MUTABLE,
          _('Pop all applied patches'), pop_all_patches_acb),
     ])
 
-actions.add_class_indep_actions(Condns.PMIC | Condns.IN_PGND_MUTABLE,
+actions.CLASS_INDEP_AGS[ws_actions.AC_PMIC | ws_actions.AC_IN_PGND_MUTABLE].add_actions(
     [
         ("patch_list_refresh_top_patch", icons.STOCK_REFRESH_PATCH, None, None,
          _('Refresh the top patch'), refresh_top_patch_acb),
     ])
 
-actions.add_class_indep_actions(Condns.ALL_APPLIED_REFRESHED | Condns.IN_REPO | Condns.IN_PGND_MUTABLE,
+actions.CLASS_INDEP_AGS[AC_ALL_APPLIED_REFRESHED | ws_actions.AC_IN_REPO | ws_actions.AC_IN_PGND_MUTABLE].add_actions(
     [
         ("patch_list_scm_absorb_applied_patches", icons.STOCK_FINISH_PATCH, _('Absorb All'), None,
          _('Absorb all applied patches into underlying SCM repository'), scm_absorb_applied_patches_acb),

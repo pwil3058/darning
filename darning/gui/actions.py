@@ -13,102 +13,152 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+'''
+Conditionally enabled GTK action groups
+'''
+
+import collections
+
 import gtk
 
-from darning.gui import ws_event
-from darning.gui import gutils
-from darning.gui import ifce
+def create_flag_generator():
+    """
+    Create a new flag generator
+    """
+    next_flag_num = 0
+    while True:
+        yield 2 ** next_flag_num
+        next_flag_num += 1
 
-class Condns(int):
-    DONT_CARE = 0
-    NCONDS = 10
-    NOT_IN_PGND, IN_PGND, IN_PGND_MUTABLE, \
-    NOT_IN_REPO, IN_REPO, \
-    NO_SELN, SELN, UNIQUE_SELN, \
-    NOT_PMIC, PMIC = [2 ** n for n in range(NCONDS)]
-    IN_PGND_CONDS = NOT_IN_PGND | IN_PGND | IN_PGND_MUTABLE
-    IN_REPO_CONDS = NOT_IN_REPO | IN_REPO
-    SELN_CONDNS = NO_SELN | SELN | UNIQUE_SELN
-    PMIC_CONDNS = NOT_PMIC | PMIC
+class MaskedCondns(collections.namedtuple('MaskedCondns', ['condns', 'mask'])):
+    __slots__ = ()
 
-class MaskedCondns(object):
-    @staticmethod
-    def get_in_pgnd_condns():
-        if ifce.in_valid_pgnd:
-            if ifce.pgnd_is_mutable:
-                conds = Condns.IN_PGND | Condns.IN_PGND_MUTABLE
-            else:
-                conds = Condns.IN_PGND
-        else:
-            conds = Condns.NOT_IN_PGND
-        return MaskedCondns(conds, Condns.IN_PGND_CONDS)
-    @staticmethod
-    def get_in_repo_condns():
-        return MaskedCondns(Condns.IN_REPO if ifce.in_valid_repo else Condns.NOT_IN_REPO, Condns.IN_REPO_CONDS)
-    @staticmethod
-    def get_pmic_condns():
-        return MaskedCondns(Condns.PMIC if ifce.PM.get_in_progress() else Condns.NOT_PMIC, Condns.PMIC_CONDNS)
-    @staticmethod
-    def get_seln_condns(seln):
-        if seln is None:
-            return MaskedCondns(Condns.DONT_CARE, Condns.SELN_CONDNS)
-        selsz = seln.count_selected_rows()
-        if selsz == 0:
-            return MaskedCondns(Condns.NO_SELN, Condns.SELN_CONDNS)
-        elif selsz == 1:
-            return MaskedCondns(Condns.SELN + Condns.UNIQUE_SELN, Condns.SELN_CONDNS)
-        else:
-            return MaskedCondns(Condns.SELN, Condns.SELN_CONDNS)
-    def __init__(self, condns, mask):
-        self.condns = condns
-        self.mask = mask
     def __or__(self, other):
         return MaskedCondns(self.condns | other.condns, self.mask | other.mask)
-    def __ior__(self, other):
-        self.condns |= other.condns
-        self.mask |= other.mask
+
+class ActionCondns(object):
+    _flag_generator = create_flag_generator()
+
+    @staticmethod
+    def new_flags_and_mask(count):
+        """
+        Return "count" new condition flags and their mask as a tuple
+        """
+        flags = [ActionCondns._flag_generator.next() for _i in range(count)]
+        mask = sum(flags)
+        return tuple(flags + [mask])
+
+AC_DONT_CARE = 0
+AC_SELN_NONE, \
+AC_SELN_MADE, \
+AC_SELN_UNIQUE, \
+AC_SELN_PAIR, \
+AC_SELN_MASK = ActionCondns.new_flags_and_mask(4)
+
+def get_masked_seln_conditions(seln):
+    if seln is None:
+        return MaskedCondns(AC_DONT_CARE, AC_SELN_MASK)
+    selsz = seln.count_selected_rows()
+    if selsz == 0:
+        return MaskedCondns(AC_SELN_NONE, AC_SELN_MASK)
+    elif selsz == 1:
+        return MaskedCondns(AC_SELN_MADE + AC_SELN_UNIQUE, AC_SELN_MASK)
+    elif selsz == 2:
+        return MaskedCondns(AC_SELN_MADE + AC_SELN_PAIR, AC_SELN_MASK)
+    else:
+        return MaskedCondns(AC_SELN_MADE, AC_SELN_MASK)
+
+class ActionButton(gtk.Button):
+    def __init__(self, action, use_underline=True):
+        label = action.get_property("label")
+        stock_id = action.get_property("stock-id")
+        if label is not None:
+            # Empty (NB not None) label means use image only
+            gtk.Button.__init__(self, use_underline=use_underline)
+            if stock_id is not None:
+                image = gtk.Image()
+                image.set_from_stock(stock_id, gtk.ICON_SIZE_BUTTON)
+                self.set_image(image)
+            if label:
+                self.set_label(label)
+        else:
+            gtk.Button.__init__(self, stock=stock_id, label=label, use_underline=use_underline)
+        self.set_tooltip_text(action.get_property("tooltip"))
+        action.connect_proxy(self)
+
+class ActionButtonList:
+    def __init__(self, action_group_list, action_name_list=None, use_underline=True):
+        self.list = []
+        self.dict = {}
+        if action_name_list:
+            for a_name in action_name_list:
+                for a_group in action_group_list:
+                    action = a_group.get_action(a_name)
+                    if action:
+                        button = ActionButton(action, use_underline)
+                        self.list.append(button)
+                        self.dict[a_name] = button
+                        break
+        else:
+            for a_group in action_group_list:
+                for action in a_group.list_actions():
+                    button = ActionButton(action, use_underline)
+                    self.list.append(button)
+                    self.dict[action.get_name()] = button
+
+class ActionHButtonBox(gtk.HBox):
+    def __init__(self, action_group_list, action_name_list=None,
+                 use_underline=True, expand=True, fill=True, padding=0):
+        gtk.HBox.__init__(self)
+        self.button_list = ActionButtonList(action_group_list, action_name_list, use_underline)
+        for button in self.button_list.list:
+            self.pack_start(button, expand, fill, padding)
         return self
 
-class ConditionalActions:
-    def __init__(self, name, ui_mgrs=None, condns=0):
+class ConditionalActionGroups(object):
+    class UnknownAction(Exception): pass
+    def __init__(self, name, ui_mgrs=None, selection=None):
         self.groups = dict()
-        self.current_condns = condns
+        self.current_condns = 0
         self.ui_mgrs = [] if ui_mgrs is None else ui_mgrs[:]
         self.name = name
+        self.set_selection(selection)
     def _group_name(self, condns):
         return '{0}:{1:x}'.format(self.name, condns)
-    def _new_group(self, condns):
-        assert condns not in self.groups
-        self.groups[condns] = gtk.ActionGroup(self._group_name(condns))
-        self.groups[condns].set_sensitive((condns & self.current_condns) == condns)
-        for ui_mgr in self.ui_mgrs:
-            ui_mgr.insert_action_group(self.groups[condns], -1)
-    def add_action(self, condns, action):
+    def _seln_condns_change_cb(self, seln):
+        self.update_condns(get_masked_seln_conditions(seln))
+    def set_selection(self, seln):
+        if seln is None:
+            return None
+        self.update_condns(get_masked_seln_conditions(seln))
+        return seln.connect('changed', self._seln_condns_change_cb)
+    def __getitem__(self, condns):
         if condns not in self.groups:
-            self._new_group(condns)
-        self.groups[condns].add_action(action)
-    def add_actions(self, condns, actions):
-        if condns not in self.groups:
-            self._new_group(condns)
-        self.groups[condns].add_actions(actions)
+            self.groups[condns] = gtk.ActionGroup(self._group_name(condns))
+            self.groups[condns].set_sensitive((condns & self.current_condns) == condns)
+            for ui_mgr in self.ui_mgrs:
+                ui_mgr.insert_action_group(self.groups[condns], -1)
+        return self.groups[condns]
     def copy_action(self, new_condns, action_name):
-        action = self.get_action_by_name(action_name)
-        if action:
-            self.add_action(new_condns, action)
-            return True
-        return False
+        action = self.get_action(action_name)
+        if not action:
+            raise self.UnknownAction(action)
+        self[new_condns].add_action(action)
     def move_action(self, new_condns, action_name):
         for agrp in self.groups.values():
             action = agrp.get_action(action_name)
-            if action:
-                agrp.remove_action(action)
-                self.add_action(new_condns, action)
-                return True
-        return False
-    def set_sensitivity_for_condns(self, condns_set):
-        condns = condns_set.condns | (self.current_condns & ~condns_set.mask)
+            if not action:
+                raise self.UnknownAction(action)
+            agrp.remove_action(action)
+            self[new_condns].add_action(action)
+    def update_condns(self, changed_condns):
+        """
+        Update the current condition state
+        changed_condns: is a MaskedCondns instance
+        """
+        condns = changed_condns.condns | (self.current_condns & ~changed_condns.mask)
         for key_condns, group in self.groups.items():
-            if condns_set.mask & key_condns:
+            if changed_condns.mask & key_condns:
                 group.set_sensitive((key_condns & condns) == key_condns)
         self.current_condns = condns
     def set_visibility_for_condns(self, condns, visible):
@@ -117,14 +167,19 @@ class ConditionalActions:
         self.ui_mgrs.append(ui_mgr)
         for agrp in self.groups.values():
             ui_mgr.insert_action_group(agrp, -1)
-    def get_action_by_name(self, action_name):
+    def get_action(self, action_name):
         for agrp in self.groups.values():
             action = agrp.get_action(action_name)
             if action:
                 return action
         return None
+    def connect_activate(self, action_name, callback, *user_data):
+        """
+        Connect the callback to the "activate" signal of the named action
+        """
+        return self.get_action(action_name).connect('activate', callback, *user_data)
     def __str__(self):
-        string = 'ConditionalActions({0})\n'.format(self.name)
+        string = 'ConditionalActionGroups({0})\n'.format(self.name)
         for condns, group in self.groups.items():
             name = group.get_name()
             member_names = '['
@@ -133,80 +188,9 @@ class ConditionalActions:
             member_names += ']'
             string += '\tGroup({0:x},{1}): {2}\n'.format(condns, name, member_names)
         return string
-
-_CLASS_INDEP_AGS = ConditionalActions('class_indep')
-
-def _update_class_indep_cwd_cb(_arg=None):
-    condns = MaskedCondns.get_in_pgnd_condns() | MaskedCondns.get_in_repo_condns()
-    _CLASS_INDEP_AGS.set_sensitivity_for_condns(condns)
-
-def _update_class_indep_pgnd_cb(_arg=None):
-    _CLASS_INDEP_AGS.set_sensitivity_for_condns(MaskedCondns.get_in_pgnd_condns())
-
-def _update_class_indep_pmic_cb(_arg=None):
-    _CLASS_INDEP_AGS.set_sensitivity_for_condns(MaskedCondns.get_pmic_condns())
-
-def add_class_indep_action(condns, action):
-    assert (condns & Condns.SELN_CONDNS) == 0
-    _CLASS_INDEP_AGS.add_action(condns, action)
-
-def add_class_indep_actions(condns, actions):
-    assert (condns & Condns.SELN_CONDNS) == 0
-    _CLASS_INDEP_AGS.add_actions(condns, actions)
-
-def get_class_indep_action(action_name):
-    return _CLASS_INDEP_AGS.get_action_by_name(action_name)
-
-def set_class_indep_sensitivity_for_condns(condns):
-    _CLASS_INDEP_AGS.set_sensitivity_for_condns(condns)
-
-ws_event.add_notification_cb(ws_event.CHANGE_WD, _update_class_indep_cwd_cb)
-ws_event.add_notification_cb(ws_event.PGND_MOD, _update_class_indep_pgnd_cb)
-ws_event.add_notification_cb(ws_event.PATCH_PUSH|ws_event.PATCH_POP|ws_event.CHANGE_WD, _update_class_indep_pmic_cb)
-
-class AGandUIManager(ws_event.Listener):
-    def __init__(self, selection=None):
-        ws_event.Listener.__init__(self)
-        self.ui_manager = gutils.UIManager()
-        _CLASS_INDEP_AGS.add_ui_mgr(self.ui_manager)
-        self.seln = selection
-        name = '{0}:{1:x}'.format(self.__class__.__name__, self.__hash__())
-        self._action_groups = ConditionalActions(name, ui_mgrs=[self.ui_manager])
-        if self.seln:
-            self.seln.connect('changed', self.seln_condns_change_cb)
-        self.add_notification_cb(ws_event.CHANGE_WD, self.cwd_condns_change_cb)
-        self.add_notification_cb(ws_event.PGND_MOD, self.pgnd_condns_change_cb)
-        self.add_notification_cb(ws_event.PATCH_PUSH|ws_event.PATCH_POP|ws_event.CHANGE_WD, self.pmic_condns_change_cb)
-        self.init_action_states()
-    def seln_condns_change_cb(self, seln):
-        self._action_groups.set_sensitivity_for_condns(MaskedCondns.get_seln_condns(seln))
-    def cwd_condns_change_cb(self, _arg=None):
-        condns = MaskedCondns.get_in_pgnd_condns() | MaskedCondns.get_in_repo_condns()
-        self._action_groups.set_sensitivity_for_condns(condns)
-    def pgnd_condns_change_cb(self, _arg=None):
-        self._action_groups.set_sensitivity_for_condns(MaskedCondns.get_in_pgnd_condns())
-    def pmic_condns_change_cb(self, _arg=None):
-        self._action_groups.set_sensitivity_for_condns(MaskedCondns.get_pmic_condns())
-    def set_sensitivity_for_condns(self, condns):
-        self._action_groups.set_sensitivity_for_condns(condns)
-    def add_conditional_action(self, condns, action):
-        self._action_groups.add_action(condns, action)
-    def add_conditional_actions(self, condns, actions):
-        self._action_groups.add_actions(condns, actions)
-    def get_conditional_action(self, action_name):
-        return self._action_groups.get_action_by_name(action_name)
-    def copy_conditional_action(self, action_name, new_cond):
-        return self._action_groups.copy_action(new_cond, action_name)
-    def move_conditional_action(self, action_name, new_cond):
-        return self._action_groups.move_action(new_cond, action_name)
-    def init_action_states(self):
-        condn_set = MaskedCondns.get_in_pgnd_condns() | MaskedCondns.get_in_repo_condns() | MaskedCondns.get_pmic_condns()
-        if self.seln is not None:
-            condn_set |= MaskedCondns.get_seln_condns(self.seln)
-        self._action_groups.set_sensitivity_for_condns(condn_set)
     def create_action_button(self, action_name, use_underline=True):
-        action = self.get_conditional_action(action_name)
-        return gutils.ActionButton(action, use_underline=use_underline)
+        action = self.get_action(action_name)
+        return ActionButton(action, use_underline=use_underline)
     def create_action_button_box(self, action_name_list, use_underline=True,
                                  horizontal=True,
                                  expand=True, fill=True, padding=0):
@@ -218,12 +202,57 @@ class AGandUIManager(ws_event.Listener):
             button = self.create_action_button(action_name, use_underline)
             box.pack_start(button, expand, fill, padding)
         return box
-    def set_visibility_for_condns(self, condns, visible):
-        self._action_groups.set_visibility_for_condns(condns, visible)
 
-add_class_indep_actions(Condns.DONT_CARE,
-    [
-        ("actions_playground_menu", None, _('_Playground')),
-        ("actions_quit", gtk.STOCK_QUIT, _('_Quit'), "",
-         _('Quit'), gtk.main_quit),
-    ])
+CLASS_INDEP_AGS = ConditionalActionGroups('class_indep')
+
+class UIManager(gtk.UIManager):
+    # TODO: check to see if this workaround is still necessary
+    def __init__(self):
+        gtk.UIManager.__init__(self)
+        self.connect('connect-proxy', self._ui_manager_connect_proxy)
+    @staticmethod
+    def _ui_manager_connect_proxy(_ui_mgr, action, widget):
+        tooltip = action.get_property('tooltip')
+        if isinstance(widget, gtk.MenuItem) and tooltip:
+            widget.set_tooltip_text(tooltip)
+
+class CAGandUIManager(object):
+    '''This is a "mix in" class and needs to be merged with a gtk.Window() descendant'''
+    UI_DESCR = '''<ui></ui>'''
+    def __init__(self, selection=None, popup=None):
+        self.ui_manager = UIManager()
+        CLASS_INDEP_AGS.add_ui_mgr(self.ui_manager)
+        name = '{0}:{1:x}'.format(self.__class__.__name__, self.__hash__())
+        self.action_groups = ConditionalActionGroups(name, ui_mgrs=[self.ui_manager], selection=selection)
+        self.populate_action_groups()
+        self.ui_manager.add_ui_from_string(self.UI_DESCR)
+        self._popup_cb_id = self._popup = None
+        self.set_popup(popup)
+    def populate_action_groups(self):
+        assert False, 'should be derived in subclass'
+    @staticmethod
+    def _button_press_cb(widget, event):
+        if event.type == gtk.gdk.BUTTON_PRESS:
+            if event.button == 3 and widget._popup:
+                menu = widget.ui_manager.get_widget(widget._popup)
+                menu.popup(None, None, None, event.button, event.time)
+                return True
+        return False
+    def set_popup(self, popup):
+        if self._popup_cb_id is None:
+            self._popup_cb_id = self.connect('button_press_event', self._button_press_cb)
+            if popup is None:
+                self.enable_popup(False)
+        elif self._popup is None and popup is not None:
+            self.enable_popup(True)
+        elif popup is None:
+            self.enable_popup(False)
+        self._popup = popup
+    def enable_popup(self, enable):
+        if self._popup_cb_id is not None:
+            if enable:
+                self.handler_unblock(self._popup_cb_id)
+            else:
+                self.handler_block(self._popup_cb_id)
+    def set_visibility_for_condns(self, condns, visible):
+        self.action_groups.set_visibility_for_condns(condns, visible)

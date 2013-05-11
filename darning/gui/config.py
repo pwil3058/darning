@@ -372,7 +372,7 @@ class EditorAllocationDialog(dialogue.Dialog):
                                  flags=gtk.DIALOG_DESTROY_WITH_PARENT,
                                  buttons=(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE,
                                           gtk.STOCK_OK, gtk.RESPONSE_OK)
-                                )    
+                                )
         self._table = EditorAllocationTable(edeff=edeff)
         self._buttons = gutils.ActionHButtonBox(list(self._table.action_groups.values()))
         self.vbox.pack_start(self._table)
@@ -445,7 +445,7 @@ AUTO_UPDATE = gutils.RefreshController(
     function=auto_update_cb, is_on=True, interval=10000
 )
 
-actions.add_class_indep_actions(actions.Condns.DONT_CARE,
+actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_actions(
     [
         ("config_menu", None, _('_Configuration')),
         ("config_change_playground", gtk.STOCK_OPEN, _('_Open'), "",
@@ -454,4 +454,4 @@ actions.add_class_indep_actions(actions.Condns.DONT_CARE,
          _('Allocate editors to file types'), editor_allocation_acb),
     ])
 
-actions.add_class_indep_action(actions.Condns.DONT_CARE, AUTO_UPDATE.toggle_action)
+actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_action(AUTO_UPDATE.toggle_action)
