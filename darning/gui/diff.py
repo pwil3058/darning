@@ -105,6 +105,8 @@ class TextWidget(gtk.VBox):
                 return 0
         def __init__(self, width_in_chars=81, aspect_ratio=0.33, fdesc=None):
             textview.View.__init__(self, buffer=self.Buffer(), width_in_chars=width_in_chars, aspect_ratio=aspect_ratio, fdesc=fdesc)
+            self.set_editable(False)
+            self.set_cursor_visible(False)
     def __init__(self, width_in_chars=81, aspect_ratio=0.33, fdesc=None):
         gtk.VBox.__init__(self)
         self.tws_list = []
