@@ -59,52 +59,52 @@ def get_applied_condns(seln):
 def get_pushable_condns():
     return actions.MaskedCondns(AC_PUSH_POSSIBLE if ifce.PM.is_pushable() else 0, AC_PUSH_POSSIBLE)
 
-class List(table.MapManagedTable):
-    class View(table.MapManagedTable.View):
-        class Model(table.MapManagedTable.View.Model):
-            Row = collections.namedtuple('Row',    ['name', 'icon', 'markup'])
-            types = Row(name=gobject.TYPE_STRING, icon=gobject.TYPE_STRING, markup=gobject.TYPE_STRING,)
-            def get_patch_name(self, plist_iter):
-                return self.get_labelled_value(plist_iter, 'name')
-            def get_patch_is_applied(self, plist_iter):
-                return self.get_labelled_value(plist_iter, 'icon') is not None
-        template = table.MapManagedTable.View.Template(
-            properties={
-                'enable-grid-lines' : False,
-                'reorderable' : False,
-                'rules_hint' : False,
-                'headers-visible' : False,
-            },
-            selection_mode=gtk.SELECTION_SINGLE,
-            columns=[
-                table.MapManagedTable.View.Column(
-                    title=_('Patch List'),
-                    properties={'expand': False, 'resizable' : True},
-                    cells=[
-                        table.MapManagedTable.View.Cell(
-                            creator=table.MapManagedTable.View.CellCreator(
-                                function=gtk.CellRendererPixbuf,
-                                expand=False,
-                                start=True
-                            ),
-                            properties={},
-                            renderer=None,
-                            attributes = {'stock_id' : Model.col_index('icon')}
+class ListView(table.MapManagedTableView):
+    PopUp = '/patches_popup'
+    class Model(table.MapManagedTableView.Model):
+        Row = collections.namedtuple('Row',    ['name', 'icon', 'markup'])
+        types = Row(name=gobject.TYPE_STRING, icon=gobject.TYPE_STRING, markup=gobject.TYPE_STRING,)
+        def get_patch_name(self, plist_iter):
+            return self.get_labelled_value(plist_iter, 'name')
+        def get_patch_is_applied(self, plist_iter):
+            return self.get_labelled_value(plist_iter, 'icon') is not None
+    template = table.MapManagedTableView.Template(
+        properties={
+            'enable-grid-lines' : False,
+            'reorderable' : False,
+            'rules_hint' : False,
+            'headers-visible' : False,
+        },
+        selection_mode=gtk.SELECTION_SINGLE,
+        columns=[
+            table.MapManagedTableView.Column(
+                title=_('Patch List'),
+                properties={'expand': False, 'resizable' : True},
+                cells=[
+                    table.MapManagedTableView.Cell(
+                        creator=table.MapManagedTableView.CellCreator(
+                            function=gtk.CellRendererPixbuf,
+                            expand=False,
+                            start=True
                         ),
-                        table.MapManagedTable.View.Cell(
-                            creator=table.MapManagedTable.View.CellCreator(
-                                function=gtk.CellRendererText,
-                                expand=False,
-                                start=True
-                            ),
-                            properties={'editable' : False},
-                            renderer=None,
-                            attributes = {'markup' : Model.col_index('markup')}
+                        properties={},
+                        renderer=None,
+                        attributes = {'stock_id' : Model.col_index('icon')}
+                    ),
+                    table.MapManagedTableView.Cell(
+                        creator=table.MapManagedTableView.CellCreator(
+                            function=gtk.CellRendererText,
+                            expand=False,
+                            start=True
                         ),
-                    ],
-                ),
-            ]
-        )
+                        properties={'editable' : False},
+                        renderer=None,
+                        attributes = {'markup' : Model.col_index('markup')}
+                    ),
+                ],
+            ),
+        ]
+    )
     UI_DESCR = '''
     <ui>
       <menubar name="patch_list_menubar">
@@ -159,19 +159,15 @@ class List(table.MapManagedTable):
             return '<span foreground="darkgrey" style="italic">' + markup + '</span>'
         else:
             return markup
-    def __init__(self, busy_indicator=None):
+    def __init__(self, busy_indicator=None, size_req=None):
         self.last_import_dir = None
-        table.MapManagedTable.__init__(self, popup='/patches_popup',
-                                       scroll_bar=True,
-                                       busy_indicator=busy_indicator,
-                                       size_req=None)
-        self.header.lhs.pack_start(self.ui_manager.get_widget('/patch_list_menubar'), expand=True, fill=True)
-        self.view.get_selection().connect("changed", self._selection_changed_cb)
+        table.MapManagedTableView.__init__(self, busy_indicator=busy_indicator, size_req=size_req)
+        self.get_selection().connect("changed", self._selection_changed_cb)
         self.add_notification_cb(ws_event.CHANGE_WD, self._repopulate_list_cb)
         self.add_notification_cb(ws_event.PATCH_CHANGES|ws_event.FILE_CHANGES, self._update_list_cb)
         self.repopulate_list()
     def populate_action_groups(self):
-        table.MapManagedTable.populate_action_groups(self)
+        table.MapManagedTableView.populate_action_groups(self)
         self.action_groups[actions.AC_DONT_CARE].add_action(gtk.Action("menu_patch_list", _('Patch _List'), None, None))
         self.action_groups[ws_actions.AC_IN_PGND].add_actions(
             [
@@ -369,6 +365,12 @@ class List(table.MapManagedTable):
             if not (result.eflags & cmd_result.ERROR_SUGGEST_RENAME):
                 break
         dialog.destroy()
+
+class List(table.TableWidget):
+    View = ListView
+    def __init__(self, busy_indicator=None):
+        table.TableWidget.__init__(self, scroll_bar=True, busy_indicator=busy_indicator, size_req=None)
+        self.header.lhs.pack_start(self.view.ui_manager.get_widget('/patch_list_menubar'), expand=True, fill=True)
 
 def do_export_named_patch(parent, patchname, suggestion=None, busy_indicator=None):
     if not suggestion:

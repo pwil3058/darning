@@ -20,6 +20,7 @@ Conditionally enabled GTK action groups
 import collections
 
 import gtk
+import gobject
 
 def create_flag_generator():
     """
@@ -216,10 +217,11 @@ class UIManager(gtk.UIManager):
         if isinstance(widget, gtk.MenuItem) and tooltip:
             widget.set_tooltip_text(tooltip)
 
-class CAGandUIManager(object):
+class CAGandUIManager(gobject.GObject):
     '''This is a "mix in" class and needs to be merged with a gtk.Window() descendant'''
     UI_DESCR = '''<ui></ui>'''
     def __init__(self, selection=None, popup=None):
+        gobject.GObject.__init__(self)
         self.ui_manager = UIManager()
         CLASS_INDEP_AGS.add_ui_mgr(self.ui_manager)
         name = '{0}:{1:x}'.format(self.__class__.__name__, self.__hash__())

@@ -21,6 +21,7 @@ them from templates and allow easier access to named contents.
 import gtk
 
 from darning.gui import gutils
+from darning.gui import actions
 from darning.gui import ws_actions
 from darning.gui import ws_event
 from darning.gui import tlview
@@ -134,30 +135,28 @@ class Table(gtk.VBox):
         columns = self.model.col_indices(labels)
         return self.get_selected_data(columns)
 
-class TableWithAGandUI(gtk.VBox, ws_actions.AGandUIManager, dialogue.BusyIndicatorUser):
-    View = tlview.ListView
-    def __init__(self, popup=None, scroll_bar=True, busy_indicator=None, size_req=None):
-        self._popup = popup
-        gtk.VBox.__init__(self)
+class TableView(tlview.ListView, ws_actions.AGandUIManager, dialogue.BusyIndicatorUser):
+    PopUp = None
+    def __init__(self, busy_indicator=None, size_req=None):
+        tlview.ListView.__init__(self)
         dialogue.BusyIndicatorUser.__init__(self, busy_indicator)
-        self.header = gutils.SplitBar()
-        self.pack_start(self.header, expand=False)
-        self.view = self.View()
-        ws_actions.AGandUIManager.__init__(self, selection=self.view.get_selection(), popup=popup)
+        ws_actions.AGandUIManager.__init__(self, selection=self.get_selection(), popup=self.PopUp)
         if size_req:
-            self.view.set_size_request(size_req[0], size_req[1])
-        if scroll_bar:
-            self.pack_start(gutils.wrap_in_scrolled_window(self.view))
-        else:
-            self.pack_start(self.view)
-        self.view.connect("button_press_event", self._handle_clear_selection_cb)
-        self.view.connect("key_press_event", self._handle_clear_selection_cb)
+            self.set_size_request(size_req[0], size_req[1])
+        self.connect("button_press_event", self._handle_clear_selection_cb)
+        self.connect("key_press_event", self._handle_clear_selection_cb)
+    def populate_action_groups(self):
+        self.action_groups[actions.AC_DONT_CARE].add_actions(
+            [
+                ("table_refresh_contents", gtk.STOCK_REFRESH, _('Refresh'), None,
+                 _('Refresh the tables contents'), self._refresh_contents_acb),
+            ])
     @property
     def model(self):
-        return self.view.get_model()
+        return self.get_model()
     @property
     def seln(self):
-        return self.view.get_selection()
+        return self.get_selection()
     def _handle_clear_selection_cb(self, widget, event):
         if event.type == gtk.gdk.BUTTON_PRESS:
             if event.button == 2:
@@ -171,10 +170,10 @@ class TableWithAGandUI(gtk.VBox, ws_actions.AGandUIManager, dialogue.BusyIndicat
     def _fetch_contents(self):
         pass # define in child
     def _set_contents(self):
-        model = self.View.Model()
+        model = self.Model()
         model.set_contents(self._fetch_contents())
-        self.view.set_model(model)
-        self.view.columns_autosize()
+        self.set_model(model)
+        self.columns_autosize()
         self.seln.unselect_all()
     def set_contents(self):
         self.show_busy()
@@ -183,7 +182,7 @@ class TableWithAGandUI(gtk.VBox, ws_actions.AGandUIManager, dialogue.BusyIndicat
     def refresh_contents(self):
         self.show_busy()
         selected_keys = self.get_selected_keys()
-        visible_range = self.view.get_visible_range()
+        visible_range = self.get_visible_range()
         if visible_range is not None:
             start = visible_range[0][0]
             end = visible_range[1][0]
@@ -201,8 +200,10 @@ class TableWithAGandUI(gtk.VBox, ws_actions.AGandUIManager, dialogue.BusyIndicat
             middle_iter = self.model.get_row_with_key_value(key_value=middle_key)
             if middle_iter is not None:
                 middle = self.model.get_path(middle_iter)
-                self.view.scroll_to_cell(middle, use_align=True, row_align=align)
+                self.scroll_to_cell(middle, use_align=True, row_align=align)
         self.unshow_busy()
+    def _refresh_contents_acb(self, _action):
+        self.refresh_contents()
     def get_contents(self):
         return self.model.get_contents()
     def get_selected_data(self, columns=None):
@@ -247,21 +248,12 @@ class TableWithAGandUI(gtk.VBox, ws_actions.AGandUIManager, dialogue.BusyIndicat
 
 _NEEDS_RESET = 123
 
-class MapManagedTable(TableWithAGandUI, gutils.MappedManager):
-    def __init__(self, popup=None, scroll_bar=True, busy_indicator=None, size_req=None):
-        TableWithAGandUI.__init__(self, popup=popup,
-                                  busy_indicator=busy_indicator,
-                                  size_req=size_req,
-                                  scroll_bar=scroll_bar)
+class MapManagedTableView(TableView, gutils.MappedManager):
+    def __init__(self, busy_indicator=None, size_req=None):
+        TableView.__init__(self, busy_indicator=busy_indicator, size_req=size_req)
         gutils.MappedManager.__init__(self)
         self._needs_refresh = True
         self.add_notification_cb(ws_event.CHANGE_WD, self.reset_contents_if_mapped)
-    def populate_action_groups(self):
-        self.action_groups[ws_actions.AC_IN_REPO].add_actions(
-            [
-                ("table_refresh_contents", gtk.STOCK_REFRESH, _('Refresh'), None,
-                 _('Refresh the tables contents'), self._refresh_contents_acb),
-            ])
     def map_action(self):
         if self._needs_refresh == _NEEDS_RESET:
             self.show_busy()
@@ -274,10 +266,10 @@ class MapManagedTable(TableWithAGandUI, gutils.MappedManager):
     def unmap_action(self):
         pass
     def set_contents(self):
-        TableWithAGandUI.set_contents(self)
+        TableView.set_contents(self)
         self._needs_refresh = False
     def refresh_contents(self):
-        TableWithAGandUI.refresh_contents(self)
+        TableView.refresh_contents(self)
         self._needs_refresh = False
     def refresh_contents_if_mapped(self, *_args):
         if self.is_mapped:
@@ -291,3 +283,15 @@ class MapManagedTable(TableWithAGandUI, gutils.MappedManager):
             self._needs_refresh = _NEEDS_RESET
     def _refresh_contents_acb(self, _action):
         self.refresh_contents()
+
+class TableWidget(gtk.VBox):
+    View = TableView
+    def __init__(self, scroll_bar=True, busy_indicator=None, size_req=None):
+        gtk.VBox.__init__(self)
+        self.header = gutils.SplitBar()
+        self.pack_start(self.header, expand=False)
+        self.view = self.View(busy_indicator=busy_indicator, size_req=size_req)
+        if scroll_bar:
+            self.pack_start(gutils.wrap_in_scrolled_window(self.view))
+        else:
+            self.pack_start(self.view)
