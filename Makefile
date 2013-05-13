@@ -4,7 +4,7 @@ RELEASE=1
 RPMBDIR=~/rpmbuild
 PREFIX=/usr
 
-SRCS:=$(shell hg status -macdn)
+SRCS:=$(git ls-tree --full-tree -r --name-only HEAD)
 SRCDIST:=darning-$(VERSION).tar.gz
 RPMDIST:=darning-$(subst -,_,$(VERSION))-$(RELEASE).noarch.rpm
 RPMSRC:=$(RPMBDIR)/SOURCES/$(SRCDIST)
