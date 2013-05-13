@@ -1,0 +1,157 @@
+### Copyright (C) 2011 Peter Williams <peter_ono@users.sourceforge.net>
+###
+### This program is free software; you can redistribute it and/or modify
+### it under the terms of the GNU General Public License as published by
+### the Free Software Foundation; version 2 of the License only.
+###
+### This program is distributed in the hope that it will be useful,
+### but WITHOUT ANY WARRANTY; without even the implied warranty of
+### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+### GNU General Public License for more details.
+###
+### You should have received a copy of the GNU General Public License
+### along with this program; if not, write to the Free Software
+### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Test the 'darn absorb' command.
+
+Create some test files and start a mercurial repository.
+$ darn_test_tree create
+$ hg init
+$ hg add > /dev/null
+$ hg commit -m "test"
+$ hg status -mard
+
+Initialise a playground and try again without creating a patch
+$ darn init
+
+Create a patch and add files
+$ darn new first --descr "First patch created."
+$ darn add file1 file2
+> file1: file added to patch "first".
+> file2: file added to patch "first".
+$ darn files
+>  :+: file1
+>  :+: file2
+$ darn_test_tree modify file1 file2
+$ hg status -mard
+> M file1
+> M file2
+$ hg log --template "{rev}:{desc|firstline}\n"
+> 0:test
+$ darn series
+> ?: first
+
+Try absorbing an unrefreshed patch
+$ ls > lsop_start
+$ darn absorb
+? 1
+! first: requires refreshing
+$ hg status -mard
+> M file1
+> M file2
+$ hg log --template "{rev}:{desc|firstline}\n"
+> 0:test
+$ darn series
+> ?: first
+$ ls > lsop_now
+$ diff lsop_now lsop_start
+? 1
+> 16d15
+> < lsop_start
+
+Refresh and try again
+$ darn refresh
+$ darn absorb
+> There are now no patches applied.
+> Patch "first" removed (but available for restoration).
+$ hg status -mard
+$ hg log --template "{rev}:{desc|firstline}\n"
+> 1:First patch created.
+> 0:test
+$ darn series
+$ ls > lsop_now
+$ diff lsop_now lsop_start
+? 1
+> 16,17d15
+> < lsop_now
+> < lsop_start
+Now check hg status more throroughly
+$ hg status --change 1
+> M file1
+> M file2
+$ hg diff -c 1
+> diff --git a/file1 b/file1
+> --- a/file1
+> +++ b/file1
+> @@ -1,1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1"
+> diff --git a/file2 b/file2
+> --- a/file2
+> +++ b/file2
+> @@ -1,1 +1,2 @@
+>  file2: is a text file.
+> +Patch: "first"; Path: "file2"
+
+$ darn new second --desc "Second patch"
+$ darn add nonexistent
+> nonexistent: file added to patch "second".
+$ mkfile nonexistent
+< "create a new file"
+$ darn refresh
+$ darn new third --desc "Third patch"
+TODO: add a binary file to a test patch when Mercurial is fixed
+$ darn add dir1/file1 file3
+> dir1/file1: file added to patch "third".
+> file3: file added to patch "third".
+$ darn_test_tree modify dir1/file1 file3
+$ darn refresh
+$ darn new fourth --desc "Fourth patch"
+$ darn add dir1/file1 dir2/file3 file1
+> dir1/file1: file added to patch "fourth".
+> dir2/file3: file added to patch "fourth".
+> file1: file added to patch "fourth".
+$ darn_test_tree modify dir1/file1 dir2/file3 file1
+$ darn refresh
+$ darn pop
+> Patch "third" is now on top.
+
+$ hg status -mard
+> M dir1/file1
+> M file3
+$ darn absorb
+> Patch "second" is now on top.
+> There are now no patches applied.
+> Patch "second" removed (but available for restoration).
+> Patch "third" removed (but available for restoration).
+$ hg status --change 2
+> A nonexistent
+$ hg diff -c 2
+> diff --git a/nonexistent b/nonexistent
+> new file mode 100644
+> --- /dev/null
+> +++ b/nonexistent
+> @@ -0,0 +1,1 @@
+> +"create a new file"
+$ hg status --change 3
+> M dir1/file1
+> M file3
+$ hg diff -c 3
+> diff --git a/dir1/file1 b/dir1/file1
+> --- a/dir1/file1
+> +++ b/dir1/file1
+> @@ -1,1 +1,2 @@
+>  dir1/file1: is a text file.
+> +Patch: "third"; Path: "dir1/file1"
+> diff --git a/file3 b/file3
+> --- a/file3
+> +++ b/file3
+> @@ -1,1 +1,2 @@
+>  file3: is a text file.
+> +Patch: "third"; Path: "file3"
+$ darn push
+> Patching file "dir1/file1".
+> Patching file "file1".
+> Patching file "dir2/file3".
+> Patch "fourth" is now on top.

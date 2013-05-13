@@ -1,0 +1,95 @@
+### Copyright (C) 2011 Peter Williams <peter_ono@users.sourceforge.net>
+###
+### This program is free software; you can redistribute it and/or modify
+### it under the terms of the GNU General Public License as published by
+### the Free Software Foundation; version 2 of the License only.
+###
+### This program is distributed in the hope that it will be useful,
+### but WITHOUT ANY WARRANTY; without even the implied warranty of
+### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+### GNU General Public License for more details.
+###
+### You should have received a copy of the GNU General Public License
+### along with this program; if not, write to the Free Software
+### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Test the 'darn new' command.
+
+Test creating a new patch when not in a playground.
+$ darn new --descr='The first patch in the series.' first
+? 1
+! Valid database NOT found.
+
+Create a playground.
+$ darn init --descr 'A short description of the patch series.'
+
+Now try again.
+$ darn new --descr='The first patch created in the series.' first
+$ darn series
+> +: first
+$ ls .darning.dbd/orig
+> first
+$ ls .darning.dbd/stash
+> first
+
+Test listing series in a sub directory of a playground.
+$ mkdir subdir
+$ cd subdir
+$ darn series
+> +: first
+
+Test creating a new patch from a sub directory of a playground.
+$ darn new --descr='The second patch created in the series.' second
+$ darn series
+> +: first
+> +: second
+$ ls ../.darning.dbd/orig
+> first
+> second
+$ ls ../.darning.dbd/stash
+> first
+> second
+
+Test creating a new patch with the same name as an existing patch
+from a sub directory of a playground.
+$ darn new --descr='The second patch created in the series.' second
+? 17
+! patch "second" already exists.
+
+Test creating a new patch with the same name as an existing patch
+from the root directory of a playground.
+$ cd ..
+$ darn new --descr='The second patch created in the series.' second
+? 17
+! patch "second" already exists.
+
+Make sure a new patch goes into the series after the top patch.
+$ darn pop
+> Patch "first" is now on top.
+$ darn new --descr='The third patch created in the series.' third
+$ darn series
+> +: first
+> +: third
+>  : second
+$ ls .darning.dbd/orig
+> first
+> third
+$ ls .darning.dbd/stash
+> first
+> second
+> third
+
+Make sure a new patch goes into the series at the beginning if no
+patches are applied.
+$ darn pop
+> Patch "first" is now on top.
+$ darn pop
+> There are now no patches applied.
+$ darn new --descr='The fourth patch created in the series.' fourth
+$ darn series
+> +: fourth
+>  : first
+>  : third
+>  : second
+$ ls .darning.dbd/orig
+> fourth

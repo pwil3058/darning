@@ -1,0 +1,100 @@
+### Copyright (C) 2011 Peter Williams <peter_ono@users.sourceforge.net>
+###
+### This program is free software; you can redistribute it and/or modify
+### it under the terms of the GNU General Public License as published by
+### the Free Software Foundation; version 2 of the License only.
+###
+### This program is distributed in the hope that it will be useful,
+### but WITHOUT ANY WARRANTY; without even the implied warranty of
+### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+### GNU General Public License for more details.
+###
+### You should have received a copy of the GNU General Public License
+### along with this program; if not, write to the Free Software
+### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Test correct treatment of files that are not terminated with a newline.
+
+Set up a file tree and initialise a playground therein
+$ darn_test_tree create
+$ darn init
+
+Create some files that are not terminated with newlines
+$ darn_test_tree modify --no_newline file1 file2
+! No patches applied.
+
+$ darn new first --descr "First patch"
+$ darn add file1 file2 file3 file4 > /dev/null
+$ darn_test_tree modify file1 file3
+$ darn_test_tree modify --no_newline file2 file4
+$ darn diff
+> diff --git a/file1 b/file1
+> --- a/file1
+> +++ b/file1
+> @@ -1,2 +1,2 @@
+>  file1: is a text file.
+> -No Patches Applied; Path: "file1"
+> \ No newline at end of file
+> +No Patches Applied; Path: "file1"Patch: "first"; Path: "file1"
+> diff --git a/file2 b/file2
+> --- a/file2
+> +++ b/file2
+> @@ -1,2 +1,2 @@
+>  file2: is a text file.
+> -No Patches Applied; Path: "file2"
+> \ No newline at end of file
+> +No Patches Applied; Path: "file2"Patch: "first"; Path: "file2"
+> \ No newline at end of file
+> diff --git a/file3 b/file3
+> --- a/file3
+> +++ b/file3
+> @@ -1 +1,2 @@
+>  file3: is a text file.
+> +Patch: "first"; Path: "file3"
+> diff --git a/file4 b/file4
+> --- a/file4
+> +++ b/file4
+> @@ -1 +1,2 @@
+>  file4: is a text file.
+> +Patch: "first"; Path: "file4"
+> \ No newline at end of file
+$ darn refresh
+$ darn diff
+> diff --git a/file1 b/file1
+> --- a/file1
+> +++ b/file1
+> @@ -1,2 +1,2 @@
+>  file1: is a text file.
+> -No Patches Applied; Path: "file1"
+> \ No newline at end of file
+> +No Patches Applied; Path: "file1"Patch: "first"; Path: "file1"
+> diff --git a/file2 b/file2
+> --- a/file2
+> +++ b/file2
+> @@ -1,2 +1,2 @@
+>  file2: is a text file.
+> -No Patches Applied; Path: "file2"
+> \ No newline at end of file
+> +No Patches Applied; Path: "file2"Patch: "first"; Path: "file2"
+> \ No newline at end of file
+> diff --git a/file3 b/file3
+> --- a/file3
+> +++ b/file3
+> @@ -1 +1,2 @@
+>  file3: is a text file.
+> +Patch: "first"; Path: "file3"
+> diff --git a/file4 b/file4
+> --- a/file4
+> +++ b/file4
+> @@ -1 +1,2 @@
+>  file4: is a text file.
+> +Patch: "first"; Path: "file4"
+> \ No newline at end of file
+$ darn pop
+> There are now no patches applied.
+$ darn push
+> Patching file "file3".
+> Patching file "file2".
+> Patching file "file1".
+> Patching file "file4".
+> Patch "first" is now on top.

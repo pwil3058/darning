@@ -1,0 +1,242 @@
+### Copyright (C) 2011 Peter Williams <peter_ono@users.sourceforge.net>
+###
+### This program is free software; you can redistribute it and/or modify
+### it under the terms of the GNU General Public License as published by
+### the Free Software Foundation; version 2 of the License only.
+###
+### This program is distributed in the hope that it will be useful,
+### but WITHOUT ANY WARRANTY; without even the implied warranty of
+### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+### GNU General Public License for more details.
+###
+### You should have received a copy of the GNU General Public License
+### along with this program; if not, write to the Free Software
+### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Test the 'darn diff' command on binary files.
+
+Set up a test file tree and initialise a playground therein
+$ darn_test_tree create
+$ darn init
+$ darn new first --descr "First patch"
+$ darn add binary1 dir1/binary1 dir2/binary1 dir2/subdir1/binary1 > /dev/null
+$ darn_test_tree modify binary1 dir1/binary1 dir2/binary1 dir2/subdir1/binary1
+$ darn refresh
+$ darn diff
+> diff --git a/binary1 b/binary1
+> index 21172b42b3158210ce66f1ad674a8dc5bd82ac06..bc6019fed77d07ea61df25ae3e5b2c8353f06a21 0100664
+> GIT binary patch
+> delta 37
+> nc$|~Ao*=CdkXVwOVWpsymRVF>qGS!?gSbhVd5J}phDuxj(=H1h
+> 
+> delta 4
+> Lc$~AAo*)eX0(=1i
+> 
+> diff --git a/dir1/binary1 b/dir1/binary1
+> index 91dc798f94f5d73a83ef2cfa2818c5c32a901bc3..b2dd93b4af097f9fa23b13e85dd872dbf329eb94 0100664
+> GIT binary patch
+> delta 42
+> tc$`ykouHr^kXVwOVWpsymRVF>qGYWA<b${=nMH>BNtt<xMU{q1TmTeo4AuYu
+> 
+> delta 4
+> Lc${-pn4kav0=NMd
+> 
+> diff --git a/dir2/binary1 b/dir2/binary1
+> index 4a7492e3d00c7285239e88ec90b7fc6049b00a06..aa06105d7495f53f674cbd3355abda73ca1c47d9 0100664
+> GIT binary patch
+> delta 42
+> tc$`ykouHr^kXVwOVWpsymRVF>qGYWA<b${=nMFqWNtt<xMU{q1TmTez4A%ev
+> 
+> delta 4
+> Lc${-pn4kav0=NMd
+> 
+> diff --git a/dir2/subdir1/binary1 b/dir2/subdir1/binary1
+> index 505a772e54d25cc0dd4014b39a6be414bdff00c6..3ed6c966d3b1944e1efde507f935fedb760cb7ec 0100664
+> GIT binary patch
+> delta 33
+> kc%0J+ouDBekXVwOVWpsymRVF>qGYWA<b${qM3|Jg0IDAeIRF3v
+> 
+> delta 4
+> Lc$^E>n4kdw0~i4|
+> 
+$ darn diff > first.diff
+
+$ darn new second --descr "Second patch"
+$ darn add binary1 dir1/binary1 dir2/binary1 dir2/subdir1/binary1 > /dev/null
+$ darn_test_tree modify binary1 dir1/binary1 dir2/binary1 dir2/subdir1/binary1
+$ darn diff -P first > first.diff-1
+$ diff first.diff first.diff-1
+$ darn refresh
+$ darn diff -P first > first.diff-2
+$ diff first.diff first.diff-2
+$ darn diff
+> diff --git a/binary1 b/binary1
+> index bc6019fed77d07ea61df25ae3e5b2c8353f06a21..9d2a53fd08aa9664b6f6b588e3c666c1583b8ffe 0100664
+> GIT binary patch
+> delta 38
+> pc$~A2nP9CLkXVwOVWpr{oSK}Um!f2?02Bc6lQQ!Xiz*G3xB%^O3)BDr
+> 
+> delta 4
+> Lc$|x|o?s0C1AqZz
+> 
+> diff --git a/dir1/binary1 b/dir1/binary1
+> index b2dd93b4af097f9fa23b13e85dd872dbf329eb94..65ab209b67bd4be8699172f8e717a07e48cc49a9 0100664
+> GIT binary patch
+> delta 22
+> dc${<1p5V$CkXVwOVWpr{oSK}UmoiaT0svIa2T}k4
+> 
+> delta 4
+> Lc$~|2o!|-p1LOgQ
+> 
+> diff --git a/dir2/binary1 b/dir2/binary1
+> index aa06105d7495f53f674cbd3355abda73ca1c47d9..0224b2bd00f9a28a3e71b2f431b8f3361a557219 0100664
+> GIT binary patch
+> delta 22
+> dc${<1p5V$CkXVwOVWpr{oSK}UmoiaT0svIa2T}k4
+> 
+> delta 4
+> Lc$~|2o!|-p1LOgQ
+> 
+> diff --git a/dir2/subdir1/binary1 b/dir2/subdir1/binary1
+> index 3ed6c966d3b1944e1efde507f935fedb760cb7ec..a504c727d858b33496352c454b01f5219a53ca73 0100664
+> GIT binary patch
+> delta 35
+> nc$^DuW}FZz5s+AtoMEM)RGgZepO>O!tpF4N@h6BdDRBV+$EgYz
+> 
+> delta 5
+> Mc${ly44n`P00j&IzW@LL
+> 
+$ darn diff > second.diff
+$ darn diff --combined
+> diff --git a/binary1 b/binary1
+> index 21172b42b3158210ce66f1ad674a8dc5bd82ac06..9d2a53fd08aa9664b6f6b588e3c666c1583b8ffe 0100664
+> GIT binary patch
+> delta 70
+> yc$|}tnIP>LkXVwOVWpsymRVF>qGYWA<b$|LnR$stm4-@OF!|!t<ovu8ED8V$DiyE*
+> 
+> delta 4
+> Lc$|xoo*)eX0{{Ud
+> 
+> diff --git a/dir1/binary1 b/dir1/binary1
+> index 91dc798f94f5d73a83ef2cfa2818c5c32a901bc3..65ab209b67bd4be8699172f8e717a07e48cc49a9 0100664
+> GIT binary patch
+> delta 80
+> zc$`zno}l0zkXVwOVWpsymRVF>qGYWA<b${=nMH>BNtt<xMU{q1Trfq&smb|yDY#St
+> E00Si%5dZ)H
+> 
+> delta 4
+> Lc$~{tn4kav15g1x
+> 
+> diff --git a/dir2/binary1 b/dir2/binary1
+> index 4a7492e3d00c7285239e88ec90b7fc6049b00a06..0224b2bd00f9a28a3e71b2f431b8f3361a557219 0100664
+> GIT binary patch
+> delta 80
+> zc$`zno}l0zkXVwOVWpsymRVF>qGYWA<b${=nMFqWNtt<xMU{q1Trfq&smb|yDY#St
+> E00Ute6951J
+> 
+> delta 4
+> Lc$~{tn4kav15g1x
+> 
+> diff --git a/dir2/subdir1/binary1 b/dir2/subdir1/binary1
+> index 505a772e54d25cc0dd4014b39a6be414bdff00c6..a504c727d858b33496352c454b01f5219a53ca73 0100664
+> GIT binary patch
+> delta 63
+> yc%0K{W}KiQ9*|g)oMEM)l$KdkT%u&H0OW(X6GWtxxL|U{smb|yDaevcN?ZU>))Bw}
+> 
+> delta 5
+> Mc${ly)R>?F00dY8WdHyG
+>
+$ diff -q first.diff second.diff
+? 1
+> Files first.diff and second.diff differ
+$ darn diff --combined > combined.diff
+$ diff -q first.diff combined.diff
+? 1
+> Files first.diff and combined.diff differ
+$ diff -q second.diff combined.diff
+? 1
+> Files second.diff and combined.diff differ
+
+Now check for individual files
+$ darn diff dir1/binary1
+> diff --git a/dir1/binary1 b/dir1/binary1
+> index b2dd93b4af097f9fa23b13e85dd872dbf329eb94..65ab209b67bd4be8699172f8e717a07e48cc49a9 0100664
+> GIT binary patch
+> delta 22
+> dc${<1p5V$CkXVwOVWpr{oSK}UmoiaT0svIa2T}k4
+> 
+> delta 4
+> Lc$~|2o!|-p1LOgQ
+>
+$ darn diff --combined dir1/binary1
+> diff --git a/dir1/binary1 b/dir1/binary1
+> index 91dc798f94f5d73a83ef2cfa2818c5c32a901bc3..65ab209b67bd4be8699172f8e717a07e48cc49a9 0100664
+> GIT binary patch
+> delta 80
+> zc$`zno}l0zkXVwOVWpsymRVF>qGYWA<b${=nMH>BNtt<xMU{q1Trfq&smb|yDY#St
+> E00Si%5dZ)H
+> 
+> delta 4
+> Lc$~{tn4kav15g1x
+> 
+$ darn diff dir1/binary1 binary1
+> diff --git a/dir1/binary1 b/dir1/binary1
+> index b2dd93b4af097f9fa23b13e85dd872dbf329eb94..65ab209b67bd4be8699172f8e717a07e48cc49a9 0100664
+> GIT binary patch
+> delta 22
+> dc${<1p5V$CkXVwOVWpr{oSK}UmoiaT0svIa2T}k4
+> 
+> delta 4
+> Lc$~|2o!|-p1LOgQ
+> 
+> diff --git a/binary1 b/binary1
+> index bc6019fed77d07ea61df25ae3e5b2c8353f06a21..9d2a53fd08aa9664b6f6b588e3c666c1583b8ffe 0100664
+> GIT binary patch
+> delta 38
+> pc$~A2nP9CLkXVwOVWpr{oSK}Um!f2?02Bc6lQQ!Xiz*G3xB%^O3)BDr
+> 
+> delta 4
+> Lc$|x|o?s0C1AqZz
+> 
+$ darn diff --combined dir1/binary1 binary1
+> diff --git a/dir1/binary1 b/dir1/binary1
+> index 91dc798f94f5d73a83ef2cfa2818c5c32a901bc3..65ab209b67bd4be8699172f8e717a07e48cc49a9 0100664
+> GIT binary patch
+> delta 80
+> zc$`zno}l0zkXVwOVWpsymRVF>qGYWA<b${=nMH>BNtt<xMU{q1Trfq&smb|yDY#St
+> E00Si%5dZ)H
+> 
+> delta 4
+> Lc$~{tn4kav15g1x
+>
+> diff --git a/binary1 b/binary1
+> index 21172b42b3158210ce66f1ad674a8dc5bd82ac06..9d2a53fd08aa9664b6f6b588e3c666c1583b8ffe 0100664
+> GIT binary patch
+> delta 70
+> yc$|}tnIP>LkXVwOVWpsymRVF>qGYWA<b$|LnR$stm4-@OF!|!t<ovu8ED8V$DiyE*
+>
+> delta 4
+> Lc$|xoo*)eX0{{Ud
+>
+
+And make sure it works in a sub directory
+$ cd dir2
+$ darn diff binary1 subdir1/binary1
+> diff --git a/dir2/binary1 b/dir2/binary1
+> index aa06105d7495f53f674cbd3355abda73ca1c47d9..0224b2bd00f9a28a3e71b2f431b8f3361a557219 0100664
+> GIT binary patch
+> delta 22
+> dc${<1p5V$CkXVwOVWpr{oSK}UmoiaT0svIa2T}k4
+> 
+> delta 4
+> Lc$~|2o!|-p1LOgQ
+>
+> diff --git a/dir2/subdir1/binary1 b/dir2/subdir1/binary1
+> index 3ed6c966d3b1944e1efde507f935fedb760cb7ec..a504c727d858b33496352c454b01f5219a53ca73 0100664
+> GIT binary patch
+> delta 35
+> nc$^DuW}FZz5s+AtoMEM)RGgZepO>O!tpF4N@h6BdDRBV+$EgYz
+>
+> delta 5
+> Mc${ly44n`P00j&IzW@LL
+>
