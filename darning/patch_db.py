@@ -170,7 +170,7 @@ class GenericFileData(PickeExtensibleObject):
         if self.came_from_path:
             lines = ['diff --git {0} {1}\n'.format(os.path.join('a', self.came_from_path), os.path.join('b', self.path)), ]
         else:
-            lines = ['diff --git {0} {1}\n'.format(os.path.join('a', self.path), os.path.join('b', self.path)), ]            
+            lines = ['diff --git {0} {1}\n'.format(os.path.join('a', self.path), os.path.join('b', self.path)), ]
         if self.before_mode is None:
             if after_mode is not None:
                 lines.append('new file mode {0:07o}\n'.format(after_mode))
@@ -1859,6 +1859,7 @@ def do_unapply_top_patch():
         if os.path.exists(file_data.cached_orig_path):
             os.chmod(file_data.cached_orig_path, file_data.orig_mode)
             shutil.move(file_data.cached_orig_path, file_data.path)
+            os.utime(file_data.path, None)
         if file_data.diff:
             if drop_atws:
                 atws_lines = file_data.diff.fix_trailing_whitespace()
