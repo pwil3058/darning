@@ -262,7 +262,7 @@ TESTS = Test.parse_text(open(args.arg_script_file).read())
 HEADER = args.arg_script_file
 
 ORIGDIR = os.getcwd()
-WORKDIR = tempfile.mkdtemp(dir=ORIGDIR)
+WORKDIR = tempfile.mkdtemp()
 os.chdir(WORKDIR)
 os.environ['PWD'] = os.getcwd()
 atexit.register(shutil.rmtree, WORKDIR)
