@@ -120,5 +120,3 @@ except Exception:
     sys.exit(3)
 finally:
     ifce.close()
-
-

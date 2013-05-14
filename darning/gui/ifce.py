@@ -30,10 +30,13 @@ from darning.gui import ws_event
 from darning.gui import terminal
 from darning.gui.console import LOG
 
-TERM = terminal.Terminal() if terminal.AVAILABLE else None
+TERM = None
 
 def init(log=False):
+    global TERM
     global in_valid_repo, in_valid_pgnd, pgnd_is_mutable
+    if terminal.AVAILABLE:
+        TERM = terminal.Terminal()
     options.load_global_options()
     root = PM.find_base_dir(remember_sub_dir=False)
     result = cmd_result.Result(cmd_result.OK, "")
@@ -52,6 +55,7 @@ def init(log=False):
         LOG.start_cmd('gdarn {0}\n'.format(os.getcwd()))
         LOG.append_stderr(result.msg)
         LOG.end_cmd()
+    ws_event.notify_events(ws_event.CHANGE_WD)
     return result
 
 def close():
