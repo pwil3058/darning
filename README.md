@@ -19,6 +19,8 @@ This software requires:
  * PyGTK2 2.24 or later
  * patch 2.6.1 or later
  * vte 0.28.2 or later
+ * gtkspell 2.0.16 or later
+ * pygtkspell 2.25.3 or later
 
 This software works better with:
  * meld 1.5 or later

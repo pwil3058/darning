@@ -16,6 +16,7 @@
 import gtk
 import pango
 import shlex
+import gtkspell
 
 from darning import cmd_result
 from darning import utils
@@ -52,6 +53,7 @@ class MessageWidget(textview.Widget, actions.CAGandUIManager):
         self.view.set_show_right_margin(True)
         self.view.set_cursor_visible(True)
         self.view.set_editable(True)
+        gtkspell.Spell(self.view)
         # Set up file stuff
         self._save_interval = 1000 # milliseconds
         self._save_file_name = save_file_name
