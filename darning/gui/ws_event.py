@@ -73,10 +73,12 @@ def del_notification_cb(cb_token):
     Argument:
     cb_token -- the token that specifies the callback to be cancelled.
     """
-    index = _NOTIFICATION_CBS.index(cb_token)
-    if index >= 0:
-        del _NOTIFICATION_CBS[index]
-
+    # this may have already been done as there are two invocation
+    # paths - so we need to check
+    try:
+        _NOTIFICATION_CBS.index(cb_token)
+    except ValueError:
+        pass
 
 def notify_events(events, data=None):
     """
