@@ -814,7 +814,7 @@ class ContextDiff(Diff):
                     raise ParseError(_('Unexpected end of context diff hunk.'), index)
                 after_count += 1
                 index += 1
-            if lines[index].startswith('\ '):
+            if index < len(lines) and lines[index].startswith('\ '):
                 after_count += 1
                 index += 1
         except IndexError:
