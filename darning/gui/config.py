@@ -20,6 +20,7 @@ import fnmatch
 import collections
 import hashlib
 
+from darning import config_data
 from darning import utils
 from darning import urlops
 from darning import patch_db
@@ -33,11 +34,7 @@ from darning.gui import icons
 from darning.gui import ws_event
 from darning.gui import tlview
 
-CONFIG_DIR_NAME = os.sep.join([utils.HOME, ".darning.d"])
-SAVED_PGND_FILE_NAME = os.sep.join([CONFIG_DIR_NAME, "playgrounds"])
-
-if not os.path.exists(CONFIG_DIR_NAME):
-    os.mkdir(CONFIG_DIR_NAME, 0o775)
+SAVED_PGND_FILE_NAME = os.sep.join([config_data.CONFIG_DIR_NAME, "playgrounds"])
 
 _KEYVAL_ESCAPE = gtk.gdk.keyval_from_name('Escape')
 
@@ -257,7 +254,7 @@ for env in ['COLORTERM', 'TERM']:
     except KeyError:
         pass
 
-EDITOR_GLOB_FILE_NAME = os.sep.join([CONFIG_DIR_NAME, "editors"])
+EDITOR_GLOB_FILE_NAME = os.sep.join([config_data.CONFIG_DIR_NAME, "editors"])
 
 def _read_editor_defs(edeff=EDITOR_GLOB_FILE_NAME):
     editor_defs = []
@@ -448,10 +445,10 @@ AUTO_UPDATE = gutils.RefreshController(
 
 actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_actions(
     [
-        ("config_menu", None, _('_Configuration')),
-        ("config_change_playground", gtk.STOCK_OPEN, _('_Open'), "",
-         _('Change current playground'), change_pgnd_acb),
-        ("config_allocate_editors", gtk.STOCK_PREFERENCES, _('_Editor Allocation'), "",
+        ("config_menu", None, _("_Configuration")),
+        ("config_change_playground", gtk.STOCK_OPEN, _("_Open"), "",
+         _("Change current playground"), change_pgnd_acb),
+        ("config_allocate_editors", gtk.STOCK_PREFERENCES, _("_Editor Allocation"), "",
          _('Allocate editors to file types'), editor_allocation_acb),
     ])
 

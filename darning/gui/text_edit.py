@@ -13,14 +13,15 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import gtk
-import pango
 import shlex
 try:
     import gtkspell
     GTKSPELL_AVAILABLE = True
 except ImportError:
     GTKSPELL_AVAILABLE = False
+
+import gtk
+import pango
 
 from darning import cmd_result
 from darning import utils
