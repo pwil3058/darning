@@ -151,9 +151,11 @@ class ConditionalActionGroups(object):
         for agrp in self.groups.values():
             action = agrp.get_action(action_name)
             if not action:
-                raise self.UnknownAction(action)
+                continue
             agrp.remove_action(action)
             self[new_condns].add_action(action)
+            return
+        raise self.UnknownAction(action)
     def update_condns(self, changed_condns):
         """
         Update the current condition state
