@@ -34,7 +34,7 @@ from darning.gui import icons
 from darning.gui import text_edit
 from darning.gui import diff
 
-class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener):
+class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener, dialogue.BusyIndicatorUser):
     class Model(tlview.TreeView.Model):
         Row = collections.namedtuple('Row', ['name', 'is_dir', 'style', 'foreground', 'icon', 'status', 'related_file_str'])
         types = Row(
@@ -59,13 +59,13 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener):
             return self.remove(fsobj_iter)
         def remove_place_holder(self, dir_iter):
             child_iter = self.iter_children(dir_iter)
-            if child_iter and self.get_value_named(child_iter, 'name') is None:
+            if child_iter and self.get_value_named(child_iter, "name") is None:
                 self.remove(child_iter)
         def fs_path(self, fsobj_iter):
             if fsobj_iter is None:
                 return None
             parent_iter = self.iter_parent(fsobj_iter)
-            name = self.get_value_named(fsobj_iter, 'name')
+            name = self.get_value_named(fsobj_iter, "name")
             if parent_iter is None:
                 return name
             else:
@@ -80,23 +80,22 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener):
         def on_row_collapsed_cb(self, _view, dir_iter, _dummy):
             self.insert_place_holder_if_needed(dir_iter)
         def update_iter_row_tuple(self, fsobj_iter, to_tuple):
-            for label in ['style', 'foreground', 'status', 'related_file_str', 'icon']:
-                index = self.col_index(label)
-                self.set_value(fsobj_iter, index, to_tuple[index])
+            for label in ["style", "foreground", "status", "related_file_str", "icon"]:
+                self.set_value_named(fsobj_iter, label, getattr(to_tuple, label))
     # This is not a method but a function within the Tree namespace
     def _format_file_name_crcb(_column, cell_renderer, store, tree_iter, _arg=None):
-        name = store.get_value(tree_iter, store.col_index('name'))
+        name = store.get_value_named(tree_iter, "name")
         if name is None:
-            cell_renderer.set_property('text', _('<empty>'))
+            cell_renderer.set_property("text", _("<empty>"))
             return
-        name += store.get_value(tree_iter, store.col_index('related_file_str'))
-        cell_renderer.set_property('text', name)
+        name += store.get_value_named(tree_iter, "related_file_str")
+        cell_renderer.set_property("text", name)
     specification = tlview.ViewSpec(
-        properties={'headers-visible' : False},
+        properties={"headers-visible" : False},
         selection_mode=gtk.SELECTION_MULTIPLE,
         columns=[
             tlview.ColumnSpec(
-                title=_('File Name'),
+                title=_("File Name"),
                 properties={},
                 cells=[
                     tlview.CellSpec(
@@ -107,7 +106,7 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener):
                         ),
                         properties={},
                         cell_data_function_spec=None,
-                        attributes={'stock-id' : Model.col_index('icon')}
+                        attributes={"stock-id" : Model.col_index("icon")}
                     ),
                     tlview.CellSpec(
                         cell_renderer_spec=tlview.CellRendererSpec(
@@ -117,7 +116,7 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener):
                         ),
                         properties={},
                         cell_data_function_spec=None,
-                        attributes={'text' : Model.col_index('status'), 'style' : Model.col_index('style'), 'foreground' : Model.col_index('foreground')}
+                        attributes={"text" : Model.col_index("status"), "style" : Model.col_index("style"), "foreground" : Model.col_index("foreground")}
                     ),
                     tlview.CellSpec(
                         cell_renderer_spec=tlview.CellRendererSpec(
@@ -127,7 +126,7 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener):
                         ),
                         properties={},
                         cell_data_function_spec=tlview.CellDataFunctionSpec(function=_format_file_name_crcb, user_data=None),
-                        attributes={'style' : Model.col_index('style'), 'foreground' : Model.col_index('foreground')}
+                        attributes={"style" : Model.col_index("style"), "foreground" : Model.col_index("foreground")}
                     )
                 ]
             )
@@ -136,11 +135,15 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener):
     KEYVAL_c = gtk.gdk.keyval_from_name('c')
     KEYVAL_C = gtk.gdk.keyval_from_name('C')
     KEYVAL_ESCAPE = gtk.gdk.keyval_from_name('Escape')
+    AUTO_EXPAND = False
     @staticmethod
     def _get_related_file_str(data):
         if data.related_file:
-            return ' {0} {1}'.format(data.related_file.relation, data.related_file.path)
-        return ''
+            if isinstance(data.related_file, str):
+                return " <- " + data.related_file
+            else:
+                return " {0} {1}".format(data.related_file.relation, data.related_file.path)
+        return ""
     @staticmethod
     def _handle_button_press_cb(widget, event):
         if event.type == gtk.gdk.BUTTON_PRESS:
@@ -162,7 +165,26 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener):
     def search_equal_func(model, column, key, model_iter, _data=None):
         text = model.fs_path(model_iter)
         return text.find(key) == -1
-    def __init__(self, show_hidden=False, populate_all=False, auto_expand=False):
+    _FILE_ICON = {True : gtk.STOCK_DIRECTORY, False : gtk.STOCK_FILE}
+    @classmethod
+    def _get_status_deco(cls, status=None):
+        assert False, "_get_status_deco() must be defined in descendants"
+    @classmethod
+    def _generate_row_tuple(cls, data, isdir):
+        deco = cls._get_status_deco(data.status)
+        row = cls.Model.Row(
+            name=data.name,
+            is_dir=isdir,
+            icon=cls._FILE_ICON[isdir],
+            status=data.status,
+            related_file_str=cls._get_related_file_str(data),
+            style=deco.style,
+            foreground=deco.foreground
+        )
+        return row
+    def __init__(self, show_hidden=False, busy_indicator=None):
+        dialogue.BusyIndicatorUser.__init__(self, busy_indicator=busy_indicator)
+        self._file_db = None
         ws_event.Listener.__init__(self)
         self.show_hidden_action = gtk.ToggleAction('show_hidden_files', _('Show Hidden Files'),
                                                    _('Show/hide ignored files and those beginning with "."'), None)
@@ -172,15 +194,12 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener):
         self.show_hidden_action.set_tool_item_type(gtk.ToggleToolButton)
         tlview.TreeView.__init__(self)
         self.set_search_equal_func(self.search_equal_func)
-        ws_actions.AGandUIManager.__init__(self, selection=self.get_selection(), popup='/files_popup')
-        self._populate_all = populate_all
-        self._auto_expand = auto_expand
+        ws_actions.AGandUIManager.__init__(self, selection=self.get_selection(), popup="/files_popup")
         self.connect("row-expanded", self.model.on_row_expanded_cb)
         self.connect("row-collapsed", self.model.on_row_collapsed_cb)
-        self.connect('button_press_event', self._handle_button_press_cb)
-        self.connect('key_press_event', self._handle_key_press_cb)
+        self.connect("button_press_event", self._handle_button_press_cb)
+        self.connect("key_press_event", self._handle_key_press_cb)
         self.get_selection().set_select_function(self._dirs_not_selectable, full=True)
-        self._file_db = None
         self.repopulate()
     def populate_action_groups(self):
         self.action_groups[actions.AC_DONT_CARE].add_action(self.show_hidden_action)
@@ -196,14 +215,24 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener):
                 ('rename_file_in_top_patch', icons.STOCK_RENAME, _('_Rename'), None,
                  _('Rename the selected file within the top patch'), self._rename_selected_in_top_patch),
             ])
+    @property
+    def _populate_all(self):
+        return self.AUTO_EXPAND
+    @property
+    def show_hidden(self):
+        return self.show_hidden_action.get_active()
+    @show_hidden.setter
+    def show_hidden(self, new_value):
+        self.show_hidden_action.set_active(new_value)
+        self._update_dir('', None)
     def _dirs_not_selectable(self, selection, model, path, is_selected, _arg=None):
         if not is_selected:
             return not model.get_value_named(model.get_iter(path), 'is_dir')
         return True
     def _toggle_show_hidden_cb(self, toggleaction):
-        dialogue.show_busy()
+        self.show_busy()
         self._update_dir('', None)
-        dialogue.unshow_busy()
+        self.unshow_busy()
     def _get_dir_contents(self, dirpath):
         return self._file_db.dir_contents(dirpath, self.show_hidden_action.get_active())
     def _row_expanded(self, dir_iter):
@@ -215,7 +244,7 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener):
             dir_iter = self.model.append(parent_iter, row_tuple)
             if self._populate_all:
                 self._populate(os.path.join(dirpath, dirdata.name), dir_iter)
-                if self._auto_expand:
+                if self.AUTO_EXPAND:
                     self.expand_row(self.model.get_path(dir_iter), True)
             else:
                 self.model.insert_place_holder(dir_iter)
@@ -253,7 +282,7 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener):
         else:
             child_iter = self.model.iter_children(parent_iter)
             if child_iter:
-                if self.model.get_value_named(child_iter, 'name') is None:
+                if self.model.get_value_named(child_iter, "name") is None:
                     child_iter = self.model.iter_next(child_iter)
         dirs, files = self._get_dir_contents(dirpath)
         dead_entries = []
@@ -267,23 +296,23 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener):
                 changed = True
                 if self._populate_all:
                     self._update_dir(os.path.join(dirpath, dirdata.name), dir_iter)
-                    if self._auto_expand:
+                    if self.AUTO_EXPAND:
                         self.expand_row(self.model.get_path(dir_iter), True)
                 else:
                     self.model.insert_place_holder(dir_iter)
                 continue
-            name = self.model.get_value_named(child_iter, 'name')
-            if (not self.model.get_value_named(child_iter, 'is_dir')) or (name > dirdata.name):
+            name = self.model.get_value_named(child_iter, "name")
+            if (not self.model.get_value_named(child_iter, "is_dir")) or (name > dirdata.name):
                 dir_iter = self.model.insert_before(parent_iter, child_iter, row_tuple)
                 changed = True
                 if self._populate_all:
                     self._update_dir(os.path.join(dirpath, dirdata.name), dir_iter)
-                    if self._auto_expand:
+                    if self.AUTO_EXPAND:
                         self.expand_row(self.model.get_path(dir_iter), True)
                 else:
                     self.model.insert_place_holder(dir_iter)
                 continue
-            changed |= self.model.get_value_named(child_iter, 'icon') != row_tuple.icon
+            changed |= self.model.get_value_named(child_iter, "icon") != row_tuple.icon
             self.model.update_iter_row_tuple(child_iter, row_tuple)
             if self._populate_all or self._row_expanded(child_iter):
                 changed |= self._update_dir(os.path.join(dirpath, name), child_iter)
@@ -300,11 +329,11 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener):
                 dummy = self.model.append(parent_iter, row_tuple)
                 changed = True
                 continue
-            if self.model.get_value_named(child_iter, 'name') > filedata.name:
+            if self.model.get_value_named(child_iter, "name") > filedata.name:
                 dummy = self.model.insert_before(parent_iter, child_iter, row_tuple)
                 changed = True
                 continue
-            changed |= self.model.get_value_named(child_iter, 'icon') != row_tuple.icon
+            changed |= self.model.get_value_named(child_iter, "icon") != row_tuple.icon
             self.model.update_iter_row_tuple(child_iter, row_tuple)
             child_iter = self.model.iter_next(child_iter)
         while child_iter is not None:
@@ -316,19 +345,20 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener):
         if parent_iter is not None:
             self.model.insert_place_holder_if_needed(parent_iter)
         return changed
+    @staticmethod
     def _get_file_db():
         assert False, '_get_file_db() must be defined in descendants'
     def repopulate(self, _arg=None):
-        dialogue.show_busy()
+        self.show_busy()
         self._file_db = self._get_file_db()
         self.model.clear()
         self._populate('', self.model.get_iter_first())
-        dialogue.unshow_busy()
+        self.unshow_busy()
     def update(self, _arg=None):
-        dialogue.show_busy()
+        self.show_busy()
         self._file_db = self._get_file_db()
         self._update_dir('', None)
-        dialogue.unshow_busy()
+        self.unshow_busy()
     def get_selected_files(self):
         store, selection = self.get_selection().get_selected_rows()
         return [store.fs_path(store.get_iter(x)) for x in selection]
@@ -459,19 +489,12 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
         @staticmethod
         def _get_file_db():
             return ifce.SCM.get_file_db()
-        @staticmethod
-        def _generate_row_tuple(data, isdir):
-            deco = ifce.SCM.get_status_deco(data.status)
-            row = ScmFileTreeWidget.ScmTree.Model.Row(
-                name=data.name,
-                is_dir=isdir,
-                icon=ScmFileTreeWidget.ScmTree._FILE_ICON[isdir],
-                status=data.status,
-                related_file_str=Tree._get_related_file_str(data),
-                style=deco.style,
-                foreground=deco.foreground
-            )
-            return row
+        @classmethod
+        def _get_status_deco(cls, status=None):
+            try:
+                return ifce.SCM.get_status_deco(status)
+            except:
+                return ifce.SCM.get_status_deco(None)
         def __init__(self, show_hidden=False, hide_clean=False):
             self.hide_clean_action = gtk.ToggleAction('hide_clean_files', _('Hide Clean Files'),
                                                        _('Show/hide "clean" files'), None)
@@ -479,9 +502,13 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
             self.hide_clean_action.connect('toggled', self._toggle_hide_clean_cb)
             self.hide_clean_action.set_menu_item_type(gtk.CheckMenuItem)
             self.hide_clean_action.set_tool_item_type(gtk.ToggleToolButton)
-            Tree.__init__(self, show_hidden=show_hidden, populate_all=False, auto_expand=False)
+            Tree.__init__(self, show_hidden=show_hidden)
             self.add_notification_cb(ws_event.CHECKOUT|ws_event.CHANGE_WD, self.repopulate)
             self.add_notification_cb(ws_event.FILE_CHANGES|ws_event.WD_FILE_TREE_CHANGES|ws_event.REPO_FILE_STATUS_CHANGES, self.update)
+            self.add_notification_cb(ws_event.AUTO_UPDATE, self.auto_update)
+        def auto_update(self, _arg=None):
+            if not self._file_db.is_current():
+                ws_event.notify_events(ws_event.WD_FILE_CHANGES)
         def populate_action_groups(self):
             Tree.populate_action_groups(self)
             self.action_groups[actions.AC_DONT_CARE].add_action(self.hide_clean_action)
@@ -505,9 +532,9 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
                      self._select_unsettled),
                 ])
         def _toggle_hide_clean_cb(self, toggleaction):
-            dialogue.show_busy()
+            self.show_busy()
             self._update_dir('', None)
-            dialogue.unshow_busy()
+            self.unshow_busy()
         def _get_dir_contents(self, dirpath):
             show_hidden = self.show_hidden_action.get_active()
             if not show_hidden and self.hide_clean_action.get_active():
@@ -608,9 +635,10 @@ class PatchFileTreeWidget(gtk.VBox, ws_event.Listener):
                 foreground=deco.foreground
             )
             return row
+        AUTO_EXPAND = True
         def __init__(self, patch=None):
             self.patch = patch
-            Tree.__init__(self, show_hidden=True, populate_all=True, auto_expand=True)
+            Tree.__init__(self, show_hidden=True)
         def populate_action_groups(self):
             Tree.populate_action_groups(self)
             self.action_groups[ws_actions.AC_IN_PGND_MUTABLE + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
