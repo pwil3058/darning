@@ -3,12 +3,12 @@
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
 ### the Free Software Foundation; version 2 of the License only.
-
+###
 ### This program is distributed in the hope that it will be useful,
 ### but WITHOUT ANY WARRANTY; without even the implied warranty of
 ### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ### GNU General Public License for more details.
-
+###
 ### You should have received a copy of the GNU General Public License
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
@@ -126,9 +126,6 @@ class GenFileDb:
     DIR_TYPE = GenDir
     def __init__(self):
         self.base_dir = self.DIR_TYPE()
-    def _set_contents(self, file_list, unresolved_file_list=list()):
-        for item in file_list:
-            self.base_dir.add_file(split_path(item), status=None, related_file=None)
     def add_file(self, filepath, status, related_file=None):
         self.base_dir.add_file(split_path(filepath), status, related_file)
     def decorate_dirs(self):
@@ -139,11 +136,20 @@ class GenFileDb:
             return ([], [])
         return tdir.dirs_and_files(show_hidden)
 
-class OsSnapshotFileDb:
+class GenSnapshotFileDb(GenFileDb):
+    def __init__(self, default_status=None):
+        GenFileDb.__init__(self)
+        self.tree_hash = hashlib.sha1()
+    def _get_current_tree_hash(self):
+        assert False, _("_get_current_tree_hash() must be defined in child")
+    def is_current(self):
+        h = self._get_current_tree_hash()
+        return h.digest() == self.tree_hash.digest()
+
+class OsSnapshotFileDb(GenSnapshotFileDb):
     DIR_TYPE = GenDir
     def __init__(self, default_status=None):
-        self.tree_hash = hashlib.sha1()
-        self.base_dir = self.DIR_TYPE()
+        GenSnapshotFileDb.__init__(self)
         for root, dirs, files in os.walk('.'):
             self.tree_hash.update(root)
             rparts = split_path(root)[1:] # get rid of the leading './'
@@ -153,11 +159,6 @@ class OsSnapshotFileDb:
             for f in files:
                 self.tree_hash.update(f)
                 dir_data.files[f] = Data(f, default_status, None)
-    def dir_contents(self, dirpath='', show_hidden=False):
-        tdir = self.base_dir.find_dir(dirpath)
-        if not tdir:
-            return ([], [])
-        return tdir.dirs_and_files(show_hidden)
     def _get_current_tree_hash(self):
         h = hashlib.sha1()
         for root, dirs, files in os.walk('.'):
@@ -165,6 +166,3 @@ class OsSnapshotFileDb:
             for f in files:
                 h.update(f)
         return h
-    def is_current(self):
-        h = self._get_current_tree_hash()
-        return h.digest() == self.tree_hash.digest()

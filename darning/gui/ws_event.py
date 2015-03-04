@@ -76,7 +76,8 @@ def del_notification_cb(cb_token):
     # this may have already been done as there are two invocation
     # paths - so we need to check
     try:
-        _NOTIFICATION_CBS.index(cb_token)
+        index = _NOTIFICATION_CBS.index(cb_token)
+	del _NOTIFICATION_CBS[index]
     except ValueError:
         pass
 

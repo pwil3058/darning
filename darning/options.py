@@ -24,9 +24,10 @@ try:
 except ImportError:
     import ConfigParser as configparser
 
+from darning import config_data
 from darning import cmd_result
 
-_GLOBAL_CFG_FILE = os.path.expanduser('~/.darning.d/options.cfg')
+_GLOBAL_CFG_FILE = os.path.join(config_data.CONFIG_DIR_NAME, "options.cfg")
 GLOBAL_OPTIONS = configparser.SafeConfigParser()
 
 def load_global_options():

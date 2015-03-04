@@ -64,15 +64,20 @@ class BusyIndicator:
         return self._count > 0
 
 class BusyIndicatorUser:
-    def __init__(self, busy_indicator):
-        if busy_indicator:
-            self._busy_indicator = busy_indicator
-        else:
-            self._busy_indicator = main_window
+    def __init__(self, busy_indicator=None):
+        self._busy_indicator = busy_indicator
     def show_busy(self):
-        self._busy_indicator.show_busy()
+        if self._busy_indicator is not None:
+            self._busy_indicator.show_busy()
+        else:
+            show_busy()
     def unshow_busy(self):
-        self._busy_indicator.unshow_busy()
+        if self._busy_indicator is not None:
+            self._busy_indicator.unshow_busy()
+        else:
+            unshow_busy()
+    def set_busy_indicator(self, busy_indicator=None):
+        self._busy_indicator = busy_indicator
 
 class Dialog(gtk.Dialog, BusyIndicator):
     def __init__(self, title=None, parent=None, flags=0, buttons=None):
@@ -229,6 +234,13 @@ def ask_rename_overwrite_or_cancel(result, clarification=None, parent=None):
     question = _form_question(result, clarification)
     return ask_question(question, parent, buttons)
 
+def ask_rename_force_or_cancel(result, clarification=None, parent=None):
+    buttons = (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL)
+    buttons += (_('_Rename'), Response.RENAME)
+    buttons += (_('_Force'), Response.FORCE)
+    question = _form_question(result, clarification)
+    return ask_question(question, parent, buttons)
+
 def ask_file_name(prompt, suggestion=None, existing=True, parent=None):
     if existing:
         mode = gtk.FILE_CHOOSER_ACTION_OPEN
@@ -247,8 +259,12 @@ def ask_file_name(prompt, suggestion=None, existing=True, parent=None):
             dirname, basename = os.path.split(suggestion)
             if dirname:
                 dialog.set_current_folder(dirname)
+            else:
+                dialog.set_current_folder(os.getcwd())
             if basename:
                 dialog.set_current_name(basename)
+    else:
+        dialog.set_current_folder(os.getcwd())
     response = dialog.run()
     if response == gtk.RESPONSE_OK:
         new_file_name = os.path.relpath(dialog.get_filename())
@@ -283,6 +299,29 @@ def ask_dir_name(prompt, suggestion=None, existing=True, parent=None):
     dialog.destroy()
     return new_dir_name
 
+def ask_uri_name(prompt, suggestion=None, parent=None):
+    if suggestion and not os.path.exists(suggestion):
+        suggestion = None
+    dialog = FileChooserDialog(prompt, parent, gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
+                               (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+                                gtk.STOCK_OK, gtk.RESPONSE_OK))
+    dialog.set_default_response(gtk.RESPONSE_OK)
+    dialog.set_local_only(False)
+    if suggestion:
+        if os.path.isdir(suggestion):
+            dialog.set_current_folder(suggestion)
+        else:
+            dirname = os.path.dirname(suggestion)
+            if dirname:
+                dialog.set_current_folder(dirname)
+    response = dialog.run()
+    if response == gtk.RESPONSE_OK:
+        uri = os.path.relpath(dialog.get_uri())
+    else:
+        uri = None
+    dialog.destroy()
+    return uri
+
 def inform_user(msg, parent=None, problem_type=gtk.MESSAGE_INFO):
     dialog = MessageDialog(parent=parent,
                            flags=gtk.DIALOG_MODAL|gtk.DIALOG_DESTROY_WITH_PARENT,
@@ -315,9 +354,9 @@ class CancelOKDialog(Dialog):
 
 class ReadTextDialog(CancelOKDialog):
     def __init__(self, title=None, prompt=None, suggestion="", parent=None):
-        CancelOKDialog.__init__(self, title, parent) 
+        CancelOKDialog.__init__(self, title, parent)
         self.hbox = gtk.HBox()
-        self.vbox.add(self.hbox)
+        self.vbox.pack_start(self.hbox, expand=False)
         self.hbox.show()
         if prompt:
             self.hbox.pack_start(gtk.Label(prompt), fill=False, expand=False)
@@ -325,4 +364,12 @@ class ReadTextDialog(CancelOKDialog):
         self.entry.set_width_chars(32)
         self.entry.set_text(suggestion)
         self.hbox.pack_start(self.entry)
+        self.show_all()
+
+class ReadTextAndToggleDialog(ReadTextDialog):
+    def __init__(self, title=None, prompt=None, suggestion="", toggle_prompt=None, toggle_state=False, parent=None):
+        ReadTextDialog.__init__(self, title=title, prompt=prompt, suggestion=suggestion, parent=parent)
+        self.toggle = gtk.CheckButton(label=toggle_prompt)
+        self.toggle.set_active(toggle_state)
+        self.hbox.pack_start(self.toggle)
         self.show_all()

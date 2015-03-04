@@ -97,21 +97,31 @@ class View(_View):
         self.modify_font(self._fdesc)
         self._adjust_size_request()
 
-class Widget(gtk.ScrolledWindow):
+class Widget(gtk.VBox):
     TEXT_VIEW = View
     def __init__(self, width_in_chars=81, aspect_ratio=0.33, fdesc=None):
-        gtk.ScrolledWindow.__init__(self)
+        gtk.VBox.__init__(self)
+        # Space to add stuff at the top
+        self.top_hbox = gtk.HBox()
+        self.pack_start(self.top_hbox, expand=False)
         # Set up text buffer and view
-        self.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
         self.view = self.TEXT_VIEW(width_in_chars=width_in_chars, aspect_ratio=aspect_ratio, fdesc=fdesc)
         self._initialize_contents()
-        self.add(self.view)
+        self._scrolled_window = gtk.ScrolledWindow()
+        self.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+        self._scrolled_window.add(self.view)
+        self.pack_start(self._scrolled_window)
+        # Space to add stuff at the bottom
+        self.bottom_hbox = gtk.HBox()
+        self.pack_start(self.bottom_hbox, expand=False)
     @property
     def bfr(self):
         return self.view.get_buffer()
     @property
     def digest(self):
         return hashlib.sha256(self.get_contents()).digest()
+    def set_policy(self, hpol, vpol):
+        return self._scrolled_window.set_policy(hpol, vpol)
     def set_contents(self, text, undoable=False):
         if not undoable:
             self.bfr.begin_not_undoable_action()
