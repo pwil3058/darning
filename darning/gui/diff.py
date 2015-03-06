@@ -14,9 +14,10 @@
 ### Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import re
+import os
+
 import gtk
 import pango
-import os
 
 from darning import options
 from darning import runext
@@ -240,6 +241,96 @@ class TextWidget(gtk.VBox):
     def get_tws_nav_button_box(self):
         a_name_list = ["tws_nav_first", "tws_nav_prev", "tws_nav_next", "tws_nav_last"]
         return self.get_action_button_box(action_name_list=a_name_list)
+
+class DiffDisplay(TextWidget):
+    def __init__(self, diffplus):
+        self.diffplus = diffplus
+        TextWidget.__init__(self)
+        self.tws_nav_buttonbox.pack_start(self.tws_display, expand=False)
+        self.tws_nav_buttonbox.reorder_child(self.tws_display, 0)
+    def _get_diff_text(self):
+        return str(self.diffplus)
+    def update(self, diffplus):
+        self.diffplus = diffplus
+        self.set_contents()
+
+class GenericDiffNotebook(gtk.Notebook):
+    class TWSDisplay(TextWidget.TwsLineCountDisplay):
+        LABEL = _('File(s) that add TWS: ')
+    def __init__(self, num_strip_levels=1):
+        gtk.Notebook.__init__(self)
+        self.num_strip_levels = num_strip_levels
+        self.diff_pluses = []
+        self.tws_display = self.TWSDisplay()
+        self.tws_display.set_value(0)
+        self.set_scrollable(True)
+        self.popup_enable()
+        self.diff_displays = {}
+    @staticmethod
+    def _make_file_label(filepath, file_icon):
+        hbox = gtk.HBox()
+        icon = file_icon
+        hbox.pack_start(gtk.image_new_from_stock(icon, gtk.ICON_SIZE_MENU), expand=False)
+        label = gtk.Label(filepath)
+        label.set_alignment(0, 0)
+        label.set_padding(4, 0)
+        hbox.pack_start(label, expand=True)
+        hbox.show_all()
+        return hbox
+    @staticmethod
+    def _file_icon_for_condition(condition):
+        if not condition:
+            return icons.STOCK_FILE_PROBLEM
+        return gtk.STOCK_FILE
+    def _populate_pages(self):
+        # NB: handle both fixed and variable notebooks (to avoid code duplication problems)
+        existing = set([fpath for fpath in self.diff_displays])
+        num_tws_files = 0
+        for diffplus in self.diff_pluses:
+            filepath = diffplus.get_file_path(self.num_strip_levels)
+            if diffplus.report_trailing_whitespace():
+                file_icon = self._file_icon_for_condition(False)
+                num_tws_files += 1
+            else:
+                file_icon = self._file_icon_for_condition(True)
+            tab_label = self._make_file_label(filepath, file_icon)
+            menu_label = self._make_file_label(filepath, file_icon)
+            if filepath in existing:
+                self.diff_displays[filepath].update(diffplus)
+                self.set_tab_label(self.diff_displays[filepath], tab_label)
+                self.set_menu_label(self.diff_displays[filepath], menu_label)
+                existing.remove(filepath)
+            else:
+                self.diff_displays[filepath] = DiffDisplay(diffplus)
+                self.append_page_menu(self.diff_displays[filepath], tab_label, menu_label)
+        for gone in existing:
+            gonedd = self.diff_displays.pop(gone)
+            pnum = self.page_num(gonedd)
+            self.remove_page(pnum)
+        self.tws_display.set_value(num_tws_files)
+    def __str__(self):
+        string = ''
+        for diff_plus in self.diff_pluses:
+            string += str(diff_plus)
+        return string
+
+class ConstDiffNotebook(GenericDiffNotebook):
+    def __init__(self, diff_pluses):
+        GenericDiffNotebook.__init__(self)
+        self.diff_pluses = diff_pluses if diff_pluses else []
+        self._populate_pages()
+
+class UpdateableDiffNotebook(GenericDiffNotebook):
+    def __init__(self, num_strip_levels=1):
+        GenericDiffNotebook.__init__(self, num_strip_levels=num_strip_levels)
+        self.update()
+    def update(self):
+        self.diff_pluses = self.get_diff_pluses()
+        self._populate_pages()
+    def get_diff_pluses(self):
+        diff_text = self._get_diff_text()
+        epatch = patchlib.Patch.parse_text(diff_text)
+        return epatch.diff_pluses
 
 class ForFileDialog(dialogue.AmodalDialog):
     class Widget(TextWidget):

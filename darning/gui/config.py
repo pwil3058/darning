@@ -445,10 +445,10 @@ AUTO_UPDATE = gutils.RefreshController(
 
 actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_actions(
     [
-        ("config_menu", None, _('_Configuration')),
-        ("config_change_playground", gtk.STOCK_OPEN, _('_Open'), "",
-         _('Change current playground'), change_pgnd_acb),
-        ("config_allocate_editors", gtk.STOCK_PREFERENCES, _('_Editor Allocation'), "",
+        ("config_menu", None, _("_Configuration")),
+        ("config_change_playground", gtk.STOCK_OPEN, _("_Open"), "",
+         _("Change current playground"), change_pgnd_acb),
+        ("config_allocate_editors", gtk.STOCK_PREFERENCES, _("_Editor Allocation"), "",
          _('Allocate editors to file types'), editor_allocation_acb),
     ])
 
