@@ -27,12 +27,12 @@ from darning import patch_db
 
 from darning.gui import dialogue
 from darning.gui import gutils
+from darning.gui import tlview
 from darning.gui import table
 from darning.gui import actions
 from darning.gui import ifce
 from darning.gui import icons
 from darning.gui import ws_event
-from darning.gui import tlview
 
 SAVED_PGND_FILE_NAME = os.sep.join([config_data.CONFIG_DIR_NAME, "playgrounds"])
 
@@ -453,3 +453,23 @@ actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_actions(
     ])
 
 actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_action(AUTO_UPDATE.toggle_action)
+
+class RepositoryMenu(gtk.MenuItem):
+    def __init__(self, label=_("Playgrounds")):
+        gtk.MenuItem.__init__(self, label)
+        self.set_submenu(gtk.Menu())
+        self.connect("enter_notify_event", self._enter_notify_even_cb)
+    def _build_submenu(self):
+        _menu = gtk.Menu()
+        repos = PgndPathTable._fetch_contents()
+        repos.sort()
+        for repo in repos:
+            label = "{0.Alias}:->({0.Path})".format(repo)
+            _menu_item = gtk.MenuItem(label)
+            _menu_item.connect("activate", change_repository_cb, os.path.expanduser(repo.Path))
+            _menu_item.show()
+            _menu.append(_menu_item)
+        return _menu
+    def _enter_notify_even_cb(self, widget, _event):
+        widget.remove_submenu()
+        widget.set_submenu(self._build_submenu())

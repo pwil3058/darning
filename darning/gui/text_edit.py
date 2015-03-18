@@ -153,6 +153,7 @@ class MessageWidget(textview.Widget, actions.CAGandUIManager):
             return
         if not file_name:
             file_name = self._save_file_name
+        # TODO: fix this for the case there is no saved_file_name
         try:
             self.set_contents(open(file_name, 'rb').read())
             self._save_file_name = file_name

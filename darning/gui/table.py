@@ -84,14 +84,14 @@ class Table(gtk.VBox):
         self.action_groups[MODIFIED].set_sensitive(val)
         self.action_groups[NOT_MODIFIED].set_sensitive(not val)
     def _fetch_contents(self):
-        pass # define in child
+        assert False, _("Must be defined in child")
     def set_contents(self):
         self.model.set_contents(self._fetch_contents())
         self._set_modified(False)
     def get_contents(self):
         return [row for row in self.model.named()]
     def apply_changes(self):
-        pass # define in child
+        assert False, _("Must be defined in child")
     def _row_inserted_cb(self, model, path, model_iter):
         self._set_modified(True)
     def _selection_changed_cb(self, selection):
@@ -168,7 +168,7 @@ class TableView(tlview.ListView, ws_actions.AGandUIManager, dialogue.BusyIndicat
                 return True
         return False
     def _fetch_contents(self):
-        pass # define in child
+        assert False, _("Must be defined in child")
     def _set_contents(self):
         model = self.Model()
         model.set_contents(self._fetch_contents())
@@ -244,7 +244,7 @@ class TableView(tlview.ListView, ws_actions.AGandUIManager, dialogue.BusyIndicat
             return False
         self.seln.select_iter(model_iter)
         path = self.model.get_path(model_iter)
-        self.view.scroll_to_cell(path, use_align=True, row_align=0.5)
+        self.scroll_to_cell(path, use_align=True, row_align=0.5)
         return True
 
 _NEEDS_RESET = 123
@@ -287,12 +287,24 @@ class MapManagedTableView(TableView, gutils.MappedManager):
 
 class TableWidget(gtk.VBox):
     View = TableView
-    def __init__(self, scroll_bar=True, busy_indicator=None, size_req=None):
+    def __init__(self, scroll_bar=True, busy_indicator=None, size_req=None, **kwargs):
         gtk.VBox.__init__(self)
         self.header = gutils.SplitBar()
         self.pack_start(self.header, expand=False)
-        self.view = self.View(busy_indicator=busy_indicator, size_req=size_req)
+        self.view = self.View(busy_indicator=busy_indicator, size_req=size_req, **kwargs)
         if scroll_bar:
             self.pack_start(gutils.wrap_in_scrolled_window(self.view))
         else:
             self.pack_start(self.view)
+        self.show_all()
+    @property
+    def ui_manager(self):
+        return self.view.ui_manager
+    @property
+    def action_groups(self):
+        return self.view.action_groups
+    @property
+    def seln(self):
+        return self.view.get_selection()
+    def unselect_all(self):
+        self.seln.unselect_all()

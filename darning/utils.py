@@ -24,19 +24,25 @@ import hashlib
 
 from darning import i18n
 from darning import urlops
+from darning import config_data
 from darning import options
-
-HOME = os.path.expanduser("~")
 
 def path_rel_home(path):
     """Return the given path as a path relative to user's home directory."""
     if urlops.parse_url(path).scheme:
         return path
     path = os.path.abspath(path)
-    len_home = len(HOME)
-    if len(path) >= len_home and HOME == path[:len_home]:
+    len_home = len(config_data.HOME)
+    if len(path) >= len_home and config_data.HOME == path[:len_home]:
         path = "~" + path[len_home:]
     return path
+
+def cwd_rel_home():
+    """Return path of current working directory relative to user's home
+    directory.
+    """
+    return path_rel_home(os.getcwd())
+
 
 def file_list_to_string(file_list):
     """Return the given list of file names as a single string:

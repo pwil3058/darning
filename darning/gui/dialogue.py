@@ -64,15 +64,20 @@ class BusyIndicator:
         return self._count > 0
 
 class BusyIndicatorUser:
-    def __init__(self, busy_indicator):
-        if busy_indicator:
-            self._busy_indicator = busy_indicator
-        else:
-            self._busy_indicator = main_window
+    def __init__(self, busy_indicator=None):
+        self._busy_indicator = busy_indicator
     def show_busy(self):
-        self._busy_indicator.show_busy()
+        if self._busy_indicator is not None:
+            self._busy_indicator.show_busy()
+        else:
+            show_busy()
     def unshow_busy(self):
-        self._busy_indicator.unshow_busy()
+        if self._busy_indicator is not None:
+            self._busy_indicator.unshow_busy()
+        else:
+            unshow_busy()
+    def set_busy_indicator(self, busy_indicator=None):
+        self._busy_indicator = busy_indicator
 
 class Dialog(gtk.Dialog, BusyIndicator):
     def __init__(self, title=None, parent=None, flags=0, buttons=None):
@@ -258,6 +263,8 @@ def ask_file_name(prompt, suggestion=None, existing=True, parent=None):
                 dialog.set_current_folder(os.getcwd())
             if basename:
                 dialog.set_current_name(basename)
+    else:
+        dialog.set_current_folder(os.getcwd())
     response = dialog.run()
     if response == gtk.RESPONSE_OK:
         new_file_name = os.path.relpath(dialog.get_filename())
