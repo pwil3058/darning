@@ -93,14 +93,6 @@ def get_name():
         return ''
     return _CURRENT_BACK_END.name
 
-def is_clean(status):
-    '''
-    Does this status indicate a clean object?
-    '''
-    if _CURRENT_BACK_END is None:
-        return False
-    return _CURRENT_BACK_END.is_clean(status)
-
 def copy_clean_version_to(filepath, target_name):
     '''
     Copy a clean version of the named file to the specified target

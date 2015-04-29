@@ -36,7 +36,7 @@ from darning.gui import diff
 
 class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener, dialogue.BusyIndicatorUser):
     class Model(tlview.TreeView.Model):
-        Row = collections.namedtuple('Row', ['name', 'is_dir', 'style', 'foreground', 'icon', 'status', 'related_file_str'])
+        Row = collections.namedtuple('Row', ['name', 'is_dir', 'style', 'foreground', 'icon', 'status', 'related_file_data'])
         types = Row(
             name=gobject.TYPE_STRING,
             is_dir=gobject.TYPE_BOOLEAN,
@@ -44,7 +44,7 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener, dialog
             foreground=gobject.TYPE_STRING,
             icon=gobject.TYPE_STRING,
             status=gobject.TYPE_STRING,
-            related_file_str=gobject.TYPE_STRING
+            related_file_data=gobject.TYPE_PYOBJECT
         )
         def insert_place_holder(self, dir_iter):
             self.append(dir_iter)
@@ -57,6 +57,14 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener, dialog
                 while self.recursive_remove(child_iter):
                     pass
             return self.remove(fsobj_iter)
+        def depopulate(self, dir_iter):
+            child_iter = self.iter_children(dir_iter)
+            if child_iter != None:
+                if self.get_value_named(child_iter, "name") is None:
+                    return # already depopulated and placeholder in place
+                while self.recursive_remove(child_iter):
+                    pass
+            self.insert_place_holder(dir_iter)
         def remove_place_holder(self, dir_iter):
             child_iter = self.iter_children(dir_iter)
             if child_iter and self.get_value_named(child_iter, "name") is None:
@@ -72,15 +80,20 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener, dialog
                 if name is None:
                     return os.path.join(self.fs_path(parent_iter), '')
                 return os.path.join(self.fs_path(parent_iter), name)
+        def _not_yet_populated(self, dir_iter):
+            if self.iter_n_children(dir_iter) < 2:
+                child_iter = self.iter_children(dir_iter)
+                return child_iter is None or self.get_value_named(child_iter, "name") is None
+            return False
         def on_row_expanded_cb(self, view, dir_iter, _dummy):
-            if not view._populate_all:
-                view._update_dir(self.fs_path(dir_iter), dir_iter)
+            if self._not_yet_populated(dir_iter):
+                view._populate(self.fs_path(dir_iter), dir_iter)
                 if self.iter_n_children(dir_iter) > 1:
                     self.remove_place_holder(dir_iter)
         def on_row_collapsed_cb(self, _view, dir_iter, _dummy):
             self.insert_place_holder_if_needed(dir_iter)
         def update_iter_row_tuple(self, fsobj_iter, to_tuple):
-            for label in ["style", "foreground", "status", "related_file_str", "icon"]:
+            for label in ["style", "foreground", "status", "related_file_data", "icon"]:
                 self.set_value_named(fsobj_iter, label, getattr(to_tuple, label))
     # This is not a method but a function within the Tree namespace
     def _format_file_name_crcb(_column, cell_renderer, store, tree_iter, _arg=None):
@@ -88,8 +101,11 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener, dialog
         if name is None:
             cell_renderer.set_property("text", _("<empty>"))
             return
-        name += store.get_value_named(tree_iter, "related_file_str")
-        cell_renderer.set_property("text", name)
+        rfd = store.get_value_named(tree_iter, "related_file_data")
+        if rfd:
+            cell_renderer.set_property("text", " ".join((name, rfd.relation, rfd.path)))
+        else:
+            cell_renderer.set_property("text", name)
     specification = tlview.ViewSpec(
         properties={"headers-visible" : False},
         selection_mode=gtk.SELECTION_MULTIPLE,
@@ -137,14 +153,6 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener, dialog
     KEYVAL_ESCAPE = gtk.gdk.keyval_from_name('Escape')
     AUTO_EXPAND = False
     @staticmethod
-    def _get_related_file_str(data):
-        if data.related_file:
-            if isinstance(data.related_file, str):
-                return " <- " + data.related_file
-            else:
-                return " {0} {1}".format(data.related_file.relation, data.related_file.path)
-        return ""
-    @staticmethod
     def _handle_button_press_cb(widget, event):
         if event.type == gtk.gdk.BUTTON_PRESS:
             if event.button == 2:
@@ -177,21 +185,25 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener, dialog
             is_dir=isdir,
             icon=cls._FILE_ICON[isdir],
             status=data.status,
-            related_file_str=cls._get_related_file_str(data),
+            related_file_data=data.related_file_data,
             style=deco.style,
             foreground=deco.foreground
         )
         return row
-    def __init__(self, show_hidden=False, busy_indicator=None):
+    def __init__(self, show_hidden=False, hide_clean=False, busy_indicator=None):
         dialogue.BusyIndicatorUser.__init__(self, busy_indicator=busy_indicator)
         self._file_db = None
         ws_event.Listener.__init__(self)
-        self.show_hidden_action = gtk.ToggleAction('show_hidden_files', _('Show Hidden Files'),
-                                                   _('Show/hide ignored files and those beginning with "."'), None)
+        self.show_hidden_action = gtk.ToggleAction('show_hidden_files', _('Show Hidden Files'), _('Show/hide ignored files and those beginning with "."'), None)
         self.show_hidden_action.set_active(show_hidden)
         self.show_hidden_action.connect('toggled', self._toggle_show_hidden_cb)
         self.show_hidden_action.set_menu_item_type(gtk.CheckMenuItem)
         self.show_hidden_action.set_tool_item_type(gtk.ToggleToolButton)
+        self.hide_clean_action = gtk.ToggleAction('hide_clean_files', _('Hide Clean Files'), _('Show/hide "clean" files'), None)
+        self.hide_clean_action.set_active(hide_clean)
+        self.hide_clean_action.connect('toggled', self._toggle_hide_clean_cb)
+        self.hide_clean_action.set_menu_item_type(gtk.CheckMenuItem)
+        self.hide_clean_action.set_tool_item_type(gtk.ToggleToolButton)
         tlview.TreeView.__init__(self)
         self.set_search_equal_func(self.search_equal_func)
         ws_actions.AGandUIManager.__init__(self, selection=self.get_selection(), popup="/files_popup")
@@ -203,6 +215,7 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener, dialog
         self.repopulate()
     def populate_action_groups(self):
         self.action_groups[actions.AC_DONT_CARE].add_action(self.show_hidden_action)
+        self.action_groups[actions.AC_DONT_CARE].add_action(self.hide_clean_action)
         self.action_groups[actions.AC_DONT_CARE].add_actions(
             [
                 ('refresh_files', gtk.STOCK_REFRESH, _('_Refresh Files'), None,
@@ -233,8 +246,14 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener, dialog
         self.show_busy()
         self._update_dir('', None)
         self.unshow_busy()
+    def _toggle_hide_clean_cb(self, toggleaction):
+        self.show_busy()
+        self._update_dir('', None)
+        self.unshow_busy()
     def _get_dir_contents(self, dirpath):
-        return self._file_db.dir_contents(dirpath, self.show_hidden_action.get_active())
+        show_hidden = self.show_hidden_action.get_active()
+        hide_clean = self.hide_clean_action.get_active()
+        return self._file_db.dir_contents(dirpath, show_hidden=show_hidden, hide_clean=hide_clean)
     def _row_expanded(self, dir_iter):
         return self.row_expanded(self.model.get_path(dir_iter))
     def _populate(self, dirpath, parent_iter):
@@ -496,13 +515,7 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
             except:
                 return ifce.SCM.get_status_deco(None)
         def __init__(self, show_hidden=False, hide_clean=False):
-            self.hide_clean_action = gtk.ToggleAction('hide_clean_files', _('Hide Clean Files'),
-                                                       _('Show/hide "clean" files'), None)
-            self.hide_clean_action.set_active(hide_clean)
-            self.hide_clean_action.connect('toggled', self._toggle_hide_clean_cb)
-            self.hide_clean_action.set_menu_item_type(gtk.CheckMenuItem)
-            self.hide_clean_action.set_tool_item_type(gtk.ToggleToolButton)
-            Tree.__init__(self, show_hidden=show_hidden)
+            Tree.__init__(self, show_hidden=show_hidden, hide_clean=hide_clean)
             self.add_notification_cb(ws_event.CHECKOUT|ws_event.CHANGE_WD, self.repopulate)
             self.add_notification_cb(ws_event.FILE_CHANGES|ws_event.WD_FILE_TREE_CHANGES|ws_event.REPO_FILE_STATUS_CHANGES, self.update)
             self.add_notification_cb(ws_event.AUTO_UPDATE, self.auto_update)
@@ -511,7 +524,6 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
                 ws_event.notify_events(ws_event.WD_FILE_CHANGES)
         def populate_action_groups(self):
             Tree.populate_action_groups(self)
-            self.action_groups[actions.AC_DONT_CARE].add_action(self.hide_clean_action)
             self.action_groups[actions.AC_DONT_CARE].add_actions(
                 [
                     ('scm_files_menu_files', None, _('_Files')),
@@ -531,17 +543,6 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
                      _('Select files that are unrefreshed in patches below top or have uncommitted SCM changes not covered by an applied patch'),
                      self._select_unsettled),
                 ])
-        def _toggle_hide_clean_cb(self, toggleaction):
-            self.show_busy()
-            self._update_dir('', None)
-            self.unshow_busy()
-        def _get_dir_contents(self, dirpath):
-            show_hidden = self.show_hidden_action.get_active()
-            if not show_hidden and self.hide_clean_action.get_active():
-                dirs, files = self._file_db.dir_contents(dirpath, show_hidden)
-                return ([ncd for ncd in dirs if not ifce.SCM.is_clean(ncd.status)],
-                        [ncf for ncf in files if not ifce.SCM.is_clean(ncf.status)])
-            return self._file_db.dir_contents(dirpath, show_hidden)
         @staticmethod
         def _add_files_to_top_patch(file_list):
             absorb = False
@@ -630,7 +631,7 @@ class PatchFileTreeWidget(gtk.VBox, ws_event.Listener):
                 is_dir=isdir,
                 icon=icon,
                 status='',
-                related_file_str=Tree._get_related_file_str(data),
+                related_file_data=data.related_file_data,
                 style=deco.style,
                 foreground=deco.foreground
             )
@@ -638,7 +639,7 @@ class PatchFileTreeWidget(gtk.VBox, ws_event.Listener):
         AUTO_EXPAND = True
         def __init__(self, patch=None):
             self.patch = patch
-            Tree.__init__(self, show_hidden=True)
+            Tree.__init__(self, show_hidden=True, hide_clean=False)
         def populate_action_groups(self):
             Tree.populate_action_groups(self)
             self.action_groups[ws_actions.AC_IN_PGND_MUTABLE + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
@@ -678,6 +679,14 @@ class PatchFileTreeWidget(gtk.VBox, ws_event.Listener):
         ws_event.Listener.__init__(self)
         self.tree = self.PatchFileTree(patch=patch)
         self.pack_start(gutils.wrap_in_scrolled_window(self.tree), expand=True, fill=True)
+        hbox = gtk.HBox()
+        for action_name in ["hide_clean_files"]:
+            button = gtk.CheckButton()
+            action = self.tree.action_groups.get_action(action_name)
+            action.connect_proxy(button)
+            gutils.set_widget_tooltip_text(button, action.get_property("tooltip"))
+            hbox.pack_start(button)
+        self.pack_end(hbox, expand=False, fill=False)
         self.show_all()
 
 class TopPatchFileTreeWidget(PatchFileTreeWidget):

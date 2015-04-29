@@ -15,6 +15,8 @@
 
 '''GUI interface to patch_db'''
 import os
+from itertools import ifilter
+
 import pango
 
 from darning import rctx
@@ -103,38 +105,55 @@ DECO_MAP = {
 }
 
 def get_status_deco(status):
-    return DECO_MAP[status.presence]
+    return DECO_MAP[status.presence if status else None]
 
-class FileDir(fsdb.GenDir):
-    def __init__(self):
-        fsdb.GenDir.__init__(self)
-        self.status = patch_db.FileData.Status(None, None)
-    def _new_dir(self):
-        return FileDir()
-    def _update_own_status(self):
-        if len(self.status_set) == 1:
-            self.status = list(self.status_set)[0]
-        else:
-            self.status = patch_db.FileData.Status(None, None)
+class PatchFileDb(fsdb.GenericChangeFileDb):
+    class FileDir(fsdb.GenericChangeFileDb.FileDir):
+        def _calculate_status(self):
+            if not self._status_set:
+                validity = patch_db.FileData.Validity.REFRESHED
+            else:
+                validity = max([s.validity for s in list(self._status_set)])
+            return patch_db.FileData.Status(None, validity)
+        def dirs_and_files(self, hide_clean=False, **kwargs):
+            if hide_clean:
+                dirs = ifilter((lambda x: x.status.validity), self._subdirs_data)
+                files = ifilter((lambda x: x.status.validity), self._files_data)
+            else:
+                dirs = iter(self._subdirs_data)
+                files = iter(self._files_data)
+            return (dirs, files)
+    def __init__(self, patch_name=None):
+        self._patch_name = patch_name
+        fsdb.GenericChangeFileDb.__init__(self)
+    @property
+    def is_current(self):
+        h = hashlib.sha1()
+        self._get_patch_data_text(h)
+        return h.digest() == self._db_hash_digest
+    def _get_patch_data_text(self, h):
+        patch_status_text = patch_db.get_patch_file_table(self._patch_name)
+        h.update(str(patch_status_text))
+        return patch_status_text
+    def _iterate_file_data(self, pdt):
+        for item in pdt:
+            yield item
 
-class FileDb(fsdb.GenFileDb):
-    DIR_TYPE = FileDir
-    def __init__(self, file_list):
-        fsdb.GenFileDb.__init__(self)
-        for item in file_list:
-            parts = fsdb.split_path(item.name)
-            self.base_dir.add_file(parts, item.status, item.related_file)
-        self.decorate_dirs()
+class CombinedPatchFileDb(PatchFileDb):
+    def _get_patch_data_text(self, h):
+        patch_status_text = patch_db.get_combined_patch_file_table()
+        h.update(str(patch_status_text))
+        return patch_status_text
 
 def get_file_db(patch=None):
     if not patch_db.is_readable():
         return fsdb.NullFileDb()
-    return FileDb(patch_db.get_patch_file_table(patch))
+    return PatchFileDb(patch)
 
 def get_combined_patch_file_db():
     if not patch_db.is_readable():
         return fsdb.NullFileDb()
-    return FileDb(patch_db.get_combined_patch_file_table())
+    return CombinedPatchFileDb()
 
 def get_filepaths_in_next_patch(filepaths=None):
     '''
