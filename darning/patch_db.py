@@ -2376,7 +2376,7 @@ def do_export_patch_as(patchname, export_filename, force=False, overwrite=False,
 
 def do_scm_absorb_applied_patches(force=False, with_timestamps=False):
     assert is_writable()
-    if not scm_ifce.is_valid_repo():
+    if not scm_ifce.in_valid_pgnd:
         RCTX.stderr.write(_('Sources not under control of known SCM\n'))
         return CmdResult.ERROR
     if get_applied_patch_count() == 0:

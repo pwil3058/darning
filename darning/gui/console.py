@@ -63,7 +63,10 @@ class ConsoleLog(textview.Widget):
         self._append_tagged_text(msg, self.stderr_tag)
         while gtk.events_pending():
             gtk.main_iteration(False)
-    def end_cmd(self):
+    def end_cmd(self, result=None):
+        if result:
+            self.append_stdout(result.stdout)
+            self.append_stderr(result.stderr)
         self._append_tagged_text("% ", self.bold_tag)
         while gtk.events_pending():
             gtk.main_iteration(False)
@@ -126,8 +129,8 @@ class ConsoleLogWidget(gtk.VBox, dialogue.BusyIndicatorUser):
         return self._text_widget.append_stdout(msg)
     def append_stderr(self, msg):
         return self._text_widget.append_stderr(msg)
-    def end_cmd(self):
-        return self._text_widget.end_cmd()
+    def end_cmd(self, result=None):
+        return self._text_widget.end_cmd(result)
     def append_entry(self, msg):
         return self._text_widget.append_entry(msg)
     def _cmd_entry_cb(self, entry):

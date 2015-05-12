@@ -96,7 +96,7 @@ if ARGS.playground:
 try:
     dialogue.report_any_problems(ifce.init(ARGS.playground is not None))
     open_dialog = None
-    if not ifce.in_valid_pgnd and ARGS.playground is None:
+    if not ifce.PM.in_valid_pgnd and ARGS.playground is None:
         open_dialog = config.PgndOpenDialog()
         if open_dialog.run() == gtk.RESPONSE_OK:
             wspath = open_dialog.get_path()

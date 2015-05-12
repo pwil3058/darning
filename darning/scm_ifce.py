@@ -21,6 +21,8 @@ _AVAILABLE_BACK_ENDS = {}
 
 _CURRENT_BACK_END = None
 
+in_valid_pgnd = _CURRENT_BACK_END is not None
+
 def add_back_end(backend):
     '''Add a new back end interface to the pool'''
     _AVAILABLE_BACK_ENDS[backend.name] = backend
@@ -28,15 +30,14 @@ def add_back_end(backend):
 def reset_back_end():
     '''Reset the current back end to one that is valid for cwd'''
     global _CURRENT_BACK_END
+    global in_valid_pgnd
     for name in _AVAILABLE_BACK_ENDS:
         if _AVAILABLE_BACK_ENDS[name].is_valid_repo():
             _CURRENT_BACK_END = _AVAILABLE_BACK_ENDS[name]
+            in_valid_pgnd = True
             return
     _CURRENT_BACK_END = None
-
-def is_valid_repo():
-    '''Is the currend working directory in a valid repository?'''
-    return _CURRENT_BACK_END is not None
+    in_valid_pgnd = False
 
 def get_revision(filepath=None):
     '''

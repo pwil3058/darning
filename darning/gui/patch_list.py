@@ -804,7 +804,7 @@ def new_playground_acb(_arg):
         dlg = NewSeriesDescrDialog(parent=dialogue.main_window)
         if dlg.run() == gtk.RESPONSE_OK:
             dlg.show_busy()
-            result = ifce.new_playground(dlg.get_descr(), newpg)
+            result = ifce.PM.new_playground(dlg.get_descr(), newpg)
             dlg.unshow_busy()
             dialogue.report_any_problems(result)
         dlg.destroy()
@@ -816,7 +816,7 @@ def init_cwd_acb(_arg):
     dlg = NewSeriesDescrDialog(parent=dialogue.main_window)
     if dlg.run() == gtk.RESPONSE_OK:
         dlg.show_busy()
-        result = ifce.new_playground(dlg.get_descr())
+        result = ifce.PM.new_playground(dlg.get_descr())
         dlg.unshow_busy()
         dialogue.report_any_problems(result)
     dlg.destroy()

@@ -32,6 +32,63 @@ from ..patch_db import find_base_dir
 from . import ws_event
 from . import console
 
+in_valid_pgnd = False
+pgnd_is_mutable = False
+
+def init(*args, **kwargs):
+    global in_valid_pgnd
+    global pgnd_is_mutable
+    root = find_base_dir(remember_sub_dir=False)
+    if root:
+        os.chdir(root)
+        result = open_db()
+        in_valid_pgnd = is_readable()
+        pgnd_is_mutable = is_writable()
+        if in_valid_pgnd:
+            from . import config
+            config.PgndPathTable.append_saved_pgnd(root)
+    else:
+        in_valid_pgnd = False
+        pgnd_is_mutable = False
+        result = CmdResult.ok()
+    return result
+
+def new_playground(description, pgdir=None):
+    global in_valid_pgnd, pgnd_is_mutable
+    if pgdir is not None:
+        result = chdir(pgdir)
+        if not result.is_ok:
+            return result
+    if in_valid_pgnd:
+        return CmdResult.warning( _("Already initialized"))
+    result = do_initialization(description)
+    if not result.is_ok:
+        return result
+    result = open_db()
+    in_valid_pgnd = is_readable()
+    pgnd_is_mutable = is_writable()
+    if in_valid_pgnd:
+        from . import config
+        config.PgndPathTable.append_saved_pgnd(os.getcwd())
+        ws_event.notify_events(ws_event.PGND_MOD)
+    return result
+
+def do_chdir(new_dir=None):
+    global in_valid_pgnd, pgnd_is_mutable
+    close_db()
+    if new_dir:
+        try:
+            os.chdir(new_dir)
+        except OSError as err:
+            import errno
+            ecode = errno.errorcode[err.errno]
+            emsg = err.strerror
+            open_db()
+            in_valid_pgnd = is_readable()
+            pgnd_is_mutable = is_writable()
+            return CmdResult.error(stderr='%s: "%s" :%s' % (ecode, new_dir, emsg))
+    return init()
+
 class ReportContext(object):
     class OutFile(object):
         def __init__(self):
