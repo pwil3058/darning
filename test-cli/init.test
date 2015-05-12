@@ -37,12 +37,12 @@ $ ls .darning.dbd/database/
 
 Test invalid initialization in root directory of a playground.
 $ darn init
-? 1
+? 2
 ! Inside existing playground: ".".
 
 Test invalid initialization in a sub directory of a playground.
 $ mkdir subdir
 $ cd subdir
 $ darn init
-? 1
+? 2
 ! Inside existing playground: "..".

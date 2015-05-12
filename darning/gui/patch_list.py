@@ -18,23 +18,22 @@ import gobject
 import collections
 import os
 
-from darning import utils
-from darning import cmd_result
-from darning import patchlib
-from darning.patch_db import PatchState
+from .. import utils
+from .. import patchlib
+from ..patch_db import PatchState
 
-from darning.gui import ifce
-from darning.gui import actions
-from darning.gui import ws_actions
-from darning.gui import ws_event
-from darning.gui import tlview
-from darning.gui import table
-from darning.gui import icons
-from darning.gui import dialogue
-from darning.gui import text_edit
-from darning.gui import textview
-from darning.gui import gutils
-from darning.gui import patch_view
+from . import ifce
+from . import actions
+from . import ws_actions
+from . import ws_event
+from . import tlview
+from . import table
+from . import icons
+from . import dialogue
+from . import text_edit
+from . import textview
+from . import gutils
+from . import patch_view
 
 AC_POP_POSSIBLE = ws_actions.AC_PMIC
 AC_APPLIED, AC_UNAPPLIED, AC_APPLIED_FLAG, AC_APPLIED_NOT_FLAG, AC_APPLIED_MASK = actions.ActionCondns.new_flags_and_mask(4)
@@ -260,7 +259,7 @@ class ListView(table.MapManagedTableView):
                 result = ifce.PM.do_set_patch_guards(patch, guards)
                 self.unshow_busy()
                 dialogue.report_any_problems(result)
-                if result.eflags & cmd_result.SUGGEST_EDIT:
+                if result.suggests_edit:
                     continue
                 dialog.destroy()
             else:
@@ -296,7 +295,7 @@ class ListView(table.MapManagedTableView):
                 dialog.show_busy()
                 result = ifce.PM.do_duplicate_patch(patchname, as_patchname, newdescription)
                 dialog.unshow_busy()
-                if not refresh_tried and result.eflags & cmd_result.SUGGEST_REFRESH != 0:
+                if not refresh_tried and result.suggests_refresh:
                     resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
                     if resp == gtk.RESPONSE_CANCEL:
                         break
@@ -308,7 +307,7 @@ class ListView(table.MapManagedTableView):
                         dialogue.report_any_problems(result)
                     continue
                 dialogue.report_any_problems(result)
-                if result.eflags & cmd_result.SUGGEST_RENAME:
+                if result.suggests_rename:
                     continue
             break
         dialog.destroy()
@@ -322,8 +321,8 @@ class ListView(table.MapManagedTableView):
             result = ifce.PM.do_fold_named_patch(patchname, absorb=absorb, force=force)
             dialogue.unshow_busy()
             if refresh_tried:
-                result = cmd_result.turn_off_flags(result, cmd_result.SUGGEST_REFRESH)
-            if not (absorb or force) and result.eflags & cmd_result.SUGGEST_FORCE_ABSORB_OR_REFRESH != 0:
+                result = result - result.SUGGEST_REFRESH
+            if not (absorb or force) and result.suggests(result.SUGGEST_FORCE_ABSORB_OR_REFRESH):
                 resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
                 if resp == gtk.RESPONSE_CANCEL:
                     break
@@ -363,7 +362,7 @@ class ListView(table.MapManagedTableView):
             result = ifce.PM.do_rename_patch(patchname, new_name)
             self.unshow_busy()
             dialogue.report_any_problems(result)
-            if not (result.eflags & cmd_result.ERROR_SUGGEST_RENAME):
+            if not result.suggests_rename:
                 break
         dialog.destroy()
 
@@ -390,8 +389,8 @@ def do_export_named_patch(parent, patchname, suggestion=None, busy_indicator=Non
         result = ifce.PM.do_export_patch_as(patchname, export_filename, force=force, overwrite=overwrite)
         busy_indicator.unshow_busy()
         if refresh_tried:
-            result = cmd_result.turn_off_flags(result, cmd_result.SUGGEST_REFRESH)
-        if result.eflags & cmd_result.SUGGEST_FORCE_OR_REFRESH != 0:
+            result = result - result.SUGGEST_REFRESH
+        if result.suggests(result.SUGGEST_FORCE_OR_REFRESH):
             resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
             if resp == gtk.RESPONSE_CANCEL:
                 return
@@ -404,7 +403,7 @@ def do_export_named_patch(parent, patchname, suggestion=None, busy_indicator=Non
                 dialogue.unshow_busy()
                 dialogue.report_any_problems(result)
             continue
-        elif result.eflags & cmd_result.SUGGEST_RENAME != 0:
+        elif result.suggests_rename:
             resp = dialogue.ask_rename_overwrite_or_cancel(result, clarification=None)
             if resp == gtk.RESPONSE_CANCEL:
                 return
@@ -829,7 +828,7 @@ def new_patch_acb(_arg):
         result = ifce.PM.do_create_new_patch(dlg.get_new_patch_name(), dlg.get_descr())
         dlg.unshow_busy()
         dialogue.report_any_problems(result)
-        if not (result.eflags & cmd_result.SUGGEST_RENAME):
+        if not result.suggests_rename:
             break
     dlg.destroy()
 
@@ -840,7 +839,7 @@ def restore_patch_acb(_arg):
         result = ifce.PM.do_restore_patch(dlg.get_restore_patch_name(), dlg.get_as_name())
         dlg.unshow_busy()
         dialogue.report_any_problems(result)
-        if not (result.eflags & cmd_result.SUGGEST_RENAME):
+        if not result.suggests_rename:
             break
     dlg.destroy()
 
@@ -851,7 +850,7 @@ def import_patch_acb(_arg):
     try:
         epatch = patchlib.Patch.parse_text_file(patch_file)
     except patchlib.ParseError as edata:
-        result = cmd_result.Result(cmd_result.ERROR, '{0}: {1}: {2}\n'.format(patch_file, edata.lineno, edata.message))
+        result = CmdResult.error(stderr='{0}: {1}: {2}\n'.format(patch_file, edata.lineno, edata.message))
         dialogue.report_any_problems(result)
         return
     overwrite = False
@@ -862,7 +861,7 @@ def import_patch_acb(_arg):
         dlg.show_busy()
         result = ifce.PM.do_import_patch(epatch, dlg.get_as_name(), overwrite=overwrite)
         dlg.unshow_busy()
-        if not overwrite and result.eflags & cmd_result.SUGGEST_FORCE != 0:
+        if not overwrite and result.suggests(result.SUGGEST_OVERWRITE_OR_RENAME):
             resp = dialogue.ask_rename_overwrite_or_cancel(result, clarification=None)
             if resp == gtk.RESPONSE_CANCEL:
                 break
@@ -872,7 +871,7 @@ def import_patch_acb(_arg):
                 resp = dlg.run()
             continue
         dialogue.report_any_problems(result)
-        if result.eflags & cmd_result.SUGGEST_RENAME != 0:
+        if result.suggests_rename:
             resp = dlg.run()
         else:
             break
@@ -885,7 +884,7 @@ def fold_patch_acb(_arg):
     try:
         epatch = patchlib.Patch.parse_text_file(patch_file)
     except patchlib.ParseError as edata:
-        result = cmd_result.Result(cmd_result.ERROR, '{0}: {1}: {2}\n'.format(patch_file, edata.lineno, edata.message))
+        result = CmdResult.error(stderr='{0}: {1}: {2}\n'.format(patch_file, edata.lineno, edata.message))
         dialogue.report_any_problems(result)
         return
     force = False
@@ -899,8 +898,8 @@ def fold_patch_acb(_arg):
         result = ifce.PM.do_fold_epatch(epatch, absorb=absorb, force=force)
         dlg.unshow_busy()
         if refresh_tried:
-            result = cmd_result.turn_off_flags(result, cmd_result.SUGGEST_REFRESH)
-        if not (absorb or force) and result.eflags & cmd_result.SUGGEST_FORCE_ABSORB_OR_REFRESH != 0:
+            result = result - result.SUGGEST_REFRESH
+        if not (absorb or force) and result.suggests(result.SUGGEST_FORCE_ABSORB_OR_REFRESH):
             resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
             if resp == gtk.RESPONSE_CANCEL:
                 break
@@ -930,8 +929,8 @@ def push_next_patch_acb(_arg):
         result = ifce.PM.do_push_next_patch(absorb=absorb, force=force)
         dialogue.unshow_busy()
         if refresh_tried:
-            result = cmd_result.turn_off_flags(result, cmd_result.SUGGEST_REFRESH)
-        if not (absorb or force) and result.eflags & cmd_result.SUGGEST_FORCE_ABSORB_OR_REFRESH != 0:
+            result = result - result.SUGGEST_REFRESH
+        if not (absorb or force) and result.suggests(result.SUGGEST_FORCE_ABSORB_OR_REFRESH):
             resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
             if resp == gtk.RESPONSE_CANCEL:
                 return False
@@ -949,7 +948,7 @@ def push_next_patch_acb(_arg):
             continue
         dialogue.report_any_problems(result)
         break
-    return cmd_result.is_ok(result)
+    return result.is_ok
 
 def pop_top_patch_acb(_arg):
     refresh_tried = False
@@ -957,7 +956,7 @@ def pop_top_patch_acb(_arg):
         dialogue.show_busy()
         result = ifce.PM.do_pop_top_patch()
         dialogue.unshow_busy()
-        if not refresh_tried and result.eflags & cmd_result.SUGGEST_REFRESH != 0:
+        if not refresh_tried and result.suggests_refresh:
             resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
             if resp == gtk.RESPONSE_CANCEL:
                 return False
@@ -970,7 +969,7 @@ def pop_top_patch_acb(_arg):
             continue
         dialogue.report_any_problems(result)
         break
-    return cmd_result.is_ok(result)
+    return result.is_ok
 
 def pop_all_patches_acb(_arg=None):
     while ifce.PM.is_poppable():
@@ -999,7 +998,7 @@ def select_guards_acb(_arg):
             result = ifce.PM.do_select_guards(selected_guards)
             dialogue.unshow_busy()
             dialogue.report_any_problems(result)
-            if result.eflags & cmd_result.SUGGEST_EDIT:
+            if result.suggests_edit:
                 continue
             dialog.destroy()
         else:
@@ -1011,7 +1010,7 @@ def scm_absorb_applied_patches_acb(_arg):
     result = ifce.PM.do_scm_absorb_applied_patches()
     dialogue.unshow_busy()
     dialogue.report_any_problems(result)
-    return cmd_result.is_ok(result)
+    return result.is_ok
 
 actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_actions(
     [

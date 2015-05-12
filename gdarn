@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 ### Copyright (C) 2010 Peter Williams <peter_ono@users.sourceforge.net>
 ###
 ### This program is free software; you can redistribute it and/or modify
@@ -115,7 +115,7 @@ try:
     gtk.main()
 except (SystemExit, KeyboardInterrupt):
     pass
-except Exception:
+except BaseException:
     report_exception(sys.exc_info())
     sys.exit(3)
 finally:

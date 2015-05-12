@@ -22,11 +22,12 @@ import os
 import re
 import hashlib
 
-from darning import runext
-from darning import scm_ifce
-from darning import utils
-from darning import patchlib
-from darning import cmd_result
+from .cmd_result import CmdResult
+
+from . import runext
+from . import scm_ifce
+from . import utils
+from . import patchlib
 from . import fsdb_git
 
 class Git(object):
@@ -41,7 +42,7 @@ class Git(object):
                 return False
             else:
                 raise
-        return result.ecode == 0
+        return result.is_ok
     @staticmethod
     def get_revision(filepath=None):
         '''
@@ -51,9 +52,7 @@ class Git(object):
         cmd = ['git', 'show',]
         if filepath:
             cmd.append(filepath)
-        result = runext.run_cmd(cmd)
-        assert result.ecode == 0
-        return result.stdout.splitlines()[0][7:]
+        return runext.run_get_cmd(cmd).stdout.splitlines()[0][7:]
     @staticmethod
     def get_files_with_uncommitted_changes(files=None):
         '''
@@ -63,9 +62,7 @@ class Git(object):
         cmd = ['git', 'status', '--porcelain', '--untracked-files=no',]
         if files:
             cmd += files
-        result = runext.run_cmd(cmd)
-        assert result.ecode == 0
-        return [line[3:] for line in result.stdout.splitlines()]
+        return [line[3:] for line in runext.run_get_cmd(cmd).splitlines()]
     @staticmethod
     def get_file_db():
         '''
@@ -74,10 +71,8 @@ class Git(object):
         return fsdb_git.WsFileDb()
     @staticmethod
     def get_file_status_digest():
-        result = runext.run_cmd(['git', 'status', '--porcelain', '--ignored', '--untracked=all'])
-        if result.ecode == 0:
-            return hashlib.sha1(result.stdout).digest()
-        return None
+        stdout = runext.run_get_cmd(['git', 'status', '--porcelain', '--ignored', '--untracked=all'], default=None)
+        return None if stdout is None else hashlib.sha1(stdout).digest()
     @staticmethod
     def get_status_deco(status):
         '''
@@ -89,41 +84,36 @@ class Git(object):
         '''
         Copy a clean version of the named file to the specified target
         '''
-        result = runext.run_cmd(['git', 'cat-file', 'blob', 'HEAD:{}'.format(filepath)])
-        assert result.ecode == 0
-        if result.stdout:
+        contents = runext.run_get_cmd(['git', 'cat-file', 'blob', 'HEAD:{}'.format(filepath)])
+        if contents:
             utils.ensure_file_dir_exists(target_name)
             with open(target_name, 'w') as fobj:
-                fobj.write(result.stdout)
+                fobj.write(contents)
     @staticmethod
     def do_import_patch(patch_filepath):
         ok_to_import, msg = Git.is_ready_for_import()
         if not ok_to_import:
-            return runext.Result(-1, '', msg)
+            return CmdResult.error(stderr=msg)
         epatch = patchlib.Patch.parse_text_file(patch_filepath)
         description = epatch.get_description()
         if not description:
-            return runext.Result(-1, '', 'Empty description')
+            return CmdResult.error(stderr='Empty description')
         result = runext.run_cmd(['git', 'apply', patch_filepath])
-        if result.ecode != 0:
+        if not result.is_less_than_error:
             return result
         result = runext.run_cmd(['git', 'add'] + epatch.get_file_paths(1))
-        if result.ecode != 0:
+        if not result.is_less_than_error:
             return result
         return runext.run_cmd(['git', 'commit', '-q', '-m', description])
     @staticmethod
     def is_ready_for_import():
-        result = runext.run_cmd(['hg', 'qtop'])
-        if not index_is_empty():
-            return cmd_result.Result(False, _('Index is NOT empty\n'))
-        return cmd_result.Result(True, '')
+        return (True, '') if index_is_empty() else (False, _('Index is NOT empty\n'))
 
 def index_is_empty():
-    result = runext.run_cmd(['git', 'status', '--porcelain', '--untracked-files=no'])
-    for line in result.stdout.splitlines():
+    stdout = runext.run_get_cmd(['git', 'status', '--porcelain', '--untracked-files=no'])
+    for line in stdout.splitlines():
         if line[0] != ' ':
             return False
     return True
-
 
 scm_ifce.add_back_end(Git)

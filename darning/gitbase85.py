@@ -24,9 +24,7 @@ class RangerError(Error): pass
 
 ENCODE = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!#$%&()*+-;<=>?@^_`{|}~'
 assert len(set(ENCODE)) == 85
-DECODE = {}
-for index in range(len(ENCODE)):
-    DECODE[ENCODE[index]] = index
+DECODE = { ENCODE[index] : index for index in range(len(ENCODE)) }
 assert len(DECODE) == 85
 
 Encoding = collections.namedtuple('Encoding', ['string', 'size'])
@@ -127,4 +125,3 @@ def decode_lines(lines):
 LINE_CRE = re.compile('^([a-zA-Z])(([0-9a-zA-Z' + re.sub('-', '', ENCODE[62:]) + '-]{5})+)$')
 
 assert decode_lines(encode_to_lines(_TESTDATA * 10)) == _TESTDATA * 10
-

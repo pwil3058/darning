@@ -56,9 +56,9 @@ class WsFileDb(fsdb.GenericSnapshotWsFileDb):
                 return FSTATUS_REMOVED
             return FSTATUS_MODIFIED if self._file_status_snapshot.status_set else None
     def _get_file_data_text(self, h):
-        result = runext.run_cmd(["quilt", "files", "-va"])
-        h.update(result.stdout)
-        return result.stdout
+        stdout = runext.run_get_cmd(["quilt", "files", "-va"], default="")
+        h.update(stdout)
+        return stdout
     @staticmethod
     def _extract_file_status_snapshot(file_data_text):
         return fsdb.Snapshot({line[2:] : (line[0], None) for line in file_data_text.splitlines() if line[0] in FSTATUS_MODIFIED_SET})
@@ -96,9 +96,7 @@ class TopPatchFileDb(fsdb.GenericChangeFileDb):
         fsdb.GenericChangeFileDb.__init__(self)
     @staticmethod
     def _get_top_patch():
-        result = runext.run_cmd(["quilt", "top"])
-        if result.ecode != 0: return None # we're not in a repo so no patches
-        return result.stdout
+        return runext.run_get_cmd(["quilt", "top"], default=None)
     @property
     def is_current(self):
         if self._get_top_patch() != self._top_patch:
@@ -109,8 +107,8 @@ class TopPatchFileDb(fsdb.GenericChangeFileDb):
         return h.digest() == self._db_hash_digest
     def _get_patch_data_text(self, h):
         if self._top_patch is None:
-            return ("", "")
-        patch_status_text = runext.run_cmd(["quilt", "files", "-v"]).stdout
+            return ""
+        patch_status_text = runext.run_get_cmd(["quilt", "files", "-v"], default="")
         h.update(patch_status_text)
         return (patch_status_text)
     @staticmethod
@@ -134,7 +132,7 @@ class PatchFileDb(fsdb.GenericChangeFileDb):
         return h.digest() == self._db_hash_digest
     def _get_patch_data_text(self, h):
         if self._is_applied:
-            patch_status_text = runext.run_cmd(["quilt", "files", "-v", self._patch_name]).stdout
+            patch_status_text = runext.run_get_cmd(["quilt", "files", "-v", self._patch_name], default="")
         else:
             patch_status_text = utils.get_file_contents(self._patch_file_path)
         h.update(patch_status_text)

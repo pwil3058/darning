@@ -46,7 +46,7 @@ $ darn series
 Try absorbing an unrefreshed patch
 $ ls > lsop_start
 $ darn absorb
-? 1
+? 2
 ! first: requires refreshing
 $ git status --short
 >  M file1
@@ -188,5 +188,5 @@ $ darn_test_tree modify file4
 $ git add file4
 $ darn_test_tree modify file4
 $ darn absorb
-? 1
+? 2
 ! Index is NOT empty

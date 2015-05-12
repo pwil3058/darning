@@ -17,10 +17,12 @@
 
 import sys
 
-from darning import patch_db
-from darning.cli import cli_args
-from darning.cli import db_utils
-from darning import cmd_result
+from ..cmd_result import CmdResult
+
+from .. import patch_db
+
+from . import cli_args
+from . import db_utils
 
 PARSER = cli_args.SUB_CMD_PARSER.add_parser(
     'files',
@@ -53,8 +55,8 @@ VAL_MAP = {
 def format_file_data(file_data):
     def status_to_str(status):
         return '{0}:{1}'.format(status.presence, VAL_MAP[status.validity])
-    if file_data.related_file:
-        return '{0}: {1} {2} {3}\n'.format(status_to_str(file_data.status), patch_db.rel_subdir(file_data.name), file_data.related_file.relation, patch_db.rel_subdir(file_data.related_file.path))
+    if file_data.related_file_data:
+        return '{0}: {1} {2} {3}\n'.format(status_to_str(file_data.status), patch_db.rel_subdir(file_data.name), file_data.related_file_data.relation, patch_db.rel_subdir(file_data.related_file_data.path))
     else:
         return '{0}: {1}\n'.format(status_to_str(file_data.status), patch_db.rel_subdir(file_data.name))
 
@@ -64,13 +66,13 @@ def run_files(args):
     db_utils.set_report_context(verbose=True)
     patchname = patch_db.get_named_or_top_patch_name(args.patchname)
     if patchname is None:
-        return cmd_result.ERROR
+        return CmdResult.ERROR
     if args.opt_combined:
         for file_data in sorted(patch_db.get_combined_patch_file_table()):
             sys.stdout.write(format_file_data(file_data))
     else:
         for file_data in sorted(patch_db.get_patch_file_table(patchname)):
             sys.stdout.write(format_file_data(file_data))
-    return cmd_result.OK
+    return CmdResult.OK
 
 PARSER.set_defaults(run_cmd=run_files)

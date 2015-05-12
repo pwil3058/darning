@@ -15,13 +15,12 @@
 
 import os, gtk, pango, time
 
-from darning import utils
-from darning import cmd_result
+from .. import utils
 
-from darning.gui import dialogue
-from darning.gui import gutils
-from darning.gui import ws_event
-from darning.gui import textview
+from . import dialogue
+from . import gutils
+from . import ws_event
+from . import textview
 
 class ConsoleLog(textview.Widget):
     def __init__(self, width_in_chars=81, fdesc=None):

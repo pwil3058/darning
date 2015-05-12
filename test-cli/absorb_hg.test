@@ -45,7 +45,7 @@ $ darn series
 Try absorbing an unrefreshed patch
 $ ls > lsop_start
 $ darn absorb
-? 1
+? 2
 ! first: requires refreshing
 $ hg status -mard
 > M file1

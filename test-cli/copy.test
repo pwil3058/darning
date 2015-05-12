@@ -26,13 +26,13 @@ $ darn_test_tree modify file4
 
 Copy nonexistent file
 $ darn copy nonexistent nonexistent.copy
-? 1
+? 2
 ! nonexistent: file does not exist.
 $ darn copy nonexistent file1
-? 1
+? 2
 ! nonexistent: file does not exist.
 $ darn copy nonexistent file4
-? 1
+? 2
 ! nonexistent: file does not exist.
 
 Make a simple copy
@@ -150,7 +150,7 @@ $ darn diff
 
 Overwrite a tracked file
 $ darn copy file2 file4
-? 17
+? 34
 ! file4: file already in patch.
 $ darn copy --overwrite file2 file4
 > file2: file copied to "file4" in patch "first".

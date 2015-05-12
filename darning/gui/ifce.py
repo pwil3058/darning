@@ -20,15 +20,16 @@ pgnd_is_mutable = False
 import os
 import email.utils
 
-from darning import scm_ifce as SCM
-from darning import cmd_result
-from darning import utils
-from darning import options
+from ..cmd_result import CmdResult
 
-from darning.gui import pdb_ifce as PM
-from darning.gui import ws_event
-from darning.gui import terminal
-from darning.gui.console import LOG
+from .. import scm_ifce as SCM
+from .. import utils
+from .. import options
+
+from . import pdb_ifce as PM
+from . import ws_event
+from . import terminal
+from .console import LOG
 
 TERM = None
 
@@ -39,7 +40,7 @@ def init(log=False):
         TERM = terminal.Terminal()
     options.load_global_options()
     root = PM.find_base_dir(remember_sub_dir=False)
-    result = cmd_result.Result(cmd_result.OK, "")
+    result = CmdResult.ok()
     if root:
         os.chdir(root)
         result = PM.open_db()
@@ -64,7 +65,7 @@ def close():
 def chdir(newdir=None):
     global in_valid_repo, in_valid_pgnd, pgnd_is_mutable
     old_wd = os.getcwd()
-    retval = cmd_result.Result(cmd_result.OK, "")
+    retval = CmdResult.ok()
     PM.close_db()
     if newdir:
         try:
@@ -73,7 +74,7 @@ def chdir(newdir=None):
             import errno
             ecode = errno.errorcode[err.errno]
             emsg = err.strerror
-            retval = cmd_result.Result(cmd_result.ERROR, '%s: "%s" :%s' % (ecode, newdir, emsg))
+            retval = CmdResult.error(stderr='%s: "%s" :%s' % (ecode, newdir, emsg))
     root = PM.find_base_dir(remember_sub_dir=False)
     if root:
         os.chdir(root)
@@ -81,7 +82,7 @@ def chdir(newdir=None):
         in_valid_pgnd = PM.is_readable()
         pgnd_is_mutable = PM.is_writable()
         if in_valid_pgnd:
-            from darning.gui import config
+            from . import config
             config.PgndPathTable.append_saved_pgnd(root)
     else:
         in_valid_pgnd = False
@@ -103,18 +104,18 @@ def new_playground(description, pgdir=None):
     global in_valid_pgnd, pgnd_is_mutable
     if pgdir is not None:
         result = chdir(pgdir)
-        if result.eflags != cmd_result.OK:
+        if not result.is_ok:
             return result
     if in_valid_pgnd:
-        return cmd_result.Result(cmd_result.WARNING, _('Already initialized'))
+        return CmdResult.warning( _("Already initialized"))
     result = PM.do_initialization(description)
-    if result.eflags != cmd_result.OK:
+    if not result.is_ok:
         return result
     retval = PM.open_db()
     in_valid_pgnd = PM.is_readable()
     pgnd_is_mutable = PM.is_writable()
     if in_valid_pgnd:
-        from darning.gui import config
+        from . import config
         config.PgndPathTable.append_saved_pgnd(os.getcwd())
         ws_event.notify_events(ws_event.PGND_MOD)
     return retval

@@ -23,16 +23,16 @@ except ImportError:
 import gtk
 import pango
 
-from darning import cmd_result
-from darning import utils
-from darning import runext
+from ..cmd_result import CmdFailure
+from .. import utils
+from .. import runext
 
-from darning.gui import textview
-from darning.gui import gutils
-from darning.gui import dialogue
-from darning.gui import ifce
-from darning.gui import config
-from darning.gui import actions
+from . import textview
+from . import gutils
+from . import dialogue
+from . import ifce
+from . import config
+from . import actions
 
 def edit_files_extern(file_list):
     def _edit_files_extern(filelist, edstr=config.DEFAULT_EDITOR):
@@ -241,7 +241,7 @@ class DbMessageWidget(MessageWidget):
             self.bfr.set_modified(False)
             if clear_digest:
                 self._save_file_digest = None
-        except cmd_result.Failure as failure:
+        except CmdFailure as failure:
             dialogue.report_failure(failure)
     def _reload_text_acb(self, _action=None):
         if self._ok_to_overwrite_summary():

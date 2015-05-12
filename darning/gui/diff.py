@@ -19,14 +19,15 @@ import os
 import gtk
 import pango
 
-from darning import options
-from darning import runext
-from darning import cmd_result
+from ..cmd_result import CmdResult
 
-from darning.gui import textview
-from darning.gui import dialogue
-from darning.gui import ifce
-from darning.gui import gutils
+from .. import options
+from .. import runext
+
+from . import textview
+from . import dialogue
+from . import ifce
+from . import gutils
 
 class TextWidget(gtk.VBox):
     class TwsLineCountDisplay(gtk.HBox):
@@ -183,7 +184,7 @@ class TextWidget(gtk.VBox):
             fobj = open(self._save_file, 'w')
         except IOError as edata:
             strerror = edata[1]
-            dialogue.report_any_problems(cmd_result.Result(cmd_result.ERROR, strerror))
+            dialogue.report_any_problems(CmdResult.error(stderr=strerror))
             self.check_set_save_sensitive()
             return
         text = self.bfr.get_text(self.bfr.get_start_iter(), self.bfr.get_end_iter())
@@ -385,19 +386,19 @@ class CombinedForFileDialog(dialogue.AmodalDialog):
 def launch_external_diff(file_a, file_b):
     extdiff = options.get('diff', 'extdiff')
     if not extdiff:
-        return cmd_result.Result(cmd_result.WARNING, _('No external diff viewer is defined.\n'))
+        return CmdResult.warning(_('No external diff viewer is defined.\n'))
     try:
         runext.run_cmd_in_bgnd([extdiff, file_a, file_b])
     except OSError as edata:
-        return cmd_result.Result(cmd_result.ERROR, _('Error lanuching external viewer "{0}": {1}\n').format(extdiff, edata.strerror))
-    return cmd_result.Result(cmd_result.OK, '')
+        return CmdResult.error(stderr=_('Error lanuching external viewer "{0}": {1}\n').format(extdiff, edata.strerror))
+    return CmdResult.ok()
 
 def launch_reconciliation_tool(file_a, file_b, file_c):
     reconciler = options.get('reconcile', 'tool')
     if not reconciler:
-        return cmd_result.Result(cmd_result.WARNING, _('No reconciliation tool is defined.\n'))
+        return CmdResult.warning(_('No reconciliation tool is defined.\n'))
     try:
         runext.run_cmd_in_bgnd([reconciler, file_a, file_b, file_c])
     except OSError as edata:
-        return cmd_result.Result(cmd_result.ERROR, _('Error lanuching reconciliation tool "{0}": {1}\n').format(reconciler, edata.strerror))
-    return cmd_result.Result(cmd_result.OK, '')
+        return CmdResult.error(stderr=_('Error lanuching reconciliation tool "{0}": {1}\n').format(reconciler, edata.strerror))
+    return CmdResult.ok()

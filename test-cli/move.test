@@ -27,13 +27,13 @@ $ darn_test_tree modify file4
 
 Try to move a nonexistent file
 $ darn move nonexistent nonexistent.moved
-? 1
+? 2
 ! nonexistent: file does not exist.
 $ darn move nonexistent file1
-? 1
+? 2
 ! nonexistent: file does not exist.
 $ darn move nonexistent file4
-? 1
+? 2
 ! nonexistent: file does not exist.
 
 Make a simple move/rename
@@ -151,7 +151,7 @@ $ darn diff
 
 Overwrite a tracked file
 $ darn move file5 file4
-? 17
+? 34
 ! file4: file already in patch.
 $ darn move --overwrite file5 file4
 > file5: file added to patch "first".
@@ -521,7 +521,7 @@ $ darn move file1 file1.temp
 > file1: file added to patch "swap".
 > file1: file renamed to "file1.temp" in patch "swap".
 $ darn move file2 file1
-? 17
+? 34
 ! file1: file already in patch.
 $ darn diff file1 file1.temp
 > diff --git a/file1 b/file1
@@ -542,7 +542,7 @@ $ darn diff file1 file2 file1.temp
 > rename from file1
 > rename to file1.temp
 $ darn move file1.temp file2
-? 17
+? 34
 ! file2: file already in patch.
 $ darn move --overwrite file1.temp file2
 > file1.temp: file renamed to "file2" in patch "swap".

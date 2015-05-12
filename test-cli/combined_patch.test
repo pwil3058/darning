@@ -118,6 +118,7 @@ $ darn new second --descr "Second patch"
 $ darn add file1 dir1/file1 dir2/file1 dir2/subdir1/file1 file1.copy file2.copy > /dev/null
 $ darn move file3.ren1 file3.ren2 > /dev/null
 $ darn add file1 dir1/file2 dir2/file2 > /dev/null
+? 1
 ! file1: file already in patch "second". Ignored.
 $ darn copy file1.copy file1.copy.copy > /dev/null
 $ darn copy file2.copy file2.copy.copy > /dev/null
@@ -423,19 +424,19 @@ $ darn diff --combined
 
 $ darn pop > /dev/null
 $ darn pop > /dev/null
-? 5
+? 10
 ! Top patch ("second") needs to be refreshed.
 $ darn refresh
 $ darn pop > /dev/null
 $ darn pop > /dev/null
 $ darn pop > /dev/null
-? 1
+? 2
 ! No patches applied.
 $ darn push > /dev/null
 $ darn push > /dev/null
 $ darn push > /dev/null
 $ darn push > /dev/null
-? 1
+? 2
 ! No pushable patches. "third" is on top.
 $ darn files
 >  :+: dir1/file3

@@ -1,4 +1,4 @@
-### Copyright (C) 2011 Peter Williams <peter_ono@users.sourceforge.net>
+### Copyright (C) 2005-2015 Peter Williams <peter_ono@users.sourceforge.net>
 ###
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
@@ -13,15 +13,16 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import gtk
-import pango
 import os
 
-from darning import cmd_result
+import gtk
+import pango
 
-from darning.gui import icons
-from darning.gui import ws_event
-from darning.gui import gutils
+from .. import config_data
+
+from . import icons
+from . import ws_event
+from . import gutils
 
 main_window = None
 
@@ -152,6 +153,34 @@ class FileChooserDialog(gtk.FileChooserDialog):
             parent = main_window
         gtk.FileChooserDialog.__init__(self, title=title, parent=parent, action=action, buttons=buttons, backend=backend)
 
+class SelectFromListDialog(Dialog):
+    def __init__(self, olist=list(), prompt=_('Select from list:'), parent=None):
+        Dialog.__init__(self, "{0}: {1}".format(config_data.APP_NAME, os.getcwd()), parent,
+                        gtk.DIALOG_DESTROY_WITH_PARENT,
+                        (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+                        gtk.STOCK_OK, gtk.RESPONSE_OK))
+        if parent is None:
+            self.set_position(gtk.WIN_POS_MOUSE)
+        else:
+            self.set_position(gtk.WIN_POS_CENTER_ON_PARENT)
+        self.cbox = gtk.combo_box_new_text()
+        self.cbox.append_text(prompt)
+        for i in olist:
+            self.cbox.append_text(i)
+        self.cbox.set_active(0)
+        self.vbox.add(self.cbox)
+        self.cbox.show()
+    def make_selection(self):
+        res = self.run()
+        index = self.cbox.get_active()
+        is_ok = index > 0
+        if is_ok:
+            text = self.cbox.get_model()[index][0]
+        else:
+            text = ''
+        self.destroy()
+        return (is_ok, text)
+
 class QuestionDialog(Dialog):
     def __init__(self, title=None, parent=None, flags=0, buttons=None, question=""):
         Dialog.__init__(self, title=title, parent=parent, flags=flags, buttons=buttons)
@@ -189,6 +218,9 @@ def ask_yes_no(question, parent=None):
     buttons = (gtk.STOCK_NO, gtk.RESPONSE_NO, gtk.STOCK_YES, gtk.RESPONSE_YES)
     return ask_question(question, parent, buttons) == gtk.RESPONSE_YES
 
+def confirm_list_action(alist, question, parent=None):
+    return ask_ok_cancel('\n'.join(alist + ['\n', question]), parent)
+
 class Response(object):
     SKIP = 1
     SKIP_ALL = 2
@@ -196,48 +228,96 @@ class Response(object):
     REFRESH = 4
     RECOVER = 5
     RENAME = 6
-    ABSORB = 7
-    EDIT = 8
-    MERGE = 9
-    OVERWRITE = 10
+    DISCARD = 7
+    ABSORB = 8
+    EDIT = 9
+    MERGE = 10
+    OVERWRITE = 11
 
 def _form_question(result, clarification):
-    if isinstance(result, cmd_result.Result):
-        qtn = result.msg
-    else:
-        if result.stdout:
-            qtn = result.stdout
-            if result.stderr:
-                qtn += '\n' + result.stderr
-        else:
-            qtn = result.stderr
     if clarification:
-        return qtn + '\n' + clarification
+        return '\n'.join(list(result[1:]) + [clarification])
     else:
-        return qtn
+        return '\n'.join(result[1:])
 
-def ask_force_refresh_absorb_or_cancel(result, clarification=None, parent=None):
+def ask_force_refresh_or_cancel(result, clarification=None, parent=None):
     buttons = (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL)
-    if result.eflags & cmd_result.SUGGEST_REFRESH:
+    if result.suggests_refresh:
         buttons += (_('_Refresh and Retry'), Response.REFRESH)
-    if result.eflags & cmd_result.SUGGEST_ABSORB:
-        buttons += (_('_Absorb Changes'), Response.ABSORB)
-    if result.eflags & cmd_result.SUGGEST_FORCE:
+    if result.suggests_force:
         buttons += (_('_Force'), Response.FORCE)
     question = _form_question(result, clarification)
     return ask_question(question, parent, buttons)
 
-def ask_rename_overwrite_or_cancel(result, clarification=None, parent=None):
+def ask_force_refresh_absorb_or_cancel(result, clarification=None, parent=None):
     buttons = (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL)
-    buttons += (_('_Rename'), Response.RENAME)
-    buttons += (_('_Overwrite'), Response.OVERWRITE)
+    if result.suggests_refresh:
+        buttons += (_('_Refresh and Retry'), Response.REFRESH)
+    if result.suggests_absorb:
+        buttons += (_('_Absorb Changes'), Response.ABSORB)
+    if result.suggests_force:
+        buttons += (_('_Force'), Response.FORCE)
+    question = _form_question(result, clarification)
+    return ask_question(question, parent, buttons)
+
+def ask_force_or_cancel(result, clarification=None, parent=None):
+    buttons = (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, _('_Force'), Response.FORCE)
+    question = _form_question(result, clarification)
+    return ask_question(question, parent, buttons)
+
+def ask_force_skip_or_cancel(result, clarification=None, parent=None):
+    buttons = (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, _('_Skip'), Response.SKIP, _('_Force'), Response.FORCE)
+    question = _form_question(result, clarification)
+    return ask_question(question, parent, buttons)
+
+def ask_merge_discard_or_cancel(result, clarification=None, parent=None):
+    buttons = (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL)
+    if result.suggests_merge:
+        buttons += (_('_Merge'), Response.MERGE)
+    if result.suggests_discard:
+        buttons += (_('_Discard Changes'), Response.DISCARD)
+    question = _form_question(result, clarification)
+    return ask_question(question, parent, buttons)
+
+def ask_recover_or_cancel(result, clarification=None, parent=None):
+    buttons = (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, _('_Recover'), Response.RECOVER)
+    question = _form_question(result, clarification)
+    return ask_question(question, parent, buttons)
+
+def ask_edit_force_or_cancel(result, clarification=None, parent=None):
+    buttons = (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL)
+    if result.suggests_edit:
+        buttons += (_('_Edit'), Response.EDIT)
+    if result.suggests_force:
+        buttons += (_('_Force'), Response.FORCE)
     question = _form_question(result, clarification)
     return ask_question(question, parent, buttons)
 
 def ask_rename_force_or_cancel(result, clarification=None, parent=None):
     buttons = (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL)
-    buttons += (_('_Rename'), Response.RENAME)
-    buttons += (_('_Force'), Response.FORCE)
+    if result.suggests_rename:
+        buttons += (_('_Rename'), Response.RENAME)
+    if result.suggests_force:
+        buttons += (_('_Force'), Response.FORCE)
+    question = _form_question(result, clarification)
+    return ask_question(question, parent, buttons)
+
+def ask_rename_force_or_skip(result, clarification=None, parent=None):
+    buttons = ()
+    if result.suggests_rename:
+        buttons += (_('_Rename'), Response.RENAME)
+    if result.suggests_force:
+        buttons += (_('_Force'), Response.FORCE)
+    buttons += (_('_Skip'), Response.SKIP, _('Skip _All'), Response.SKIP_ALL)
+    question = _form_question(result, clarification)
+    return ask_question(question, parent, buttons)
+
+def ask_rename_overwrite_or_cancel(result, clarification=None, parent=None):
+    buttons = (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL)
+    if result.suggests_rename:
+        buttons += (_('_Rename'), Response.RENAME)
+    if result.suggests_overwrite:
+        buttons += (_('_Overwrite'), Response.OVERWRITE)
     question = _form_question(result, clarification)
     return ask_question(question, parent, buttons)
 
@@ -325,22 +405,28 @@ def ask_uri_name(prompt, suggestion=None, parent=None):
 def inform_user(msg, parent=None, problem_type=gtk.MESSAGE_INFO):
     dialog = MessageDialog(parent=parent,
                            flags=gtk.DIALOG_MODAL|gtk.DIALOG_DESTROY_WITH_PARENT,
-                           type=problem_type, buttons=(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE),
+                           type=problem_type, buttons=gtk.BUTTONS_CLOSE,
                            message_format=msg)
     dialog.run()
     dialog.destroy()
 
+def warn_user(msg, parent=None):
+    inform_user(msg, parent=parent, problem_type=gtk.MESSAGE_WARNING)
+
+def alert_user(msg, parent=None):
+    inform_user(msg, parent=parent, problem_type=gtk.MESSAGE_ERROR)
+
 def report_any_problems(result, parent=None):
-    if cmd_result.is_ok(result):
-        if result[-1]:
-            problem_type=gtk.MESSAGE_INFO
-        else:
-            return
-    elif cmd_result.is_warning(result):
+    if result.is_ok:
+        return
+    elif result.is_warning:
         problem_type = gtk.MESSAGE_WARNING
     else:
         problem_type = gtk.MESSAGE_ERROR
     inform_user('\n'.join(result[1:]), parent, problem_type)
+
+def report_failure(failure, parent=None):
+    inform_user(failure.result, parent, gtk.MESSAGE_ERROR)
 
 def report_exception_as_error(edata, parent=None):
     problem_type = gtk.MESSAGE_ERROR
@@ -373,3 +459,10 @@ class ReadTextAndToggleDialog(ReadTextDialog):
         self.toggle.set_active(toggle_state)
         self.hbox.pack_start(self.toggle)
         self.show_all()
+
+def get_modified_string(title, prompt, string):
+    dialog = ReadTextDialog(title, prompt, string)
+    if dialog.run() == gtk.RESPONSE_OK:
+        string = dialog.entry.get_text()
+    dialog.destroy()
+    return string

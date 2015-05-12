@@ -17,10 +17,12 @@
 
 import sys
 
-from darning import patch_db
-from darning.cli import cli_args
-from darning.cli import db_utils
-from darning import cmd_result
+from ..cmd_result import CmdResult
+
+from .. import patch_db
+
+from . import cli_args
+from . import db_utils
 
 PARSER = cli_args.SUB_CMD_PARSER.add_parser(
     'diff',
@@ -64,8 +66,8 @@ def run_diff(args):
     else:
         diff = patch_db.get_diff_for_files(args.filepaths, args.opt_patch, args.opt_withtimestamps)
     if diff is False:
-        return cmd_result.ERROR
+        return CmdResult.ERROR
     sys.stdout.write(diff)
-    return cmd_result.OK
+    return CmdResult.OK
 
 PARSER.set_defaults(run_cmd=run_diff)

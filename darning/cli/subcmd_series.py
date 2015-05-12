@@ -17,10 +17,12 @@
 
 import sys
 
-from darning import patch_db
-from darning.cli import cli_args
-from darning.cli import db_utils
-from darning import cmd_result
+from ..cmd_result import CmdResult
+
+from .. import patch_db
+
+from . import cli_args
+from . import db_utils
 
 PARSER = cli_args.SUB_CMD_PARSER.add_parser(
     'series',
@@ -71,6 +73,6 @@ def run_series(args):
     else:
         for patch_data in table:
             sys.stdout.write(format_patch_data(patch_data))
-    return cmd_result.OK
+    return CmdResult.OK
 
 PARSER.set_defaults(run_cmd=run_series)

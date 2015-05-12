@@ -68,7 +68,7 @@ $ darn series
 
 Now test dropping files from an applied but non top patches
 $ darn drop -P second file2 file3 file4
-? 1
+? 2
 ! Patch "second" is a NON-top applied patch. Aborted.
 $ darn files second
 >  :+: file1
@@ -148,7 +148,7 @@ $ darn diff
 
 Now test dropping nonexistent overlapped file
 $ darn drop -P second nonexistent
-? 1
+? 2
 ! Patch "second" is a NON-top applied patch. Aborted.
 $ darn files second
 >  :+: file1
@@ -267,5 +267,6 @@ $ darn diff -P first
 
 Now drop files that aren't in the patch
 $ darn drop file3 file4
+? 1
 ! file3: file not in patch "second": ignored.
 ! file4: file not in patch "second": ignored.

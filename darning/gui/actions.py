@@ -1,14 +1,14 @@
-### Copyright (C) 2011 Peter Williams <peter_ono@users.sourceforge.net>
-###
+### Copyright (C) 2005-2015 Peter Williams <peter_ono@users.sourceforge.net>
+
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
 ### the Free Software Foundation; version 2 of the License only.
-###
+
 ### This program is distributed in the hope that it will be useful,
 ### but WITHOUT ANY WARRANTY; without even the implied warranty of
 ### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ### GNU General Public License for more details.
-###
+
 ### You should have received a copy of the GNU General Public License
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
@@ -235,7 +235,7 @@ class CAGandUIManager(gobject.GObject):
         self._popup_cb_id = self._popup = None
         self.set_popup(popup)
     def populate_action_groups(self):
-        assert False, 'should be derived in subclass'
+        assert False, _("should be derived in subclass")
     @staticmethod
     def _button_press_cb(widget, event):
         if event.type == gtk.gdk.BUTTON_PRESS:

@@ -49,8 +49,7 @@ STATUS_DECO_MAP = {
 }
 
 def get_qparent():
-    result = runext.run_cmd(["hg", "log", "--template", "{rev}", "-rqparent"])
-    return result.stdout if result.ecode == 0 else None
+    return runext.run_get_cmd(["hg", "log", "--template", "{rev}", "-rqparent"], default=None)
 
 def iterate_hg_file_data(patch_status_text, resolve_list_text=""):
     unresolved_file_set = set(line[2:] for line in resolve_list_text.splitlines() if line[0] == FSTATUS_UNRESOLVED)
@@ -100,9 +99,9 @@ class WsFileDb(fsdb.GenericSnapshotWsFileDb):
         self._cmd_rev = ["--rev", qparent] if qparent else []
         fsdb.GenericSnapshotWsFileDb.__init__(self)
     def _get_file_data_text(self, h):
-        file_data_text = runext.run_cmd(["hg", "status", "-marduiC"] + self._cmd_rev).stdout
+        file_data_text = runext.run_get_cmd(["hg", "status", "-marduiC"] + self._cmd_rev)
         h.update(file_data_text)
-        unresolved_file_text = runext.run_cmd(["hg", "resolve", "--list"]).stdout
+        unresolved_file_text = runext.run_get_cmd(["hg", "resolve", "--list"])
         h.update(unresolved_file_text)
         return (file_data_text, unresolved_file_text)
     @staticmethod
@@ -127,9 +126,7 @@ class TopPatchFileDb(fsdb.GenericChangeFileDb):
         fsdb.GenericChangeFileDb.__init__(self)
     @staticmethod
     def _get_parent_rev():
-        result = runext.run_cmd(["hg", "qapplied"])
-        if result.ecode != 0: return None # we're not in a repo so no patches
-        applied_patches = result.stdout.splitlines()
+        applied_patches = runext.run_get_cmd(["hg", "qapplied"], default="").splitlines()
         if not applied_patches:
             return None
         elif len(applied_patches) > 1:
@@ -147,9 +144,9 @@ class TopPatchFileDb(fsdb.GenericChangeFileDb):
     def _get_patch_data_text(self, h):
         if self._parent_rev is None:
             return ("", "")
-        patch_status_text = runext.run_cmd(["hg", "status", "-mardC", "--rev", self._parent_rev]).stdout
+        patch_status_text = runext.run_get_cmd(["hg", "status", "-mardC", "--rev", self._parent_rev])
         h.update(patch_status_text)
-        resolve_list_text = runext.run_cmd(["hg", "resolve", "--list"]).stdout
+        resolve_list_text = runext.run_get_cmd(["hg", "resolve", "--list"])
         h.update(resolve_list_text)
         return (patch_status_text, resolve_list_text)
     @staticmethod
@@ -184,11 +181,10 @@ class PatchFileDb(fsdb.GenericChangeFileDb):
         self._get_patch_data_text(h)
         return h.digest() == self._db_hash_digest
     def _get_current_is_applied(self):
-        result = runext.run_cmd(["hg", "qapplied"])
-        return False if result.ecode else self._patch_name in result.stdout.splitlines()
+        return self._patch_name in runext.run_get_cmd(["hg", "qapplied"], default="").splitlines()
     def _get_patch_data_text(self, h):
         if self._is_applied:
-            patch_status_text = runext.run_cmd(["hg", "status", "-mardC", "--change", self._patch_name]).stdout
+            patch_status_text = runext.run_get_cmd(["hg", "status", "-mardC", "--change", self._patch_name])
         else:
             patch_status_text = utils.get_file_contents(self._patch_file_path)
         h.update(patch_status_text)

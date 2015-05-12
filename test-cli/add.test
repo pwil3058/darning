@@ -26,10 +26,10 @@ $ darn add file1 file2 nonexistent
 Initialise a playground and try again without creating a patch
 $ darn init
 $ darn add file1 file2 nonexistent
-? 1
+? 2
 ! No patches applied.
 $ darn files
-? 1
+? 2
 ! No patches applied.
 
 Create a patch and add files including a nonexistent one
@@ -79,13 +79,14 @@ $ darn files
 >  :?: file2
 > +:+: nonexistent
 $ darn new third --descr "Third patch created."
+? 1
 ! Previous top patch ("second") needs refreshing.
 $ darn series
 > +: first
 > ?: second
 > +: third
 $ darn add file1 file2 nonexistent
-? 39
+? 142
 ! file2: file has unrefreshed changes in (applied) patch "second".
 ! Aborted.
 $ darn series

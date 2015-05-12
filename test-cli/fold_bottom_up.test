@@ -146,6 +146,7 @@ $ darn new second --descr "Second patch"
 $ darn add file1 dir1/file1 dir2/file1 dir2/subdir1/file1 file1.copy file2.copy > /dev/null
 $ darn move file3.ren1 file3.ren2 > /dev/null
 $ darn add file1 dir1/file2 dir2/file2 > /dev/null
+? 1
 ! file1: file already in patch "second". Ignored.
 $ darn copy file1.copy file1.copy.copy > /dev/null
 $ darn copy file2.copy file2.copy.copy > /dev/null
@@ -515,7 +516,7 @@ $ darn diff
 $ darn pop
 > Patch "second" is now on top.
 $ darn pop
-? 5
+? 10
 ! Top patch ("second") needs to be refreshed.
 $ darn refresh
 $ darn diff
@@ -590,7 +591,7 @@ $ darn pop
 $ darn pop
 > There are now no patches applied.
 $ darn fold third
-? 1
+? 2
 ! No patches applied.
 
 $ darn push
@@ -604,6 +605,7 @@ $ darn push
 > Patching file "file3.ren1".
 > Patch "first" is now on top.
 $ darn fold second
+? 1
 > Patching file "dir1/file1".
 > Patching file "dir1/file2".
 > Patching file "dir2/file1".
@@ -806,6 +808,7 @@ $ darn diff
 
 $ darn refresh
 $ darn fold third
+? 1
 > Patching file "dir1/file3".
 > Patching file "dir2/file1".
 > Patching file "dir2/file3".

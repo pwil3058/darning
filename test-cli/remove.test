@@ -32,18 +32,18 @@ $ darn series
 
 Test removing a nonexistent patch
 $ darn remove nonexistent
-? 1
+? 2
 ! nonexistent: patch is NOT known.
 
 Test removing an applied patches
 $ darn remove first
-? 1
+? 2
 ! first: patch is applied and cannot be removed.
 $ darn remove second
-? 1
+? 2
 ! second: patch is applied and cannot be removed.
 $ darn remove third
-? 1
+? 2
 ! third: patch is applied and cannot be removed.
 $ darn series
 > +: first

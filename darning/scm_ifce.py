@@ -17,8 +17,6 @@
 Provide an interface to SCM controlling source on which patches sit
 '''
 
-from darning import cmd_result
-
 _AVAILABLE_BACK_ENDS = {}
 
 _CURRENT_BACK_END = None
@@ -112,5 +110,5 @@ def is_ready_for_import():
     Is the SCM in a position to accept an import?
     '''
     if _CURRENT_BACK_END is None:
-        return cmd_result.Result(False, _('No (or unsupported) underlying SCM.'))
+        return (False, _("No (or unsupported) underlying SCM."))
     return _CURRENT_BACK_END.is_ready_for_import()

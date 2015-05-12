@@ -146,6 +146,7 @@ $ darn new second --descr "Second patch"
 $ darn add file1 dir1/file1 dir2/file1 dir2/subdir1/file1 file1.copy file2.copy > /dev/null
 $ darn move file3.ren1 file3.ren2 > /dev/null
 $ darn add file1 dir1/file2 dir2/file2 > /dev/null
+? 1
 ! file1: file already in patch "second". Ignored.
 $ darn copy file1.copy file1.copy.copy > /dev/null
 $ darn copy file2.copy file2.copy.copy > /dev/null
@@ -513,16 +514,17 @@ $ darn diff
 
 # First test that illegal operations fail.
 $ darn fold nonexistent
-? 1
+? 2
 ! nonexistent: patch is NOT known.
 $ darn fold first
-? 1
+? 2
 ! first: patch is applied.
 
 # Now fold all patches from the top down
 $ darn pop
 > Patch "second" is now on top.
 $ darn fold third
+? 1
 > Patching file "dir1/file3".
 > Patching file "dir2/file1".
 > Patching file "dir2/file3".
@@ -764,6 +766,7 @@ $ darn diff
 $ darn pop
 > Patch "first" is now on top.
 $ darn fold second
+? 1
 > Patching file "dir1/file1".
 > Patching file "dir1/file2".
 > Patching file "dir1/file3".

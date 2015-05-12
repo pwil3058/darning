@@ -18,12 +18,13 @@
 import os
 import sys
 
-from darning import patch_db
-from darning import patchlib
-from darning import cmd_result
+from ..cmd_result import CmdResult
 
-from darning.cli import cli_args
-from darning.cli import db_utils
+from .. import patch_db
+from .. import patchlib
+
+from . import cli_args
+from . import db_utils
 
 PARSER = cli_args.SUB_CMD_PARSER.add_parser(
     'import',
@@ -65,23 +66,23 @@ def run_import(args):
             sys.stderr.write(_('Parse Error: {0}.\n').format(edata.message))
         else:
             sys.stderr.write(_('Parse Error: {0}: {1}.\n').format(edata.lineno, edata.message))
-        return cmd_result.ERROR
+        return CmdResult.ERROR
     except IOError as edata:
         if edata.filepath is None:
             sys.stderr.write(_('IO Error: {0}.\n').format(edata.strerror))
         else:
             sys.stderr.write(_('IO Error: {0}: {1}.\n').format(edata.strerror, edata.filepath))
-        return cmd_result.ERROR
+        return CmdResult.ERROR
     if args.opt_strip_level is None:
         args.opt_strip_level = epatch.estimate_strip_level()
         if args.opt_strip_level is None:
             sys.stderr.write(_('Strip level auto detection failed.  Please use -p option.'))
-            return cmd_result.ERROR
+            return CmdResult.ERROR
     epatch.set_strip_level(int(args.opt_strip_level))
     eflags = patch_db.do_import_patch(epatch, args.patchname)
-    if eflags != cmd_result.OK:
+    if eflags != CmdResult.OK:
         return eflags
     sys.stdout.write(_('Imported "{0}" as patch "{1}".\n').format(args.patchfile, args.patchname))
-    return cmd_result.OK
+    return CmdResult.OK
 
 PARSER.set_defaults(run_cmd=run_import)

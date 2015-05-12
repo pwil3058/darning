@@ -1,14 +1,14 @@
-### Copyright (C) 2011 Peter Williams <peter_ono@users.sourceforge.net>
-###
+### Copyright (C) 2005-2015 Peter Williams <pwil3058@gmail.com>
+
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
 ### the Free Software Foundation; version 2 of the License only.
-###
+
 ### This program is distributed in the hope that it will be useful,
 ### but WITHOUT ANY WARRANTY; without even the implied warranty of
 ### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ### GNU General Public License for more details.
-###
+
 ### You should have received a copy of the GNU General Public License
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
@@ -18,21 +18,20 @@ import gobject
 import collections
 import os
 
-from darning import utils
-from darning import patch_db
-from darning import cmd_result
-from darning import fsdb
+from .. import utils
+from .. import patch_db
+from .. import fsdb
 
-from darning.gui import tlview
-from darning.gui import gutils
-from darning.gui import ifce
-from darning.gui import actions
-from darning.gui import ws_actions
-from darning.gui import dialogue
-from darning.gui import ws_event
-from darning.gui import icons
-from darning.gui import text_edit
-from darning.gui import diff
+from . import tlview
+from . import gutils
+from . import ifce
+from . import actions
+from . import ws_actions
+from . import dialogue
+from . import ws_event
+from . import icons
+from . import text_edit
+from . import diff
 
 class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener, dialogue.BusyIndicatorUser):
     class Model(tlview.TreeView.Model):
@@ -414,7 +413,7 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener, dialog
             dialogue.show_busy()
             result = ifce.PM.do_copy_file_to_top_patch(filepath, as_filepath, overwrite=overwrite)
             dialogue.unshow_busy()
-            if result.eflags & cmd_result.SUGGEST_RENAME != 0:
+            if result.suggests_rename:
                 resp = dialogue.ask_rename_overwrite_or_cancel(result, clarification=None)
                 if resp == gtk.RESPONSE_CANCEL:
                     break
@@ -443,8 +442,8 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener, dialog
             result = ifce.PM.do_rename_file_in_top_patch(filepath, new_filepath, force=force, overwrite=overwrite)
             dialogue.unshow_busy()
             if refresh_tried:
-                result = cmd_result.turn_off_flags(result, cmd_result.SUGGEST_REFRESH)
-            if not force and result.eflags & cmd_result.SUGGEST_FORCE_ABSORB_OR_REFRESH != 0:
+                result = result - result.SUGGEST_REFRESH
+            if not force and result.suggests(result.SUGGEST_FORCE_ABSORB_OR_REFRESH):
                 resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
                 if resp == gtk.RESPONSE_CANCEL:
                     break
@@ -455,7 +454,7 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener, dialog
                     result = ifce.PM.do_refresh_overlapped_files([filepath])
                     dialogue.report_any_problems(result)
                 continue
-            elif result.eflags & cmd_result.SUGGEST_RENAME != 0:
+            elif result.suggests_rename:
                 resp = dialogue.ask_rename_overwrite_or_cancel(result, clarification=None)
                 if resp == gtk.RESPONSE_CANCEL:
                     break
@@ -553,8 +552,8 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
                 result = ifce.PM.do_add_files_to_top_patch(file_list, absorb=absorb, force=force)
                 dialogue.unshow_busy()
                 if refresh_tried:
-                    result = cmd_result.turn_off_flags(result, cmd_result.SUGGEST_REFRESH)
-                if not (absorb or force) and result.eflags & cmd_result.SUGGEST_FORCE_ABSORB_OR_REFRESH != 0:
+                    result = result - result.SUGGEST_REFRESH
+                if not (absorb or force) and result.suggests(result.SUGGEST_FORCE_ABSORB_OR_REFRESH):
                     resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
                     if resp == gtk.RESPONSE_CANCEL:
                         break
@@ -569,7 +568,7 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
                     continue
                 dialogue.report_any_problems(result)
                 break
-            return result.eflags == cmd_result.OK
+            return result.is_ok
         def _add_selection_to_top_patch(self, _action=None):
             file_list = self.get_selected_files()
             if len(file_list) == 0:

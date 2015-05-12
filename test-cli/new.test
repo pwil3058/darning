@@ -53,14 +53,14 @@ $ ls ../.darning.dbd/stash
 Test creating a new patch with the same name as an existing patch
 from a sub directory of a playground.
 $ darn new --descr='The second patch created in the series.' second
-? 17
+? 34
 ! patch "second" already exists.
 
 Test creating a new patch with the same name as an existing patch
 from the root directory of a playground.
 $ cd ..
 $ darn new --descr='The second patch created in the series.' second
-? 17
+? 34
 ! patch "second" already exists.
 
 Make sure a new patch goes into the series after the top patch.

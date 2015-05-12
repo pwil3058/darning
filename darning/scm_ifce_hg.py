@@ -18,12 +18,16 @@
 import errno
 import pango
 import hashlib
+import re
 
-from darning import runext
-from darning import scm_ifce
-from darning import utils
-from darning import cmd_result
+from .cmd_result import CmdResult
+
+from . import runext
+from . import scm_ifce
+from . import utils
 from . import fsdb_hg_mq
+
+NOSUCH_RE = re.compile(_("^.*: No such file or directory$\n?"), re.M)
 
 class Mercurial(object):
     name = 'hg'
@@ -37,7 +41,7 @@ class Mercurial(object):
                 return False
             else:
                 raise
-        return result.ecode == 0 and result.stdout
+        return result.is_ok
     @staticmethod
     def get_revision(filepath=None):
         '''
@@ -47,12 +51,10 @@ class Mercurial(object):
         cmd = ['hg', 'log', '-l', '1', '--follow', '--template', '"{node}"']
         if filepath:
             cmd.append(filepath)
-        result = runext.run_cmd(cmd)
+        revision = runext.run_get_cmd(cmd, default=None)
         if filepath is None:
-            assert result.ecode == 0
-        elif result.ecode != 0:
-            return None
-        return result.stdout
+            assert revision is not None
+        return revision
     @staticmethod
     def get_files_with_uncommitted_changes(files=None):
         '''
@@ -60,32 +62,18 @@ class Mercurial(object):
         is None assume all files in current directory.
         '''
         cmd = ['hg', 'status', '-mardn'] + (files if files else ['.'])
-        result = runext.run_cmd(cmd)
-        assert result.ecode == 0
-        return result.stdout.splitlines()
+        return runext.run_get_cmd(cmd, sanitize_stderr=lambda x: NOSUCH_RE.sub("", x)).splitlines()
     @staticmethod
     def get_file_db():
         '''
         Get the SCM view of the current directory
         '''
-        def unresolved_file_list():
-            cmd = ['hg', 'resolve', '--list', '.']
-            result = runext.run_cmd(cmd)
-            if result.ecode != 0:
-                return []
-            return [line[2:] for line in result.stdout.splitlines() if line[0] == FileStatus.UNRESOLVED]
-        cmd = ['hg', 'status', '-AC', '.']
-        result = runext.run_cmd(cmd)
-        scm_file_db = FileDb(result.stdout.splitlines(), unresolved_file_list())
-        scm_file_db.decorate_dirs()
-        return scm_file_db
+        return fsdb_hg_mq.WsFileDb()
     @staticmethod
     def get_file_status_digest():
         h = hashlib.sha1()
         for cmd in [['hg', 'resolve', '--list', '.'], ['hg', 'status', '-AC', '.']]:
-            result = runext.run_cmd(cmd)
-            if result.ecode == 0:
-                h.update(result.stdout)
+            h.update(runext.run_get_cmd(cmd, default=""))
         return h.digest()
     @staticmethod
     def get_status_deco(status):
@@ -98,28 +86,27 @@ class Mercurial(object):
         '''
         Copy a clean version of the named file to the specified target
         '''
-        result = runext.run_cmd(['hg', 'cat', filepath])
-        assert result.ecode == 0
-        if result.stdout:
+        contents = runext.run_get_cmd(['hg', 'cat', filepath])
+        if contents:
+            # TODO: should this be conditional on contents not being empty?
             utils.ensure_file_dir_exists(target_name)
             with open(target_name, 'w') as fobj:
-                fobj.write(result.stdout)
+                fobj.write(contents)
     @staticmethod
     def do_import_patch(patch_filepath):
         ok_to_import, msg = Mercurial.is_ready_for_import()
         if not ok_to_import:
-            return runext.Result(-1, '', msg)
+            return CmdResult.error(stderr=msg)
         return runext.run_cmd(['hg', 'import', '-q', patch_filepath])
     @staticmethod
     def is_ready_for_import():
-        result = runext.run_cmd(['hg', 'qtop'])
-        if result.ecode == 0:
-            return cmd_result.Result(False, _('There are "mq" patches applied.'))
+        if runext.run_cmd(['hg', 'qtop']).is_ok:
+            return (False, _('There are "mq" patches applied.'))
         result = runext.run_cmd(['hg', 'parents', '--template', '{rev}\\n'])
-        if result.ecode != 0:
-            return cmd_result.Result(False, result.stdout + result.stderr)
+        if not result.is_ok:
+            return (False, result.stdout + result.stderr)
         elif len(result.stdout.splitlines()) > 1:
-            return cmd_result.Result(False, _('There is an incomplete merge in progress.'))
-        return cmd_result.Result(True, '')
+            return (False, _('There is an incomplete merge in progress.'))
+        return (True, '')
 
 scm_ifce.add_back_end(Mercurial)
