@@ -1,4 +1,4 @@
-### Copyright (C) 2007 Peter Williams <peter_ono@users.sourceforge.net>
+### Copyright (C) 2007-2015 Peter Williams <pwil3058@gmail.com>
 ###
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
@@ -17,11 +17,12 @@
 (if available) and also ensures text is utf-8 friendly before
 insertion'''
 
-import gtk
-import pango
 import hashlib
 
-from darning import utils
+import gtk
+import pango
+
+from .. import utils
 
 try:
     from gtksourceview2 import Buffer as _Buffer

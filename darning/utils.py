@@ -1,4 +1,4 @@
-### Copyright (C) 2010 Peter Williams <peter_ono@users.sourceforge.net>
+### Copyright (C) 2005-2015 Peter Williams <pwil3058@gmail.com>
 ###
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
@@ -19,21 +19,43 @@ Utility functions
 
 import stat
 import os
+import os.path
+import subprocess
+import gobject
+import signal
+import zlib
+import gzip
+import bz2
 import re
 import hashlib
 
-from darning import i18n
-from darning import urlops
-from darning import config_data
-from darning import options
+from .cmd_result import CmdResult
+from .config_data import HOME
+
+from . import urlops
+from . import options
+
+def path_relative_to_dir(fdir, path):
+    if not os.path.isdir(fdir):
+        return None
+    if fdir == path:
+        return os.curdir
+    lcwd = len(fdir)
+    if len(path) <= lcwd + 1 or fdir != path[0:lcwd] or path[lcwd] != os.sep:
+        return None
+    return path[lcwd + 1:]
+
+def path_relative_to_playground(path):
+    return path_relative_to_dir(os.getcwd(), os.path.abspath(path))
 
 def path_rel_home(path):
     """Return the given path as a path relative to user's home directory."""
-    if urlops.parse_url(path).scheme:
+    pr = urlops.parse_url(path)
+    if pr.scheme and pr.scheme != "file":
         return path
-    path = os.path.abspath(path)
-    len_home = len(config_data.HOME)
-    if len(path) >= len_home and config_data.HOME == path[:len_home]:
+    path = os.path.abspath(pr.path)
+    len_home = len(HOME)
+    if len(path) >= len_home and HOME == path[:len_home]:
         path = "~" + path[len_home:]
     return path
 
@@ -54,7 +76,7 @@ def file_list_to_string(file_list):
         if fname.count(' ') == 0:
             mod_file_list.append(fname)
         else:
-            mod_file_list.append('"%s"' % fname)
+            mod_file_list.append("\"{0}\"".format(fname))
     return ' '.join(mod_file_list)
 
 # handle the fact os.path.samefile is not available on all operating systems
@@ -64,6 +86,128 @@ def samefile(filepath1, filepath2):
         return os.path.samefile(filepath1, filepath2)
     except AttributeError:
         return os.path.abspath(filepath1) == os.path.abspath(filepath2)
+
+def create_file(name, console=None):
+    """Attempt to create a file with the given name and report the outcome as
+    a CmdResult tuple.
+    1. If console is not None print report of successful creation on it.
+    2. If a file with same name already exists fail and report a warning.
+    3. If file creation fails for other reasons report an error.
+    """
+    if not os.path.exists(name):
+        try:
+            if console:
+                console.start_cmd("create \"{0}\"".format(name))
+            open(name, 'w').close()
+            if console:
+                console.end_cmd()
+            ws_event.notify_events(ws_event.FILE_ADD)
+            return CmdResult.ok()
+        except (IOError, OSError) as msg:
+            return CmdResult.error(stderr="\"{0}\": {1}".format(name, msg))
+    else:
+        return CmdResult.warning(stderr=_("\"{0}\": file already exists").format(name))
+
+if os.name == 'nt' or os.name == 'dos':
+    def _which(cmd):
+        """Return the path of the executable for the given command"""
+        for dirpath in os.environ['PATH'].split(os.pathsep):
+            potential_path = os.path.join(dirpath, cmd)
+            if os.path.isfile(potential_path) and \
+               os.access(potential_path, os.X_OK):
+                return potential_path
+        return None
+
+
+    NT_EXTS = ['.bat', '.bin', '.exe']
+
+
+    def which(cmd):
+        """Return the path of the executable for the given command"""
+        path = _which(cmd)
+        if path:
+            return path
+        _, ext = os.path.splitext(cmd)
+        if ext in NT_EXTS:
+            return None
+        for ext in NT_EXTS:
+            path = _which(cmd + ext)
+            if path is not None:
+                return path
+        return None
+else:
+    def which(cmd):
+        """Return the path of the executable for the given command"""
+        for dirpath in os.environ['PATH'].split(os.pathsep):
+            potential_path = os.path.join(dirpath, cmd)
+            if os.path.isfile(potential_path) and \
+               os.access(potential_path, os.X_OK):
+                return potential_path
+        return None
+
+
+def get_file_contents(srcfile, decompress=True):
+    '''
+    Get the contents of filename to text after (optionally) applying
+    decompression as indicated by filename's suffix.
+    '''
+    if decompress:
+        from . import runext
+        _root, ext = os.path.splitext(srcfile)
+        res = 0
+        if ext == '.gz':
+            return gzip.open(srcfile).read()
+        elif ext == '.bz2':
+            bz2f = bz2.BZ2File(srcfile, 'r')
+            text = bz2f.read()
+            bz2f.close()
+            return text
+        elif ext == '.xz':
+            res, text, serr = runext.run_cmd(["xz", "-cd", srcfile])
+        elif ext == '.lzma':
+            res, text, serr = runext.run_cmd(["lzma", "-cd", srcfile])
+        else:
+            return open(srcfile).read()
+        if res != 0:
+            sys.stderr.write(serr)
+        return text
+    else:
+        return open(srcfile).read()
+
+def set_file_contents(filename, text, compress=True):
+    '''
+    Set the contents of filename to text after (optionally) applying
+    compression as indicated by filename's suffix.
+    '''
+    if compress:
+        _root, ext = os.path.splitext(filename)
+        res = 0
+        if ext == '.gz':
+            try:
+                gzip.open(filename, 'wb').write(text)
+                return True
+            except (IOError, zlib.error):
+                return False
+        elif ext == '.bz2':
+            try:
+                bz2f = bz2.BZ2File(filename, 'w')
+                text = bz2f.write(text)
+                bz2f.close()
+                return True
+            except IOError:
+                return False
+        elif ext == '.xz':
+            res, text, serr = run_cmd('xz -c', text)
+        elif ext == '.lzma':
+            res, text, serr = run_cmd('lzma -c', text)
+        if res != 0:
+            sys.stderr.write(serr)
+            return False
+    try:
+        open(filename, 'w').write(text)
+    except IOError:
+        return False
+    return True
 
 def get_first_in_envar(envar_list):
     for envar in envar_list:
@@ -168,3 +312,112 @@ def get_git_hash_for_file(filepath):
         hash.update(open(filepath).read())
         return hash.hexdigest()
     return None
+
+def os_move_or_copy_file(file_path, dest, opsym, force=False, dry_run=False, extra_checks=None, verbose=False):
+    assert opsym in (fsdb.Relation.MOVED_TO, fsdb.Relation.COPIED_TO), _("Invalid operation requested")
+    if os.path.isdir(dest):
+        dest = os.path.join(dest, os.path.basename(file_path))
+    omsg = "{0} {1} {2}.".format(file_path, opsym, dest) if verbose else ""
+    if dry_run:
+        if os.path.exists(dest):
+            return CmdResult.error(omsg, _('File "{0}" already exists. Select "force" to overwrite.').format(dest)) + CmdResult.SUGGEST_FORCE
+        else:
+            return CmdResult.ok(omsg)
+    from . import console
+    console.LOG.start_cmd("{0} {1} {2}\n".format(file_path, opsym, dest))
+    if not force and os.path.exists(dest):
+        emsg = _('File "{0}" already exists. Select "force" to overwrite.').format(dest)
+        result = CmdResult.error(omsg, emsg) + CmdResult.SUGGEST_FORCE
+        console.LOG.end_cmd(result)
+        return result
+    if extra_checks:
+        result = extra_check([(file_path, dest)])
+        if not result.is_ok:
+            console.LOG.end_cmd(result)
+            return result
+    try:
+        if opsym is fsdb.Relation.MOVED_TO:
+            os.rename(file_path, dest)
+        elif opsym is fsdb.Relation.COPIED_TO:
+            shutil.copy(file_path, dest)
+        result = CmdResult.ok(omsg)
+    except (IOError, os.error, shutil.Error) as why:
+        result = CmdResult.error(omsg, _("\"{0}\" {1} \"{2}\" failed. {3}.\n").format(file_path, opsym, dest, str(why)))
+    console.LOG.end_cmd(result)
+    ws_event.notify_events(ws_event.FILE_ADD|ws_event.FILE_DEL)
+    return result
+
+def os_move_or_copy_files(file_path_list, dest, opsym, force=False, dry_run=False, extra_checks=None, verbose=False):
+    assert opsym in (fsdb.Relation.MOVED_TO, fsdb.Relation.COPIED_TO), _("Invalid operation requested")
+    def _overwrite_msg(overwrites):
+        if len(overwrites) == 0:
+            return ""
+        elif len(overwrites) > 1:
+            return _("Files:\n\t{0}\nalready exist. Select \"force\" to overwrite.").format("\n\t".join(["\"" + fp + "\"" for fp in overwrites]))
+        else:
+            return _("File \"{0}\" already exists. Select \"force\" to overwrite.").format(overwrites[0])
+    if len(file_path_list) == 1:
+        return os_move_or_copy_file(file_path_list[0], dest, opsym, force=force, dry_run=dry_run, extra_checks=extra_checks)
+    from . import console
+    if not dry_run:
+        console.LOG.start_cmd("{0} {1} {2}\n".format(file_list_to_string(file_path_list), opsym, dest))
+    if not os.path.isdir(dest):
+        result = CmdResult.error(stderr=_('"{0}": Destination must be a directory for multifile rename.').format(dest))
+        if not dry_run:
+            console.LOG.end_cmd(result)
+        return result
+    opn_paths_list = [(file_path, os.path.join(dest, os.path.basename(file_path))) for file_path in file_path_list]
+    omsg = "\n".join(["{0} {1} {2}.".format(src, opsym, dest) for (src, dest) in opn_paths_list]) if verbose else ""
+    if dry_run:
+        overwrites = [dest for (src, dest) in opn_paths_list if os.path.exists(dest)]
+        if len(overwrites) > 0:
+            emsg = _overwrite_msg(overwrites)
+            return CmdResult.error(omsg, emsg) + CmdResult.SUGGEST_FORCE
+        else:
+            return CmdResult.ok(omsg)
+    if not force:
+        overwrites = [dest for (src, dest) in opn_paths_list if os.path.exists(dest)]
+        if len(overwrites) > 0:
+            emsg = _overwrite_msg(overwrites)
+            result = CmdResult.error(omsg, emsg) + CmdResult.SUGGEST_FORCE
+            console.LOG.end_cmd(result)
+            return result
+    if extra_checks:
+        result = extra_check(opn_paths_list)
+        if not result.is_ok:
+            console.LOG.end_cmd(result)
+            return result
+    failed_opns_str = ""
+    for (src, dest) in opn_paths_list:
+        if verbose:
+            console.LOG.append_stdout("{0} {1} {2}.".format(src, opsym, dest))
+        try:
+            if opsym is fsdb.Relation.MOVED_TO:
+                os.rename(src, dest)
+            elif opsym is fsdb.Relation.COPIED_TO:
+                if os.path.isdir(src):
+                    shutil.copytree(src, dest)
+                else:
+                    shutil.copy2(src, dest)
+        except (IOError, os.error, shutil.Error) as why:
+            serr = _('"{0}" {1} "{2}" failed. {3}.\n').format(src, opsym, dest, str(why))
+            console.LOG.append_stderr(serr)
+            failed_opns_str += serr
+            continue
+    console.LOG.end_cmd()
+    ws_event.notify_events(ws_event.FILE_ADD|ws_event.FILE_DEL)
+    if failed_opns_str:
+        return CmdResult.error(omsg, failed_opns_str)
+    return CmdResult.ok(omsg)
+
+def os_copy_file(file_path, dest, force=False, dry_run=False):
+    return os_move_or_copy_file(file_path, dest, opsym=fsdb.Relation.COPIED_TO, force=force, dry_run=dry_run)
+
+def os_copy_files(file_path_list, dest, force=False, dry_run=False):
+    return os_move_or_copy_files(file_path_list, dest, opsym=fsdb.Relation.COPIED_TO, force=force, dry_run=dry_run)
+
+def os_move_file(file_path, dest, force=False, dry_run=False):
+    return os_move_or_copy_file(file_path, dest, opsym=fsdb.Relation.MOVED_TO, force=force, dry_run=dry_run)
+
+def os_move_files(file_path_list, dest, force=False, dry_run=False):
+    return os_move_or_copy_files(file_path_list, dest, opsym=fsdb.Relation.MOVED_TO, force=force, dry_run=dry_run)

@@ -52,7 +52,7 @@ def run_get_cmd(cmd, input_text=None, sanitize_stderr=None, default=CmdFailure, 
 
 def run_cmd_in_console(console, cmd, input_text=None, sanitize_stderr=None):
     """Run the given command in the given console and report the outcome as a
-    Result tuple.
+    CmdResult tuple.
     If input_text is not None pas it to the command as standard input.
     """
     if isinstance(cmd, str):

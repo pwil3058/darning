@@ -142,7 +142,7 @@ class ConsoleLogWidget(gtk.VBox, dialogue.BusyIndicatorUser):
         if pre_dir == os.getcwd():
             ws_event.notify_events(ws_event.ALL_BUT_CHANGE_WD)
         else:
-            from gwsmgitd_pkg import ifce
+            from . import ifce
             ifce.chdir()
     def _git_cmd_entry_cb(self, entry):
         text = entry.get_text_and_clear_to_history()

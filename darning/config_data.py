@@ -17,7 +17,9 @@ import os
 
 HOME = os.path.expanduser("~")
 
-CONFIG_DIR_NAME = os.sep.join([HOME, '.darning.d'])
+APP_NAME = "darning"
+
+CONFIG_DIR_NAME = os.sep.join([HOME, "." + APP_NAME + ".d"])
 
 if not os.path.exists(CONFIG_DIR_NAME):
     os.mkdir(CONFIG_DIR_NAME, 0o775)

@@ -2,11 +2,11 @@ import os, sys
 import locale
 import gettext
 
-APP_NAME = "darning"
+from .config_data import APP_NAME
 
 # find the locale directory
 # first look in the source directory (so that we can run uninstalled)
-LOCALE_DIR = os.path.join(sys.path[0], 'locale')
+LOCALE_DIR = os.path.join(sys.path[0], 'i10n')
 if not os.path.exists(LOCALE_DIR) or not os.path.isdir(LOCALE_DIR):
     # if we get here it means we're installed and we assume that the
     # locale files were installed under the same prefix as the

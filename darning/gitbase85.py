@@ -1,4 +1,4 @@
-### Copyright (C) 2011 Peter Williams <peter_ono@users.sourceforge.net>
+### Copyright (C) 2011-2015 Peter Williams <pwil3058@gmail.com>
 ###
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
@@ -67,10 +67,10 @@ def decode(encoding):
             try:
                 acc = acc * 85 + DECODE[encoding.string[sindex]]
             except KeyError:
-                raise ParseError('Illegal git base 85 character')
+                raise ParseError(_("Illegal git base 85 character"))
             sindex += 1
         if acc > _MAX_VAL:
-            raise RangeError('{0} too big.'.format(acc))
+            raise RangeError(_("{0} too big.").format(acc))
         for _cnt in range(4):
             if dindex == encoding.size:
                 break
@@ -100,7 +100,7 @@ def decode_size(char):
         return ord(char) - ord('A') + 1
     elif 'a' <= char and char <= 'z':
         return ord(char) - ord('a') + 27
-    raise ValueError('decode_size: argument must be in [a-zA-Z]')
+    raise ValueError(_("decode_size: argument must be in [a-zA-Z]"))
 
 def encode_to_lines(data, max_line_length=1 + (MAX_BYTES_PER_LINE / 4) * 5):
     assert max_line_length > 5

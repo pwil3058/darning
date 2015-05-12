@@ -1,4 +1,4 @@
-### Copyright (C) 2011 Peter Williams <peter_ono@users.sourceforge.net>
+### Copyright (C) 2007-2015 Peter Williams <pwil3058@gmail.com>
 ###
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
@@ -14,6 +14,7 @@
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import shlex
+import os
 try:
     import gtkspell
     GTKSPELL_AVAILABLE = True
@@ -22,8 +23,10 @@ except ImportError:
 
 import gtk
 import pango
+import gobject
 
 from ..cmd_result import CmdFailure
+
 from .. import utils
 from .. import runext
 
@@ -34,8 +37,8 @@ from . import ifce
 from . import config
 from . import actions
 
-def edit_files_extern(file_list):
-    def _edit_files_extern(filelist, edstr=config.DEFAULT_EDITOR):
+def _edit_files_extern(file_list, ed_assigns):
+    def _launch_editor(filelist, edstr=config.DEFAULT_EDITOR):
         cmd = shlex.split(edstr) + filelist
         if cmd[0] in config.EDITORS_THAT_NEED_A_TERMINAL:
             if config.DEFAULT_TERMINAL == "gnome-terminal":
@@ -44,9 +47,14 @@ def edit_files_extern(file_list):
                 flag = '-e'
             cmd = [config.DEFAULT_TERMINAL, flag] + cmd
         return runext.run_cmd_in_bgnd(cmd)
-    ed_assigns = config.assign_extern_editors(file_list)
     for edstr in list(ed_assigns.keys()):
-        _edit_files_extern(ed_assigns[edstr], edstr)
+        _launch_editor(ed_assigns[edstr], edstr)
+
+def edit_files_extern(file_list):
+    return _edit_files_extern(file_list, config.assign_extern_editors(file_list))
+
+def peruse_files_extern(file_list):
+    return _edit_files_extern(file_list, config.assign_extern_perusers(file_list))
 
 class MessageWidget(textview.Widget, actions.CAGandUIManager):
     UI_DESCR = ''
@@ -68,9 +76,8 @@ class MessageWidget(textview.Widget, actions.CAGandUIManager):
         self._update_action_sensitivities()
     def populate_action_groups(self):
         # Set up action groups
-        self.action_group = gtk.ActionGroup("always on")
-        self.conditional_action_group = gtk.ActionGroup("save file dependent")
-        self.action_groups[0].add_actions(
+        # TODO: self.conditional_action_group = gtk.ActionGroup("save file dependent")
+        self.action_groups[actions.AC_DONT_CARE].add_actions(
             [
                 ("text_edit_ack", None, _('_Ack'), None,
                  _('Insert Acked-by tag at cursor position'), self._insert_ack_acb),
@@ -78,10 +85,6 @@ class MessageWidget(textview.Widget, actions.CAGandUIManager):
                  _('Insert Signed-off-by tag at cursor position'), self._insert_sign_off_acb),
                 ("text_edit_author", None, _('A_uthor'), None,
                  _('Insert Author tag at cursor position'), self._insert_author_acb),
-                ("text_edit_save", gtk.STOCK_SAVE, _('_Save'), "",
-                 _('Save summary to database'), self._save_text_acb),
-                ("text_edit_load", gtk.STOCK_REVERT_TO_SAVED, _('_Reload'), "",
-                 _('Reload summary from database'), self._reload_text_acb),
                 ("text_edit_save_as", gtk.STOCK_SAVE_AS, _('S_ave as'), "",
                  _('Save summary to a file'), self._save_text_as_acb),
                 ("text_edit_load_from", gtk.STOCK_REVERT_TO_SAVED, _('_Load from'), "",
@@ -132,6 +135,8 @@ class MessageWidget(textview.Widget, actions.CAGandUIManager):
         return True
     def save_text_to_file(self, file_name=None):
         if not file_name:
+            if not self._save_file_name:
+                return
             file_name = self._save_file_name
         try:
             open(file_name, 'w').write(self.get_contents())
@@ -152,8 +157,9 @@ class MessageWidget(textview.Widget, actions.CAGandUIManager):
         if not already_checked and not self._ok_to_overwrite_summary():
             return
         if not file_name:
+            if not self._save_file_name:
+                return
             file_name = self._save_file_name
-        # TODO: fix this for the case there is no saved_file_name
         try:
             self.set_contents(open(file_name, 'rb').read())
             self._save_file_name = file_name
@@ -185,7 +191,7 @@ class MessageWidget(textview.Widget, actions.CAGandUIManager):
     def set_auto_save_inerval(self, interval):
         self._save_interval = interval
     def do_auto_save(self):
-        if self._save_file_name:
+        if self.get_auto_save() and self._save_file_name:
             if not self._save_file_digest or self._save_file_digest != self.digest:
                 self.save_text_to_file()
         return self.get_auto_save()
@@ -193,11 +199,12 @@ class MessageWidget(textview.Widget, actions.CAGandUIManager):
         if self.get_auto_save():
             gobject.timeout_add(self._save_interval, self.do_auto_save)
     def finish_up(self, clear_save=False):
+        #TODO: fix finish_up()
         if self.get_auto_save():
             self.set_auto_save(False)
-            self.do_auto_save()
+            self.save_text_to_file()
         if clear_save and self._save_file_name:
-            self.save_text_to_file(content="")
+            self.save_text_to_file("")
 
 class DbMessageWidget(MessageWidget):
     UI_DESCR = ''
@@ -220,7 +227,7 @@ class DbMessageWidget(MessageWidget):
         self.reload_button = gutils.ActionButton(self.action_groups.get_action("text_edit_load"), use_underline=False)
     def populate_action_groups(self):
         MessageWidget.populate_action_groups(self)
-        self.action_group.add_actions(
+        self.action_groups[actions.AC_DONT_CARE].add_actions(
             [
                 ("text_edit_save", gtk.STOCK_SAVE, _('_Save'), "",
                  _('Save summary to database'), self._save_text_acb),
@@ -230,7 +237,7 @@ class DbMessageWidget(MessageWidget):
     def _save_text_acb(self, _action=None):
         text = self.bfr.get_text(self.bfr.get_start_iter(), self.bfr.get_end_iter())
         result = self.set_text_in_db(text)
-        if result.eflags:
+        if not result.is_ok:
             dialogue.report_any_problems(result)
         else:
             # get the tidied up version of the text

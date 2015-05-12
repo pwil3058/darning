@@ -1,4 +1,4 @@
-### Copyright (C) 2010 Peter Williams <peter_ono@users.sourceforge.net>
+### Copyright (C) 2010-2015 Peter Williams <pwil3058@gmail.com>
 ###
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
@@ -13,10 +13,8 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-'''
-Provide modules to support management of stacked patches.
-'''
+from . import i18n
 
 # import SCM backend interfaces here
-from darning import scm_ifce_hg
-from darning import scm_ifce_git
+from . import scm_ifce_hg
+from . import scm_ifce_git

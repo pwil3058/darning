@@ -14,7 +14,9 @@
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import gtk
-from darning.gui import dialogue
+
+from . import dialogue
+from .. import utils
 
 try:
     import vte
@@ -37,7 +39,7 @@ try:
             self.show_all()
             self._pid = self._vte.fork_command()
         def set_cwd(self, path):
-            self._vte.feed_child("cd %s\n" % path)
+            self._vte.feed_child("cd %s\n" % utils.path_rel_home(path))
         def _button_press_cb(self, widget, event):
             if event.type == gtk.gdk.BUTTON_PRESS:
                 if event.button == 3:

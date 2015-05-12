@@ -1,21 +1,32 @@
-### Copyright (C) 2007 Peter Williams <peter_ono@users.sourceforge.net>
-
+### Copyright (C) 2007-2015 Peter Williams <pwil3058@gmail.com>
+###
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
 ### the Free Software Foundation; version 2 of the License only.
-
+###
 ### This program is distributed in the hope that it will be useful,
 ### but WITHOUT ANY WARRANTY; without even the implied warranty of
 ### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ### GNU General Public License for more details.
-
+###
 ### You should have received a copy of the GNU General Public License
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import collections
+
 import gtk
 import gobject
+
+def get_gtk_window(widget):
+    gtk_window = widget
+    while True:
+        temp = gtk_window.get_parent()
+        if temp:
+            gtk_window = temp
+        else:
+            break
+    return gtk_window
 
 def pygtk_version_ge(version):
     for index in range(len(version)):
@@ -294,6 +305,10 @@ class LabelledEntry(gtk.HBox):
         self.entry = EntryWithHistory(max_chars)
         self.pack_start(self.entry, expand=True, fill=True)
         self.entry.set_text(text)
+    def get_text_and_clear_to_history(self):
+        return self.entry.get_text_and_clear_to_history()
+    def set_label(self, text):
+        self.label.set_text(text)
 
 class LabelledText(gtk.HBox):
     def __init__(self, label="", text="", min_chars=0):

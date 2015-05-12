@@ -1,4 +1,4 @@
-### Copyright (C) 2011 Peter Williams <peter_ono@users.sourceforge.net>
+### Copyright (C) 2011-2015 Peter Williams <pwil3058@gmail.com>
 ###
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
@@ -20,8 +20,11 @@ import re
 import os
 import email
 import zlib
+import hashlib
 
-from darning import gitbase85
+from . import gitbase85
+
+#TODO: convert methods that return lists to iterators
 
 # Useful named tuples to make code clearer
 _CHUNK = collections.namedtuple('_CHUNK', ['start', 'length'])
@@ -958,6 +961,10 @@ class DiffPlus(object):
         elif path_plus.status == FilePathPlus.ADDED and path_plus.expath is None:
             path_plus.expath = self.preambles.get_file_expath(strip_level=strip_level)
         return path_plus
+    def get_hash_digest(self):
+        h = hashlib.sha1()
+        h.update(str(self))
+        return h.digest()
 
 class Patch(object):
     '''Class to hold patch information relavent to multiple files with
@@ -1092,9 +1099,17 @@ class Patch(object):
     def get_file_paths(self, strip_level=None):
         strip_level = self._adjusted_strip_level(strip_level)
         return [diff_plus.get_file_path(strip_level=strip_level) for diff_plus in self.diff_pluses]
+    def iterate_file_paths(self, strip_level=None):
+        strip_level = self._adjusted_strip_level(strip_level)
+        for diff_plus in self.diff_pluses:
+            yield diff_plus.get_file_path(strip_level=strip_level)
     def get_file_paths_plus(self, strip_level=None):
         strip_level = self._adjusted_strip_level(strip_level)
         return [diff_plus.get_file_path_plus(strip_level=strip_level) for diff_plus in self.diff_pluses]
+    def iterate_file_paths_plus(self, strip_level=None):
+        strip_level = self._adjusted_strip_level(strip_level)
+        for diff_plus in self.diff_pluses:
+            yield diff_plus.get_file_path_plus(strip_level=strip_level)
     def get_diffstat_stats(self, strip_level=None):
         strip_level = self._adjusted_strip_level(strip_level)
         return DiffStat.PathStatsList([DiffStat.PathStats(diff_plus.get_file_path(strip_level=strip_level), diff_plus.get_diffstat_stats()) for diff_plus in self.diff_pluses])
@@ -1116,3 +1131,7 @@ class Patch(object):
                 path = diff_plus.get_file_path(strip_level=strip_level)
                 reports.append(_FILE_AND_TWS_LINES(path, bad_lines))
         return reports
+    def get_hash_digest(self):
+        h = hashlib.sha1()
+        h.update(str(self))
+        return h.digest()
