@@ -220,7 +220,7 @@ class Tree(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener, dialog
                 ('refresh_files', gtk.STOCK_REFRESH, _('_Refresh Files'), None,
                  _('Refresh/update the file tree display'), self.update),
             ])
-        self.action_groups[ws_actions.AC_IN_PGND_MUTABLE + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
+        self.action_groups[ws_actions.AC_IN_PM_PGND_MUTABLE + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
             [
                 ('copy_file_to_top_patch', gtk.STOCK_COPY, _('_Copy'), None,
                  _('Add a copy of the selected file to the top patch'), self._copy_selected_to_top_patch),
@@ -527,7 +527,7 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
                 [
                     ('scm_files_menu_files', None, _('_Files')),
                 ])
-            self.action_groups[ws_actions.AC_IN_PGND_MUTABLE + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
+            self.action_groups[ws_actions.AC_IN_PM_PGND_MUTABLE + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
                 [
                     ('scm_add_files_to_top_patch', gtk.STOCK_ADD, _('_Add'), None,
                      _('Add the selected files to the top patch'), self._add_selection_to_top_patch),
@@ -536,7 +536,7 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
                     ('scm_delete_files_in_top_patch', gtk.STOCK_DELETE, _('_Delete'), None,
                      _('Add the selected files to the top patch and then delete them'), self._delete_selection_in_top_patch),
                 ])
-            self.action_groups[ws_actions.AC_IN_PGND + ws_actions.AC_PMIC].add_actions(
+            self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC].add_actions(
                 [
                     ('scm_select_unsettled', None, _('Select _Unsettled'), None,
                      _('Select files that are unrefreshed in patches below top or have uncommitted SCM changes not covered by an applied patch'),
@@ -641,17 +641,17 @@ class PatchFileTreeWidget(gtk.VBox, ws_event.Listener):
             Tree.__init__(self, show_hidden=True, hide_clean=False)
         def populate_action_groups(self):
             Tree.populate_action_groups(self)
-            self.action_groups[ws_actions.AC_IN_PGND_MUTABLE + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
+            self.action_groups[ws_actions.AC_IN_PM_PGND_MUTABLE + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
                 [
                     ('patch_edit_files', gtk.STOCK_EDIT, _('_Edit'), None,
                      _('Edit the selected file(s)'), self.edit_selected_files_acb),
                 ])
-            self.action_groups[ws_actions.AC_IN_PGND + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
+            self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
                 [
                     ('patch_diff_selected_file', icons.STOCK_DIFF, _('_Diff'), None,
                      _('Display the diff for selected file'), self.diff_selected_file_acb),
                 ])
-            self.action_groups[ws_actions.AC_IN_PGND_MUTABLE + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
+            self.action_groups[ws_actions.AC_IN_PM_PGND_MUTABLE + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
                 [
                     ('patch_extdiff_selected_file', icons.STOCK_DIFF, _('E_xtDiff'), None,
                      _('Launch external diff viewer for selected file'), self.extdiff_selected_file_acb),
@@ -722,14 +722,14 @@ class TopPatchFileTreeWidget(PatchFileTreeWidget):
             PatchFileTreeWidget.PatchFileTree.__init__(self, patch=None)
         def populate_action_groups(self):
             PatchFileTreeWidget.PatchFileTree.populate_action_groups(self)
-            self.action_groups[ws_actions.AC_IN_PGND_MUTABLE + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
+            self.action_groups[ws_actions.AC_IN_PM_PGND_MUTABLE + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
                 [
                     ('top_patch_drop_selected_files', gtk.STOCK_REMOVE, _('_Drop'), None,
                      _('Drop/remove the selected files from the top patch'), self._drop_selection_from_patch),
                     ('top_patch_delete_selected_files', gtk.STOCK_DELETE, _('_Delete'), None,
                      _('Delete the selected files'), self._delete_selection_in_top_patch),
                 ])
-            self.action_groups[ws_actions.AC_IN_PGND_MUTABLE + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
+            self.action_groups[ws_actions.AC_IN_PM_PGND_MUTABLE + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
                 [
                     ('patch_reconcile_selected_file', icons.STOCK_MERGE, _('_Reconcile'), None,
                      _('Launch reconciliation tool for the selected file'), self.reconcile_selected_file_acb),
@@ -784,7 +784,7 @@ class CombinedPatchFileTreeWidget(PatchFileTreeWidget):
             PatchFileTreeWidget.PatchFileTree.__init__(self, patch=None)
         def populate_action_groups(self):
             PatchFileTreeWidget.PatchFileTree.populate_action_groups(self)
-            self.action_groups[ws_actions.AC_IN_PGND + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
+            self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
                 [
                     ('patch_combined_diff_selected_file', icons.STOCK_DIFF, _('_Diff'), None,
                      _('Display the combined diff for selected file'), self.combined_diff_selected_file_acb),
@@ -802,7 +802,7 @@ def add_new_file_to_top_patch_acb(_action=None):
     ScmFileTreeWidget.ScmTree._add_files_to_top_patch([filepath])
 
 
-actions.CLASS_INDEP_AGS[ws_actions.AC_PMIC | ws_actions.AC_IN_PGND_MUTABLE].add_actions(
+actions.CLASS_INDEP_AGS[ws_actions.AC_PMIC | ws_actions.AC_IN_PM_PGND_MUTABLE].add_actions(
     [
         ("file_list_add_new", gtk.STOCK_NEW, _('New'), None,
          _('Add a new file to the top applied patch'), add_new_file_to_top_patch_acb),

@@ -169,12 +169,12 @@ class ListView(table.MapManagedTableView):
     def populate_action_groups(self):
         table.MapManagedTableView.populate_action_groups(self)
         self.action_groups[actions.AC_DONT_CARE].add_action(gtk.Action("menu_patch_list", _('Patch _List'), None, None))
-        self.action_groups[ws_actions.AC_IN_PGND].add_actions(
+        self.action_groups[ws_actions.AC_IN_PM_PGND].add_actions(
             [
                 ("pm_refresh_patch_list", gtk.STOCK_REFRESH, _('Update Patch List'), None,
                  _('Refresh/update the patch list display'), self._update_list_cb),
             ])
-        self.action_groups[actions.AC_SELN_UNIQUE | ws_actions.AC_IN_PGND].add_actions(
+        self.action_groups[actions.AC_SELN_UNIQUE | ws_actions.AC_IN_PM_PGND].add_actions(
             [
                 ("pm_edit_patch_descr", gtk.STOCK_EDIT, _('Description'), None,
                  _('Edit the selected patch\'s description'), self.do_edit_description),
@@ -183,7 +183,7 @@ class ListView(table.MapManagedTableView):
                 ("patch_list_export_patch", gtk.STOCK_SAVE_AS, _('Export'), None,
                  _('Export the selected patch to a text file'), self.do_export),
             ])
-        self.action_groups[actions.AC_SELN_UNIQUE | ws_actions.AC_IN_PGND_MUTABLE].add_actions(
+        self.action_groups[actions.AC_SELN_UNIQUE | ws_actions.AC_IN_PM_PGND_MUTABLE].add_actions(
             [
                 ("pm_set_patch_guards", icons.STOCK_PATCH_GUARD, None, None,
                  _('Set guards on the selected patch'), self.do_set_guards),
@@ -192,27 +192,27 @@ class ListView(table.MapManagedTableView):
                 ("patch_list_duplicate", gtk.STOCK_COPY, _('Duplicate'), None,
                  _('Duplicate the selected patch after the top applied patch'), self.do_duplicate),
             ])
-        self.action_groups[actions.AC_SELN_UNIQUE | AC_PUSH_POSSIBLE | ws_actions.AC_IN_PGND_MUTABLE | AC_UNAPPLIED_NOT_BLOCKED].add_actions(
+        self.action_groups[actions.AC_SELN_UNIQUE | AC_PUSH_POSSIBLE | ws_actions.AC_IN_PM_PGND_MUTABLE | AC_UNAPPLIED_NOT_BLOCKED].add_actions(
             [
                 ("patch_list_push_to", icons.STOCK_PUSH_PATCH, _('Push To'), None,
                  _('Apply all unguarded unapplied patches up to the selected patch.'), self.do_push_patches_to),
             ])
-        self.action_groups[actions.AC_SELN_UNIQUE | ws_actions.AC_IN_PGND_MUTABLE | AC_UNAPPLIED].add_actions(
+        self.action_groups[actions.AC_SELN_UNIQUE | ws_actions.AC_IN_PM_PGND_MUTABLE | AC_UNAPPLIED].add_actions(
             [
                 ("patch_list_remove", gtk.STOCK_DELETE, _('Remove'), None,
                  _('Remove the selected patch from the series.'), self.do_remove),
             ])
-        self.action_groups[actions.AC_SELN_UNIQUE | AC_POP_POSSIBLE | ws_actions.AC_IN_PGND_MUTABLE | AC_APPLIED_NOT_TOP].add_actions(
+        self.action_groups[actions.AC_SELN_UNIQUE | AC_POP_POSSIBLE | ws_actions.AC_IN_PM_PGND_MUTABLE | AC_APPLIED_NOT_TOP].add_actions(
             [
                 ("patch_list_pop_to", icons.STOCK_POP_PATCH, _('Pop To'), None,
                  _('Apply all applied patches down to the selected patch.'), self.do_pop_patches_to),
             ])
-        self.action_groups[actions.AC_SELN_UNIQUE | AC_POP_POSSIBLE | ws_actions.AC_IN_PGND_MUTABLE | AC_APPLIED].add_actions(
+        self.action_groups[actions.AC_SELN_UNIQUE | AC_POP_POSSIBLE | ws_actions.AC_IN_PM_PGND_MUTABLE | AC_APPLIED].add_actions(
             [
                 ("patch_list_refresh_selected", icons.STOCK_PUSH_PATCH, _('Refresh'), None,
                  _('Refresh the selected patch.'), self.do_refresh_selected_patch_acb),
             ])
-        self.action_groups[actions.AC_SELN_UNIQUE | AC_POP_POSSIBLE | ws_actions.AC_IN_PGND_MUTABLE | AC_UNAPPLIED].add_actions(
+        self.action_groups[actions.AC_SELN_UNIQUE | AC_POP_POSSIBLE | ws_actions.AC_IN_PM_PGND_MUTABLE | AC_UNAPPLIED].add_actions(
             [
                 ("patch_list_fold_selected", icons.STOCK_FOLD_PATCH, _('Fold'), None,
                  _('Fold the selected patch into the top applied patch.'), self.do_fold_patch_acb),
@@ -238,7 +238,7 @@ class ListView(table.MapManagedTableView):
     def repopulate_list(self):
         self.set_contents()
         condns = get_applied_condns(self.seln)
-        condns |= ws_actions.get_in_pgnd_condns()
+        condns |= ws_actions.get_in_pm_pgnd_condns()
         self.action_groups.update_condns(condns)
     def _repopulate_list_cb(self, _arg=None):
         self.show_busy()
@@ -1018,13 +1018,13 @@ actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_actions(
          _('Create a new intitialized playground'), new_playground_acb),
     ])
 
-actions.CLASS_INDEP_AGS[ws_actions.AC_NOT_IN_PGND].add_actions(
+actions.CLASS_INDEP_AGS[ws_actions.AC_NOT_IN_PM_PGND].add_actions(
     [
         ("config_init_cwd", icons.STOCK_INIT, _('_Initialize'), "",
          _('Create a patch series in the current directory'), init_cwd_acb),
     ])
 
-actions.CLASS_INDEP_AGS[ws_actions.AC_IN_PGND_MUTABLE].add_actions(
+actions.CLASS_INDEP_AGS[ws_actions.AC_IN_PM_PGND_MUTABLE].add_actions(
     [
         ("patch_list_new_patch", icons.STOCK_NEW_PATCH, None, None,
          _('Create a new patch'), new_patch_acb),
@@ -1036,13 +1036,13 @@ actions.CLASS_INDEP_AGS[ws_actions.AC_IN_PGND_MUTABLE].add_actions(
          _('Select which guards are in force'), select_guards_acb),
     ])
 
-actions.CLASS_INDEP_AGS[ws_actions.AC_IN_PGND].add_actions(
+actions.CLASS_INDEP_AGS[ws_actions.AC_IN_PM_PGND].add_actions(
     [
         ("patch_list_edit_series_descr", gtk.STOCK_EDIT, _('Description'), None,
          _('Edit the series\' description'), edit_series_description_acb),
     ])
 
-actions.CLASS_INDEP_AGS[AC_PUSH_POSSIBLE | ws_actions.AC_IN_PGND_MUTABLE].add_actions(
+actions.CLASS_INDEP_AGS[AC_PUSH_POSSIBLE | ws_actions.AC_IN_PM_PGND_MUTABLE].add_actions(
     [
         ("patch_list_push", icons.STOCK_PUSH_PATCH, _('Push'), None,
          _('Apply the next unapplied patch'), push_next_patch_acb),
@@ -1050,7 +1050,7 @@ actions.CLASS_INDEP_AGS[AC_PUSH_POSSIBLE | ws_actions.AC_IN_PGND_MUTABLE].add_ac
          _('Apply all unguarded unapplied patches.'), push_all_patches_acb),
     ])
 
-actions.CLASS_INDEP_AGS[AC_POP_POSSIBLE | ws_actions.AC_IN_PGND_MUTABLE].add_actions(
+actions.CLASS_INDEP_AGS[AC_POP_POSSIBLE | ws_actions.AC_IN_PM_PGND_MUTABLE].add_actions(
     [
         ("patch_list_fold_external_patch", icons.STOCK_FOLD_PATCH, None, None,
          _('Fold an external patch into the top applied patch'), fold_patch_acb),
@@ -1060,13 +1060,13 @@ actions.CLASS_INDEP_AGS[AC_POP_POSSIBLE | ws_actions.AC_IN_PGND_MUTABLE].add_act
          _('Pop all applied patches'), pop_all_patches_acb),
     ])
 
-actions.CLASS_INDEP_AGS[ws_actions.AC_PMIC | ws_actions.AC_IN_PGND_MUTABLE].add_actions(
+actions.CLASS_INDEP_AGS[ws_actions.AC_PMIC | ws_actions.AC_IN_PM_PGND_MUTABLE].add_actions(
     [
         ("patch_list_refresh_top_patch", icons.STOCK_REFRESH_PATCH, None, None,
          _('Refresh the top patch'), refresh_top_patch_acb),
     ])
 
-actions.CLASS_INDEP_AGS[AC_ALL_APPLIED_REFRESHED | ws_actions.AC_IN_REPO | ws_actions.AC_IN_PGND_MUTABLE].add_actions(
+actions.CLASS_INDEP_AGS[AC_ALL_APPLIED_REFRESHED | ws_actions.AC_IN_SCM_PGND | ws_actions.AC_IN_PM_PGND_MUTABLE].add_actions(
     [
         ("patch_list_scm_absorb_applied_patches", icons.STOCK_FINISH_PATCH, _('Absorb All'), None,
          _('Absorb all applied patches into underlying SCM repository'), scm_absorb_applied_patches_acb),

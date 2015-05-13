@@ -26,32 +26,32 @@ from darning.gui import ws_event
 from darning.gui import gutils
 from darning.gui import ifce
 
-AC_NOT_IN_PGND, AC_IN_PGND, AC_IN_PGND_MUTABLE, AC_IN_PGND_MASK = actions.ActionCondns.new_flags_and_mask(3)
-AC_NOT_IN_REPO, AC_IN_REPO, AC_IN_REPO_MASK = actions.ActionCondns.new_flags_and_mask(2)
+AC_NOT_IN_PM_PGND, AC_IN_PM_PGND, AC_IN_PM_PGND_MUTABLE, AC_IN_PM_PGND_MASK = actions.ActionCondns.new_flags_and_mask(3)
+AC_NOT_IN_SCM_PGND, AC_IN_SCM_PGND, AC_IN_SCM_PGND_MASK = actions.ActionCondns.new_flags_and_mask(2)
 AC_NOT_PMIC, AC_PMIC, AC_PMIC_MASK = actions.ActionCondns.new_flags_and_mask(2)
 
-def get_in_pgnd_condns():
+def get_in_pm_pgnd_condns():
     if ifce.PM.in_valid_pgnd:
         if ifce.PM.pgnd_is_mutable:
-            conds = AC_IN_PGND | AC_IN_PGND_MUTABLE
+            conds = AC_IN_PM_PGND | AC_IN_PM_PGND_MUTABLE
         else:
-            conds = AC_IN_PGND
+            conds = AC_IN_PM_PGND
     else:
-        conds = AC_NOT_IN_PGND
-    return actions.MaskedCondns(conds, AC_IN_PGND_MASK)
+        conds = AC_NOT_IN_PM_PGND
+    return actions.MaskedCondns(conds, AC_IN_PM_PGND_MASK)
 
-def get_in_repo_condns():
-    return actions.MaskedCondns(AC_IN_REPO if ifce.SCM.in_valid_pgnd else AC_NOT_IN_REPO, AC_IN_REPO_MASK)
+def get_in_scm_pgnd_condns():
+    return actions.MaskedCondns(AC_IN_SCM_PGND if ifce.SCM.in_valid_pgnd else AC_NOT_IN_SCM_PGND, AC_IN_SCM_PGND_MASK)
 
 def get_pmic_condns():
     return actions.MaskedCondns(AC_PMIC if ifce.PM.get_in_progress() else AC_NOT_PMIC, AC_PMIC_MASK)
 
 def _update_class_indep_cwd_cb(_arg=None):
-    condns = get_in_pgnd_condns() | get_in_repo_condns()
+    condns = get_in_pm_pgnd_condns() | get_in_scm_pgnd_condns()
     actions.CLASS_INDEP_AGS.update_condns(condns)
 
 def _update_class_indep_pgnd_cb(_arg=None):
-    actions.CLASS_INDEP_AGS.update_condns(get_in_pgnd_condns())
+    actions.CLASS_INDEP_AGS.update_condns(get_in_pm_pgnd_condns())
 
 def _update_class_indep_pmic_cb(_arg=None):
     actions.CLASS_INDEP_AGS.update_condns(get_pmic_condns())
@@ -69,14 +69,14 @@ class AGandUIManager(actions.CAGandUIManager, ws_event.Listener):
         self.add_notification_cb(ws_event.PATCH_PUSH|ws_event.PATCH_POP|ws_event.CHANGE_WD, self.pmic_condns_change_cb)
         self.init_action_states()
     def cwd_condns_change_cb(self, _arg=None):
-        condns = get_in_pgnd_condns() | get_in_repo_condns()
+        condns = get_in_pm_pgnd_condns() | get_in_scm_pgnd_condns()
         self.action_groups.update_condns(condns)
     def pgnd_condns_change_cb(self, _arg=None):
-        self.action_groups.update_condns(get_in_pgnd_condns())
+        self.action_groups.update_condns(get_in_pm_pgnd_condns())
     def pmic_condns_change_cb(self, _arg=None):
         self.action_groups.update_condns(get_pmic_condns())
     def init_action_states(self):
-        condn_set = get_in_pgnd_condns() | get_in_repo_condns() | get_pmic_condns()
+        condn_set = get_in_pm_pgnd_condns() | get_in_scm_pgnd_condns() | get_pmic_condns()
         self.action_groups.update_condns(condn_set)
 
 actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_actions(
