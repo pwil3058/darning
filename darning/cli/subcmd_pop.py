@@ -15,9 +15,10 @@
 
 '''Unapply the current top patch.'''
 
-from darning import patch_db
-from darning.cli import cli_args
-from darning.cli import db_utils
+from .. import patch_db
+
+from . import cli_args
+from . import db_utils
 
 PARSER = cli_args.SUB_CMD_PARSER.add_parser(
     'pop',

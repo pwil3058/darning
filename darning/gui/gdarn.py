@@ -16,17 +16,17 @@
 import gtk
 import os
 
-from darning import utils
+from .. import utils
 
-from darning.gui import gutils
-from darning.gui import dialogue
-from darning.gui import console
-from darning.gui import ifce
-from darning.gui import icons
-from darning.gui import ws_actions
-from darning.gui import ws_event
-from darning.gui import patch_list
-from darning.gui import file_tree
+from . import gutils
+from . import dialogue
+from . import console
+from . import ifce
+from . import icons
+from . import ws_actions
+from . import ws_event
+from . import patch_list
+from . import file_tree
 
 class Darning(gtk.Window, dialogue.BusyIndicator, ws_actions.AGandUIManager):
     count = 0

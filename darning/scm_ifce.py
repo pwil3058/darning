@@ -62,7 +62,7 @@ def get_file_db():
     Get the SCM view of the current directory
     '''
     if _CURRENT_BACK_END is None:
-        from darning import fsdb
+        from . import fsdb
         return fsdb.OsFileDb()
     return _CURRENT_BACK_END.get_file_db()
 
@@ -79,7 +79,7 @@ def get_status_deco(status):
     Get the SCM specific decoration for the given status
     '''
     if _CURRENT_BACK_END is None:
-        from darning import fsdb
+        from . import fsdb
         import pango
         return fsdb.Deco(pango.STYLE_NORMAL, "black")
     return _CURRENT_BACK_END.get_status_deco(status)

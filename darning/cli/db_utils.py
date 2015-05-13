@@ -21,9 +21,9 @@ import os
 import sys
 import atexit
 
-from darning import rctx
-from darning import patch_db
-from darning import scm_ifce
+from .. import rctx
+from .. import patch_db
+from .. import scm_ifce
 
 def open_db(modifiable):
     '''Change directory to the base direcory and open the database'''

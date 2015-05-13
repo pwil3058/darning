@@ -21,16 +21,15 @@ mechanism for sub commands to add their components.
 import argparse
 import collections
 
-from darning import i18n
-
-import darning.version
+from .. import i18n
+from .. import version
 
 PARSER = argparse.ArgumentParser(description=_('Manage stacked patches'))
 
 PARSER.add_argument(
     '--version',
     action='version',
-    version=darning.version.VERSION
+    version=version.VERSION
 )
 
 SUB_CMD_PARSER = PARSER.add_subparsers(title=_('commands'))

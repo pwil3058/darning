@@ -20,19 +20,19 @@ import fnmatch
 import collections
 import hashlib
 
-from darning import config_data
-from darning import utils
-from darning import urlops
-from darning import patch_db
+from .. import config_data
+from .. import utils
+from .. import urlops
+from .. import patch_db
 
-from darning.gui import dialogue
-from darning.gui import gutils
-from darning.gui import tlview
-from darning.gui import table
-from darning.gui import actions
-from darning.gui import ifce
-from darning.gui import icons
-from darning.gui import ws_event
+from . import dialogue
+from . import gutils
+from . import tlview
+from . import table
+from . import actions
+from . import ifce
+from . import icons
+from . import ws_event
 
 SAVED_PGND_FILE_NAME = os.sep.join([config_data.CONFIG_DIR_NAME, "playgrounds"])
 

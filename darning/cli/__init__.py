@@ -19,20 +19,20 @@ Library functions that are ony of interest CLI programs
 
 # This should be the only place that subcmd_* modules should be imported
 # as this is sufficient to activate them.
-import darning.cli.subcmd_init
-import darning.cli.subcmd_new
-import darning.cli.subcmd_push
-import darning.cli.subcmd_pop
-import darning.cli.subcmd_add
-import darning.cli.subcmd_refresh
-import darning.cli.subcmd_import
-import darning.cli.subcmd_drop
-import darning.cli.subcmd_remove
-import darning.cli.subcmd_files
-import darning.cli.subcmd_series
-import darning.cli.subcmd_export
-import darning.cli.subcmd_diff
-import darning.cli.subcmd_copy
-import darning.cli.subcmd_move
-import darning.cli.subcmd_fold
-import darning.cli.subcmd_absorb
+from . import subcmd_init
+from . import subcmd_new
+from . import subcmd_push
+from . import subcmd_pop
+from . import subcmd_add
+from . import subcmd_refresh
+from . import subcmd_import
+from . import subcmd_drop
+from . import subcmd_remove
+from . import subcmd_files
+from . import subcmd_series
+from . import subcmd_export
+from . import subcmd_diff
+from . import subcmd_copy
+from . import subcmd_move
+from . import subcmd_fold
+from . import subcmd_absorb

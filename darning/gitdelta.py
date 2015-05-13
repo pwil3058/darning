@@ -18,7 +18,7 @@
 
 import copy
 
-from darning import c_idioms
+from . import c_idioms
 
 def byte_0(arg):
     return arg & 0xFF
@@ -335,7 +335,7 @@ def get_delta_hdr_size(ptr):
         if not cmd & 0x80:
             break
     return size
- 
+
 def patch_delta(src_data, delta):
     if not delta or len(delta) < DELTA_SIZE_MIN:
         raise InvalidDelta

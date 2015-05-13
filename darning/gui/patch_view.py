@@ -18,16 +18,16 @@
 import os
 import gtk
 
-from darning import patch_db
-from darning import utils
+from .. import patch_db
+from .. import utils
 
-from darning.gui import textview
-from darning.gui import dialogue
-from darning.gui import icons
-from darning.gui import diff
-from darning.gui import ws_event
-from darning.gui import gutils
-from darning.gui import ifce
+from . import textview
+from . import dialogue
+from . import icons
+from . import diff
+from . import ws_event
+from . import gutils
+from . import ifce
 
 class DiffDisplay(diff.TextWidget):
     def __init__(self, diffplus):
@@ -195,5 +195,5 @@ class Dialogue(dialogue.AmodalDialog):
         self.unshow_busy()
         dialogue.report_any_problems(result)
     def _save_as_acb(self, _action):
-        from darning.gui import patch_list
+        from . import patch_list
         patch_list.do_export_named_patch(self, self.widget.patchname, suggestion=self._save_file, busy_indicator=self)

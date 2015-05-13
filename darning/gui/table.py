@@ -20,13 +20,13 @@ them from templates and allow easier access to named contents.
 
 import gtk
 
-from darning.gui import gutils
-from darning.gui import actions
-from darning.gui import ws_actions
-from darning.gui import ws_event
-from darning.gui import tlview
-from darning.gui import icons
-from darning.gui import dialogue
+from . import gutils
+from . import actions
+from . import ws_actions
+from . import ws_event
+from . import tlview
+from . import icons
+from . import dialogue
 
 ALWAYS_ON = 'table_always_on'
 MODIFIED = 'table_modified'

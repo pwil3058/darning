@@ -21,10 +21,10 @@ import collections
 
 import gtk
 
-from darning.gui import actions
-from darning.gui import ws_event
-from darning.gui import gutils
-from darning.gui import ifce
+from . import actions
+from . import ws_event
+from . import gutils
+from . import ifce
 
 AC_NOT_IN_PM_PGND, AC_IN_PM_PGND, AC_IN_PM_PGND_MUTABLE, AC_IN_PM_PGND_MASK = actions.ActionCondns.new_flags_and_mask(3)
 AC_NOT_IN_SCM_PGND, AC_IN_SCM_PGND, AC_IN_SCM_PGND_MASK = actions.ActionCondns.new_flags_and_mask(2)
