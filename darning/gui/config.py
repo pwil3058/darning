@@ -424,11 +424,11 @@ def auto_update_cb(_arg=None):
         _COMBINED_PATCH_FILES_DIGEST = cpfd
     wdfd = _get_current_tree_digest()
     if wdfd != _WD_FILES_DIGEST:
-        notifiable_events |= ws_event.WD_FILE_TREE_CHANGES
+        notifiable_events |= ws_event.FILE_CHANGES
         _WD_FILES_DIGEST = wdfd
     rfsd = ifce.SCM.get_file_status_digest()
     if rfsd != _REPO_FILE_STATUS_DIGEST:
-        notifiable_events |= ws_event.REPO_FILE_STATUS_CHANGES
+        notifiable_events |= ws_event.FILE_CHANGES
         _REPO_FILE_STATUS_DIGEST = rfsd
     ws_event.notify_events(notifiable_events)
     dialogue.unshow_busy()

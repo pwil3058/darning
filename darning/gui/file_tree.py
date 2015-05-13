@@ -516,7 +516,7 @@ class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
         def __init__(self, show_hidden=False, hide_clean=False):
             Tree.__init__(self, show_hidden=show_hidden, hide_clean=hide_clean)
             self.add_notification_cb(ws_event.CHECKOUT|ws_event.CHANGE_WD, self.repopulate)
-            self.add_notification_cb(ws_event.FILE_CHANGES|ws_event.WD_FILE_TREE_CHANGES|ws_event.REPO_FILE_STATUS_CHANGES, self.update)
+            self.add_notification_cb(ws_event.FILE_CHANGES, self.update)
             self.add_notification_cb(ws_event.AUTO_UPDATE, self.auto_update)
         def auto_update(self, _arg=None):
             if not self._file_db.is_current():
