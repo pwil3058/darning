@@ -1,16 +1,14 @@
-# -*- python -*-
-
-### Copyright (C) 2005 Peter Williams <peter_ono@users.sourceforge.net>
-
+### Copyright (C) 2005-2015 Peter Williams <pwil3058@gmail.com>
+###
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
 ### the Free Software Foundation; version 2 of the License only.
-
+###
 ### This program is distributed in the hope that it will be useful,
 ### but WITHOUT ANY WARRANTY; without even the implied warranty of
 ### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ### GNU General Public License for more details.
-
+###
 ### You should have received a copy of the GNU General Public License
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
@@ -22,8 +20,9 @@ to update their displayed/cached data
 
 import gobject
 
-_NFLAGS = 16
+_NFLAGS = 17
 AUTO_UPDATE, \
+PMIC_CHANGE, \
 FILE_ADD, \
 FILE_DEL, \
 FILE_MOD, \
@@ -44,7 +43,7 @@ ALL_EVENTS = 2 ** _NFLAGS - 1
 ALL_BUT_CHANGE_WD = ALL_EVENTS &  ~CHANGE_WD
 
 FILE_CHANGES = FILE_ADD | FILE_DEL | FILE_MOD
-PATCH_CHANGES = PATCH_PUSH | PATCH_POP | PATCH_CREATE | PATCH_DELETE | PATCH_MODIFY | PATCH_REFRESH
+PATCH_CHANGES = PATCH_PUSH | PATCH_POP | PATCH_REFRESH | PATCH_CREATE | PATCH_DELETE | PATCH_MODIFY
 
 _NOTIFICATION_CBS = []
 
@@ -74,7 +73,7 @@ def del_notification_cb(cb_token):
     # paths - so we need to check
     try:
         index = _NOTIFICATION_CBS.index(cb_token)
-	del _NOTIFICATION_CBS[index]
+        del _NOTIFICATION_CBS[index]
     except ValueError:
         pass
 
@@ -129,3 +128,5 @@ class Listener(gobject.GObject):
         """Remove all of my callbacks from the notification database"""
         for cb_token in self._listener_cbs:
             del_notification_cb(cb_token)
+        # this callback seems to get called twice, so ...
+        self._listener_cbs = []

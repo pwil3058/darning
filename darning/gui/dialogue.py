@@ -405,7 +405,7 @@ def ask_uri_name(prompt, suggestion=None, parent=None):
 def inform_user(msg, parent=None, problem_type=gtk.MESSAGE_INFO):
     dialog = MessageDialog(parent=parent,
                            flags=gtk.DIALOG_MODAL|gtk.DIALOG_DESTROY_WITH_PARENT,
-                           type=problem_type, buttons=gtk.BUTTONS_CLOSE,
+                           type=problem_type, buttons=(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE),
                            message_format=msg)
     dialog.run()
     dialog.destroy()

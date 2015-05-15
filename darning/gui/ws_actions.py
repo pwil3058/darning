@@ -1,14 +1,14 @@
-### Copyright (C) 2011 Peter Williams <peter_ono@users.sourceforge.net>
-
+### Copyright (C) 2011-2015 Peter Williams <pwil3058@gmail.com>
+###
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
 ### the Free Software Foundation; version 2 of the License only.
-
+###
 ### This program is distributed in the hope that it will be useful,
 ### but WITHOUT ANY WARRANTY; without even the implied warranty of
 ### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ### GNU General Public License for more details.
-
+###
 ### You should have received a copy of the GNU General Public License
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
@@ -23,7 +23,6 @@ import gtk
 
 from . import actions
 from . import ws_event
-from . import gutils
 from . import ifce
 
 AC_NOT_IN_PM_PGND, AC_IN_PM_PGND, AC_IN_PM_PGND_MUTABLE, AC_IN_PM_PGND_MASK = actions.ActionCondns.new_flags_and_mask(3)
@@ -81,7 +80,7 @@ class AGandUIManager(actions.CAGandUIManager, ws_event.Listener):
 
 actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_actions(
     [
-        ("actions_playground_menu", None, _('_Playground')),
+        ("actions_wd_menu", None, _('_Working Directory')),
         ("actions_quit", gtk.STOCK_QUIT, _('_Quit'), "",
          _('Quit'), gtk.main_quit),
     ])
