@@ -26,14 +26,15 @@ from . import icons
 from . import ws_actions
 from . import ws_event
 from . import patch_list
-from . import file_tree
+from . import file_tree_managed
+from . import file_tree_cs
 
 class Darning(gtk.Window, dialogue.BusyIndicator, ws_actions.AGandUIManager):
     count = 0
     UI_DESCR = '''
     <ui>
         <menubar name="gdarn_left_menubar">
-            <menu name="gdarn_pgnd" action="actions_playground_menu">
+            <menu name="gdarn_pgnd" action="actions_wd_menu">
               <menuitem action="config_change_playground"/>
               <menuitem action="config_new_playground"/>
               <menuitem action="config_init_cwd"/>
@@ -87,14 +88,14 @@ class Darning(gtk.Window, dialogue.BusyIndicator, ws_actions.AGandUIManager):
         vbox.pack_start(vpane, expand=True)
         hpane = gtk.HPaned()
         vpane.add1(hpane)
-        stree = file_tree.ScmFileTreeWidget()
+        stree = file_tree_managed.WSFilesWidget()
         stree.set_size_request(280, 280)
         hpane.add1(stree)
         phpane = gtk.HPaned()
         nbook = gtk.Notebook()
         nbook.set_size_request(280, 280)
-        nbook.append_page(file_tree.TopPatchFileTreeWidget(), gtk.Label(_('Top Patch Files')))
-        nbook.append_page(file_tree.CombinedPatchFileTreeWidget(), gtk.Label(_('Combined Patch Files')))
+        nbook.append_page(file_tree_cs.TopPatchFileTreeWidget(), gtk.Label(_('Top Patch Files')))
+        nbook.append_page(file_tree_cs.CombinedPatchFileTreeWidget(), gtk.Label(_('Combined Patch Files')))
         phpane.add1(nbook)
         plist = patch_list.List()
         plist.set_size_request(280, 280)

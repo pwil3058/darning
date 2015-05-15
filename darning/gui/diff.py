@@ -1,4 +1,4 @@
-### Copyright (C) 2011 Peter Williams <peter_ono@users.sourceforge.net>
+### Copyright (C) 2007-2015 Peter Williams <pwil3058@gmail.com>
 ###
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@ from . import gutils
 class TextWidget(gtk.VBox):
     class TwsLineCountDisplay(gtk.HBox):
         STATES = [gtk.STATE_NORMAL, gtk.STATE_ACTIVE, gtk.STATE_PRELIGHT, gtk.STATE_INSENSITIVE]
-        LABEL = _('Added TWS lines:')
+        LABEL = _("Added TWS lines:")
         def __init__(self):
             gtk.HBox.__init__(self)
             self.pack_start(gtk.Label(self.LABEL), expand=False, fill=False)
@@ -54,7 +54,7 @@ class TextWidget(gtk.VBox):
                     self._entry.modify_base(state, gtk.gdk.color_parse("#00FF00"))
     class View(textview.View):
         class Buffer(textview.Buffer):
-            TWS_CHECK_CRE = re.compile('^(\+.*\S)(\s+\n)$')
+            TWS_CHECK_CRE = re.compile("^(\+.*\S)(\s+\n)$")
             def __init__(self):
                 textview.Buffer.__init__(self)
                 self.index_tag = self.create_tag("INDEX", weight=pango.WEIGHT_BOLD, foreground="#0000AA", family="monospace")
@@ -113,28 +113,28 @@ class TextWidget(gtk.VBox):
         gtk.VBox.__init__(self)
         self.tws_list = []
         self.tws_index = 0
-        self.view = TextWidget.View(width_in_chars=width_in_chars, aspect_ratio=aspect_ratio, fdesc=fdesc)
+        self.view = self.View(width_in_chars=width_in_chars, aspect_ratio=aspect_ratio, fdesc=fdesc)
         self.pack_start(gutils.wrap_in_scrolled_window(self.view))
         self._action_group = gtk.ActionGroup("diff_text")
         self._action_group.add_actions(
             [
-                ("diff_save", gtk.STOCK_SAVE, _('_Save'), None,
-                 _('Save the diff to previously nominated file'), self._save_acb),
-                ("diff_save_as", gtk.STOCK_SAVE_AS, _('Save _as'), None,
-                 _('Save the diff to a nominated file'), self._save_as_acb),
-                ("diff_refresh", gtk.STOCK_REFRESH, _('_Refresh'), None,
-                 _('Refresh contents of the diff'), self._refresh_acb),
-                ("tws_nav_first", gtk.STOCK_GOTO_TOP, _('_First'), None,
-                 _('Scroll to first line with added trailing white space'),
+                ("diff_save", gtk.STOCK_SAVE, _("_Save"), None,
+                 _("Save the diff to previously nominated file"), self._save_acb),
+                ("diff_save_as", gtk.STOCK_SAVE_AS, _("Save _as"), None,
+                 _("Save the diff to a nominated file"), self._save_as_acb),
+                ("diff_refresh", gtk.STOCK_REFRESH, _("_Refresh"), None,
+                 _("Refresh contents of the diff"), self._refresh_acb),
+                ("tws_nav_first", gtk.STOCK_GOTO_TOP, _("_First"), None,
+                 _("Scroll to first line with added trailing white space"),
                  self._tws_nav_first_acb),
-                ("tws_nav_prev", gtk.STOCK_GO_UP, _('_Prev'), None,
-                 _('Scroll to previous line with added trailing white space'),
+                ("tws_nav_prev", gtk.STOCK_GO_UP, _("_Prev"), None,
+                 _("Scroll to previous line with added trailing white space"),
                  self._tws_nav_prev_acb),
-                ("tws_nav_next", gtk.STOCK_GO_DOWN, _('_Next'), None,
-                 _('Scroll to next line with added trailing white space'),
+                ("tws_nav_next", gtk.STOCK_GO_DOWN, _("_Next"), None,
+                 _("Scroll to next line with added trailing white space"),
                  self._tws_nav_next_acb),
-                ("tws_nav_last", gtk.STOCK_GOTO_BOTTOM, _('_Last'), None,
-                 _('Scroll to last line with added trailing white space'),
+                ("tws_nav_last", gtk.STOCK_GOTO_BOTTOM, _("_Last"), None,
+                 _("Scroll to last line with added trailing white space"),
                  self._tws_nav_last_acb),
             ])
         self.tws_nav_buttonbox = gutils.ActionHButtonBox([self._action_group],
@@ -181,7 +181,7 @@ class TextWidget(gtk.VBox):
         if not self._save_file:
             return
         try:
-            fobj = open(self._save_file, 'w')
+            fobj = open(self._save_file, "w")
         except IOError as edata:
             strerror = edata[1]
             dialogue.report_any_problems(CmdResult.error(stderr=strerror))
@@ -225,7 +225,7 @@ class TextWidget(gtk.VBox):
             suggestion = self._save_file
         else:
             suggestion = os.getcwd()
-        self._save_file = dialogue.ask_file_name(_('Save as ...'), suggestion=suggestion, existing=False)
+        self._save_file = dialogue.ask_file_name(_("Save as ..."), suggestion=suggestion, existing=False)
         self._save_to_file()
     def get_action_button_box(self, a_name_list):
         return gutils.ActionHButtonBox([self._action_group], action_name_list=a_name_list)
@@ -257,7 +257,7 @@ class DiffDisplay(TextWidget):
 
 class GenericDiffNotebook(gtk.Notebook):
     class TWSDisplay(TextWidget.TwsLineCountDisplay):
-        LABEL = _('File(s) that add TWS: ')
+        LABEL = _("File(s) that add TWS: ")
     def __init__(self, num_strip_levels=1):
         gtk.Notebook.__init__(self)
         self.num_strip_levels = num_strip_levels
@@ -310,7 +310,7 @@ class GenericDiffNotebook(gtk.Notebook):
             self.remove_page(pnum)
         self.tws_display.set_value(num_tws_files)
     def __str__(self):
-        string = ''
+        string = ""
         for diff_plus in self.diff_pluses:
             string += str(diff_plus)
         return string
@@ -346,7 +346,7 @@ class ForFileDialog(dialogue.AmodalDialog):
         if patchname is None:
             patchname = ifce.PM.get_top_patch_for_file(filepath)
         assert patchname is not None
-        title = _('diff: "{0}" in "{1}": {2}').format(filepath, patchname, os.getcwd())
+        title = _("diff: \"{0}\" in \"{1}\": {2}").format(filepath, patchname, os.getcwd())
         flags = gtk.DIALOG_DESTROY_WITH_PARENT
         dialogue.AmodalDialog.__init__(self, title, None, flags, ())
         self.widget = self.Widget(filepath, patchname)
@@ -369,7 +369,7 @@ class CombinedForFileDialog(dialogue.AmodalDialog):
             diff = ifce.PM.get_file_combined_diff(self.filepath)
             return str(diff)
     def __init__(self, filepath):
-        title = _('combined diff: "{0}": {1}').format(filepath, os.getcwd())
+        title = _("combined diff: \"{0}\": {1}").format(filepath, os.getcwd())
         flags = gtk.DIALOG_DESTROY_WITH_PARENT
         dialogue.AmodalDialog.__init__(self, title, None, flags, ())
         self.widget = self.Widget(filepath)
@@ -384,21 +384,21 @@ class CombinedForFileDialog(dialogue.AmodalDialog):
         dialog.destroy()
 
 def launch_external_diff(file_a, file_b):
-    extdiff = options.get('diff', 'extdiff')
+    extdiff = options.get("diff", "extdiff")
     if not extdiff:
-        return CmdResult.warning(_('No external diff viewer is defined.\n'))
+        return CmdResult.warning(_("No external diff viewer is defined.\n"))
     try:
         runext.run_cmd_in_bgnd([extdiff, file_a, file_b])
     except OSError as edata:
-        return CmdResult.error(stderr=_('Error lanuching external viewer "{0}": {1}\n').format(extdiff, edata.strerror))
+        return CmdResult.error(stderr=_("Error lanuching external viewer \"{0}\": {1}\n").format(extdiff, edata.strerror))
     return CmdResult.ok()
 
 def launch_reconciliation_tool(file_a, file_b, file_c):
-    reconciler = options.get('reconcile', 'tool')
+    reconciler = options.get("reconcile", "tool")
     if not reconciler:
-        return CmdResult.warning(_('No reconciliation tool is defined.\n'))
+        return CmdResult.warning(_("No reconciliation tool is defined.\n"))
     try:
         runext.run_cmd_in_bgnd([reconciler, file_a, file_b, file_c])
     except OSError as edata:
-        return CmdResult.error(stderr=_('Error lanuching reconciliation tool "{0}": {1}\n').format(reconciler, edata.strerror))
+        return CmdResult.error(stderr=_("Error lanuching reconciliation tool \"{0}\": {1}\n").format(reconciler, edata.strerror))
     return CmdResult.ok()
