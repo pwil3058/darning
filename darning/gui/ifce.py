@@ -27,12 +27,9 @@ from . import ws_event
 from . import terminal
 from .console import LOG
 
-TERM = None
+TERM = terminal.Terminal() if terminal.AVAILABLE else None
 
 def init(log=False):
-    global TERM
-    if terminal.AVAILABLE:
-        TERM = terminal.Terminal()
     options.load_global_options()
     result = PM.init()
     options.load_pgnd_options()
