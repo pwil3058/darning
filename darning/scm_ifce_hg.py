@@ -50,8 +50,8 @@ SUGGESTION_TABLE = (
 )
 
 def _run_do_cmd(cmd, input_text=None, sanitize_stderr=None):
-    from .gui import ifce
-    result = runext.run_cmd_in_console(console=ifce.LOG, cmd=cmd, input_text=input_text, sanitize_stderr=sanitize_stderr)
+    from .gui import console
+    result = runext.run_cmd_in_console(console=console.LOG, cmd=cmd, input_text=input_text, sanitize_stderr=sanitize_stderr)
     return result.mapped_for_suggestions(SUGGESTION_TABLE)
 
 NOSUCH_RE = re.compile(_("^.*: No such file or directory$\n?"), re.M)
@@ -150,9 +150,9 @@ class Mercurial(object):
         result = _run_do_cmd(cmd + file_paths + [destn])
         ws_event.notify_events(scm_ifce.E_FILE_ADDED)
         return result
-    @staticmethod
-    def do_import_patch(patch_file_path):
-        ok_to_import, msg = Mercurial.is_ready_for_import()
+    @classmethod
+    def do_import_patch(cls, patch_file_path):
+        ok_to_import, msg = cls.is_ready_for_import()
         if not ok_to_import:
             return CmdResult.error(stderr=msg)
         return _run_do_cmd(["hg", "import", "-q", patch_file_path])

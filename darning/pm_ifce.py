@@ -245,31 +245,31 @@ def check_for_overwrites(destn_file_paths):
     return CmdResult.ok()
 
 def create_dir(dir_path):
-    from . import ifce
-    ifce.LOG.start_cmd("mkdir -p " + dir_path)
+    from .gui import console
+    console.LOG.start_cmd("mkdir -p " + dir_path)
     try:
         os.makedirs(dir_path)
         result = CmdResult.ok()
     except OSError as edata:
         result = CmdResult.error(str(edata))
-    ifce.LOG.end_cmd(result)
+    console.LOG.end_cmd(result)
     return result
 
 def generic_delete_files(file_path_list):
-    from .gui import ifce
+    from .gui import console
     from . import utils
-    ifce.LOG.start_cmd(_('Deleting: {0}').format(utils.quoted_join(file_path_list)))
+    console.LOG.start_cmd(_('Deleting: {0}').format(utils.quoted_join(file_path_list)))
     serr = ""
     for file_path in file_path_list:
         try:
             os.remove(file_path)
-            ifce.LOG.append_stdout(_('Deleted: {0}\n').format(file_path))
+            console.LOG.append_stdout(_('Deleted: {0}\n').format(file_path))
         except os.error as value:
             errmsg = "{0}: {1}\n".format(value[1], file_path)
             serr = errmsg
-            ifce.LOG.append_stderr(errmsg)
+            console.LOG.append_stderr(errmsg)
             break
-    ifce.LOG.end_cmd()
+    console.LOG.end_cmd()
     ws_event.notify_events(E_FILE_DELETED)
     return CmdResult.error(stderr=serr) if serr else CmdResult.ok()
 
@@ -322,10 +322,10 @@ class InterfaceMixin(object):
         return utils.set_file_contents(export_file_name, cls.get_patch_text(patch_name))
     @classmethod
     def do_set_patch_description(cls, patch_name, description, overwrite=False):
-        from .gui import ifce
+        from .gui import console
         result = set_patch_file_description(cls.get_patch_file_path(patch_name), description, overwrite=overwrite)
         if result.is_ok:
-            ifce.LOG.append_entry(_("set description for \"{0}\" patch.\n{1}\n").format(patch_name, description))
+            console.LOG.append_entry(_("set description for \"{0}\" patch.\n{1}\n").format(patch_name, description))
         return result
     @classmethod
     def get_patch_description(cls, patch_name):

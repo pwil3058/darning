@@ -102,9 +102,9 @@ class Git(object):
             utils.ensure_file_dir_exists(target_name)
             with open(target_name, 'w') as fobj:
                 fobj.write(contents)
-    @staticmethod
-    def do_import_patch(patch_filepath):
-        ok_to_import, msg = Git.is_ready_for_import()
+    @classmethod
+    def do_import_patch(cls, patch_filepath):
+        ok_to_import, msg = cls.is_ready_for_import()
         if not ok_to_import:
             return CmdResult.error(stderr=msg)
         epatch = patchlib.Patch.parse_text_file(patch_filepath)

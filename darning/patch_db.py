@@ -363,7 +363,7 @@ class FileData(GenericFileData):
         if olurpatch:
             olurpatch.files[self.path]._copy_refreshed_version_to(self.cached_orig_path)
         elif self.path in overlaps.uncommitted:
-            scm_ifce.copy_clean_version_to(self.path, self.cached_orig_path)
+            scm_ifce.get_ifce().copy_clean_version_to(self.path, self.cached_orig_path)
         elif os.path.exists(self.path):
             # We'll try to preserve links when we pop patches
             # so we move the file to the cached originals' directory and then make
@@ -1497,7 +1497,7 @@ def get_outstanding_changes_below_top():
                 if applied_patch.files[apfile].needs_refresh():
                     unrefreshed[apfile] = applied_patch
             skip_set |= apfiles_set
-    uncommitted = set(scm_ifce.get_files_with_uncommitted_changes()) - skip_set
+    uncommitted = set(scm_ifce.get_ifce().get_files_with_uncommitted_changes()) - skip_set
     return OverlapData(unrefreshed=unrefreshed, uncommitted=uncommitted)
 
 def get_overlap_data(filepaths, patch=None):
@@ -1511,7 +1511,7 @@ def get_overlap_data(filepaths, patch=None):
     if not filepaths:
         return OverlapData()
     applied_patches = _DB.applied_patches if patch is None else _DB.applied_patches[:_DB.applied_patches.index(patch)]
-    uncommitted = set(scm_ifce.get_files_with_uncommitted_changes(filepaths))
+    uncommitted = set(scm_ifce.get_ifce().get_files_with_uncommitted_changes(filepaths))
     remaining_files = set(filepaths)
     unrefreshed = {}
     for applied_patch in reversed(applied_patches):
@@ -2377,13 +2377,13 @@ def do_export_patch_as(patchname, export_filename, force=False, overwrite=False,
 
 def do_scm_absorb_applied_patches(force=False, with_timestamps=False):
     assert is_writable()
-    if not scm_ifce.in_valid_pgnd:
+    if not scm_ifce.get_ifce().in_valid_pgnd:
         RCTX.stderr.write(_('Sources not under control of known SCM\n'))
         return CmdResult.ERROR
     if get_applied_patch_count() == 0:
         RCTX.stderr.write(_('There are no patches applied.\n'))
         return CmdResult.ERROR
-    is_ready, msg = scm_ifce.is_ready_for_import()
+    is_ready, msg = scm_ifce.get_ifce().is_ready_for_import()
     if not is_ready:
         RCTX.stderr.write(_(msg))
         return CmdResult.ERROR
@@ -2434,7 +2434,7 @@ def do_scm_absorb_applied_patches(force=False, with_timestamps=False):
     ret_code = CmdResult.OK
     count = 0
     for patch_file_name in patch_file_names:
-        result = scm_ifce.do_import_patch(patch_file_name)
+        result = scm_ifce.get_ifce().do_import_patch(patch_file_name)
         RCTX.stdout.write(result.stdout)
         RCTX.stderr.write(result.stderr)
         if result.ecode != 0:

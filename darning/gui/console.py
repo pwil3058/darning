@@ -20,12 +20,14 @@ import gtk
 import pango
 
 from .. import runext
+from ..utils import singleton
 
 from . import dialogue
 from . import gutils
 from . import textview
 from . import terminal
 
+@singleton
 class ConsoleLog(textview.Widget):
     def __init__(self, width_in_chars=81, fdesc=None):
         textview.Widget.__init__(self, width_in_chars=width_in_chars, fdesc=fdesc)
@@ -90,6 +92,7 @@ class ConsoleLog(textview.Widget):
         while gtk.events_pending():
             gtk.main_iteration(False)
 
+@singleton
 class ConsoleLogWidget(gtk.VBox, dialogue.BusyIndicatorUser):
     def __init__(self, busy_indicator=None):
         gtk.VBox.__init__(self)

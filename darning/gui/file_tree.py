@@ -37,6 +37,7 @@ from . import ws_event
 from . import icons
 from . import text_edit
 from . import auto_update
+from . import console
 
 def _check_if_force(result):
     return dialogue.ask_force_or_cancel(result) == dialogue.Response.FORCE
@@ -485,7 +486,7 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
         self._edit_named_files_extern(self.get_selected_filepaths())
     def create_new_file(self, new_file_name, open_for_edit=False):
         self.show_busy()
-        result = os_create_file(new_file_name, ifce.LOG)
+        result = os_create_file(new_file_name, console.LOG)
         self.unshow_busy()
         dialogue.report_any_problems(result)
         if open_for_edit:
@@ -511,21 +512,21 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
         else:
             dialog.destroy()
     def delete_files(self, file_list):
-        if ifce.LOG:
-            ifce.LOG.start_cmd(_('Deleting: {0}').format(utils.quoted_join(file_list)))
+        if console.LOG:
+            console.LOG.start_cmd(_('Deleting: {0}').format(utils.quoted_join(file_list)))
         serr = ""
         for filename in file_list:
             try:
                 os.remove(filename)
-                if ifce.LOG:
-                    ifce.LOG.append_stdout(_('Deleted: {0}\n').format(filename))
+                if console.LOG:
+                    console.LOG.append_stdout(_('Deleted: {0}\n').format(filename))
             except os.error as value:
                 errmsg = ("%s: %s" + os.linesep) % (value[1], filename)
                 serr += errmsg
-                if ifce.LOG:
-                    ifce.LOG.append_stderr(errmsg)
-        if ifce.LOG:
-            ifce.LOG.end_cmd()
+                if console.LOG:
+                    console.LOG.append_stderr(errmsg)
+        if console.LOG:
+            console.LOG.end_cmd()
         ws_event.notify_events(fsdb.E_FILE_DELETED)
         return CmdResult.error("", serr) if serr else CmdResult.ok()
     def _delete_named_files(self, file_list, ask=True):
