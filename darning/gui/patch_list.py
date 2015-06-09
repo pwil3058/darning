@@ -263,7 +263,7 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
         condns = get_applied_condns(self.seln)
         condns |= ws_actions.get_in_pm_pgnd_condns()
         self.action_groups.update_condns(condns)
-    def _repopulate_list_cb(self, _arg=None):
+    def _repopulate_list_cb(self, **kwargs):
         self.show_busy()
         self.repopulate_list()
         self.unshow_busy()
@@ -703,7 +703,7 @@ class ImportPatchDialog(dialogue.Dialog):
             if strip_level == 0:
                 return
             self.strip_level_buttons[0].set_active(True)
-    def _strip_level_toggle_cb(self, _widget, _arg=None):
+    def _strip_level_toggle_cb(self, _widget, *args,**kwargs):
         self.update_file_list()
 
 class FoldPatchDialog(ImportPatchDialog):
@@ -809,13 +809,13 @@ class RestorePatchDialog(dialogue.Dialog):
     def get_as_name(self):
         return self.as_name.get_text()
 
-def _update_class_indep_pushable_cb(_arg=None):
+def _update_class_indep_pushable_cb(**kwargs):
     condns = get_pushable_condns()
     actions.CLASS_INDEP_AGS.update_condns(condns)
 
 ws_event.add_notification_cb(ws_event.CHANGE_WD|ws_event.PATCH_CHANGES, _update_class_indep_pushable_cb)
 
-def _update_class_indep_absorbable_cb(_arg=None):
+def _update_class_indep_absorbable_cb(**kwargs):
     condns = actions.MaskedCondns(AC_ALL_APPLIED_REFRESHED if ifce.PM.all_applied_patches_refreshed() else 0, AC_ALL_APPLIED_REFRESHED)
     actions.CLASS_INDEP_AGS.update_condns(condns)
 
@@ -994,12 +994,12 @@ def pop_top_patch_acb(_arg):
         break
     return result.is_ok
 
-def pop_all_patches_acb(_arg=None):
+def pop_all_patches_acb(*args,**kwargs):
     while ifce.PM.is_poppable():
         if not pop_top_patch_acb(None):
             break
 
-def push_all_patches_acb(_arg=None):
+def push_all_patches_acb(*args,**kwargs):
     while ifce.PM.is_pushable():
         if not push_next_patch_acb(None):
             break

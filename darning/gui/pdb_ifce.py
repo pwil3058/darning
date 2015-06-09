@@ -155,7 +155,7 @@ def get_selected_guards():
         return set()
     return patch_db.get_selected_guards()
 
-class PatchListData(object):
+class PatchListDataOld(object):
     def __init__(self, **kwargs):
         self._patches_data = get_all_patches_data()
         self._selected_guards = get_selected_guards()
@@ -175,8 +175,8 @@ class PatchListData(pm_ifce.PatchListData):
         selected_guards = get_selected_guards()
         # the only thing that can really change unexpectably is the patch state BUT ...
         for patch_data in patches_data:
-            h.update("".join(patch_data))
-        h.update("".join(selected_guards))
+            h.update(str(patch_data))
+        h.update(str(selected_guards))
         return (patches_data, selected_guards)
 
 def get_patch_list_data():
@@ -205,13 +205,13 @@ def get_status_deco(status):
 def get_status_icon(status, is_dir):
     import gtk
     from . import icons
-    if isdir:
+    if is_dir:
         return gtk.STOCK_DIRECTORY
-    elif data.status.validity == patch_db.FileData.Validity.REFRESHED:
+    elif status.validity == patch_db.FileData.Validity.REFRESHED:
         return icons.STOCK_FILE_REFRESHED
-    elif data.status.validity == patch_db.FileData.Validity.NEEDS_REFRESH:
+    elif status.validity == patch_db.FileData.Validity.NEEDS_REFRESH:
         return icons.STOCK_FILE_NEEDS_REFRESH
-    elif data.status.validity == patch_db.FileData.Validity.UNREFRESHABLE:
+    elif status.validity == patch_db.FileData.Validity.UNREFRESHABLE:
         return icons.STOCK_FILE_UNREFRESHABLE
     else:
         return gtk.STOCK_FILE
@@ -237,6 +237,7 @@ class PatchFileDb(fsdb.GenericChangeFileDb):
         fsdb.GenericChangeFileDb.__init__(self)
     @property
     def is_current(self):
+        import hashlib
         h = hashlib.sha1()
         self._get_patch_data_text(h)
         return h.digest() == self._db_hash_digest

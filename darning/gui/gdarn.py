@@ -115,5 +115,5 @@ class Darning(gtk.Window, dialogue.BusyIndicator, ws_actions.AGandUIManager):
         pass
     def _update_title(self):
         self.set_title("gdarn: %s" % utils.path_rel_home(os.getcwd()))
-    def _change_pgnd_ncb(self, _arg=None):
+    def _change_pgnd_ncb(self, *args,**kwargs):
         self._update_title()

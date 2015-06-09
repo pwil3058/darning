@@ -16,6 +16,8 @@
 '''Widget to display a complete patch'''
 
 import os
+import hashlib
+
 import gtk
 
 from .. import patch_db

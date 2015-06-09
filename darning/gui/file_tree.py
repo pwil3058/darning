@@ -107,7 +107,7 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
             for label in ["style", "foreground", "status", "related_file_data", "icon"]:
                 self.set_value_named(fsobj_iter, label, getattr(to_tuple, label))
     # This is not a method but a function within the FileTreeView namespace
-    def _format_file_name_crcb(_column, cell_renderer, store, tree_iter, _arg=None):
+    def _format_file_name_crcb(_column, cell_renderer, store, tree_iter, *args,**kwargs):
         name = store.get_value_named(tree_iter, "name")
         if name is None:
             cell_renderer.set_property("text", _("<empty>"))
@@ -303,7 +303,7 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
         self.hide_clean_action.set_active(new_value)
         self._update_dir('', None)
     @staticmethod
-    def _dirs_not_selectable(selection, model, path, is_selected, _arg=None):
+    def _dirs_not_selectable(selection, model, path, is_selected, *args,**kwargs):
         if not is_selected:
             return not model.get_value_named(model.get_iter(path), 'is_dir')
         return True

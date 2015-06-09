@@ -77,7 +77,7 @@ class Git(object):
             cmd += files
         return [line[3:] for line in runext.run_get_cmd(cmd).splitlines()]
     @staticmethod
-    def get_file_db():
+    def get_ws_file_db():
         '''
         Get the SCM view of the current directory
         '''

@@ -163,7 +163,7 @@ class AliasPathTable(table.Table):
             data = self.model.Row(Path=self._abbrev_path(path), Alias=alias)
             self.model.append(data)
             self.save_to_file()
-    def save_to_file(self, _arg=None):
+    def save_to_file(self, *args,**kwargs):
         ap_list = self.get_contents()
         self._write_list_to_file(ap_list)
     def get_selected_ap(self):
