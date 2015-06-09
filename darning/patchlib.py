@@ -220,6 +220,9 @@ class _Lines(object):
             self.lines = list(contents)
     def __str__(self):
         return ''.join(self.lines)
+    def __iter__(self):
+        for line in self.lines:
+            yield line
     def append(self, data):
         if isinstance(data, str):
             self.lines += data.splitlines(True)
@@ -250,6 +253,10 @@ class Header(object):
             self.diffstat_lines = _Lines()
     def __str__(self):
         return self.get_comments() + self.get_description() + self.get_diffstat()
+    def iter_lines(self):
+        for lines in [self.comment_lines, self.description_lines, self.diffstat_lines]:
+            for line in lines:
+                yield line
     def get_comments(self):
         return str(self.comment_lines)
     def get_description(self):
@@ -599,6 +606,12 @@ class Diff(object):
         self.hunks = list() if hunks is None else hunks
     def __str__(self):
         return str(self.header) + ''.join([str(hunk) for hunk in self.hunks])
+    def iter_lines(self):
+        for line in self.header:
+            yield line
+        for hunk in self.hunks:
+            for line in hunk:
+                yield line
     def fix_trailing_whitespace(self):
         bad_lines = list()
         for hunk in self.hunks:
@@ -934,6 +947,15 @@ class DiffPlus(object):
             return str(self.preambles) + str(self.diff) + str(self.trailing_junk)
         else:
             return str(self.preambles) + str(self.trailing_junk)
+    def iter_lines(self):
+        for preamble in self.preambles:
+            for line in preamble:
+                yield line
+        if self.diff:
+            for line in self.diff.iter_lines():
+                yield line
+        for line in self.trailing_junk:
+            yield line
     def get_preamble_for_type(self, preamble_type):
         index = self.preambles.get_index_for_type(preamble_type)
         return None if index is None else self.preambles[index]
@@ -1096,6 +1118,12 @@ class Patch(object):
         for diff_plus in self.diff_pluses:
             string += str(diff_plus)
         return string
+    def iter_lines(self):
+        for line in self.header:
+            yield line
+        for diff_plus in self.diff_pluses:
+            for line in diff_plus:
+                yield line
     def get_file_paths(self, strip_level=None):
         strip_level = self._adjusted_strip_level(strip_level)
         return [diff_plus.get_file_path(strip_level=strip_level) for diff_plus in self.diff_pluses]

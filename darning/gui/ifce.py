@@ -1,5 +1,5 @@
-### Copyright (C) 2011 Peter Williams <peter_ono@users.sourceforge.net>
-###
+### Copyright (C) 2007-2015 Peter Williams <pwil3058@gmail.com>
+
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
 ### the Free Software Foundation; version 2 of the License only.
@@ -17,45 +17,82 @@ import os
 import email.utils
 
 from ..cmd_result import CmdResult
+from ..config_data import APP_NAME
 
-from .. import scm_ifce as SCM
+from .. import scm_ifce
 from .. import utils
 from .. import options
 
 from . import pdb_ifce as PM
 from . import ws_event
-from . import terminal
 from .console import LOG
 
-TERM = terminal.Terminal() if terminal.AVAILABLE else None
+E_NEW_SCM, E_NEW_PM, E_NEW_SCM_OR_PM = ws_event.new_event_flags_and_mask(2)
+
+E_CHANGE_WD = ws_event.new_event_flag()
+
+SCM = scm_ifce.get_ifce()
+_cached_pm_in_valid_pgnd = PM.in_valid_pgnd
+
+CURDIR = os.getcwd()
 
 def init(log=False):
+    global SCM
+    global CURDIR
+    global _cached_pm_in_valid_pgnd
     options.load_global_options()
     result = PM.init()
+    _cached_pm_in_valid_pgnd = PM.in_valid_pgnd
+    SCM = scm_ifce.get_ifce()
+    curdir = os.getcwd()
     options.load_pgnd_options()
-    SCM.reset_back_end()
     if log or PM.in_valid_pgnd:
-        LOG.start_cmd('gdarn {0}\n'.format(os.getcwd()))
+        LOG.start_cmd(APP_NAME + " {0}\n".format(os.getcwd()))
         LOG.end_cmd(result)
-    ws_event.notify_events(ws_event.CHANGE_WD)
+    # NB: need to send either E_CHANGE_WD or E_NEW_SCM_OR_PM to ensure action sates get set
+    if not utils.samefile(CURDIR, curdir):
+        CURDIR = curdir
+        ws_event.notify_events(E_CHANGE_WD, new_wd=curdir)
+    else:
+        ws_event.notify_events(E_NEW_SCM_OR_PM)
     return result
 
 def close():
     PM.close_db()
 
 def chdir(new_dir=None):
-    old_wd = os.getcwd()
+    global SCM
+    global CURDIR
+    global _cached_pm_in_valid_pgnd
     result = PM.do_chdir(new_dir)
+    _cached_pm_in_valid_pgnd = PM.in_valid_pgnd
     options.reload_pgnd_options()
-    SCM.reset_back_end()
-    ws_event.notify_events(ws_event.CHANGE_WD)
-    new_wd = os.getcwd()
-    if not utils.samefile(new_wd, old_wd):
-        if TERM:
-            TERM.set_cwd(new_wd)
-    LOG.start_cmd(_('New Playground: {0}\n').format(new_wd))
+    SCM  = scm_ifce.get_ifce()
+    CURDIR = os.getcwd()
+    LOG.start_cmd(_('New Playground: {0}\n').format(CURDIR))
     LOG.end_cmd(result)
+    ws_event.notify_events(E_CHANGE_WD, new_wd=CURDIR)
     return result
+
+def check_interfaces(args):
+    global SCM
+    global CURDIR
+    global _cached_pm_in_valid_pgnd
+    events = 0
+    if _cached_pm_in_valid_pgnd != PM.in_valid_pgnd:
+        _cached_pm_in_valid_pgnd = PM.in_valid_pgnd
+        events |= E_NEW_PM
+        options.load_pgnd_options()
+    scm = scm_ifce.get_ifce()
+    if scm != SCM:
+        SCM = scm
+        events |= E_NEW_SCM
+    curdir = os.getcwd()
+    if not utils.samefile(CURDIR, curdir):
+        args["new_wd"] = curdir
+        CURDIR = curdir
+        return E_CHANGE_WD # don't send ifce changes and wd change at the same time
+    return events
 
 DEFAULT_NAME_EVARS = ["GIT_AUTHOR_NAME", "GECOS"]
 DEFAULT_EMAIL_VARS = ["GIT_AUTHOR_EMAIL", "EMAIL_ADDRESS"]

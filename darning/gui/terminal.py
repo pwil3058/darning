@@ -13,19 +13,25 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
+import os
+
 import gtk
 
-from . import dialogue
 from .. import utils
+
+from . import dialogue
+from . import ws_event
 
 try:
     import vte
 
     AVAILABLE = True
 
-    class Terminal(gtk.HBox):
+    class Terminal(gtk.HBox, ws_event.Listener):
         def __init__(self):
+            from . import ifce
             gtk.HBox.__init__(self, False, 4)
+            ws_event.Listener.__init__(self)
             self._vte = vte.Terminal()
             self._vte.set_size(self._vte.get_column_count(), 10)
             self._vte.set_size_request(200, 50)
@@ -38,6 +44,9 @@ try:
             self.pack_start(scrbar, False, False, 0)
             self.show_all()
             self._pid = self._vte.fork_command()
+            self.add_notification_cb(ifce.E_CHANGE_WD, self._cwd_cb)
+        def _cwd_cb(self, **kwargs):
+            self.set_cwd(os.getcwd())
         def set_cwd(self, path):
             self._vte.feed_child("cd %s\n" % utils.path_rel_home(path))
         def _button_press_cb(self, widget, event):

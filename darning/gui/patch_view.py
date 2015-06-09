@@ -59,7 +59,7 @@ class Widget(gtk.VBox):
     def __init__(self, patchname):
         gtk.VBox.__init__(self)
         self.patchname = patchname
-        self.epatch = patch_db.get_textpatch(self.patchname)
+        self.epatch = self.get_epatch()
         #
         self.status_icon = gtk.image_new_from_stock(self.status_icons[self.epatch.state], gtk.ICON_SIZE_BUTTON)
         self.status_box = gtk.HBox()
@@ -81,12 +81,6 @@ class Widget(gtk.VBox):
         self.header_nbook.popup_enable()
         pane.add1(self._framed(_('Header'), self.header_nbook))
         #
-        self.comments = textview.Widget(aspect_ratio=0.1)
-        self.comments.set_contents(self.epatch.get_comments())
-        self.comments.view.set_editable(False)
-        self.comments.view.set_cursor_visible(False)
-        self.header_nbook.append_page(self.comments, gtk.Label(_('Comments')))
-        #
         self.description = textview.Widget()
         self.description.set_contents(self.epatch.get_description())
         self.description.view.set_editable(False)
@@ -99,15 +93,41 @@ class Widget(gtk.VBox):
         self.diffstats.view.set_cursor_visible(False)
         self.header_nbook.append_page(self.diffstats, gtk.Label(_('Diff Statistics')))
         #
-        self.diffs_nbook = gtk.Notebook()
-        self.diffs_nbook.set_scrollable(True)
-        self.diffs_nbook.popup_enable()
+        self.comments = textview.Widget(aspect_ratio=0.1)
+        self.comments.set_contents(self.epatch.get_comments())
+        self.comments.view.set_editable(False)
+        self.comments.view.set_cursor_visible(False)
+        self.header_nbook.append_page(self.comments, gtk.Label(_('Comments')))
+        #
+        self.diffs_nbook = diff.DiffPlusNotebook(self.epatch.diff_pluses)
         pane.add2(self._framed(_('File Diffs'), self.diffs_nbook))
-        self.diff_displays = {}
-        self._populate_pages()
-        self.update()
         #
         self.show_all()
+    def get_patch_text(self):
+        # handle the case where our patch file gets deleted
+        try:
+            return ifce.PM.get_patch_text(self.patchname)
+        except IOError as edata:
+            if edata.errno == 2:
+                return str(self.epatch)
+            else:
+                raise
+    def get_epatch(self):
+        text = self.get_patch_text()
+        self.text_digest = hashlib.sha1(text).digest()
+        return self._create_epatch(text)
+    @property
+    def is_applied(self):
+        return ifce.PM.is_patch_applied(self.patchname)
+    def _create_epatch(self, text):
+        epatch = patchlib.Patch.parse_text(text)
+        if self.is_applied:
+            epatch.state = const.PatchState.APPLIED_REFRESHED
+        else:
+            epatch.state = const.PatchState.UNAPPLIED
+        for diff_plus in epatch.diff_pluses:
+            diff_plus.validity = None
+        return epatch
     @staticmethod
     def _make_file_label(filepath, validity):
         hbox = gtk.HBox()
@@ -131,26 +151,13 @@ class Widget(gtk.VBox):
         frame = gtk.Frame(label)
         frame.add(widget)
         return frame
-    def _populate_pages(self):
-        existing = set([fpath for fpath in self.diff_displays])
-        for diffplus in self.epatch.diff_pluses:
-            filepath = diffplus.get_file_path(self.epatch.num_strip_levels)
-            tab_label = self._make_file_label(filepath, diffplus.validity)
-            menu_label = self._make_file_label(filepath, diffplus.validity)
-            if filepath in existing:
-                self.diff_displays[filepath].update(diffplus)
-                self.diffs_nbook.set_tab_label(self.diff_displays[filepath], tab_label)
-                self.diffs_nbook.set_menu_label(self.diff_displays[filepath], menu_label)
-                existing.remove(filepath)
-            else:
-                self.diff_displays[filepath] = DiffDisplay(diffplus)
-                self.diffs_nbook.append_page_menu(self.diff_displays[filepath], tab_label, menu_label)
-        for gone in existing:
-            gonedd = self.diff_displays.pop(gone)
-            pnum = self.diffs_nbook.page_num(gonedd)
-            self.diffs_nbook.remove_page(pnum)
     def update(self):
-        self.epatch = patch_db.get_textpatch(self.patchname)
+        text = self.get_patch_text()
+        digest = hashlib.sha1(text).digest()
+        if digest == self.text_digest:
+            return
+        self.text_digest = digest
+        self.epatch = self._create_epatch(text)
         self.status_box.remove(self.status_icon)
         self.status_icon = gtk.image_new_from_stock(self.status_icons[self.epatch.state], gtk.ICON_SIZE_BUTTON)
         self.status_box.add(self.status_icon)
@@ -160,40 +167,68 @@ class Widget(gtk.VBox):
         self.comments.set_contents(self.epatch.get_comments())
         self.description.set_contents(self.epatch.get_description())
         self.diffstats.set_contents(self.epatch.get_header_diffstat())
-        self._populate_pages()
+        self.diffs_nbook.set_diff_pluses(self.epatch.diff_pluses)
 
 class Dialogue(dialogue.AmodalDialog):
+    AUTO_UPDATE_TD = gutils.TimeOutController.ToggleData("auto_update_toggle", _('Auto _Update'), _('Turn data auto update on/off'), gtk.STOCK_REFRESH)
     def __init__(self, patchname):
-        title = _('gdarn: Patch "{0}" : {1}').format(patchname, utils.path_rel_home(os.getcwd()))
+        from ..config_data import APP_NAME
+        title = _(APP_NAME + ": Patch \"{0}\" : {1}").format(patchname, utils.path_rel_home(os.getcwd()))
         dialogue.AmodalDialog.__init__(self, title=title, parent=dialogue.main_window, flags=gtk.DIALOG_DESTROY_WITH_PARENT)
         self.widget = Widget(patchname)
         self.vbox.pack_start(self.widget, expand=True, fill=True)
         self.refresh_action = gtk.Action('patch_view_refresh', _('_Refresh'), _('Refresh this patch in database.'), icons.STOCK_REFRESH_PATCH)
         self.refresh_action.connect('activate', self._refresh_acb)
-        self.refresh_action.set_sensitive(self.widget.epatch.state != patch_db.PatchState.UNAPPLIED)
+        self.refresh_action.set_sensitive(ifce.PM.get_top_patch() == self.widget.patchname)
         refresh_button = gutils.ActionButton(self.refresh_action)
+        self.auc = gutils.TimeOutController(toggle_data=self.AUTO_UPDATE_TD, function=self._update_display_cb, is_on=False, interval=10000)
+        self.action_area.pack_start(gutils.ActionCheckButton(self.auc.toggle_action))
         self.action_area.pack_start(refresh_button)
-        self._save_file = utils.convert_patchname_to_filename(patchname)
-        self.save_action = gtk.Action('patch_view_save', _('_Export'), _('Export patch to text file.'), gtk.STOCK_SAVE_AS)
+        self._save_file = ifce.PM.get_patch_file_path(patchname)
+        self.save_action = gtk.Action('patch_view_save', _('_Export'), _('Export current content to text file.'), gtk.STOCK_SAVE_AS)
         self.save_action.connect('activate', self._save_as_acb)
         save_button = gutils.ActionButton(self.save_action)
         self.action_area.pack_start(save_button)
         self.add_buttons(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
         self.connect("response", self._close_cb)
-        self.add_notification_cb(ws_event.PATCH_CHANGES|ws_event.FILE_CHANGES, self._update_display_cb)
+        self.add_notification_cb(pm_ifce.E_PATCH_LIST_CHANGES|pm_ifce.E_FILE_CHANGES, self._update_display_cb)
         self.show_all()
     def _close_cb(self, dialog, response_id):
+        self.auc.toggle_action.set_active(False)
         dialog.destroy()
-    def _update_display_cb(self, _arg=None):
+    def _update_display_cb(self, **kwargs):
         self.show_busy()
         self.widget.update()
-        self.refresh_action.set_sensitive(self.widget.epatch.state != patch_db.PatchState.UNAPPLIED)
+        self.refresh_action.set_sensitive(ifce.PM.get_top_patch() == self.widget.patchname)
         self.unshow_busy()
     def _refresh_acb(self, _action):
         self.show_busy()
-        result = ifce.PM.do_refresh_patch(self.widget.patchname)
+        result = ifce.PM.do_refresh(self.widget.patchname)
         self.unshow_busy()
         dialogue.report_any_problems(result)
     def _save_as_acb(self, _action):
-        from . import patch_list
-        patch_list.do_export_named_patch(self, self.widget.patchname, suggestion=self._save_file, busy_indicator=self)
+        from . import recollect
+        suggestion = os.path.basename(utils.convert_patchname_to_filename(self.widget.patchname))
+        export_filepath = os.path.join(recollect.get("export", "last_directory"), suggestion)
+        while True:
+            export_filepath = dialogue.ask_file_name(_("Export as ..."), suggestion=export_filepath, existing=False)
+            if export_filepath is None:
+                return
+            if os.path.exists(export_filepath):
+                from ..cmd_result import CmdResult
+                problem = CmdResult.error(stderr=_("A file of that name already exists!!")) | CmdResult.SUGGEST_OVERWRITE_OR_RENAME
+                response = dialogue.ask_rename_overwrite_or_cancel(problem)
+                if response == gtk.RESPONSE_CANCEL:
+                    return
+                elif response == dialogue.Response.RENAME:
+                    continue
+                else:
+                    assert response == dialogue.Response.OVERWRITE
+                    break
+            else:
+                break
+        if export_filepath.startswith(os.pardir):
+            export_filepath = utils.path_rel_home(export_filepath)
+        if export_filepath.startswith(os.pardir):
+            export_filepath = os.path.abspath(export_filepath)
+        dialogue.report_any_problems(utils.set_file_contents(export_filepath, str(self.widget.epatch)))

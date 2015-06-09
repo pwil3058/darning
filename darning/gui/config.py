@@ -398,51 +398,6 @@ def change_pgnd_acb(_arg):
             open_dialog.report_any_problems(result)
     open_dialog.destroy()
 
-_COMBINED_PATCH_FILES_DIGEST = None
-_WD_FILES_DIGEST = None
-_REPO_FILE_STATUS_DIGEST = None
-
-def _get_current_tree_digest():
-    h = hashlib.sha1()
-    for root, dirs, files in os.walk('.'):
-        h.update(root)
-        for f in files:
-            h.update(f)
-    return h.digest()
-
-def auto_update_cb(_arg=None):
-    global _COMBINED_PATCH_FILES_DIGEST
-    global _WD_FILES_DIGEST
-    global _REPO_FILE_STATUS_DIGEST
-    if dialogue.is_busy():
-        return
-    notifiable_events = ws_event.AUTO_UPDATE
-    dialogue.show_busy()
-    cpfd = patch_db.get_combined_patch_files_digest()
-    if cpfd != _COMBINED_PATCH_FILES_DIGEST:
-        notifiable_events |= ws_event.FILE_MOD
-        _COMBINED_PATCH_FILES_DIGEST = cpfd
-    wdfd = _get_current_tree_digest()
-    if wdfd != _WD_FILES_DIGEST:
-        notifiable_events |= ws_event.FILE_CHANGES
-        _WD_FILES_DIGEST = wdfd
-    rfsd = ifce.SCM.get_file_status_digest()
-    if rfsd != _REPO_FILE_STATUS_DIGEST:
-        notifiable_events |= ws_event.FILE_CHANGES
-        _REPO_FILE_STATUS_DIGEST = rfsd
-    ws_event.notify_events(notifiable_events)
-    dialogue.unshow_busy()
-
-AUTO_UPDATE = gutils.RefreshController(
-    toggle_data=gutils.RefreshController.ToggleData(
-        name='config_auto_update',
-        label=_('Auto Update'),
-        tooltip=_('Enable/disable automatic updating of displayed data'),
-        stock_id=gtk.STOCK_REFRESH
-    ),
-    function=auto_update_cb, is_on=True, interval=10000
-)
-
 actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_actions(
     [
         ("config_menu", None, _("_Configuration")),
@@ -451,8 +406,6 @@ actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_actions(
         ("config_allocate_editors", gtk.STOCK_PREFERENCES, _("_Editor Allocation"), "",
          _('Allocate editors to file types'), editor_allocation_acb),
     ])
-
-actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_action(AUTO_UPDATE.toggle_action)
 
 class RepositoryMenu(gtk.MenuItem):
     def __init__(self, label=_("Playgrounds")):

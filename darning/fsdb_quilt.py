@@ -46,23 +46,6 @@ def get_file_path_relative_data(file_path, base_dir_path=None):
     data = CFRD(*os.path.split(os.path.relpath(file_path, os.curdir if base_dir_path is None else base_dir_path)))
     return None if data.sub_dir_relpath.startswith(os.pardir) else data
 
-class WsFileDb(fsdb.GenericSnapshotWsFileDb):
-    class FileDir(fsdb.GenericSnapshotWsFileDb.FileDir):
-        IGNORED_STATUS_SET = set([FSTATUS_IGNORED])
-        CLEAN_STATUS_SET = FSTATUS_CLEAN_SET
-        SIGNIFICANT_DATA_SET = FSTATUS_MODIFIED_SET
-        def _get_initial_status(self):
-            if not os.path.isdir(self._dir_path):
-                return FSTATUS_REMOVED
-            return FSTATUS_MODIFIED if self._file_status_snapshot.status_set else None
-    def _get_file_data_text(self, h):
-        stdout = runext.run_get_cmd(["quilt", "files", "-va"], default="")
-        h.update(stdout)
-        return stdout
-    @staticmethod
-    def _extract_file_status_snapshot(file_data_text):
-        return fsdb.Snapshot({line[2:] : (line[0], None) for line in file_data_text.splitlines() if line[0] in FSTATUS_MODIFIED_SET})
-
 def iterate_quilt_file_data(patch_text):
     if not patch_text:
         return
@@ -81,8 +64,8 @@ def iterate_patchlib_file_data(patch_text):
     for fdata in patchlib.Patch.parse_text(patch_text).iterate_file_paths_plus(1):
         yield (fdata.path, PATCHLIB_TO_STATUS_MAP[fdata.status], fdata.expath)
 
-class TopPatchFileDb(fsdb.GenericChangeFileDb):
-    class FileDir(fsdb.GenericChangeFileDb.FileDir):
+class TopPatchFileDb(fsdb.GenericTopPatchFileDb):
+    class FileDir(fsdb.GenericTopPatchFileDb.FileDir):
         CLEAN_STATUS_SET = frozenset([FSTATUS_MODIFIED, FSTATUS_ADDED, FSTATUS_REMOVED])
         def _calculate_status(self):
             if not self._status_set:
@@ -91,22 +74,11 @@ class TopPatchFileDb(fsdb.GenericChangeFileDb):
                 return  FSTATUS_MODIFIED
             else:
                 return list(self._status_set)[0]
-    def __init__(self):
-        self._top_patch = self._get_top_patch()
-        fsdb.GenericChangeFileDb.__init__(self)
     @staticmethod
-    def _get_top_patch():
-        return runext.run_get_cmd(["quilt", "top"], default=None)
-    @property
-    def is_current(self):
-        if self._get_top_patch() != self._top_patch:
-            # somebody's popped or pushed externally
-            return False
-        h = hashlib.sha1()
-        self._get_patch_data_text(h)
-        return h.digest() == self._db_hash_digest
+    def _get_applied_patch_count():
+        return len(runext.run_get_cmd(["quilt", "applied"], default="").splitlines())
     def _get_patch_data_text(self, h):
-        if self._top_patch is None:
+        if self._applied_patch_count == 0:
             return ""
         patch_status_text = runext.run_get_cmd(["quilt", "files", "-v"], default="")
         h.update(patch_status_text)
@@ -115,24 +87,17 @@ class TopPatchFileDb(fsdb.GenericChangeFileDb):
     def _iterate_file_data(pdt):
         return iterate_quilt_file_data(pdt)
 
-class PatchFileDb(fsdb.GenericChangeFileDb):
+class PatchFileDb(fsdb.GenericPatchFileDb):
     FileDir = TopPatchFileDb.FileDir
     def __init__(self, patch_name):
-        self._patch_name = patch_name
-        self._is_applied = quilt_utils.is_patch_applied(self._patch_name)
-        self._patch_file_path = quilt_utils.get_patch_file_path(self._patch_name)
-        fsdb.GenericChangeFileDb.__init__(self)
-    @property
-    def is_current(self):
-        if quilt_utils.is_patch_applied(self._patch_name) != self._is_applied:
-            # somebody's popped or pushed externally
-            return False
-        h = hashlib.sha1()
-        self._get_patch_data_text(h)
-        return h.digest() == self._db_hash_digest
+        self._patch_file_path = quilt_utils.get_patch_file_path(patch_name)
+        fsdb.GenericPatchFileDb.__init__(self, patch_name=patch_name)
+    @staticmethod
+    def _get_is_applied(patch_name):
+        return quilt_utils.is_patch_applied(patch_name)
     def _get_patch_data_text(self, h):
         if self._is_applied:
-            patch_status_text = runext.run_get_cmd(["quilt", "files", "-v", self._patch_name], default="")
+            patch_status_text = runext.run_get_cmd(["quilt", "files", "-v", self.patch_name], default="")
         else:
             patch_status_text = utils.get_file_contents(self._patch_file_path)
         h.update(patch_status_text)
@@ -142,3 +107,14 @@ class PatchFileDb(fsdb.GenericChangeFileDb):
             return iterate_quilt_file_data(pdt)
         else:
             return iterate_patchlib_file_data(pdt)
+
+class CombinedPatchFileDb(TopPatchFileDb):
+    def _get_patch_data_text(self, h):
+        stdout = runext.run_get_cmd(["quilt", "files", "-va"], default="")
+        h.update(stdout)
+        return stdout
+    @staticmethod
+    def _iterate_file_data(pdt):
+        for line in pdt.splitlines():
+            if line[0] in FSTATUS_MODIFIED_SET:
+                yield (line[2:], line[0], None)

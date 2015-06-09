@@ -103,8 +103,9 @@ class AmodalDialog(Dialog, ws_event.Listener):
         Dialog.__init__(self, title=title, parent=parent, flags=flags, buttons=buttons)
         ws_event.Listener.__init__(self)
         self.set_type_hint(gtk.gdk.WINDOW_TYPE_HINT_NORMAL)
-        self.add_notification_cb(ws_event.CHANGE_WD, self._change_wd_cb)
-    def _change_wd_cb(self, arg=None):
+        from . import ifce
+        self.add_notification_cb(ifce.E_CHANGE_WD, self._change_wd_cb)
+    def _change_wd_cb(self, **kwargs):
         self.destroy()
 
 class MessageDialog(Dialog):
@@ -371,6 +372,8 @@ def ask_dir_name(prompt, suggestion=None, existing=True, parent=None):
             dirname = os.path.dirname(suggestion)
             if dirname:
                 dialog.set_current_folder(dirname)
+    else:
+        dialog.set_current_folder(os.getcwd())
     response = dialog.run()
     if response == gtk.RESPONSE_OK:
         new_dir_name = os.path.relpath(dialog.get_filename())
@@ -394,6 +397,8 @@ def ask_uri_name(prompt, suggestion=None, parent=None):
             dirname = os.path.dirname(suggestion)
             if dirname:
                 dialog.set_current_folder(dirname)
+    else:
+        dialog.set_current_folder(os.getcwd())
     response = dialog.run()
     if response == gtk.RESPONSE_OK:
         uri = os.path.relpath(dialog.get_uri())
@@ -462,7 +467,6 @@ class ReadTextAndToggleDialog(ReadTextDialog):
 
 def get_modified_string(title, prompt, string):
     dialog = ReadTextDialog(title, prompt, string)
-    if dialog.run() == gtk.RESPONSE_OK:
-        string = dialog.entry.get_text()
+    string = dialog.entry.get_text() if dialog.run() == gtk.RESPONSE_OK else ""
     dialog.destroy()
     return string

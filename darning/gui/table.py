@@ -1,5 +1,5 @@
-### Copyright (C) 2007 Peter Williams <peter_ono@users.sourceforge.net>
-###
+### Copyright (C) 2007-2015 Peter Williams <pwil3058@gmail.com>
+
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
 ### the Free Software Foundation; version 2 of the License only.
@@ -39,6 +39,7 @@ TABLE_STATES = \
     [ALWAYS_ON, MODIFIED, NOT_MODIFIED, SELECTION, NO_SELECTION,
      UNIQUE_SELECTION]
 
+# TODO: modify this code to use the new actions model
 class Table(gtk.VBox):
     View = tlview.ListView
     def __init__(self, size_req=None):
@@ -167,19 +168,19 @@ class TableView(tlview.ListView, ws_actions.AGandUIManager, dialogue.BusyIndicat
                 self.seln.unselect_all()
                 return True
         return False
-    def _fetch_contents(self):
+    def _fetch_contents(self, **kwargs):
         assert False, _("Must be defined in child")
-    def _set_contents(self):
+    def _set_contents(self, **kwargs):
         model = self.Model()
-        model.set_contents(self._fetch_contents())
+        model.set_contents(self._fetch_contents(**kwargs))
         self.set_model(model)
         self.columns_autosize()
         self.seln.unselect_all()
-    def set_contents(self):
+    def set_contents(self, **kwargs):
         self.show_busy()
-        self._set_contents()
+        self._set_contents(**kwargs)
         self.unshow_busy()
-    def refresh_contents(self):
+    def refresh_contents(self, **kwargs):
         self.show_busy()
         selected_keys = self.get_selected_keys()
         visible_range = self.get_visible_range()
@@ -191,7 +192,7 @@ class TableView(tlview.ListView, ws_actions.AGandUIManager, dialogue.BusyIndicat
             align = float(middle_offset) / float(length)
             middle = start + middle_offset
             middle_key = self.model.get_value(self.model.get_iter(middle), 0)
-        self._set_contents()
+        self._set_contents(**kwargs)
         for key in selected_keys:
             model_iter = self.model.find_named(lambda x: x[0] == key)
             if model_iter is not None:
@@ -251,10 +252,11 @@ _NEEDS_RESET = 123
 
 class MapManagedTableView(TableView, gutils.MappedManager):
     def __init__(self, busy_indicator=None, size_req=None):
+        from . import ifce
         TableView.__init__(self, busy_indicator=busy_indicator, size_req=size_req)
         gutils.MappedManager.__init__(self)
         self._needs_refresh = True
-        self.add_notification_cb(ws_event.CHANGE_WD, self.reset_contents_if_mapped)
+        self.add_notification_cb(ifce.E_CHANGE_WD, self.reset_contents_if_mapped)
     def map_action(self):
         if self._needs_refresh == _NEEDS_RESET:
             self.show_busy()
@@ -272,12 +274,12 @@ class MapManagedTableView(TableView, gutils.MappedManager):
     def refresh_contents(self):
         TableView.refresh_contents(self)
         self._needs_refresh = False
-    def refresh_contents_if_mapped(self, *_args):
+    def refresh_contents_if_mapped(self, **kwargs):
         if self.is_mapped:
             self.refresh_contents()
         elif not self._needs_refresh:
             self._needs_refresh = True
-    def reset_contents_if_mapped(self, *_args):
+    def reset_contents_if_mapped(self, **kwargs):
         if self.is_mapped:
             self.set_contents()
         else:

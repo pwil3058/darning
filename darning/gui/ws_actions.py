@@ -24,6 +24,8 @@ import gtk
 from . import actions
 from . import ws_event
 from . import ifce
+from .. import scm_ifce
+from .. import pm_ifce
 
 AC_NOT_IN_PM_PGND, AC_IN_PM_PGND, AC_IN_PM_PGND_MUTABLE, AC_IN_PM_PGND_MASK = actions.ActionCondns.new_flags_and_mask(3)
 AC_NOT_IN_SCM_PGND, AC_IN_SCM_PGND, AC_IN_SCM_PGND_MASK = actions.ActionCondns.new_flags_and_mask(2)
@@ -45,34 +47,32 @@ def get_in_scm_pgnd_condns():
 def get_pmic_condns():
     return actions.MaskedCondns(AC_PMIC if ifce.PM.get_in_progress() else AC_NOT_PMIC, AC_PMIC_MASK)
 
-def _update_class_indep_cwd_cb(_arg=None):
-    condns = get_in_pm_pgnd_condns() | get_in_scm_pgnd_condns()
-    actions.CLASS_INDEP_AGS.update_condns(condns)
-
-def _update_class_indep_pgnd_cb(_arg=None):
+def _update_class_indep_pm_pgnd_cb(**kwargs):
     actions.CLASS_INDEP_AGS.update_condns(get_in_pm_pgnd_condns())
 
-def _update_class_indep_pmic_cb(_arg=None):
+def _update_class_indep_scm_pgnd_cb(**kwargs):
+    actions.CLASS_INDEP_AGS.update_condns(get_in_scm_pgnd_condns())
+
+def _update_class_indep_pmic_cb(**kwargs):
     actions.CLASS_INDEP_AGS.update_condns(get_pmic_condns())
 
-ws_event.add_notification_cb(ws_event.CHANGE_WD, _update_class_indep_cwd_cb)
-ws_event.add_notification_cb(ws_event.PGND_MOD, _update_class_indep_pgnd_cb)
-ws_event.add_notification_cb(ws_event.PATCH_PUSH|ws_event.PATCH_POP|ws_event.CHANGE_WD, _update_class_indep_pmic_cb)
+ws_event.add_notification_cb(ifce.E_CHANGE_WD|ifce.E_NEW_SCM, _update_class_indep_scm_pgnd_cb)
+ws_event.add_notification_cb(ifce.E_CHANGE_WD|ifce.E_NEW_PM, _update_class_indep_pm_pgnd_cb)
+ws_event.add_notification_cb(pm_ifce.E_PATCH_STACK_CHANGES|ifce.E_NEW_PM|ifce.E_CHANGE_WD, _update_class_indep_pmic_cb)
 
 class AGandUIManager(actions.CAGandUIManager, ws_event.Listener):
     def __init__(self, selection=None, popup=None):
         actions.CAGandUIManager.__init__(self, selection=selection, popup=popup)
         ws_event.Listener.__init__(self)
-        self.add_notification_cb(ws_event.CHANGE_WD, self.cwd_condns_change_cb)
-        self.add_notification_cb(ws_event.PGND_MOD, self.pgnd_condns_change_cb)
-        self.add_notification_cb(ws_event.PATCH_PUSH|ws_event.PATCH_POP|ws_event.CHANGE_WD, self.pmic_condns_change_cb)
+        self.add_notification_cb(ifce.E_CHANGE_WD|ifce.E_NEW_SCM, self.scm_pgnd_conds_change_cb)
+        self.add_notification_cb(ifce.E_CHANGE_WD|ifce.E_NEW_PM, self.pm_pgnd_condns_change_cb)
+        self.add_notification_cb(pm_ifce.E_PATCH_STACK_CHANGES|ifce.E_NEW_PM|ifce.E_CHANGE_WD, self.pmic_condns_change_cb)
         self.init_action_states()
-    def cwd_condns_change_cb(self, _arg=None):
-        condns = get_in_pm_pgnd_condns() | get_in_scm_pgnd_condns()
-        self.action_groups.update_condns(condns)
-    def pgnd_condns_change_cb(self, _arg=None):
+    def scm_pgnd_conds_change_cb(self, **kwargs):
+        self.action_groups.update_condns(get_in_scm_pgnd_condns())
+    def pm_pgnd_condns_change_cb(self, **kwargs):
         self.action_groups.update_condns(get_in_pm_pgnd_condns())
-    def pmic_condns_change_cb(self, _arg=None):
+    def pmic_condns_change_cb(self, **kwargs):
         self.action_groups.update_condns(get_pmic_condns())
     def init_action_states(self):
         condn_set = get_in_pm_pgnd_condns() | get_in_scm_pgnd_condns() | get_pmic_condns()

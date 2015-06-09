@@ -21,19 +21,21 @@ import os
 from .. import utils
 from .. import patchlib
 from ..patch_db import PatchState
+from .. import pm_ifce
 
+from . import dialogue
+from . import ws_event
+from . import gutils
+from . import icons
 from . import ifce
+from . import text_edit
+from . import tlview
 from . import actions
 from . import ws_actions
-from . import ws_event
-from . import tlview
 from . import table
-from . import icons
-from . import dialogue
-from . import text_edit
 from . import textview
-from . import gutils
 from . import patch_view
+from . import auto_update
 
 AC_POP_POSSIBLE = ws_actions.AC_PMIC
 AC_APPLIED, AC_UNAPPLIED, AC_APPLIED_FLAG, AC_APPLIED_NOT_FLAG, AC_APPLIED_MASK = actions.ActionCondns.new_flags_and_mask(4)
@@ -56,30 +58,33 @@ def get_applied_condns(seln):
     else:
         cond = AC_UNAPPLIED_NOT_BLOCKED
     return actions.MaskedCondns(cond, AC_APPLIED_MASK)
+
 def get_pushable_condns():
     return actions.MaskedCondns(AC_PUSH_POSSIBLE if ifce.PM.is_pushable() else 0, AC_PUSH_POSSIBLE)
 
-class ListView(table.MapManagedTableView):
+class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
+    REPOPULATE_EVENTS = ifce.E_CHANGE_WD|ifce.E_NEW_PM
+    UPDATE_EVENTS = pm_ifce.E_PATCH_LIST_CHANGES|pm_ifce.E_PATCH_REFRESH
     PopUp = '/patches_popup'
     class Model(table.MapManagedTableView.Model):
-        Row = collections.namedtuple('Row',    ['name', 'icon', 'markup'])
+        Row = collections.namedtuple("Row",    ["name", "icon", "markup"])
         types = Row(name=gobject.TYPE_STRING, icon=gobject.TYPE_STRING, markup=gobject.TYPE_STRING,)
         def get_patch_name(self, plist_iter):
-            return self.get_value_named(plist_iter, 'name')
+            return self.get_value_named(plist_iter, "name")
         def get_patch_is_applied(self, plist_iter):
-            return self.get_value_named(plist_iter, 'icon') is not None
+            return self.get_value_named(plist_iter, "icon") is not None
     specification = tlview.ViewSpec(
         properties={
-            'enable-grid-lines' : False,
-            'reorderable' : False,
-            'rules_hint' : False,
-            'headers-visible' : False,
+            "enable-grid-lines" : False,
+            "reorderable" : False,
+            "rules_hint" : False,
+            "headers-visible" : False,
         },
         selection_mode=gtk.SELECTION_SINGLE,
         columns=[
             tlview.ColumnSpec(
-                title=_('Patch List'),
-                properties={'expand': False, 'resizable' : True},
+                title=_("Patch List"),
+                properties={"expand": False, "resizable" : True},
                 cells=[
                     tlview.CellSpec(
                         cell_renderer_spec=tlview.CellRendererSpec(
@@ -89,7 +94,7 @@ class ListView(table.MapManagedTableView):
                         ),
                         properties={},
                         cell_data_function_spec=None,
-                        attributes = {'stock_id' : Model.col_index('icon')}
+                        attributes = {"stock_id" : Model.col_index("icon")}
                     ),
                     tlview.CellSpec(
                         cell_renderer_spec=tlview.CellRendererSpec(
@@ -97,15 +102,16 @@ class ListView(table.MapManagedTableView):
                             expand=False,
                             start=True
                         ),
-                        properties={'editable' : False},
+                        properties={"editable" : False},
                         cell_data_function_spec=None,
-                        attributes = {'markup' : Model.col_index('markup')}
+                        attributes = {"markup" : Model.col_index("markup")}
                     ),
                 ],
             ),
         ]
     )
-    UI_DESCR = '''
+    UI_DESCR = \
+    """
     <ui>
       <menubar name="patch_list_menubar">
         <menu name="patch_list_menu" action="menu_patch_list">
@@ -139,7 +145,7 @@ class ListView(table.MapManagedTableView):
         </placeholder>
       </popup>
     </ui>
-    '''
+    """
     status_icons = {
         PatchState.UNAPPLIED : None,
         PatchState.APPLIED_REFRESHED : icons.STOCK_APPLIED,
@@ -161,10 +167,14 @@ class ListView(table.MapManagedTableView):
             return markup
     def __init__(self, busy_indicator=None, size_req=None):
         self.last_import_dir = None
+        self._hash_data = None
+        self._applied_count = 0
+        auto_update.AutoUpdater.__init__(self)
         table.MapManagedTableView.__init__(self, busy_indicator=busy_indicator, size_req=size_req)
         self.get_selection().connect("changed", self._selection_changed_cb)
-        self.add_notification_cb(ws_event.CHANGE_WD, self._repopulate_list_cb)
-        self.add_notification_cb(ws_event.PATCH_CHANGES|ws_event.FILE_CHANGES, self._update_list_cb)
+        self.add_notification_cb(self.REPOPULATE_EVENTS, self._repopulate_list_cb)
+        self.add_notification_cb(self.UPDATE_EVENTS, self._update_list_cb)
+        self.register_auto_update_cb(self._auto_update_list_cb)
         self.repopulate_list()
     def populate_action_groups(self):
         table.MapManagedTableView.populate_action_groups(self)
@@ -218,19 +228,32 @@ class ListView(table.MapManagedTableView):
                  _('Fold the selected patch into the top applied patch.'), self.do_fold_patch_acb),
             ])
     def _selection_changed_cb(self, selection):
+        # This callback is needed to process applied/unapplied state
+        # self.action_groups' callback handles the other selection conditions
         self.action_groups.update_condns(get_applied_condns(self.seln))
     def get_selected_patch(self):
         store, store_iter = self.seln.get_selected()
         return None if store_iter is None else store.get_patch_name(store_iter)
-    def _update_list_cb(self, _arg=None):
-        self.refresh_contents()
-    def _fetch_contents(self):
-        patch_data_list = ifce.PM.get_all_patches_data()
-        selected = ifce.PM.get_selected_guards()
+    def _update_list_cb(self, **kwargs):
+        self.refresh_contents(**kwargs)
+    def _auto_update_list_cb(self, events_so_far, args):
+        if (events_so_far & (self.REPOPULATE_EVENTS|self.UPDATE_EVENTS)):
+            return 0
+        napplied = ifce.PM.get_applied_patch_count()
+        if napplied < self._applied_count:
+            return pm_ifce.E_POP
+        elif napplied > self._applied_count:
+            return pm_ifce.E_PUSH
+        elif napplied != 0 and not self._pld.is_current:
+            args["pld_reset_only"] = True
+            return pm_ifce.E_PATCH_LIST_CHANGES
+        return 0
+    def _fetch_contents(self, pld_reset_only=False, **kwargs):
+        self._pld = self._pld.reset() if pld_reset_only else ifce.PM.get_patch_list_data()
         contents = []
-        for patch_data in patch_data_list:
+        for patch_data in self._pld.iter_patches():
             icon = self.status_icons[patch_data.state]
-            markup = self.patch_markup(patch_data, selected)
+            markup = self.patch_markup(patch_data, self._pld.selected)
             contents.append([patch_data.name, icon, markup])
         condns = get_pushable_condns()
         self.action_groups.update_condns(condns)

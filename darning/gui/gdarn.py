@@ -28,6 +28,7 @@ from . import ws_event
 from . import patch_list
 from . import file_tree_managed
 from . import file_tree_cs
+from . import terminal
 
 class Darning(gtk.Window, dialogue.BusyIndicator, ws_actions.AGandUIManager):
     count = 0
@@ -101,10 +102,10 @@ class Darning(gtk.Window, dialogue.BusyIndicator, ws_actions.AGandUIManager):
         plist.set_size_request(280, 280)
         phpane.add2(plist)
         hpane.add2(phpane)
-        if ifce.TERM:
+        if terminal.AVAILABLE:
             nbook = gtk.Notebook()
             nbook.append_page(console.LOG, gtk.Label(_('Transaction Log')))
-            nbook.append_page(ifce.TERM, gtk.Label(_('Terminal')))
+            nbook.append_page(terminal.Terminal(), gtk.Label(_('Terminal')))
             vpane.add2(nbook)
         else:
             vpane.add2(console.LOG)

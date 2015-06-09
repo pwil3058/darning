@@ -15,19 +15,65 @@
 
 import re
 import os
+import hashlib
 
 import gtk
 import pango
 
-from ..cmd_result import CmdResult
+from ..cmd_result import CmdResult, CmdFailure
 
+from .. import utils
 from .. import options
 from .. import runext
+from .. import patchlib
 
-from . import textview
 from . import dialogue
+from . import textview
 from . import ifce
 from . import gutils
+from . import icons
+
+class FileAndRefreshActions:
+    def __init__(self):
+        self._action_group = gtk.ActionGroup("diff_file_and_refresh")
+        self._action_group.add_actions(
+            [
+                ("diff_save", gtk.STOCK_SAVE, _('_Save'), None,
+                 _('Save the diff to previously nominated file'), self._save_acb),
+                ("diff_save_as", gtk.STOCK_SAVE_AS, _('Save _as'), None,
+                 _('Save the diff to a nominated file'), self._save_as_acb),
+                ("diff_refresh", gtk.STOCK_REFRESH, _('_Refresh'), None,
+                 _('Refresh contents of the diff'), self._refresh_acb),
+            ])
+        self._save_file = None
+        self.check_set_save_sensitive()
+    def check_save_sensitive(self):
+        return self._save_file is not None and os.path.exists(self._save_file)
+    def check_set_save_sensitive(self):
+        set_sensitive = self.check_save_sensitive()
+        self._action_group.get_action("diff_save").set_sensitive(set_sensitive)
+    def _save_acb(self, _action):
+        self._save_to_file()
+    def _save_as_acb(self, _action):
+        if self._save_file:
+            suggestion = self._save_file
+        else:
+            suggestion = os.getcwd()
+        self._save_file = dialogue.ask_file_name(_('Save as ...'), suggestion=suggestion, existing=False)
+        self._save_to_file()
+    def _save_to_file(self):
+        if not self._save_file:
+            return
+        try:
+            fobj = open(self._save_file, 'w')
+        except IOError as edata:
+            dialogue.report_any_problems(CmdResult.error(stderr=edata[1]))
+            self.check_set_save_sensitive()
+            return
+        text = self._get_text_to_save()
+        fobj.write(text)
+        fobj.close()
+        self.check_set_save_sensitive()
 
 class TextWidget(gtk.VBox):
     class TwsLineCountDisplay(gtk.HBox):
@@ -114,7 +160,8 @@ class TextWidget(gtk.VBox):
         self.tws_list = []
         self.tws_index = 0
         self.view = self.View(width_in_chars=width_in_chars, aspect_ratio=aspect_ratio, fdesc=fdesc)
-        self.pack_start(gutils.wrap_in_scrolled_window(self.view))
+        self._sw = gutils.wrap_in_scrolled_window(self.view)
+        self.pack_start(self._sw)
         self._action_group = gtk.ActionGroup("diff_text")
         self._action_group.add_actions(
             [
@@ -148,8 +195,19 @@ class TextWidget(gtk.VBox):
     @property
     def bfr(self):
         return self.view.get_buffer()
-    def _get_diff_text(self):
-        return ""
+    @property
+    def h_scrollbar(self):
+        return self._sw.get_hscrollbar()
+    @property
+    def v_scrollbar(self):
+        return self._sw.get_vscrollbar()
+    def get_scrollbar_values(self):
+        return (self.h_scrollbar.get_value(), self.h_scrollbar.get_value())
+    def set_scrollbar_values(self, values):
+        self.h_scrollbar.set_value(values[0])
+        self.v_scrollbar.set_value(values[1])
+    def _get_diff_text_iter(self):
+        return []
     def set_contents(self):
         def update_for_tws_change(new_count):
             if self._tws_nav_buttons_packed and not new_count:
@@ -161,13 +219,12 @@ class TextWidget(gtk.VBox):
                 self.view.set_cursor_visible(True)
                 self._tws_nav_buttons_packed = True
             self.show_all()
-        text = self._get_diff_text()
         old_count = len(self.tws_list)
         self.bfr.begin_not_undoable_action()
         self.bfr.set_text("")
         self.tws_list = []
         line_no = 0
-        for line in text.splitlines(True):
+        for line in self._get_diff_text_iter():
             offset = self.bfr._append_patch_line(line)
             if offset:
                 self.tws_list.append((line_no, offset - 2))
@@ -243,30 +300,45 @@ class TextWidget(gtk.VBox):
         a_name_list = ["tws_nav_first", "tws_nav_prev", "tws_nav_next", "tws_nav_last"]
         return self.get_action_button_box(action_name_list=a_name_list)
 
-class DiffDisplay(TextWidget):
+class DiffPlusDisplay(TextWidget):
     def __init__(self, diffplus):
         self.diffplus = diffplus
+        self._diff_digest = diffplus.get_hash_digest()
         TextWidget.__init__(self)
         self.tws_nav_buttonbox.pack_start(self.tws_display, expand=False)
         self.tws_nav_buttonbox.reorder_child(self.tws_display, 0)
-    def _get_diff_text(self):
-        return str(self.diffplus)
+    def _get_diff_text_iter(self):
+        return self.diffplus.iter_lines()
     def update(self, diffplus):
-        self.diffplus = diffplus
-        self.set_contents()
+        digest = diffplus.get_hash_digest()
+        if digest != self._diff_digest:
+            sbars = self.get_scrollbar_values()
+            self.diffplus = diffplus
+            self._diff_digest = digest
+            self.set_contents()
+            self.set_scrollbar_values(sbars)
 
-class GenericDiffNotebook(gtk.Notebook):
+class DiffPlusNotebook(gtk.Notebook):
     class TWSDisplay(TextWidget.TwsLineCountDisplay):
         LABEL = _("File(s) that add TWS: ")
-    def __init__(self, num_strip_levels=1):
+    def __init__(self, diff_pluses=None, digest=None, num_strip_levels=1):
         gtk.Notebook.__init__(self)
+        self.diff_pluses = [] if diff_pluses is None else diff_pluses
+        self.digest = self.calc_diff_pluses_digest(diff_pluses) if digest is None and diff_pluses else digest
         self.num_strip_levels = num_strip_levels
-        self.diff_pluses = []
         self.tws_display = self.TWSDisplay()
         self.tws_display.set_value(0)
         self.set_scrollable(True)
         self.popup_enable()
         self.diff_displays = {}
+        self._populate_pages()
+    @staticmethod
+    def calc_diff_pluses_digest(diff_pluses):
+        h = hashlib.sha1()
+        for diff_plus in diff_pluses:
+            for line in diff_plus.iter_lines():
+                h.update(line)
+        return h.digest()
     @staticmethod
     def _make_file_label(filepath, file_icon):
         hbox = gtk.HBox()
@@ -284,7 +356,20 @@ class GenericDiffNotebook(gtk.Notebook):
             return icons.STOCK_FILE_PROBLEM
         return gtk.STOCK_FILE
     def _populate_pages(self):
-        # NB: handle both fixed and variable notebooks (to avoid code duplication problems)
+        num_tws_files = 0
+        for diffplus in self.diff_pluses:
+            filepath = diffplus.get_file_path(self.num_strip_levels)
+            if diffplus.report_trailing_whitespace():
+                file_icon = self._file_icon_for_condition(False)
+                num_tws_files += 1
+            else:
+                file_icon = self._file_icon_for_condition(True)
+            tab_label = self._make_file_label(filepath, file_icon)
+            menu_label = self._make_file_label(filepath, file_icon)
+            self.diff_displays[filepath] = DiffPlusDisplay(diffplus)
+            self.append_page_menu(self.diff_displays[filepath], tab_label, menu_label)
+        self.tws_display.set_value(num_tws_files)
+    def _update_pages(self):
         existing = set([fpath for fpath in self.diff_displays])
         num_tws_files = 0
         for diffplus in self.diff_pluses:
@@ -302,36 +387,106 @@ class GenericDiffNotebook(gtk.Notebook):
                 self.set_menu_label(self.diff_displays[filepath], menu_label)
                 existing.remove(filepath)
             else:
-                self.diff_displays[filepath] = DiffDisplay(diffplus)
+                self.diff_displays[filepath] = DiffPlusDisplay(diffplus)
                 self.append_page_menu(self.diff_displays[filepath], tab_label, menu_label)
         for gone in existing:
             gonedd = self.diff_displays.pop(gone)
             pnum = self.page_num(gonedd)
             self.remove_page(pnum)
         self.tws_display.set_value(num_tws_files)
+    def set_diff_pluses(self, diff_pluses, digest=None):
+        if digest is None:
+            digest = self.calc_diff_pluses_digest(diff_pluses)
+        if digest != self.digest:
+            self.diff_pluses = diff_pluses
+            self.digest = digest
+            self._update_pages()
     def __str__(self):
-        string = ""
-        for diff_plus in self.diff_pluses:
-            string += str(diff_plus)
-        return string
+        return "".join((str(diff_plus) for diff_plus in self.diff_pluses))
 
-class ConstDiffNotebook(GenericDiffNotebook):
-    def __init__(self, diff_pluses):
-        GenericDiffNotebook.__init__(self)
-        self.diff_pluses = diff_pluses if diff_pluses else []
-        self._populate_pages()
-
-class UpdateableDiffNotebook(GenericDiffNotebook):
-    def __init__(self, num_strip_levels=1):
-        GenericDiffNotebook.__init__(self, num_strip_levels=num_strip_levels)
+class DiffTextWidget(DiffPlusNotebook, FileAndRefreshActions):
+    A_NAME_LIST = ["diff_save", "diff_save_as", "diff_refresh"]
+    def __init__(self, num_strip_levels=1, **kwargs):
+        diff_text = self._get_diff_text()
+        digest = hashlib.sha1(diff_text).digest()
+        diff_pluses = patchlib.Patch.parse_text(diff_text).diff_pluses
+        DiffPlusNotebook.__init__(self, diff_pluses=diff_pluses, digest=digest, num_strip_levels=num_strip_levels)
+        FileAndRefreshActions.__init__(self)
+        self.diff_buttons = gutils.ActionButtonList([self._action_group], self.A_NAME_LIST)
+    def _get_diff_text(self):
+        assert False, _("_get_diff_text() must be defined in children")
+    def _refresh_acb(self, _action):
         self.update()
     def update(self):
-        self.diff_pluses = self.get_diff_pluses()
-        self._populate_pages()
-    def get_diff_pluses(self):
         diff_text = self._get_diff_text()
-        epatch = patchlib.Patch.parse_text(diff_text)
-        return epatch.diff_pluses
+        digest = hashlib.sha1(diff_text).digest()
+        if digest != self.digest:
+            self.diff_pluses = patchlib.Patch.parse_text(diff_text).diff_pluses
+            self.digest = digest
+            self._update_pages()
+    def _get_text_to_save(self):
+        return str(self)
+    def window_title(self):
+        return ""
+
+class _DiffTextDialog(dialogue.AmodalDialog):
+    DIFF_TEXT_WIDGET = None
+    def __init__(self, parent, **kwargs):
+        flags = gtk.DIALOG_DESTROY_WITH_PARENT
+        dialogue.AmodalDialog.__init__(self, None, parent, flags, ())
+        dtw = self.DIFF_TEXT_WIDGET(**kwargs)
+        self.set_title(dtw.window_title)
+        self.vbox.pack_start(dtw)
+        tws_display = dtw.tws_display
+        self.action_area.pack_end(tws_display, expand=False, fill=False)
+        for button in dtw.diff_buttons.list:
+            self.action_area.pack_start(button)
+        self.add_buttons(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
+        self.connect("response", self._close_cb)
+        self.show_all()
+    def _close_cb(self, dialog, response_id):
+        dialog.destroy()
+
+class TopPatchDiffWidget(DiffTextWidget):
+    def __init__(self, file_paths=None, num_strip_levels=1):
+        self._file_paths = file_paths
+        DiffTextWidget.__init__(self)
+    def _get_diff_text(self):
+        return ifce.PM.get_top_patch_diff_text(self._file_paths)
+    @property
+    def window_title(self):
+        return _("Top Patch: diff: {0}").format(utils.cwd_rel_home())
+
+class TopPatchDiffDialog(_DiffTextDialog):
+    DIFF_TEXT_WIDGET = TopPatchDiffWidget
+
+class CombinedPatchDiffWidget(DiffTextWidget):
+    def __init__(self, file_paths=None, num_strip_levels=1):
+        self._file_paths = file_paths
+        DiffTextWidget.__init__(self)
+    def _get_diff_text(self):
+        return ifce.PM.get_combined_patch_diff_text(self._file_paths)
+    @property
+    def window_title(self):
+        return _("Combined Patches diff: {0}").format(utils.cwd_rel_home())
+
+class CombinedPatchDiffDialog(_DiffTextDialog):
+    DIFF_TEXT_WIDGET = CombinedPatchDiffWidget
+
+class NamedPatchDiffWidget(DiffTextWidget):
+    A_NAME_LIST = ["diff_save", "diff_save_as"]
+    def __init__(self, patch=None, file_paths=None, num_strip_levels=1):
+        self._patch = patch
+        self._file_paths = file_paths
+        DiffTextWidget.__init__(self)
+    def _get_diff_text(self):
+        return ifce.PM.get_named_patch_diff_text(self._patch, self._file_paths)
+    @property
+    def window_title(self):
+        return _("Patch \"{0}\" diff: {1}").format(self._patch, utils.cwd_rel_home())
+
+class NamedPatchDiffDialog(_DiffTextDialog):
+    DIFF_TEXT_WIDGET = NamedPatchDiffWidget
 
 class ForFileDialog(dialogue.AmodalDialog):
     class Widget(TextWidget):

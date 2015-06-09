@@ -17,6 +17,12 @@ import collections
 import os
 import hashlib
 from itertools import ifilter
+import pango
+
+from .gui import ws_event
+
+E_FILE_ADDED, E_FILE_DELETED, E_FILE_CHANGES = ws_event.new_event_flags_and_mask(2)
+E_FILE_MOVED = E_FILE_ADDED|E_FILE_DELETED
 
 class Relation(object):
     COPIED_FROM = '<<-'
@@ -27,6 +33,13 @@ class Relation(object):
 RFD = collections.namedtuple('RFD', ['path', 'relation'])
 Data = collections.namedtuple('Data', ['name', 'status', 'related_file_data'])
 Deco = collections.namedtuple('Deco', ['style', 'foreground'])
+
+FSTATUS_IGNORED = " "
+
+STATUS_DECO_MAP = {
+    None: Deco(pango.STYLE_NORMAL, 'black'),
+    FSTATUS_IGNORED: Deco(pango.STYLE_ITALIC, 'grey'),
+}
 
 # Contained File Relative Data
 CFRD = collections.namedtuple("CFRD", ["sub_dir_relpath", "name"])
@@ -52,8 +65,11 @@ class NullFileDb:
     @property
     def is_current(self):
         return True
-    def dir_contents(self, dir_path, **kwargs):
+    @staticmethod
+    def dir_contents(dir_path, **kwargs):
         return ([], [])
+    def reset(self):
+        return self
 
 class OsFileDb(NullFileDb):
     class FileDir(object):
@@ -71,7 +87,7 @@ class OsFileDb(NullFileDb):
             if self._get_current_hash_digest() != self._dir_hash_digest:
                 return False
             for subdir in self._subdirs.values():
-                if not subdir.is_current:
+                if subdir._is_populated and not subdir.is_current:
                     return False
             return True
         @classmethod
@@ -119,11 +135,17 @@ class OsFileDb(NullFileDb):
                 files = ifilter((lambda x: x.name[0] != "."), self._files_data)
             return (dirs, files)
     def __init__(self, **kwargs):
+        # NB: we don't save kwargs as it's only there to allow children
+        # to pass args for initializing the base_dir
         NullFileDb.__init__(self)
         self.base_dir = self.FileDir(**kwargs)
     @property
     def is_current(self):
         return self.base_dir.is_current
+    def reset(self):
+        # NB: should be reimpleted by children who shouldn't call this version
+        self.base_dir = self.FileDir()
+        return self
     def dir_contents(self, dir_path='', show_hidden=False, **kwargs):
         tdir = self.base_dir.find_dir(dir_path)
         if not tdir:
@@ -265,20 +287,40 @@ class GenericSnapshotWsFileDb(GenericWsFileDb):
             self._is_populated = True
             return h.digest()
     def __init__(self, **kwargs):
+        # save the args for use in reset and related attribute mechanism
+        self._kwargs = kwargs
         h = hashlib.sha1()
         self._file_status_snapshot = self._extract_file_status_snapshot(self._get_file_data_text(h))
         self._db_digest = h.digest()
+        self._current_text_digest = None
         GenericWsFileDb.__init__(self, parent_file_status_snapshot=self._file_status_snapshot)
     # NB the fetching of data is done in two steps to allow efficient "is_current" computation
     def _get_file_data_text(self, h):
         assert False, "_get_file_data_text() must be defined in child"
     def _extract_file_status_snapshot(self, file_data_text):
         assert False, "_extract_file_status_snapshot() must be defined in child"
-    @property
-    def is_current(self):
+    def __getattr__(self, name):
+        if name == "is_current":
+            return self._is_current()
+        # create an attribute for each argument with name
+        # and with the assigned value (save code in children)
+        try:
+            return self._kwargs[name]
+        except KeyError:
+            assert False, "Unknown attribute \"{0}\" for {1}".format(name, self)
+    def _is_current(self):
         h = hashlib.sha1()
-        self._get_file_data_text(h)
-        return h.digest() == self._db_digest and self.base_dir.is_current
+        self._current_text = self._get_file_data_text(h)
+        self._current_text_digest = h.digest()
+        return self._current_text_digest == self._db_digest and self.base_dir.is_current
+    def reset(self):
+        if self._current_text_digest is None:
+            return self.__class__(**self._kwargs)
+        if self._current_text_digest != self._db_digest:
+            self._file_status_snapshot = self._extract_file_status_snapshot(self._current_text)
+            self._db_digest = self._current_text_digest
+        self.base_dir = self.FileDir(parent_file_status_snapshot=self._file_status_snapshot)
+        return self
 
 class GenericChangeFileDb(object):
     class FileDir(object):
@@ -327,24 +369,39 @@ class GenericChangeFileDb(object):
                 files = iter(self._files_data)
             return (dirs, files)
     def __init__(self, **kwargs):
-        self._args = kwargs
+        # save the args for use in reset and related attribute mechanism
+        self._kwargs = kwargs
         h = hashlib.sha1()
         pdt = self._get_patch_data_text(h)
         self._db_hash_digest = h.digest()
+        self._current_text_digest = None
+        self._finalize(pdt)
+    def __getattr__(self, name):
+        if name == "is_current":
+            return self._is_current()
+        # create an attribute for each argument with name
+        # and with the assigned value (save code in children)
+        try:
+            return self._kwargs[name]
+        except KeyError:
+            assert False, "Unknown attribute \"{0}\" for {1}".format(name, self)
+    def _finalize(self, pdt):
         self._base_dir = self.FileDir()
         for file_path, status, related_file_data in self._iterate_file_data(pdt):
             self._base_dir.add_file(split_path(file_path), status, related_file_data)
         self._base_dir.finalize()
-    @property
-    def is_current(self):
+    def _is_current(self):
         h = hashlib.sha1()
-        self._get_patch_data_text(h)
-        return h.digest() == self._db_hash_digest
-    def dir_contents(self, dirpath='', hide_clean=False, **kwargs):
-        tdir = self._base_dir.find_dir(dirpath)
-        if not tdir:
-            return ([], [])
-        return tdir.dirs_and_files(hide_clean=hide_clean)
+        self._current_text = self._get_patch_data_text(h)
+        self._current_text_digest = h.digest()
+        return self._current_text_digest == self._db_hash_digest
+    def reset(self):
+        if self._current_text_digest is None:
+            return self.__class__(**self._kwargs)
+        if self._current_text_digest != self._db_hash_digest:
+            self._db_digest = self._current_text_digest
+            self._finalize(self._current_text)
+        return self
     def _get_patch_data_text(self, h):
         assert False, "_get_patch_data_text() must be defined in child"
     @staticmethod
@@ -355,3 +412,33 @@ class GenericChangeFileDb(object):
         if not tdir:
             return ([], [])
         return tdir.dirs_and_files(hide_clean=hide_clean, **kwargs)
+
+class GenericTopPatchFileDb(GenericChangeFileDb):
+    def __init__(self):
+        self._applied_patch_count = self._get_applied_patch_count()
+        self.applied_patch_count_change = 0
+        GenericChangeFileDb.__init__(self)
+    @staticmethod
+    def _get_applied_patch_count():
+        assert False, _("_get_applied_patch_count() must be defined in child")
+    def _is_current(self):
+        self.applied_patch_count_change = self._get_applied_patch_count() - self._applied_patch_count
+        if self.applied_patch_count_change:
+            # somebody's popped or pushed externally
+            self._current_text_digest = None
+            return False
+        return GenericChangeFileDb._is_current(self)
+
+class GenericPatchFileDb(GenericChangeFileDb):
+    def __init__(self, patch_name):
+        self._is_applied = self._get_is_applied(patch_name)
+        GenericChangeFileDb.__init__(self, patch_name=patch_name)
+    @staticmethod
+    def _get_is_applied(patch_name):
+        assert False, _("_get_is_applied() must be defined in child")
+    def _is_current(self):
+        if self._get_is_applied(self.patch_name) != self._is_applied:
+            # somebody's popped or pushed externally
+            self._current_text_digest = None
+            return False
+        return GenericChangeFileDb._is_current(self)

@@ -25,6 +25,7 @@ from .. import rctx
 from .. import patch_db
 from .. import fsdb
 from .. import utils
+from .. import pm_ifce
 
 # patch_db commands that don't need wrapping
 from ..patch_db import find_base_dir
@@ -141,6 +142,9 @@ def do_initialization(description):
 def get_in_progress():
     return patch_db.is_readable() and patch_db.get_applied_patch_count() > 0
 
+def get_applied_patch_count():
+    return patch_db.get_applied_patch_count()
+
 def get_all_patches_data():
     if not patch_db.is_readable():
         return []
@@ -150,6 +154,33 @@ def get_selected_guards():
     if not patch_db.is_readable():
         return set()
     return patch_db.get_selected_guards()
+
+class PatchListData(object):
+    def __init__(self, **kwargs):
+        self._patches_data = get_all_patches_data()
+        self._selected_guards = get_selected_guards()
+    def __getattr__(self, name):
+        # We have total control of the database so this always current
+        if name == "is_current": return True
+        if name == "selected_guards": return self._selected_guards
+    def iter_patches(self):
+        for patch_data in self._patches_data:
+            yield patch_data
+
+class PatchListData(pm_ifce.PatchListData):
+    def _finalize(self, pdt):
+        self._patches_data, self._selected_guards = pdt
+    def _get_data_text(self, h):
+        patches_data = get_all_patches_data()
+        selected_guards = get_selected_guards()
+        # the only thing that can really change unexpectably is the patch state BUT ...
+        for patch_data in patches_data:
+            h.update("".join(patch_data))
+        h.update("".join(selected_guards))
+        return (patches_data, selected_guards)
+
+def get_patch_list_data():
+    return PatchListData()
 
 def get_patch_description(patch):
     if not patch_db.is_readable():
@@ -161,7 +192,7 @@ def get_series_description():
         raise CmdFailure(_('Database is unreadable'))
     return patch_db.get_series_description()
 
-DECO_MAP = {
+status_deco_map = {
     None: fsdb.Deco(pango.STYLE_NORMAL, "black"),
     patch_db.FileData.Presence.ADDED: fsdb.Deco(pango.STYLE_NORMAL, "darkgreen"),
     patch_db.FileData.Presence.REMOVED: fsdb.Deco(pango.STYLE_NORMAL, "red"),
@@ -169,7 +200,21 @@ DECO_MAP = {
 }
 
 def get_status_deco(status):
-    return DECO_MAP[status.presence if status else None]
+    return status_deco_map[status.presence if status else None]
+
+def get_status_icon(status, is_dir):
+    import gtk
+    from . import icons
+    if isdir:
+        return gtk.STOCK_DIRECTORY
+    elif data.status.validity == patch_db.FileData.Validity.REFRESHED:
+        return icons.STOCK_FILE_REFRESHED
+    elif data.status.validity == patch_db.FileData.Validity.NEEDS_REFRESH:
+        return icons.STOCK_FILE_NEEDS_REFRESH
+    elif data.status.validity == patch_db.FileData.Validity.UNREFRESHABLE:
+        return icons.STOCK_FILE_UNREFRESHABLE
+    else:
+        return gtk.STOCK_FILE
 
 class PatchFileDb(fsdb.GenericChangeFileDb):
     class FileDir(fsdb.GenericChangeFileDb.FileDir):
@@ -209,10 +254,15 @@ class CombinedPatchFileDb(PatchFileDb):
         h.update(str(patch_status_text))
         return patch_status_text
 
-def get_file_db(patch=None):
+def get_patch_file_db(patch):
     if not patch_db.is_readable():
         return fsdb.NullFileDb()
     return PatchFileDb(patch)
+
+def get_top_patch_file_db(patch=None):
+    if not patch_db.is_readable():
+        return fsdb.NullFileDb()
+    return PatchFileDb(None)
 
 def get_combined_patch_file_db():
     if not patch_db.is_readable():

@@ -1,4 +1,4 @@
-### Copyright (C) 2011 Peter Williams <peter_ono@users.sourceforge.net>
+### Copyright (C) 2007-2015 Peter Williams <pwil3058@gmail.com>
 ###
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
@@ -13,18 +13,29 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import os, gtk, pango, time
+import os
+import time
 
-from .. import utils
+import gtk
+import pango
+
+from .. import runext
 
 from . import dialogue
 from . import gutils
-from . import ws_event
 from . import textview
+from . import terminal
 
 class ConsoleLog(textview.Widget):
     def __init__(self, width_in_chars=81, fdesc=None):
         textview.Widget.__init__(self, width_in_chars=width_in_chars, fdesc=fdesc)
+        self.action_group = gtk.ActionGroup("console_log")
+        self.action_group.add_actions(
+            [
+                ("console_log_clear", gtk.STOCK_CLEAR, _('_Clear'), None,
+                 _('Clear the console log'), self.clear),
+            ])
+        self.view.connect("populate-popup", self._populate_popup_cb)
         self.view.set_editable(False)
         self.bold_tag = self.bfr.create_tag("BOLD", weight=pango.WEIGHT_BOLD, foreground="black", family="monospace")
         self.cmd_tag = self.bfr.create_tag("CMD", foreground="black", family="monospace")
@@ -36,12 +47,14 @@ class ConsoleLog(textview.Widget):
         self.bfr.begin_not_undoable_action()
         self.bfr.set_text("")
         self._append_tagged_text("% ", self.bold_tag)
+    def _populate_popup_cb(self, tview, menu):
+        menu.prepend(self.action_group.get_action("console_log_clear").create_menu_item())
     def _append_tagged_text(self, text, tag):
         model_iter = self.bfr.get_end_iter()
         assert model_iter is not None, "ConsoleLogBuffer"
         self.bfr.insert_with_tags(model_iter, text, tag)
         self.view and self.view.scroll_to_mark(self._eobuf, 0.001)
-    def clear(self):
+    def clear(self, _action=None):
         self.bfr.end_not_undoable_action()
         self.bfr.set_text("")
         self._append_tagged_text("% ", self.bold_tag)
@@ -78,39 +91,17 @@ class ConsoleLog(textview.Widget):
             gtk.main_iteration(False)
 
 class ConsoleLogWidget(gtk.VBox, dialogue.BusyIndicatorUser):
-    UI_DESCR = \
-        '''
-        <ui>
-          <menubar name="console_log_menubar">
-            <menu name="Console" action="menu_console">
-                <menuitem action="console_log_clear"/>
-            </menu>
-          </menubar>
-        </ui>
-        '''
-    def __init__(self, busy_indicator=None, runentry=False, _table=None):
+    def __init__(self, busy_indicator=None):
         gtk.VBox.__init__(self)
         dialogue.BusyIndicatorUser.__init__(self, busy_indicator)
         self._text_widget = ConsoleLog()
-        self._action_group = gtk.ActionGroup("console_log")
-        self.ui_manager = gutils.UIManager()
-        self.ui_manager.insert_action_group(self._action_group, -1)
-        self._action_group.add_actions(
-            [
-                ("console_log_clear", gtk.STOCK_CLEAR, _('_Clear'), None,
-                 _('Clear the console log'), self._clear_acb),
-                ("menu_console", None, _('_Console')),
-            ])
-        self.change_summary_merge_id = self.ui_manager.add_ui_from_string(self.UI_DESCR)
-        self._menubar = self.ui_manager.get_widget("/console_log_menubar")
-        hbox = gtk.HBox()
-        hbox.pack_start(self._menubar, expand=False)
-        cmd_entry = gutils.EntryWithHistory()
-        if runentry:
+        if not terminal.AVAILABLE:
+            hbox = gtk.HBox()
             hbox.pack_start(gtk.Label(_('Run: ')), expand=False)
+            cmd_entry = gutils.EntryWithHistory()
             cmd_entry.connect("activate", self._cmd_entry_cb)
             hbox.pack_start(cmd_entry, expand=True, fill=True)
-        self.pack_start(hbox, expand=False)
+            self.pack_start(hbox, expand=False)
         self.pack_start(self._text_widget, expand=True, fill=True)
         self.show_all()
     def get_action(self, action_name):
@@ -134,27 +125,14 @@ class ConsoleLogWidget(gtk.VBox, dialogue.BusyIndicatorUser):
     def append_entry(self, msg):
         return self._text_widget.append_entry(msg)
     def _cmd_entry_cb(self, entry):
+        from . import auto_update
         text = entry.get_text_and_clear_to_history()
         if not text:
             return
         self.show_busy()
-        pre_dir = os.getcwd()
         result = runext.run_cmd_in_console(self, text)
         self.unshow_busy()
         dialogue.report_any_problems(result)
-        if pre_dir == os.getcwd():
-            ws_event.notify_events(ws_event.ALL_BUT_CHANGE_WD)
-        else:
-            from . import ifce
-            ifce.chdir()
-    def _git_cmd_entry_cb(self, entry):
-        text = entry.get_text_and_clear_to_history()
-        if not text:
-            return
-        self.show_busy()
-        result = runext.run_cmd_in_console(self, "git " + text)
-        self.unshow_busy()
-        dialogue.report_any_problems(result)
-        ws_event.notify_events(ws_event.ALL_BUT_CHANGE_WD)
+        auto_update.trigger_auto_update()
 
 LOG = ConsoleLogWidget()

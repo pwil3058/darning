@@ -117,7 +117,7 @@ def iter_git_file_data_text(text, related_file_path_data):
     for line in text.splitlines():
         file_path, status, extra_data = get_git_file_data(line)
         if extra_data:
-            related_file_paths.append((file_path, extra_data.path))
+            related_file_path_data.append((file_path, extra_data.path))
         yield (file_path, line[:2], extra_data)
 
 class WsFileDb(fsdb.GenericSnapshotWsFileDb):
@@ -163,11 +163,6 @@ class IndexFileDb(fsdb.GenericChangeFileDb):
             return FileStatus.UNMODIFIED
     def __init__(self):
         fsdb.GenericChangeFileDb.__init__(self)
-    @property
-    def is_current(self):
-        h = hashlib.sha1()
-        self._get_patch_data_text(h)
-        return h.digest() == self._db_hash_digest
     def _get_patch_data_text(self, h):
         patch_status_text = runext.run_get_cmd(["git", "status", "--porcelain", "--untracked-files=no"])
         h.update(patch_status_text)

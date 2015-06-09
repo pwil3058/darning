@@ -24,6 +24,8 @@ from ..cmd_result import CmdResult, CmdFailure
 
 from .. import utils
 from .. import fsdb
+from .. import scm_ifce
+from .. import pm_ifce
 
 from . import tlview
 from . import gutils
@@ -34,11 +36,15 @@ from . import dialogue
 from . import ws_event
 from . import icons
 from . import text_edit
+from . import auto_update
 
 def _check_if_force(result):
     return dialogue.ask_force_or_cancel(result) == dialogue.Response.FORCE
 
-class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener, dialogue.BusyIndicatorUser):
+class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener, dialogue.BusyIndicatorUser, auto_update.AutoUpdater):
+    REPOPULATE_EVENTS = ifce.E_CHANGE_WD
+    UPDATE_EVENTS = fsdb.E_FILE_CHANGES
+    AU_FILE_CHANGE_EVENT = fsdb.E_FILE_CHANGES # event returned by auto_update() if changes found
     class Model(tlview.TreeView.Model):
         Row = collections.namedtuple('Row', ['name', 'is_dir', 'style', 'foreground', 'icon', 'status', 'related_file_data'])
         types = Row(
@@ -216,9 +222,11 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
         )
         return row
     def __init__(self, show_hidden=False, hide_clean=False, busy_indicator=None):
+        assert (self.REPOPULATE_EVENTS & self.UPDATE_EVENTS) == 0
         dialogue.BusyIndicatorUser.__init__(self, busy_indicator=busy_indicator)
         self._file_db = fsdb.OsFileDb()
         ws_event.Listener.__init__(self)
+        auto_update.AutoUpdater.__init__(self)
         self.show_hidden_action = gtk.ToggleAction('show_hidden_files', _('Show Hidden Files'), _('Show/hide ignored files and those beginning with "."'), None)
         self.show_hidden_action.set_active(show_hidden)
         self.show_hidden_action.connect('toggled', self._toggle_show_hidden_cb)
@@ -237,21 +245,26 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
         self.connect("button_press_event", self._handle_button_press_cb)
         self.connect("key_press_event", self._handle_key_press_cb)
         self.get_selection().set_select_function(self._dirs_not_selectable, full=True)
-        self.add_notification_cb(ws_event.AUTO_UPDATE, self.auto_update)
-        self.add_notification_cb(ws_event.CHANGE_WD, self.repopulate)
-        self.add_notification_cb(ws_event.FILE_CHANGES, self.update)
+        self.add_notification_cb(self.REPOPULATE_EVENTS, self.repopulate)
+        self.add_notification_cb(self.UPDATE_EVENTS, self.update)
+        self.register_auto_update_cb(self.auto_update)
         # TODO: investigate whether repopulate() needs to be called here
         self.repopulate()
-    def auto_update(self, _arg=None):
-        if not self._file_db.is_current:
-            self.update()
+    def auto_update(self, events_so_far, args):
+        if (events_so_far & (self.REPOPULATE_EVENTS|self.UPDATE_EVENTS)) or self._file_db.is_current:
+            return 0
+        try:
+            args["fsdb_reset_only"].append(self)
+        except KeyError:
+            args["fsdb_reset_only"] = [self]
+        return self.AU_FILE_CHANGE_EVENT
     def populate_action_groups(self):
         self.action_groups[actions.AC_DONT_CARE].add_action(self.show_hidden_action)
         self.action_groups[actions.AC_DONT_CARE].add_action(self.hide_clean_action)
         self.action_groups[actions.AC_DONT_CARE].add_actions(
             [
                 ('refresh_files', gtk.STOCK_REFRESH, _('_Refresh Files'), None,
-                 _('Refresh/update the file tree display'), self.update),
+                 _('Refresh/update the file tree display'), lambda _action=None: self.update()),
             ])
         self.action_groups[ws_actions.AC_NOT_IN_PM_PGND|actions.AC_SELN_MADE].add_actions(
             [
@@ -344,12 +357,14 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
             seln.select_iter(self.get_iter_for_filepath(filepath))
     def _update_dir(self, dirpath, parent_iter=None):
         changed = False
+        place_holder_iter = None
         if parent_iter is None:
             child_iter = self.model.get_iter_first()
         else:
             child_iter = self.model.iter_children(parent_iter)
             if child_iter:
                 if self.model.get_value_named(child_iter, "name") is None:
+                    place_holder_iter = child_iter.copy()
                     child_iter = self.model.iter_next(child_iter)
         dirs, files = self._get_dir_contents(dirpath)
         dead_entries = []
@@ -412,20 +427,25 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
         for dead_entry in dead_entries:
             self.model.recursive_remove(dead_entry)
         if parent_iter is not None:
-            self.model.insert_place_holder_if_needed(parent_iter)
+            n_children = self.model.iter_n_children(parent_iter)
+            if n_children == 0:
+                self.model.insert_place_holder(parent_iter)
+            elif place_holder_iter is not None and n_children > 1:
+                assert self.model.get_value_named(place_holder_iter, "name") is None
+                self.model.remove(place_holder_iter)
         return changed
     @staticmethod
     def _get_file_db():
         return fsdb.OsFileDb()
-    def repopulate(self, _arg=None):
+    def repopulate(self, **kwargs):
         self.show_busy()
         self._file_db = self._get_file_db()
         self.model.clear()
         self._populate('', self.model.get_iter_first())
         self.unshow_busy()
-    def update(self, _arg=None):
+    def update(self, fsdb_reset_only=False, **kwargs):
         self.show_busy()
-        self._file_db = self._get_file_db()
+        self._file_db = self._file_db.reset() if (fsdb_reset_only and self in fsdb_reset_only) else self._get_file_db()
         self._update_dir('', None)
         self.unshow_busy()
     def get_selected_filepaths(self, expanded=False):
@@ -437,7 +457,7 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
     def add_selected_files_to_clipboard(self, clipboard=None):
         if not clipboard:
             clipboard = gtk.clipboard_get(gtk.gdk.SELECTION_CLIPBOARD)
-        sel = utils.file_list_to_string(self.get_selected_filepaths())
+        sel = utils.quoted_join(self.get_selected_filepaths())
         clipboard.set_text(sel)
     def get_filepaths_in_dir(self, dirname, show_hidden=True, recursive=True):
         # TODO: fix get_filepaths_in_dir() -- use os/scm not db
@@ -465,7 +485,7 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
         self._edit_named_files_extern(self.get_selected_filepaths())
     def create_new_file(self, new_file_name, open_for_edit=False):
         self.show_busy()
-        result = utils.create_file(new_file_name, ifce.LOG)
+        result = os_create_file(new_file_name, ifce.LOG)
         self.unshow_busy()
         dialogue.report_any_problems(result)
         if open_for_edit:
@@ -492,7 +512,7 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
             dialog.destroy()
     def delete_files(self, file_list):
         if ifce.LOG:
-            ifce.LOG.start_cmd(_('Deleting: {0}').format(utils.file_list_to_string(file_list)))
+            ifce.LOG.start_cmd(_('Deleting: {0}').format(utils.quoted_join(file_list)))
         serr = ""
         for filename in file_list:
             try:
@@ -506,7 +526,7 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
                     ifce.LOG.append_stderr(errmsg)
         if ifce.LOG:
             ifce.LOG.end_cmd()
-        ws_event.notify_events(ws_event.FILE_DEL)
+        ws_event.notify_events(fsdb.E_FILE_DELETED)
         return CmdResult.error("", serr) if serr else CmdResult.ok()
     def _delete_named_files(self, file_list, ask=True):
         if not ask or dialogue.confirm_list_action(file_list, _('About to be deleted. OK?')):
@@ -536,14 +556,14 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
             target = None
         dialog.destroy()
         return (response, target)
-    def _move_or_copy_files(self, file_list, operation, dry_run_first=True):
-        response, target = self._get_target(file_list)
+    def _move_or_copy_files(self, file_paths, operation, dry_run_first=True):
+        response, target = self._get_target(file_paths)
         if response == gtk.RESPONSE_OK:
             force = False
             is_ok = not dry_run_first
             if dry_run_first:
                 self.show_busy()
-                result = operation(file_list, target, force=False, dry_run=True)
+                result = operation(file_paths, target, force=False, dry_run=True)
                 self.unshow_busy()
                 if result.suggests_force:
                     is_ok = force = _check_if_force(result)
@@ -558,7 +578,7 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
             if is_ok:
                 while True:
                     self.show_busy()
-                    result = operation(file_list, target, force=force)
+                    result = operation(file_paths, target, force=force)
                     self.unshow_busy()
                     if not force and result.suggests_force:
                         force = _check_if_force(result)
@@ -567,12 +587,12 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
                         continue
                     break
                 dialogue.report_any_problems(result)
-    def copy_files(self, file_list, dry_run_first=True):
-        self._move_or_copy_files(file_list, utils.os_copy_files, dry_run_first=dry_run_first)
+    def copy_files(self, file_paths, dry_run_first=True):
+        self._move_or_copy_files(file_paths, os_copy_files, dry_run_first=dry_run_first)
     def copy_selected_files_acb(self, _action=None):
         self.copy_files(self.get_selected_filepaths())
-    def move_files(self, file_list, dry_run_first=True):
-        self._move_or_copy_files(file_list, utils.os_move_files, dry_run_first=dry_run_first)
+    def move_files(self, file_paths, dry_run_first=True):
+        self._move_or_copy_files(file_paths, os_move_files, dry_run_first=dry_run_first)
     def move_selected_files_acb(self, _action=None):
         self.move_files(self.get_selected_filepaths())
 
@@ -581,11 +601,11 @@ class FileTreeWidget(gtk.VBox, ws_event.Listener):
     BUTTON_BAR_ACTIONS = ["show_hidden_files"]
     TREE_VIEW = FileTreeView
     SIZE = (240, 320)
-    def __init__(self, busy_indicator=None, show_hidden=False, **kwargs):
+    def __init__(self, busy_indicator=None, show_hidden=False, hide_clean=False, **kwargs):
         gtk.VBox.__init__(self)
         ws_event.Listener.__init__(self)
         # file tree view wrapped in scrolled window
-        self.file_tree = self.TREE_VIEW(busy_indicator=busy_indicator, show_hidden=show_hidden, **kwargs)
+        self.file_tree = self.TREE_VIEW(busy_indicator=busy_indicator, show_hidden=show_hidden, hide_clean=hide_clean, **kwargs)
         scw = gtk.ScrolledWindow()
         scw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
         self.file_tree.get_selection().set_mode(gtk.SELECTION_MULTIPLE)
@@ -593,13 +613,14 @@ class FileTreeWidget(gtk.VBox, ws_event.Listener):
         self.file_tree.set_size_request(*self.SIZE)
         scw.add(self.file_tree)
         # file tree menu bar
-        hbox = gtk.HBox()
-        self.pack_start(hbox, expand=False, fill=False)
         mprefix = self.get_menu_prefix()
         self.menu_prefix = gtk.Label('' if not mprefix else (mprefix + ':'))
-        hbox.pack_start(self.menu_prefix, expand=False, fill=False)
-        self.menu_bar = self.file_tree.ui_manager.get_widget(self.MENUBAR)
-        hbox.pack_start(self.menu_bar, expand=False)
+        if self.MENUBAR:
+            hbox = gtk.HBox()
+            self.pack_start(hbox, expand=False, fill=False)
+            hbox.pack_start(self.menu_prefix, expand=False, fill=False)
+            self.menu_bar = self.file_tree.ui_manager.get_widget(self.MENUBAR)
+            hbox.pack_start(self.menu_bar, expand=False)
         self.pack_start(scw, expand=True, fill=True)
         # Mode selectors
         hbox = gtk.HBox()
@@ -610,11 +631,141 @@ class FileTreeWidget(gtk.VBox, ws_event.Listener):
             gutils.set_widget_tooltip_text(button, action.get_property("tooltip"))
             hbox.pack_start(button)
         self.pack_start(hbox, expand=False)
-        self.add_notification_cb(ws_event.CHANGE_WD, self._cwd_change_cb)
+        self.add_notification_cb(ifce.E_CHANGE_WD|ifce.E_NEW_SCM_OR_PM, self._cwd_change_cb)
         self.show_all()
     @staticmethod
     def get_menu_prefix():
         return None
-    def _cwd_change_cb(self, _newdir=None):
+    def _cwd_change_cb(self, **kwargs):
         mprefix = self.get_menu_prefix()
         self.menu_prefix.set_text('' if not mprefix else (mprefix + ':'))
+
+def os_create_file(name, console=None):
+    """Attempt to create a file with the given name and report the outcome as
+    a CmdResult tuple.
+    1. If console is not None print report of successful creation on it.
+    2. If a file with same name already exists fail and report a warning.
+    3. If file creation fails for other reasons report an error.
+    """
+    if not os.path.exists(name):
+        try:
+            if console:
+                console.start_cmd("create \"{0}\"".format(name))
+            open(name, 'w').close()
+            if console:
+                console.end_cmd()
+            ws_event.notify_events(fsdb.E_FILE_ADDED)
+            return CmdResult.ok()
+        except (IOError, OSError) as msg:
+            return CmdResult.error(stderr="\"{0}\": {1}".format(name, msg))
+    else:
+        return CmdResult.warning(stderr=_("\"{0}\": file already exists").format(name))
+
+def os_move_or_copy_file(file_path, dest, opsym, force=False, dry_run=False, extra_checks=None, verbose=False):
+    assert opsym in (fsdb.Relation.MOVED_TO, fsdb.Relation.COPIED_TO), _("Invalid operation requested")
+    if os.path.isdir(dest):
+        dest = os.path.join(dest, os.path.basename(file_path))
+    omsg = "{0} {1} {2}.".format(file_path, opsym, dest) if verbose else ""
+    if dry_run:
+        if os.path.exists(dest):
+            return CmdResult.error(omsg, _('File "{0}" already exists. Select "force" to overwrite.').format(dest)) | CmdResult.SUGGEST_FORCE
+        else:
+            return CmdResult.ok(omsg)
+    from . import console
+    console.LOG.start_cmd("{0} {1} {2}\n".format(file_path, opsym, dest))
+    if not force and os.path.exists(dest):
+        emsg = _('File "{0}" already exists. Select "force" to overwrite.').format(dest)
+        result = CmdResult.error(omsg, emsg) | CmdResult.SUGGEST_FORCE
+        console.LOG.end_cmd(result)
+        return result
+    if extra_checks:
+        result = extra_check([(file_path, dest)])
+        if not result.is_ok:
+            console.LOG.end_cmd(result)
+            return result
+    try:
+        if opsym is fsdb.Relation.MOVED_TO:
+            os.rename(file_path, dest)
+        elif opsym is fsdb.Relation.COPIED_TO:
+            shutil.copy(file_path, dest)
+        result = CmdResult.ok(omsg)
+    except (IOError, os.error, shutil.Error) as why:
+        result = CmdResult.error(omsg, _("\"{0}\" {1} \"{2}\" failed. {3}.\n").format(file_path, opsym, dest, str(why)))
+    console.LOG.end_cmd(result)
+    ws_event.notify_events(fsdb.E_FILE_MOVED)
+    return result
+
+def os_move_or_copy_files(file_path_list, dest, opsym, force=False, dry_run=False, extra_checks=None, verbose=False):
+    assert opsym in (fsdb.Relation.MOVED_TO, fsdb.Relation.COPIED_TO), _("Invalid operation requested")
+    def _overwrite_msg(overwrites):
+        if len(overwrites) == 0:
+            return ""
+        elif len(overwrites) > 1:
+            return _("Files:\n\t{0}\nalready exist. Select \"force\" to overwrite.").format("\n\t".join(["\"" + fp + "\"" for fp in overwrites]))
+        else:
+            return _("File \"{0}\" already exists. Select \"force\" to overwrite.").format(overwrites[0])
+    if len(file_path_list) == 1:
+        return os_move_or_copy_file(file_path_list[0], dest, opsym, force=force, dry_run=dry_run, extra_checks=extra_checks)
+    from . import console
+    if not dry_run:
+        console.LOG.start_cmd("{0} {1} {2}\n".format(quoted_join(file_path_list), opsym, dest))
+    if not os.path.isdir(dest):
+        result = CmdResult.error(stderr=_('"{0}": Destination must be a directory for multifile rename.').format(dest))
+        if not dry_run:
+            console.LOG.end_cmd(result)
+        return result
+    opn_paths_list = [(file_path, os.path.join(dest, os.path.basename(file_path))) for file_path in file_path_list]
+    omsg = "\n".join(["{0} {1} {2}.".format(src, opsym, dest) for (src, dest) in opn_paths_list]) if verbose else ""
+    if dry_run:
+        overwrites = [dest for (src, dest) in opn_paths_list if os.path.exists(dest)]
+        if len(overwrites) > 0:
+            emsg = _overwrite_msg(overwrites)
+            return CmdResult.error(omsg, emsg) | CmdResult.SUGGEST_FORCE
+        else:
+            return CmdResult.ok(omsg)
+    if not force:
+        overwrites = [dest for (src, dest) in opn_paths_list if os.path.exists(dest)]
+        if len(overwrites) > 0:
+            emsg = _overwrite_msg(overwrites)
+            result = CmdResult.error(omsg, emsg) | CmdResult.SUGGEST_FORCE
+            console.LOG.end_cmd(result)
+            return result
+    if extra_checks:
+        result = extra_check(opn_paths_list)
+        if not result.is_ok:
+            console.LOG.end_cmd(result)
+            return result
+    failed_opns_str = ""
+    for (src, dest) in opn_paths_list:
+        if verbose:
+            console.LOG.append_stdout("{0} {1} {2}.".format(src, opsym, dest))
+        try:
+            if opsym is fsdb.Relation.MOVED_TO:
+                os.rename(src, dest)
+            elif opsym is fsdb.Relation.COPIED_TO:
+                if os.path.isdir(src):
+                    shutil.copytree(src, dest)
+                else:
+                    shutil.copy2(src, dest)
+        except (IOError, os.error, shutil.Error) as why:
+            serr = _('"{0}" {1} "{2}" failed. {3}.\n').format(src, opsym, dest, str(why))
+            console.LOG.append_stderr(serr)
+            failed_opns_str += serr
+            continue
+    console.LOG.end_cmd()
+    ws_event.notify_events(fsdb.E_FILE_MOVED)
+    if failed_opns_str:
+        return CmdResult.error(omsg, failed_opns_str)
+    return CmdResult.ok(omsg)
+
+def os_copy_file(file_path, dest, force=False, dry_run=False):
+    return os_move_or_copy_file(file_path, dest, opsym=fsdb.Relation.COPIED_TO, force=force, dry_run=dry_run)
+
+def os_copy_files(file_path_list, dest, force=False, dry_run=False):
+    return os_move_or_copy_files(file_path_list, dest, opsym=fsdb.Relation.COPIED_TO, force=force, dry_run=dry_run)
+
+def os_move_file(file_path, dest, force=False, dry_run=False):
+    return os_move_or_copy_file(file_path, dest, opsym=fsdb.Relation.MOVED_TO, force=force, dry_run=dry_run)
+
+def os_move_files(file_path_list, dest, force=False, dry_run=False):
+    return os_move_or_copy_files(file_path_list, dest, opsym=fsdb.Relation.MOVED_TO, force=force, dry_run=dry_run)

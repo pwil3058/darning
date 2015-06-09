@@ -1,14 +1,14 @@
 ### Copyright (C) 2005-2015 Peter Williams <pwil3058@gmail.com>
-
+###
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
 ### the Free Software Foundation; version 2 of the License only.
-
+###
 ### This program is distributed in the hope that it will be useful,
 ### but WITHOUT ANY WARRANTY; without even the implied warranty of
 ### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ### GNU General Public License for more details.
-
+###
 ### You should have received a copy of the GNU General Public License
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
@@ -17,15 +17,19 @@ import os
 
 import gtk
 
+from .. import fsdb
+from .. import scm_ifce
+from .. import pm_ifce
+
 from . import gutils
 from . import ifce
 from . import actions
 from . import ws_actions
-from . import dialogue
 from . import ws_event
 from . import icons
 from . import text_edit
 from . import file_tree
+from . import dialogue
 
 class DeleteCopyRenameMixin(object):
     def _delete_selection_in_top_patch(self, _action=None):
@@ -104,7 +108,9 @@ class DeleteCopyRenameMixin(object):
             dialogue.report_any_problems(result)
             break
 
-class ScmTree(file_tree.FileTreeView, DeleteCopyRenameMixin):
+class WSTreeView(file_tree.FileTreeView, DeleteCopyRenameMixin):
+    UPDATE_EVENTS = fsdb.E_FILE_CHANGES|ifce.E_NEW_SCM|scm_ifce.E_FILE_CHANGES|pm_ifce.E_FILE_CHANGES|pm_ifce.E_PATCH_STACK_CHANGES|pm_ifce.E_PATCH_REFRESH|pm_ifce.E_POP|pm_ifce.E_PUSH|scm_ifce.E_WD_CHANGES
+    AU_FILE_CHANGE_EVENT = scm_ifce.E_FILE_CHANGES|fsdb.E_FILE_CHANGES # event returned by auto_update() if changes found
     UI_DESCR = '''
     <ui>
       <menubar name="scm_files_menubar">
@@ -141,12 +147,6 @@ class ScmTree(file_tree.FileTreeView, DeleteCopyRenameMixin):
     _FILE_ICON = {True : gtk.STOCK_DIRECTORY, False : gtk.STOCK_FILE}
     def __init__(self, busy_indicator=None, show_hidden=False, hide_clean=False):
         file_tree.FileTreeView.__init__(self, busy_indicator=busy_indicator, show_hidden=show_hidden, hide_clean=hide_clean)
-        self.add_notification_cb(ws_event.CHECKOUT|ws_event.CHANGE_WD, self.repopulate)
-        self.add_notification_cb(ws_event.FILE_CHANGES, self.update)
-        self.add_notification_cb(ws_event.AUTO_UPDATE, self.auto_update)
-    def auto_update(self, _arg=None):
-        if not self._file_db.is_current():
-            ws_event.notify_events(ws_event.WD_FILE_CHANGES)
     def populate_action_groups(self):
         file_tree.FileTreeView.populate_action_groups(self)
         self.action_groups[actions.AC_DONT_CARE].add_actions(
@@ -209,7 +209,7 @@ class ScmTree(file_tree.FileTreeView, DeleteCopyRenameMixin):
         self._add_files_to_top_patch(file_list)
     @staticmethod
     def _get_file_db():
-        return ifce.SCM.get_file_db()
+        return ifce.SCM.get_ws_file_db()
     @classmethod
     def _get_status_deco(cls, status=None):
         try:
@@ -231,20 +231,20 @@ class ScmTree(file_tree.FileTreeView, DeleteCopyRenameMixin):
 class WSFilesWidget(file_tree.FileTreeWidget):
     MENUBAR = "/scm_files_menubar"
     BUTTON_BAR_ACTIONS = ["show_hidden_files", "hide_clean_files"]
-    TREE_VIEW = ScmTree
+    TREE_VIEW = WSTreeView
     SIZE = (240, 320)
     @staticmethod
     def get_menu_prefix():
-        return ifce.SCM.get_name()
+        return ifce.SCM.name
 
 class ScmFileTreeWidget(gtk.VBox, ws_event.Listener):
     def __init__(self, hide_clean=False):
         gtk.VBox.__init__(self)
         ws_event.Listener.__init__(self)
         hbox = gtk.HBox()
-        name = ifce.SCM.get_name()
+        name = ifce.SCM.name
         self.scm_label = gtk.Label('' if not name else (name + ':'))
-        self.tree = ScmTree(hide_clean=hide_clean)
+        self.tree = WSTreeView(hide_clean=hide_clean)
         hbox.pack_start(self.scm_label, expand=False, fill=False)
         hbox.pack_start(self.tree.ui_manager.get_widget('/scm_files_menubar'), expand=True, fill=True)
         self.pack_start(hbox, expand=False, fill=False)
@@ -267,7 +267,7 @@ def add_new_file_to_top_patch_acb(_action=None):
     filepath = dialogue.ask_file_name(_('Enter path for new file'), existing=False)
     if not filepath:
         return
-    ScmFileTreeWidget.ScmTree._add_files_to_top_patch([filepath])
+    WSTreeView._add_files_to_top_patch([filepath])
 
 
 actions.CLASS_INDEP_AGS[ws_actions.AC_PMIC | ws_actions.AC_IN_PM_PGND_MUTABLE].add_actions(

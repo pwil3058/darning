@@ -23,6 +23,7 @@ import re
 import hashlib
 
 from .cmd_result import CmdResult
+from .utils import singleton
 
 from . import runext
 from . import scm_ifce
@@ -30,18 +31,30 @@ from . import utils
 from . import patchlib
 from . import fsdb_git
 
+@singleton
 class Git(object):
     name = 'git'
     @staticmethod
-    def is_valid_repo():
-        '''Is the currend working directory in a valid git repository?'''
-        try:
-            result = runext.run_cmd(['git', 'config', '--local', '-l'])
-        except OSError as edata:
-            if edata.errno == errno.ENOENT:
-                return False
-            else:
-                raise
+    def __getattr__(attr_name):
+        if attr_name == "is_available":
+            '''Is the currend working directory in a valid git repository?'''
+            try:
+                return runext.run_cmd(["git", "version"]).is_ok
+            except OSError as edata:
+                if edata.errno == errno.ENOENT:
+                    return False
+                else:
+                    raise
+        if attr_name == "in_valid_pgnd": return runext.run_cmd(["git", "config", "--local", "-l"]).is_ok
+    @staticmethod
+    def dir_is_in_valid_pgnd(dir_path=None):
+        '''Is the current working (or specified) directory in a valid git repository?'''
+        if dir_path:
+            orig_dir_path = os.getcwd()
+            os.chdir(dir_path)
+        result = runext.run_cmd(["git", "config", "--local", "-l"])
+        if dir_path:
+            os.chdir(orig_dir_path)
         return result.is_ok
     @staticmethod
     def get_revision(filepath=None):
@@ -108,6 +121,18 @@ class Git(object):
     @staticmethod
     def is_ready_for_import():
         return (True, '') if index_is_empty() else (False, _('Index is NOT empty\n'))
+    @staticmethod
+    def get_author_name_and_email():
+        import email
+        email_addr = runext.run_get_cmd(['git', 'config', "user.email"], default=None)
+        if not email_addr:
+            email_addr = os.environ.get("GIT_AUTHOR_EMAIL", None)
+        if not email_addr:
+            return None
+        name = runext.run_cmd(['git', 'config', "user.name"], default=None)
+        if not name:
+            name = utils.get_first_in_envar(["GIT_AUTHOR_NAME", "LOGNAME", "GECOS"], default=_("unknown"))
+        return email.utils.formataddr(name, email_addr)
 
 def index_is_empty():
     stdout = runext.run_get_cmd(['git', 'status', '--porcelain', '--untracked-files=no'])
@@ -116,4 +141,4 @@ def index_is_empty():
             return False
     return True
 
-scm_ifce.add_back_end(Git)
+scm_ifce.add_back_end(Git())

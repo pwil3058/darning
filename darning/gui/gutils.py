@@ -46,18 +46,26 @@ else:
     def set_widget_tooltip_text(widget, text):
         tooltips.set_tip(widget, text)
 
+class FramedScrollWindow(gtk.Frame):
+    def __init__(self, policy=(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC), label=None):
+        gtk.Frame.__init__(self, label)
+        self._sw = gtk.ScrolledWindow()
+        gtk.Frame.add(self, self._sw)
+    def add(self, widget):
+        self._sw.add(widget)
+    def set_policy(self, hpolicy, vpolicy):
+        return self._sw.set_policy(hpolicy, vpolicy)
+    def get_hscrollbar(self):
+        return self._sw.get_hscrollbar()
+    def get_vscrollbar(self):
+        return self._sw.get_hscrollbar()
+
 def wrap_in_scrolled_window(widget, policy=(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC), with_frame=True, label=None):
-    scrw = gtk.ScrolledWindow()
+    scrw = FramedScrollWindow(label) if with_frame else gtk.ScrolledWindow()
     scrw.set_policy(policy[0], policy[1])
     scrw.add(widget)
-    if with_frame:
-        frame = gtk.Frame(label)
-        frame.add(scrw)
-        frame.show_all()
-        return frame
-    else:
-        scrw.show_all()
-        return scrw
+    scrw.show_all()
+    return scrw
 
 class RadioButtonFramedVBox(gtk.Frame):
     def __init__(self, title, labels):
@@ -209,6 +217,12 @@ class ActionButton(gtk.Button):
         set_widget_tooltip_text(self, action.get_property("tooltip"))
         action.connect_proxy(self)
 
+class ActionCheckButton(gtk.CheckButton):
+    def __init__(self, action, use_underline=True):
+        gtk.CheckButton.__init__(self, label=action.get_property("label"), use_underline=use_underline)
+        set_widget_tooltip_text(self, action.get_property("tooltip"))
+        action.connect_proxy(self)
+
 class ActionButtonList:
     def __init__(self, action_group_list, action_name_list=None, use_underline=True):
         self.list = []
@@ -251,35 +265,32 @@ class TimeOutController():
         self.toggle_action.set_tool_item_type(gtk.ToggleToolButton)
         self.toggle_action.connect("toggled", self._toggle_acb)
         self.toggle_action.set_active(is_on)
-        self._toggle_acb()
     def _toggle_acb(self, _action=None):
         if self.toggle_action.get_active():
-            self._timeout_id = gobject.timeout_add(self._interval, self._timeout_cb)
+            self._restart_cycle()
+        else:
+            self._stop_cycle()
     def _timeout_cb(self):
         if self._function:
             self._function()
         return self.toggle_action.get_active()
-    def stop_cycle(self):
+    def _stop_cycle(self):
         if self._timeout_id:
             gobject.source_remove(self._timeout_id)
             self._timeout_id = None
-    def restart_cycle(self):
-        self.stop_cycle()
-        self._toggle_acb()
+    def _restart_cycle(self):
+        self._stop_cycle()
+        self._timeout_id = gobject.timeout_add(self._interval, self._timeout_cb)
     def set_function(self, function):
-        self.stop_cycle()
+        self._stop_cycle()
         self._function = function
         self._toggle_acb()
     def set_interval(self, interval):
         if interval > 0 and interval != self._interval:
             self._interval = interval
-            self.restart_cycle()
+            self._toggle_acb()
     def get_interval(self):
         return self._interval
-    def set_active(self, active=True):
-        if active != self.toggle_action.get_active():
-            self.toggle_action.set_active(active)
-        self.restart_cycle()
 
 TOC_DEFAULT_REFRESH_TD = TimeOutController.ToggleData("auto_refresh_toggle", _('Auto _Refresh'), _('Turn data auto refresh on/off'), gtk.STOCK_REFRESH)
 

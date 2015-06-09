@@ -51,6 +51,7 @@ def run_get_cmd(cmd, input_text=None, sanitize_stderr=None, default=CmdFailure, 
     return result.stdout.rstrip() if do_rstrip else result.stdout
 
 def run_cmd_in_console(console, cmd, input_text=None, sanitize_stderr=None):
+    from .utils import quote_if_needed
     """Run the given command in the given console and report the outcome as a
     CmdResult tuple.
     If input_text is not None pas it to the command as standard input.
@@ -63,8 +64,7 @@ def run_cmd_in_console(console, cmd, input_text=None, sanitize_stderr=None):
     if is_posix:
         savedsh = signal.getsignal(signal.SIGPIPE)
         signal.signal(signal.SIGPIPE, signal.SIG_DFL)
-    # TODO: fix command string written to console for spaces in components
-    console.start_cmd(' '.join(cmd) + "\n")
+    console.start_cmd(" ".join((quote_if_needed(s) for s in cmd)) + "\n")
     while gtk.events_pending():
         gtk.main_iteration()
     try:
@@ -148,3 +148,10 @@ if os.name == 'nt' or os.name == 'dos':
         console.append_stderr(result.stderr)
         console.end_cmd()
         return result.mapped_for_warning(sanitize_stderr=sanitize_stderr)
+
+# Some generalized lambdas to assisting in constructing commands
+OPTNL_FLAG = lambda val, flag: [flag] if val else []
+OPTNL_FLAGS = lambda val, flags: flags if val else []
+OPTNL_FLAG_WITH_ARG = lambda flag, arg: [flag, arg] if arg is not None else []
+OPTNL_ARG = lambda arg: [arg] if arg is not None else []
+OPTNL_ARG_LIST = lambda arg_list: arg_list if arg_list is not None else []

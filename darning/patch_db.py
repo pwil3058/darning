@@ -246,7 +246,8 @@ class FileData(GenericFileData):
         EXTANT = patchlib.FilePathPlus.EXTANT
     class Validity(object):
         REFRESHED, NEEDS_REFRESH, UNREFRESHABLE = range(3)
-    Status = collections.namedtuple('Status', ['presence', 'validity'])
+    class Status(collections.namedtuple('Status', ['presence', 'validity'])):
+        def __str__(self): return ""
     MERGE_CRE = re.compile('^(<<<<<<<|>>>>>>>).*$')
     def __init__(self, filepath, patch, overlaps=OverlapData(), came_from_path=None, as_rename=False):
         self.path = filepath
@@ -1814,7 +1815,7 @@ def do_apply_next_patch(absorb=False, force=False):
     return CmdResult.ERROR if biggest_ecode > 1 else CmdResult.OK
 
 def get_applied_patch_count():
-    return len(_DB.applied_patches)
+    return 0 if _DB is None else len(_DB.applied_patches)
 
 def all_applied_patches_refreshed():
     if _DB is None or len(_DB.applied_patches) == 0:

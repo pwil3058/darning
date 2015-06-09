@@ -20,8 +20,18 @@ to update their displayed/cached data
 
 import gobject
 
-_NFLAGS = 17
-AUTO_UPDATE, \
+from .. import utils
+
+_flag_generator = utils.create_flag_generator()
+
+def new_event_flags_and_mask(count):
+    flags = [_flag_generator.next() for _i in range(count)]
+    return tuple(flags + [sum(flags)])
+
+def new_event_flag():
+    return _flag_generator.next()
+
+_NFLAGS = 16
 PMIC_CHANGE, \
 FILE_ADD, \
 FILE_DEL, \
@@ -77,7 +87,7 @@ def del_notification_cb(cb_token):
     except ValueError:
         pass
 
-def notify_events(events, data=None):
+def notify_events(events, **kwargs):
     """
     Notify interested parties of events that have occured.
 
@@ -91,11 +101,13 @@ def notify_events(events, data=None):
     for registered_events, callback in _NOTIFICATION_CBS:
         if registered_events & events:
             try:
-                if data:
-                    callback(data)
-                else:
-                    callback()
-            except Exception:
+                callback(**kwargs)
+            except Exception as edata:
+                # TODO: try to be more explicit in naming exception type to catch here
+                # this is done to catch the race between a caller has going away and deleting its notifications
+                if True: # NB: for debug assistance e.g . locating exceptions not due to caller going away
+                    print "WS NOTIFY:", edata, callback, kwargs
+                    raise edata
                 invalid_cbs.append((registered_events, callback))
     for cb_token in invalid_cbs:
         del_notification_cb(cb_token)

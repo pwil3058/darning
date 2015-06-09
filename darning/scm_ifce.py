@@ -1,4 +1,4 @@
-### Copyright (C) 2010 Peter Williams <peter_ono@users.sourceforge.net>
+### Copyright (C) 2010-2015 Peter Williams <pwil3058@gmail.com>
 ###
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
@@ -17,99 +17,136 @@
 Provide an interface to SCM controlling source on which patches sit
 '''
 
-_AVAILABLE_BACK_ENDS = {}
+from .gui import ws_event
 
-_CURRENT_BACK_END = None
+E_FILE_ADDED, E_FILE_DELETED, E_FILE_CHANGES = ws_event.new_event_flags_and_mask(2)
+E_FILE_MOVED = E_FILE_ADDED|E_FILE_DELETED
 
-in_valid_pgnd = _CURRENT_BACK_END is not None
+E_COMMIT, E_BACKOUT, E_BRANCH, E_TAG, E_PUSH, E_PULL, E_INIT, E_CLONE, E_CS_CHANGES = ws_event.new_event_flags_and_mask(8)
 
-def add_back_end(backend):
-    '''Add a new back end interface to the pool'''
-    _AVAILABLE_BACK_ENDS[backend.name] = backend
+E_CHECKOUT, E_BISECT, E_MERGE, E_UPDATE, E_WD_CHANGES = ws_event.new_event_flags_and_mask(4)
 
-def reset_back_end():
-    '''Reset the current back end to one that is valid for cwd'''
-    global _CURRENT_BACK_END
-    global in_valid_pgnd
-    for name in _AVAILABLE_BACK_ENDS:
-        if _AVAILABLE_BACK_ENDS[name].is_valid_repo():
-            _CURRENT_BACK_END = _AVAILABLE_BACK_ENDS[name]
-            in_valid_pgnd = True
-            return
-    _CURRENT_BACK_END = None
+E_PGND_RC_CHANGED, E_USER_RC_CHANGED, E_RC_CHANGED = ws_event.new_event_flags_and_mask(2)
+
+_BACKEND = {}
+_MISSING_BACKEND = {}
+
+def add_back_end(newifce):
+    if newifce.is_available:
+        _BACKEND[newifce.name] = newifce
+    else:
+        _MISSING_BACKEND[newifce.name] = newifce
+
+def backend_requirements():
+    msg = _('No back ends are available. SCM systems:') + os.linesep
+    for key in list(_MISSING_BACKEND.keys()):
+        msg += '\t' + _MISSING_BACKEND[key].requires() + os.linesep
+    msg += _("are the ones that are usnderstood.")
+    return msg
+
+def report_backend_requirements(parent=None):
+    dialogue.inform_user(backend_requirements(), parent=parent)
+
+def avail_backends():
+    return list(_BACKEND.keys())
+
+def playground_type(dir_path=None):
+    # TODO: cope with nested playgrounds of different type and go for closest
+    # TODO: give preference to quilt if both found to allow quilt to be used on hg?
+    for bname in list(_BACKEND.keys()):
+        if _BACKEND[bname].dir_is_in_valid_pgnd(dir_path):
+            return bname
+    return None
+
+def get_ifce(dir_path=None):
+    pgt = playground_type(dir_path)
+    return _NULL_BACKEND if pgt is None else _BACKEND[pgt]
+
+def create_new_playground(pgnd_dir, backend):
+    return _BACKEND[backend].create_new_playground(pgnd_dir)
+
+class _NULL_BACKEND(object):
+    from . import fsdb
+    name = "null"
+    cmd_label = "null"
     in_valid_pgnd = False
-
-def get_revision(filepath=None):
-    '''
-    Return the SCM revision for the named file or the whole playground
-    if the filepath is None
-    '''
-    if _CURRENT_BACK_END is None:
+    pgnd_is_mutable = False
+    status_deco_map = fsdb.STATUS_DECO_MAP
+    @staticmethod
+    def copy_clean_version_to(filepath, target_name):
+        '''
+        Copy a clean version of the named file to the specified target
+        '''
+        assert False, "Should not be called for null interface"
+    @staticmethod
+    def do_import_patch(patch_filepath):
+        '''
+        Copy a clean version of the named file to the specified target
+        '''
+        assert False, "Should not be called for null interface"
+    @staticmethod
+    def get_author_name_and_email():
         return None
-    return _CURRENT_BACK_END.get_revision(filepath)
-
-def get_files_with_uncommitted_changes(files=None):
-    '''
-    Get the subset of files which have uncommitted SCM changes.  If files
-    is None assume all files in current directory.
-    '''
-    if _CURRENT_BACK_END is None:
+    @staticmethod
+    def get_branches_data():
         return []
-    return _CURRENT_BACK_END.get_files_with_uncommitted_changes(files)
-
-def get_file_db():
-    '''
-    Get the SCM view of the current directory
-    '''
-    if _CURRENT_BACK_END is None:
+    @staticmethod
+    def get_extension_enabled(extension):
+        return False
+    @staticmethod
+    def get_file_status_digest():
+        '''
+        Get the Sha1 digest of the SCM view of the files' status
+        '''
+        return None
+    @staticmethod
+    def get_files_with_uncommitted_changes(files=None):
+        '''
+        Get the subset of files which have uncommitted SCM changes.  If files
+        is None assume all files in current directory.
+        '''
+        return []
+    @staticmethod
+    def get_heads_data():
+        return []
+    @staticmethod
+    def get_history_data(rev=None, maxitems=None):
+        return []
+    @staticmethod
+    def get_parents_data(rev=None):
+        return []
+    @staticmethod
+    def get_path_table_data():
+        return []
+    @staticmethod
+    def get_playground_root():
+        return None
+    @staticmethod
+    def get_revision(filepath=None):
+        '''
+        Return the SCM revision for the named file or the whole playground
+        if the filepath is None
+        '''
+        return None
+    @classmethod
+    def get_status_deco(cls, status):
+        '''
+        Get the SCM specific decoration for the given status
+        '''
+        return cls.status_deco_map[status]
+    @staticmethod
+    def get_tags_data():
+        return []
+    @staticmethod
+    def get_ws_file_db():
+        '''
+        Get the SCM view of the current directory
+        '''
         from . import fsdb
         return fsdb.OsFileDb()
-    return _CURRENT_BACK_END.get_file_db()
-
-def get_file_status_digest():
-    '''
-    Get the Sha1 digest of the SCM view of the files' status
-    '''
-    if _CURRENT_BACK_END is None:
-        return None
-    return _CURRENT_BACK_END.get_file_status_digest()
-
-def get_status_deco(status):
-    '''
-    Get the SCM specific decoration for the given status
-    '''
-    if _CURRENT_BACK_END is None:
-        from . import fsdb
-        import pango
-        return fsdb.Deco(pango.STYLE_NORMAL, "black")
-    return _CURRENT_BACK_END.get_status_deco(status)
-
-def get_name():
-    '''
-    Get the SCM name to use in displays
-    '''
-    if _CURRENT_BACK_END is None:
-        return ''
-    return _CURRENT_BACK_END.name
-
-def copy_clean_version_to(filepath, target_name):
-    '''
-    Copy a clean version of the named file to the specified target
-    '''
-    assert _CURRENT_BACK_END is not None
-    return _CURRENT_BACK_END.copy_clean_version_to(filepath, target_name)
-
-def do_import_patch(patch_filepath):
-    '''
-    Copy a clean version of the named file to the specified target
-    '''
-    assert _CURRENT_BACK_END is not None
-    return _CURRENT_BACK_END.do_import_patch(patch_filepath)
-
-def is_ready_for_import():
-    '''
-    Is the SCM in a position to accept an import?
-    '''
-    if _CURRENT_BACK_END is None:
+    @staticmethod
+    def is_ready_for_import():
+        '''
+        Is the SCM in a position to accept an import?
+        '''
         return (False, _("No (or unsupported) underlying SCM."))
-    return _CURRENT_BACK_END.is_ready_for_import()
