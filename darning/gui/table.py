@@ -150,7 +150,7 @@ class TableView(tlview.ListView, ws_actions.AGandUIManager, dialogue.BusyIndicat
         self.action_groups[actions.AC_DONT_CARE].add_actions(
             [
                 ("table_refresh_contents", gtk.STOCK_REFRESH, _('Refresh'), None,
-                 _('Refresh the tables contents'), self._refresh_contents_acb),
+                 _('Refresh the tables contents'), lambda _action=None: self.refresh_contents()),
             ])
     @property
     def model(self):
@@ -203,8 +203,6 @@ class TableView(tlview.ListView, ws_actions.AGandUIManager, dialogue.BusyIndicat
                 middle = self.model.get_path(middle_iter)
                 self.scroll_to_cell(middle, use_align=True, row_align=align)
         self.unshow_busy()
-    def _refresh_contents_acb(self, _action):
-        self.refresh_contents()
     def get_contents(self):
         return [row for row in self.model.named()]
     def get_selected_data(self, columns=None):
@@ -271,8 +269,8 @@ class MapManagedTableView(TableView, gutils.MappedManager):
     def set_contents(self):
         TableView.set_contents(self)
         self._needs_refresh = False
-    def refresh_contents(self):
-        TableView.refresh_contents(self)
+    def refresh_contents(self, **kwargs):
+        TableView.refresh_contents(self, **kwargs)
         self._needs_refresh = False
     def refresh_contents_if_mapped(self, **kwargs):
         if self.is_mapped:
@@ -284,8 +282,6 @@ class MapManagedTableView(TableView, gutils.MappedManager):
             self.set_contents()
         else:
             self._needs_refresh = _NEEDS_RESET
-    def _refresh_contents_acb(self, _action):
-        self.refresh_contents()
 
 class TableWidget(gtk.VBox):
     View = TableView

@@ -494,9 +494,9 @@ class ForFileDialog(dialogue.AmodalDialog):
             self.filepath = filepath
             self.patchname = patchname
             TextWidget.__init__(self)
-        def _get_diff_text(self):
+        def _get_diff_text_iter(self):
             diff = ifce.PM.get_file_diff(self.filepath, self.patchname)
-            return str(diff)
+            return diff.iter_lines()
     def __init__(self, filepath, patchname):
         if patchname is None:
             patchname = ifce.PM.get_top_patch_for_file(filepath)
@@ -520,9 +520,9 @@ class CombinedForFileDialog(dialogue.AmodalDialog):
         def __init__(self, filepath):
             self.filepath = filepath
             TextWidget.__init__(self)
-        def _get_diff_text(self):
+        def _get_diff_text_iter(self):
             diff = ifce.PM.get_file_combined_diff(self.filepath)
-            return str(diff)
+            return diff.iter_lines()
     def __init__(self, filepath):
         title = _("combined diff: \"{0}\": {1}").format(filepath, os.getcwd())
         flags = gtk.DIALOG_DESTROY_WITH_PARENT

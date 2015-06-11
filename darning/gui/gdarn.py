@@ -61,7 +61,7 @@ class Darning(gtk.Window, dialogue.BusyIndicator, ws_actions.AGandUIManager):
            <separator/>
             <toolitem name="Select" action="patch_list_select_guards"/>
            <separator/>
-            <toolitem action="file_list_add_new"/>
+            <toolitem action="pm_add_new_file"/>
         </toolbar>
     </ui>
     '''

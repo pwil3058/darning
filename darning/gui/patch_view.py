@@ -21,7 +21,9 @@ import hashlib
 import gtk
 
 from .. import patch_db
+from .. import patchlib
 from .. import utils
+from .. import pm_ifce
 
 from . import textview
 from . import dialogue
@@ -30,18 +32,6 @@ from . import diff
 from . import ws_event
 from . import gutils
 from . import ifce
-
-class DiffDisplay(diff.TextWidget):
-    def __init__(self, diffplus):
-        self.diffplus = diffplus
-        diff.TextWidget.__init__(self)
-        self.tws_nav_buttonbox.pack_start(self.tws_display, expand=False)
-        self.tws_nav_buttonbox.reorder_child(self.tws_display, 0)
-    def _get_diff_text(self):
-        return str(self.diffplus)
-    def update(self, diffplus):
-        self.diffplus = diffplus
-        self.set_contents()
 
 class Widget(gtk.VBox):
     status_icons = {
@@ -115,21 +105,12 @@ class Widget(gtk.VBox):
             else:
                 raise
     def get_epatch(self):
-        text = self.get_patch_text()
-        self.text_digest = hashlib.sha1(text).digest()
-        return self._create_epatch(text)
+        epatch = patch_db.get_textpatch(self.patchname)
+        self.text_digest = epatch.get_hash_digest()
+        return epatch
     @property
     def is_applied(self):
         return ifce.PM.is_patch_applied(self.patchname)
-    def _create_epatch(self, text):
-        epatch = patchlib.Patch.parse_text(text)
-        if self.is_applied:
-            epatch.state = const.PatchState.APPLIED_REFRESHED
-        else:
-            epatch.state = const.PatchState.UNAPPLIED
-        for diff_plus in epatch.diff_pluses:
-            diff_plus.validity = None
-        return epatch
     @staticmethod
     def _make_file_label(filepath, validity):
         hbox = gtk.HBox()
@@ -154,12 +135,12 @@ class Widget(gtk.VBox):
         frame.add(widget)
         return frame
     def update(self):
-        text = self.get_patch_text()
-        digest = hashlib.sha1(text).digest()
+        epatch = patch_db.get_textpatch(self.patchname)
+        digest = epatch.get_hash_digest()
         if digest == self.text_digest:
             return
         self.text_digest = digest
-        self.epatch = self._create_epatch(text)
+        self.epatch = epatch
         self.status_box.remove(self.status_icon)
         self.status_icon = gtk.image_new_from_stock(self.status_icons[self.epatch.state], gtk.ICON_SIZE_BUTTON)
         self.status_box.add(self.status_icon)
@@ -181,12 +162,12 @@ class Dialogue(dialogue.AmodalDialog):
         self.vbox.pack_start(self.widget, expand=True, fill=True)
         self.refresh_action = gtk.Action('patch_view_refresh', _('_Refresh'), _('Refresh this patch in database.'), icons.STOCK_REFRESH_PATCH)
         self.refresh_action.connect('activate', self._refresh_acb)
-        self.refresh_action.set_sensitive(ifce.PM.get_top_patch() == self.widget.patchname)
+        self.refresh_action.set_sensitive(patch_db.is_top_patch(self.widget.patchname))
         refresh_button = gutils.ActionButton(self.refresh_action)
         self.auc = gutils.TimeOutController(toggle_data=self.AUTO_UPDATE_TD, function=self._update_display_cb, is_on=False, interval=10000)
         self.action_area.pack_start(gutils.ActionCheckButton(self.auc.toggle_action))
         self.action_area.pack_start(refresh_button)
-        self._save_file = ifce.PM.get_patch_file_path(patchname)
+        self._save_file = utils.convert_patchname_to_filename(patchname)
         self.save_action = gtk.Action('patch_view_save', _('_Export'), _('Export current content to text file.'), gtk.STOCK_SAVE_AS)
         self.save_action.connect('activate', self._save_as_acb)
         save_button = gutils.ActionButton(self.save_action)
@@ -201,7 +182,7 @@ class Dialogue(dialogue.AmodalDialog):
     def _update_display_cb(self, **kwargs):
         self.show_busy()
         self.widget.update()
-        self.refresh_action.set_sensitive(ifce.PM.get_top_patch() == self.widget.patchname)
+        self.refresh_action.set_sensitive(patch_db.is_top_patch(self.widget.patchname))
         self.unshow_busy()
     def _refresh_acb(self, _action):
         self.show_busy()

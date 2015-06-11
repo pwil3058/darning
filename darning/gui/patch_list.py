@@ -173,7 +173,7 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
         table.MapManagedTableView.__init__(self, busy_indicator=busy_indicator, size_req=size_req)
         self.get_selection().connect("changed", self._selection_changed_cb)
         self.add_notification_cb(self.REPOPULATE_EVENTS, self._repopulate_list_cb)
-        self.add_notification_cb(self.UPDATE_EVENTS, self._update_list_cb)
+        self.add_notification_cb(self.UPDATE_EVENTS, self.refresh_contents)
         self.register_auto_update_cb(self._auto_update_list_cb)
         self.repopulate_list()
     def populate_action_groups(self):
@@ -182,7 +182,7 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
         self.action_groups[ws_actions.AC_IN_PM_PGND].add_actions(
             [
                 ("pm_refresh_patch_list", gtk.STOCK_REFRESH, _('Update Patch List'), None,
-                 _('Refresh/update the patch list display'), self._update_list_cb),
+                 _('Refresh/update the patch list display'), lambda _action=False: self.refresh_contents()),
             ])
         self.action_groups[actions.AC_SELN_UNIQUE | ws_actions.AC_IN_PM_PGND].add_actions(
             [
@@ -234,8 +234,6 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
     def get_selected_patch(self):
         store, store_iter = self.seln.get_selected()
         return None if store_iter is None else store.get_patch_name(store_iter)
-    def _update_list_cb(self, **kwargs):
-        self.refresh_contents(**kwargs)
     def _auto_update_list_cb(self, events_so_far, args):
         if (events_so_far & (self.REPOPULATE_EVENTS|self.UPDATE_EVENTS)):
             return 0

@@ -21,9 +21,6 @@ import pango
 
 from .gui import ws_event
 
-E_FILE_ADDED, E_FILE_DELETED, E_FILE_CHANGES = ws_event.new_event_flags_and_mask(2)
-E_FILE_MOVED = E_FILE_ADDED|E_FILE_DELETED
-
 class Relation(object):
     COPIED_FROM = '<<-'
     COPIED_TO = '->>'

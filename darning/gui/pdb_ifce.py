@@ -343,6 +343,7 @@ def get_outstanding_changes_below_top():
         return None
     return patch_db.get_outstanding_changes_below_top()
 
+# TODO: improve "do" start_cmd strings
 def do_create_new_patch(patchname, descr):
     RCTX.reset()
     console.LOG.start_cmd(_('new patch "{0}"\n').format(patchname))
@@ -395,7 +396,7 @@ def do_pop_top_patch():
 
 def do_refresh_overlapped_files(file_list):
     RCTX.reset()
-    console.LOG.start_cmd('refresh --files {0}\n'.format(utils.file_list_to_string(file_list)))
+    console.LOG.start_cmd('refresh --files {0}\n'.format(utils.quoted_join(file_list)))
     result = _map_do(patch_db.do_refresh_overlapped_files(file_list))
     console.LOG.end_cmd()
     ws_event.notify_events(ws_event.PATCH_REFRESH)
@@ -457,7 +458,7 @@ def do_select_guards(guards_str):
 
 def do_add_files_to_top_patch(filepaths, absorb=False, force=False):
     RCTX.reset()
-    console.LOG.start_cmd('add {0}\n'.format(utils.file_list_to_string(filepaths)))
+    console.LOG.start_cmd('add {0}\n'.format(utils.quoted_join(filepaths)))
     result = _map_do(patch_db.do_add_files_to_top_patch(filepaths, absorb=absorb, force=force))
     console.LOG.end_cmd()
     if result.is_less_than_error:
@@ -469,8 +470,9 @@ def do_add_files_to_top_patch(filepaths, absorb=False, force=False):
 
 def do_delete_files_in_top_patch(filepaths):
     RCTX.reset()
-    console.LOG.start_cmd('delete "{0}"\n'.format(utils.file_list_to_string(filepaths)))
+    console.LOG.start_cmd('delete "{0}"\n'.format(utils.quoted_join(filepaths)))
     result = _map_do(patch_db.do_delete_files_in_top_patch(filepaths))
+    console.LOG.end_cmd()
     ws_event.notify_events(ws_event.FILE_DEL)
     return result
 
@@ -478,6 +480,7 @@ def do_copy_file_to_top_patch(filepath, as_filepath, overwrite=False):
     RCTX.reset()
     console.LOG.start_cmd('copy "{0}" "{1}"\n'.format(filepath, as_filepath))
     result = _map_do(patch_db.do_copy_file_to_top_patch(filepath, as_filepath, overwrite=overwrite))
+    console.LOG.end_cmd()
     ws_event.notify_events(ws_event.FILE_ADD)
     return result
 
@@ -485,15 +488,16 @@ def do_rename_file_in_top_patch(filepath, new_filepath, force=False, overwrite=F
     RCTX.reset()
     console.LOG.start_cmd('rename "{0}" "{1}"\n'.format(filepath, new_filepath))
     result = _map_do(patch_db.do_rename_file_in_top_patch(filepath, new_filepath, force=force, overwrite=overwrite))
+    console.LOG.end_cmd()
     ws_event.notify_events(ws_event.FILE_ADD|ws_event.FILE_DEL)
     return result
 
 def do_drop_files_from_patch(filepaths, patch=None):
     RCTX.reset()
     if patch is None:
-        console.LOG.start_cmd('drop {0}\n'.format(utils.file_list_to_string(filepaths)))
+        console.LOG.start_cmd('drop {0}\n'.format(utils.quoted_join(filepaths)))
     else:
-        console.LOG.start_cmd(_('drop --patch={0} {1}\n').format(patch, utils.file_list_to_string(filepaths)))
+        console.LOG.start_cmd(_('drop --patch={0} {1}\n').format(patch, utils.quoted_join(filepaths)))
     result = _map_do(patch_db.do_drop_files_fm_patch(patch, filepaths))
     console.LOG.end_cmd()
     if result.is_less_than_error:

@@ -322,6 +322,7 @@ def ask_rename_overwrite_or_cancel(result, clarification=None, parent=None):
     question = _form_question(result, clarification)
     return ask_question(question, parent, buttons)
 
+# TODO: rename ask_file_name() and ask_dir_name()
 def ask_file_name(prompt, suggestion=None, existing=True, parent=None):
     if existing:
         mode = gtk.FILE_CHOOSER_ACTION_OPEN

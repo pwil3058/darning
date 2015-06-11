@@ -2029,9 +2029,13 @@ def do_rename_file_in_top_patch(filepath, new_filepath, force=False, overwrite=F
     if not os.path.exists(filepath):
         RCTX.stderr.write(_('{0}: file does not exist.\n').format(rel_subdir(filepath)))
         return CmdResult.ERROR
-    if not overwrite and new_filepath in top_patch.files:
-        RCTX.stderr.write(_('{0}: file already in patch.\n').format(rel_subdir(new_filepath)))
-        return CmdResult.ERROR | CmdResult.SUGGEST_RENAME
+    if not overwrite:
+        if new_filepath in top_patch.files:
+            RCTX.stderr.write(_('{0}: file already in patch.\n').format(rel_subdir(new_filepath)))
+            return CmdResult.ERROR | CmdResult.SUGGEST_OVERWRITE_OR_RENAME
+        elif os.path.exists(new_filepath):
+            RCTX.stderr.write(_('{0}: file already exists.\n').format(rel_subdir(new_filepath)))
+            return CmdResult.ERROR | CmdResult.SUGGEST_OVERWRITE_OR_RENAME
     needs_refresh = False
     as_rename = True
     came_from_path = filepath
