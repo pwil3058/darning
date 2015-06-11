@@ -34,17 +34,18 @@ from . import gutils
 from . import ifce
 
 class Widget(gtk.VBox):
+    from ..pm_ifce import PatchState
     status_icons = {
-        patch_db.PatchState.UNAPPLIED : gtk.STOCK_REMOVE,
-        patch_db.PatchState.APPLIED_REFRESHED : icons.STOCK_APPLIED,
-        patch_db.PatchState.APPLIED_NEEDS_REFRESH : icons.STOCK_APPLIED_NEEDS_REFRESH,
-        patch_db.PatchState.APPLIED_UNREFRESHABLE : icons.STOCK_APPLIED_UNREFRESHABLE,
+        PatchState.NOT_APPLIED : gtk.STOCK_REMOVE,
+        PatchState.APPLIED_REFRESHED : icons.STOCK_APPLIED,
+        PatchState.APPLIED_NEEDS_REFRESH : icons.STOCK_APPLIED_NEEDS_REFRESH,
+        PatchState.APPLIED_UNREFRESHABLE : icons.STOCK_APPLIED_UNREFRESHABLE,
     }
     status_tooltips = {
-        patch_db.PatchState.UNAPPLIED : _('This patch is not applied.'),
-        patch_db.PatchState.APPLIED_REFRESHED : _('This patch is applied and refresh is up to date.'),
-        patch_db.PatchState.APPLIED_NEEDS_REFRESH : _('This patch is applied but refresh is NOT up to date.'),
-        patch_db.PatchState.APPLIED_UNREFRESHABLE : _('This patch is applied but has problems (e.g. unresolved merge errosr) that prevent it being refreshed.'),
+        PatchState.NOT_APPLIED : _('This patch is not applied.'),
+        PatchState.APPLIED_REFRESHED : _('This patch is applied and refresh is up to date.'),
+        PatchState.APPLIED_NEEDS_REFRESH : _('This patch is applied but refresh is NOT up to date.'),
+        PatchState.APPLIED_UNREFRESHABLE : _('This patch is applied but has problems (e.g. unresolved merge errosr) that prevent it being refreshed.'),
     }
     class TWSDisplay(diff.TextWidget.TwsLineCountDisplay):
         LABEL = _('File(s) that add TWS: ')

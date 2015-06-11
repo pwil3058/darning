@@ -61,13 +61,13 @@ def run_series(args):
     db_utils.set_report_context(verbose=True)
     table = patch_db.get_patch_table_data()
     if args.opt_applied:
-        for patch_data in [pdat for pdat in table if pdat.state != patch_db.PatchState.UNAPPLIED]:
+        for patch_data in [pdat for pdat in table if pdat.state != patch_db.PatchState.NOT_APPLIED]:
             sys.stdout.write('{0}\n'.format(patch_data.name))
     elif args.opt_unapplied:
-        for patch_data in [pdat for pdat in table if pdat.state == patch_db.PatchState.UNAPPLIED]:
+        for patch_data in [pdat for pdat in table if pdat.state == patch_db.PatchState.NOT_APPLIED]:
             sys.stdout.write('{0}\n'.format(patch_data.name))
     elif args.opt_blocked:
-        for patch_data in [pdat for pdat in table if pdat.state == patch_db.PatchState.UNAPPLIED]:
+        for patch_data in [pdat for pdat in table if pdat.state == patch_db.PatchState.NOT_APPLIED]:
             if not patch_db.is_patch_pushable(patch_data.name):
                 sys.stdout.write('{0}\n'.format(patch_data.name))
     else:

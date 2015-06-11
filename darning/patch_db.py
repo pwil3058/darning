@@ -627,11 +627,7 @@ def _pts_for_path(path):
     '''Return the "in patch" timestamp string for "secs" seconds'''
     return _pts_str(os.path.getmtime(path))
 
-class PatchState(object):
-    UNAPPLIED = ' '
-    APPLIED_REFRESHED = '+'
-    APPLIED_NEEDS_REFRESH = '?'
-    APPLIED_UNREFRESHABLE = '!'
+from .pm_ifce import PatchState
 
 class PatchTable(object):
     Row = collections.namedtuple('Row', ['name', 'state', 'pos_guards', 'neg_guards'])
@@ -748,7 +744,7 @@ class PatchData(PickeExtensibleObject):
         return table
     def get_table_row(self):
         if not self.is_applied():
-            state = PatchState.UNAPPLIED
+            state = PatchState.NOT_APPLIED
         elif self.needs_refresh():
             if self.has_unresolved_merges():
                 state = PatchState.APPLIED_UNREFRESHABLE
@@ -2329,7 +2325,7 @@ class TextPatch(patchlib.Patch):
     def __init__(self, patch, with_timestamps=False, with_stats=True):
         patchlib.Patch.__init__(self, num_strip_levels=1)
         self.source_name = patch.name
-        self.state = PatchState.APPLIED_REFRESHED if patch.is_applied() else PatchState.UNAPPLIED
+        self.state = PatchState.APPLIED_REFRESHED if patch.is_applied() else PatchState.NOT_APPLIED
         self.set_description(patch.description)
         for filepath in sorted(patch.files):
             if patch.files[filepath].diff is None and not patch.files[filepath].has_actionable_preamble():
@@ -2338,7 +2334,7 @@ class TextPatch(patchlib.Patch):
             if edp.diff is None and (patch.files[filepath].renamed_to and not patch.files[filepath].came_from_path):
                 continue
             self.diff_pluses.append(edp)
-            if self.state == PatchState.UNAPPLIED:
+            if self.state == PatchState.NOT_APPLIED:
                 continue
             if self.state == PatchState.APPLIED_REFRESHED and edp.validity != FileData.Validity.REFRESHED:
                 self.state = PatchState.APPLIED_NEEDS_REFRESH if edp.validity == FileData.Validity.NEEDS_REFRESH else PatchState.APPLIED_UNREFRESHABLE

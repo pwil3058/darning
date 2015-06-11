@@ -20,7 +20,7 @@ import os
 
 from .. import utils
 from .. import patchlib
-from ..patch_db import PatchState
+from ..pm_ifce import PatchState
 from .. import scm_ifce
 from .. import pm_ifce
 
@@ -148,7 +148,7 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
     </ui>
     """
     status_icons = {
-        PatchState.UNAPPLIED : None,
+        PatchState.NOT_APPLIED : None,
         PatchState.APPLIED_REFRESHED : icons.STOCK_APPLIED,
         PatchState.APPLIED_NEEDS_REFRESH : icons.STOCK_APPLIED_NEEDS_REFRESH,
         PatchState.APPLIED_UNREFRESHABLE : icons.STOCK_APPLIED_UNREFRESHABLE,
@@ -162,7 +162,7 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
         for guard in patch_data.neg_guards:
             fmt_str = ' <b>-{0}</b>' if guard in selected_guards else ' -{0}'
             markup += fmt_str.format(guard)
-        if patch_data.state == PatchState.UNAPPLIED:
+        if patch_data.state == PatchState.NOT_APPLIED:
             return '<span foreground="darkgrey" style="italic">' + markup + '</span>'
         else:
             return markup
