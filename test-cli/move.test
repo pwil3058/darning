@@ -105,7 +105,7 @@ $ darn diff
 > +Patch: "first"; Path: "file4"
 
 Simple overwrite
-$ darn move file2 file3
+$ darn move --overwrite file2 file3
 > file2: file added to patch "first".
 > file2: file renamed to "file3" in patch "first".
 $ darn files
