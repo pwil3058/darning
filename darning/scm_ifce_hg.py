@@ -221,7 +221,7 @@ class Mercurial(object):
     def do_resolve_workspace(file_paths=None):
         cmd = ["hg", "resolve"] + OPTNL_FLAG(not file_paths, "--all") + OPTNL_ARG_LIST(file_paths)
         result = _run_do_cmd(cmd)
-        ws_event.notify_events(ws_event.FILE_CHANGES)
+        ws_event.notify_events(scm_ifce.E_FILE_CHANGES)
         return result
     @staticmethod
     def do_revert_files(file_paths=None, dry_run=False):

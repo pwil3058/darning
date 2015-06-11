@@ -21,6 +21,7 @@ import os
 from .. import utils
 from .. import patchlib
 from ..patch_db import PatchState
+from .. import scm_ifce
 from .. import pm_ifce
 
 from . import dialogue
@@ -811,13 +812,13 @@ def _update_class_indep_pushable_cb(**kwargs):
     condns = get_pushable_condns()
     actions.CLASS_INDEP_AGS.update_condns(condns)
 
-ws_event.add_notification_cb(ws_event.CHANGE_WD|ws_event.PATCH_CHANGES, _update_class_indep_pushable_cb)
+ws_event.add_notification_cb(ifce.E_CHANGE_WD|pm_ifce.E_PATCH_LIST_CHANGES, _update_class_indep_pushable_cb)
 
 def _update_class_indep_absorbable_cb(**kwargs):
     condns = actions.MaskedCondns(AC_ALL_APPLIED_REFRESHED if ifce.PM.all_applied_patches_refreshed() else 0, AC_ALL_APPLIED_REFRESHED)
     actions.CLASS_INDEP_AGS.update_condns(condns)
 
-ws_event.add_notification_cb(ws_event.CHANGE_WD|ws_event.FILE_CHANGES|ws_event.PATCH_CHANGES, _update_class_indep_absorbable_cb)
+ws_event.add_notification_cb(ifce.E_CHANGE_WD|scm_ifce.E_FILE_CHANGES|pm_ifce.E_FILE_CHANGES|pm_ifce.E_PATCH_LIST_CHANGES, _update_class_indep_absorbable_cb)
 
 def new_playground_acb(_arg):
     newpg = dialogue.ask_dir_name(_('Select/create playground ..'), existing=False, suggestion='.')

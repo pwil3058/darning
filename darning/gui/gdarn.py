@@ -109,7 +109,7 @@ class Darning(gtk.Window, dialogue.BusyIndicator, ws_actions.AGandUIManager):
             vpane.add2(nbook)
         else:
             vpane.add2(console.LOG)
-        self.add_notification_cb(ws_event.CHANGE_WD, self._change_pgnd_ncb)
+        self.add_notification_cb(ifce.E_CHANGE_WD, self._change_pgnd_ncb)
         self.show_all()
     def populate_action_groups(self):
         pass

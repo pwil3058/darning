@@ -31,30 +31,6 @@ def new_event_flags_and_mask(count):
 def new_event_flag():
     return _flag_generator.next()
 
-_NFLAGS = 16
-PMIC_CHANGE, \
-FILE_ADD, \
-FILE_DEL, \
-FILE_MOD, \
-REPO_MOD, \
-REPO_HGRC, \
-USER_HGRC, \
-CHANGE_WD, \
-CHECKOUT, \
-PGND_MOD, \
-PATCH_PUSH, \
-PATCH_POP, \
-PATCH_REFRESH, \
-PATCH_CREATE, \
-PATCH_DELETE, \
-PATCH_MODIFY = [2 ** flag_num for flag_num in range(_NFLAGS)]
-
-ALL_EVENTS = 2 ** _NFLAGS - 1
-ALL_BUT_CHANGE_WD = ALL_EVENTS &  ~CHANGE_WD
-
-FILE_CHANGES = FILE_ADD | FILE_DEL | FILE_MOD
-PATCH_CHANGES = PATCH_PUSH | PATCH_POP | PATCH_REFRESH | PATCH_CREATE | PATCH_DELETE | PATCH_MODIFY
-
 _NOTIFICATION_CBS = []
 
 def add_notification_cb(events, callback):

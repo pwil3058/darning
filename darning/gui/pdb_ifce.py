@@ -71,7 +71,7 @@ def new_playground(description, pgdir=None):
     if in_valid_pgnd:
         from . import config
         config.PgndPathTable.append_saved_pgnd(os.getcwd())
-        ws_event.notify_events(ws_event.PGND_MOD)
+        ws_event.notify_events(ifce.NEW_PM)
     return result
 
 def do_chdir(new_dir=None):
@@ -351,7 +351,7 @@ def do_create_new_patch(patchname, descr):
     result = _map_do(patch_db.do_create_new_patch(patchname, descr))
     console.LOG.end_cmd()
     if result.is_less_than_error:
-        ws_event.notify_events(ws_event.PATCH_CREATE|ws_event.PATCH_PUSH)
+        ws_event.notify_events(pm_ifce.E_NEW_PATCH|pm_ifce.E_PUSH)
     return result
 
 def do_rename_patch(patchname, newname):
@@ -360,7 +360,7 @@ def do_rename_patch(patchname, newname):
     result = _map_do(patch_db.do_rename_patch(patchname, newname))
     console.LOG.end_cmd()
     if result.is_less_than_error:
-        ws_event.notify_events(ws_event.PATCH_MODIFY)
+        ws_event.notify_events(pm_ifce.E_MODIFY_PATCH)
     return result
 
 def do_restore_patch(patchname, as_patchname=''):
@@ -373,7 +373,7 @@ def do_restore_patch(patchname, as_patchname=''):
     result = _map_do(patch_db.do_restore_patch(patchname, as_patchname))
     console.LOG.end_cmd()
     if result.is_less_than_error:
-        ws_event.notify_events(ws_event.PATCH_CREATE)
+        ws_event.notify_events(pm_ifce.E_NEW_PATCH)
     return result
 
 def do_push_next_patch(absorb=False, force=False):
@@ -382,7 +382,7 @@ def do_push_next_patch(absorb=False, force=False):
     result = _map_do(patch_db.do_apply_next_patch(absorb=absorb, force=force))
     console.LOG.end_cmd()
     if result.is_less_than_error:
-        ws_event.notify_events(ws_event.PATCH_PUSH|ws_event.FILE_CHANGES)
+        ws_event.notify_events(pm_ifce.E_PUSH)
     return result
 
 def do_pop_top_patch():
@@ -391,7 +391,7 @@ def do_pop_top_patch():
     result = _map_do(patch_db.do_unapply_top_patch())
     console.LOG.end_cmd()
     if result.is_less_than_error:
-        ws_event.notify_events(ws_event.PATCH_POP|ws_event.FILE_CHANGES)
+        ws_event.notify_events(pm_ifce.E_POP)
     return result
 
 def do_refresh_overlapped_files(file_list):
@@ -399,7 +399,7 @@ def do_refresh_overlapped_files(file_list):
     console.LOG.start_cmd('refresh --files {0}\n'.format(utils.quoted_join(file_list)))
     result = _map_do(patch_db.do_refresh_overlapped_files(file_list))
     console.LOG.end_cmd()
-    ws_event.notify_events(ws_event.PATCH_REFRESH)
+    ws_event.notify_events(pm_ifce.E_PATCH_REFRESH)
     return result
 
 def do_refresh_patch(patchname=None):
@@ -410,7 +410,7 @@ def do_refresh_patch(patchname=None):
         console.LOG.start_cmd('refresh {0}\n'.format(patchname))
     result = _map_do(patch_db.do_refresh_patch(patchname))
     console.LOG.end_cmd()
-    ws_event.notify_events(ws_event.PATCH_REFRESH)
+    ws_event.notify_events(pm_ifce.E_PATCH_REFRESH)
     return result
 
 def do_remove_patch(patchname):
@@ -418,7 +418,7 @@ def do_remove_patch(patchname):
     console.LOG.start_cmd('remove patch: {0}\n'.format(patchname))
     eflags =patch_db.do_remove_patch(patchname)
     console.LOG.end_cmd()
-    ws_event.notify_events(ws_event.PATCH_DELETE)
+    ws_event.notify_events(pm_ifce.E_DELETE_PATCH)
     return result
 
 def do_set_patch_description(patchname, text):
@@ -427,7 +427,7 @@ def do_set_patch_description(patchname, text):
     console.LOG.append_stdin(_('"{0}"\n').format(text))
     result = _map_do(patch_db.do_set_patch_description(patchname, text))
     console.LOG.end_cmd()
-    ws_event.notify_events(ws_event.PATCH_MODIFY)
+    ws_event.notify_events(pm_ifce.E_MODIFY_PATCH)
     return result
 
 def do_set_series_description(text):
@@ -444,7 +444,7 @@ def do_set_patch_guards(patchname, guards_str):
     result = _map_do(patch_db.do_set_patch_guards_fm_str(patchname, guards_str))
     console.LOG.end_cmd()
     if result.is_less_than_error:
-        ws_event.notify_events(ws_event.PATCH_MODIFY)
+        ws_event.notify_events(pm_ifce.E_MODIFY_PATCH)
     return result
 
 def do_select_guards(guards_str):
@@ -453,7 +453,7 @@ def do_select_guards(guards_str):
     result = _map_do(patch_db.do_select_guards(guards_str.split()))
     console.LOG.end_cmd()
     if result.is_less_than_error:
-        ws_event.notify_events(ws_event.PATCH_MODIFY)
+        ws_event.notify_events(pm_ifce.E_MODIFY_GUARDS)
     return result
 
 def do_add_files_to_top_patch(filepaths, absorb=False, force=False):
@@ -463,9 +463,9 @@ def do_add_files_to_top_patch(filepaths, absorb=False, force=False):
     console.LOG.end_cmd()
     if result.is_less_than_error:
         if (absorb or force):
-            ws_event.notify_events(ws_event.FILE_ADD|ws_event.PATCH_REFRESH)
+            ws_event.notify_events(pm_ifce.E_FILE_ADDED|pm_ifce.E_PATCH_REFRESH)
         else:
-            ws_event.notify_events(ws_event.FILE_ADD)
+            ws_event.notify_events(pm_ifce.E_FILE_ADDED)
     return result
 
 def do_delete_files_in_top_patch(filepaths):
@@ -473,7 +473,7 @@ def do_delete_files_in_top_patch(filepaths):
     console.LOG.start_cmd('delete "{0}"\n'.format(utils.quoted_join(filepaths)))
     result = _map_do(patch_db.do_delete_files_in_top_patch(filepaths))
     console.LOG.end_cmd()
-    ws_event.notify_events(ws_event.FILE_DEL)
+    ws_event.notify_events(pm_ifce.E_FILE_DELETED)
     return result
 
 def do_copy_file_to_top_patch(filepath, as_filepath, overwrite=False):
@@ -481,7 +481,7 @@ def do_copy_file_to_top_patch(filepath, as_filepath, overwrite=False):
     console.LOG.start_cmd('copy "{0}" "{1}"\n'.format(filepath, as_filepath))
     result = _map_do(patch_db.do_copy_file_to_top_patch(filepath, as_filepath, overwrite=overwrite))
     console.LOG.end_cmd()
-    ws_event.notify_events(ws_event.FILE_ADD)
+    ws_event.notify_events(pm_ifce.E_FILE_ADDED)
     return result
 
 def do_rename_file_in_top_patch(filepath, new_filepath, force=False, overwrite=False):
@@ -489,7 +489,7 @@ def do_rename_file_in_top_patch(filepath, new_filepath, force=False, overwrite=F
     console.LOG.start_cmd('rename "{0}" "{1}"\n'.format(filepath, new_filepath))
     result = _map_do(patch_db.do_rename_file_in_top_patch(filepath, new_filepath, force=force, overwrite=overwrite))
     console.LOG.end_cmd()
-    ws_event.notify_events(ws_event.FILE_ADD|ws_event.FILE_DEL)
+    ws_event.notify_events(pm_ifce.E_FILE_ADDED|pm_ifce.E_FILE_DELETED)
     return result
 
 def do_drop_files_from_patch(filepaths, patch=None):
@@ -501,7 +501,7 @@ def do_drop_files_from_patch(filepaths, patch=None):
     result = _map_do(patch_db.do_drop_files_fm_patch(patch, filepaths))
     console.LOG.end_cmd()
     if result.is_less_than_error:
-        ws_event.notify_events(ws_event.FILE_DEL|ws_event.PATCH_MODIFY)
+        ws_event.notify_events(pm_ifce.E_FILE_DELETED|pm_ifce.E_DELETE_PATCH)
     return result
 
 def do_duplicate_patch(patchname, as_patchname, newdescription):
@@ -511,7 +511,7 @@ def do_duplicate_patch(patchname, as_patchname, newdescription):
     result = _map_do(patch_db.do_duplicate_patch(patchname, as_patchname, newdescription))
     console.LOG.end_cmd()
     if result.is_less_than_error:
-        ws_event.notify_events(ws_event.PATCH_CREATE)
+        ws_event.notify_events(pm_ifce.E_NEW_PATCH)
     return result
 
 def do_import_patch(epatch, as_patchname, overwrite=False):
@@ -523,7 +523,7 @@ def do_import_patch(epatch, as_patchname, overwrite=False):
     result = _map_do(patch_db.do_import_patch(epatch, as_patchname, overwrite=overwrite))
     console.LOG.end_cmd()
     if result.is_less_than_error:
-        ws_event.notify_events(ws_event.PATCH_CREATE|ws_event.PATCH_PUSH)
+        ws_event.notify_events(pm_ifce.E_NEW_PATCH|pm_ifce.E_PUSH)
     return result
 
 def do_export_patch_as(patchname, patch_filename, force=False, overwrite=False):
@@ -541,7 +541,7 @@ def do_fold_epatch(epatch, absorb=False, force=False):
     result = _map_do(patch_db.do_fold_epatch(epatch, absorb=absorb, force=force))
     console.LOG.end_cmd()
     if result.is_less_than_error:
-        ws_event.notify_events(ws_event.FILE_CHANGES)
+        ws_event.notify_events(pm_ifce.E_FILE_CHANGES)
     return result
 
 def do_fold_named_patch(patchname, absorb=False, force=False):
@@ -550,7 +550,7 @@ def do_fold_named_patch(patchname, absorb=False, force=False):
     result = _map_do(patch_db.do_fold_named_patch(patchname, absorb=absorb, force=force))
     console.LOG.end_cmd()
     if result.is_less_than_error:
-        ws_event.notify_events(ws_event.FILE_CHANGES|ws_event.PATCH_DELETE)
+        ws_event.notify_events(pm_ifce.E_FILE_CHANGES|pm_ifce.E_DELETE_PATCH)
     return result
 
 def do_scm_absorb_applied_patches():
@@ -559,7 +559,7 @@ def do_scm_absorb_applied_patches():
     result = _map_do(patch_db.do_scm_absorb_applied_patches())
     console.LOG.end_cmd()
     # notify events regardless of return value as partial success is possible
-    ws_event.notify_events(ws_event.PATCH_POP|ws_event.FILE_CHANGES)
+    ws_event.notify_events(pm_ifce.E_POP)
     return result
 
 def is_pushable():

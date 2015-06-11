@@ -83,8 +83,6 @@ class PatchFileTreeView(file_tree.FileTreeView):
                 ('patch_rename_file', icons.STOCK_RENAME, _('_Rename'), None,
                  _('Rename the selected file within the top patch'), lambda _action=None: self.pm_rename_selected_file()),
             ])
-        self.add_notification_cb(ws_event.CHECKOUT|ws_event.CHANGE_WD|ws_event.PATCH_PUSH|ws_event.PATCH_POP, self.repopulate)
-        self.add_notification_cb(ws_event.FILE_CHANGES|ws_event.PATCH_REFRESH, self.update)
     def pm_delete_selected_files(self):
         return dooph_pm.pm_delete_files(self.get_selected_filepaths())
     def pm_copy_selected_file(self):
