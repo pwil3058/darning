@@ -11,7 +11,7 @@
 ###
 ### You should have received a copy of the GNU General Public License
 ### along with this program; if not, write to the Free Software
-### Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import re
 import os
@@ -431,9 +431,9 @@ class DiffTextWidget(DiffPlusNotebook, FileAndRefreshActions):
 
 class _DiffTextDialog(dialogue.AmodalDialog):
     DIFF_TEXT_WIDGET = None
-    def __init__(self, parent, **kwargs):
+    def __init__(self, parent=None, **kwargs):
         flags = gtk.DIALOG_DESTROY_WITH_PARENT
-        dialogue.AmodalDialog.__init__(self, None, parent, flags, ())
+        dialogue.AmodalDialog.__init__(self, None, parent if parent else dialogue.main_window, flags, ())
         dtw = self.DIFF_TEXT_WIDGET(**kwargs)
         self.set_title(dtw.window_title)
         self.vbox.pack_start(dtw)
@@ -475,18 +475,92 @@ class CombinedPatchDiffDialog(_DiffTextDialog):
 
 class NamedPatchDiffWidget(DiffTextWidget):
     A_NAME_LIST = ["diff_save", "diff_save_as"]
-    def __init__(self, patch=None, file_paths=None, num_strip_levels=1):
-        self._patch = patch
+    def __init__(self, patch_name=None, file_paths=None, num_strip_levels=1):
+        self._patch_name = patch_name
         self._file_paths = file_paths
         DiffTextWidget.__init__(self)
     def _get_diff_text(self):
-        return ifce.PM.get_named_patch_diff_text(self._patch, self._file_paths)
+        return ifce.PM.get_named_patch_diff_text(self._patch_name, self._file_paths)
     @property
     def window_title(self):
-        return _("Patch \"{0}\" diff: {1}").format(self._patch, utils.cwd_rel_home())
+        return _("Patch \"{0}\" diff: {1}").format(self._patch_name, utils.cwd_rel_home())
 
 class NamedPatchDiffDialog(_DiffTextDialog):
     DIFF_TEXT_WIDGET = NamedPatchDiffWidget
+
+def launch_external_diff(file_a, file_b):
+    extdiff = options.get("diff", "extdiff")
+    if not extdiff:
+        return CmdResult.warning(_("No external diff viewer is defined.\n"))
+    try:
+        runext.run_cmd_in_bgnd([extdiff, file_a, file_b])
+    except OSError as edata:
+        return CmdResult.error(stderr=_("Error lanuching external viewer \"{0}\": {1}\n").format(extdiff, edata.strerror))
+    return CmdResult.ok()
+
+def launch_reconciliation_tool(file_a, file_b, file_c):
+    reconciler = options.get("reconcile", "tool")
+    if not reconciler:
+        return CmdResult.warning(_("No reconciliation tool is defined.\n"))
+    try:
+        runext.run_cmd_in_bgnd([reconciler, file_a, file_b, file_c])
+    except OSError as edata:
+        return CmdResult.error(stderr=_("Error lanuching reconciliation tool \"{0}\": {1}\n").format(reconciler, edata.strerror))
+    return CmdResult.ok()
+
+class WdDiffTextWidget(DiffTextWidget, FileAndRefreshActions):
+    DIFF_MODES = ['git diff', 'git diff --staged', 'git diff HEAD']
+    def __init__(self):
+        self.mode_button = {}
+        button = None
+        for mode in self.DIFF_MODES:
+            self.mode_button[mode] = button = gtk.RadioButton(button, mode)
+            button.connect('toggled', self._diff_mode_toggled_cb)
+        DiffTextWidget.__init__(self)
+        FileAndRefreshActions.__init__(self)
+        self.a_name_list = ["diff_save", "diff_save_as", "diff_refresh"]
+        self.diff_buttons = gutils.ActionButtonList([self._action_group], self.a_name_list)
+    def _get_diff_text(self):
+        # TODO: think about making -M a selectable option
+        try:
+            if self.mode_button['git diff --staged'].get_active():
+                return ifce.SCM.get_diff('-M', '--staged')
+            elif self.mode_button['git diff HEAD'].get_active():
+                return ifce.SCM.get_diff('-M', 'HEAD')
+            if self.mode_button['git diff'].get_active():
+                return ifce.SCM.get_diff('-M')
+        except CmdFailure as failure:
+            dialogue.report_failure(failure)
+            return failure.result.stdout
+    def _diff_mode_toggled_cb(self, _data=None):
+        self.update()
+    def _refresh_acb(self, _action):
+        self.update()
+    def _get_text_to_save(self):
+        return str(self)
+
+class WdDiffTextDialog(dialogue.AmodalDialog):
+    def __init__(self, parent=None):
+        flags = gtk.DIALOG_DESTROY_WITH_PARENT
+        dialogue.AmodalDialog.__init__(self, None, parent, flags, ())
+        title = "diff: %s" % utils.cwd_rel_home()
+        self.set_title(title)
+        dtw = WdDiffTextWidget()
+        hbox = gtk.HBox()
+        hbox.pack_start(gtk.Label(_('Mode:')), expand=False)
+        for key in dtw.DIFF_MODES:
+            hbox.pack_start(dtw.mode_button[key], expand= False)
+        self.vbox.pack_start(hbox, expand=False)
+        self.vbox.pack_start(dtw)
+        tws_display = dtw.tws_display
+        self.action_area.pack_end(tws_display, expand=False, fill=False)
+        for button in dtw.diff_buttons.list:
+            self.action_area.pack_start(button)
+        self.add_buttons(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
+        self.connect("response", self._close_cb)
+        self.show_all()
+    def _close_cb(self, dialog, response_id):
+        dialog.destroy()
 
 class ForFileDialog(dialogue.AmodalDialog):
     class Widget(TextWidget):
@@ -538,22 +612,23 @@ class CombinedForFileDialog(dialogue.AmodalDialog):
     def _close_cb(self, dialog, response_id):
         dialog.destroy()
 
-def launch_external_diff(file_a, file_b):
-    extdiff = options.get("diff", "extdiff")
-    if not extdiff:
-        return CmdResult.warning(_("No external diff viewer is defined.\n"))
-    try:
-        runext.run_cmd_in_bgnd([extdiff, file_a, file_b])
-    except OSError as edata:
-        return CmdResult.error(stderr=_("Error lanuching external viewer \"{0}\": {1}\n").format(extdiff, edata.strerror))
-    return CmdResult.ok()
+#GLOBAL ACTIONS
+from . import actions
+from . import ws_actions
 
-def launch_reconciliation_tool(file_a, file_b, file_c):
-    reconciler = options.get("reconcile", "tool")
-    if not reconciler:
-        return CmdResult.warning(_("No reconciliation tool is defined.\n"))
-    try:
-        runext.run_cmd_in_bgnd([reconciler, file_a, file_b, file_c])
-    except OSError as edata:
-        return CmdResult.error(stderr=_("Error lanuching reconciliation tool \"{0}\": {1}\n").format(reconciler, edata.strerror))
-    return CmdResult.ok()
+actions.CLASS_INDEP_AGS[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC].add_actions(
+    [
+        ("pm_top_patch_diff", icons.STOCK_DIFF, _("_Diff"), None,
+         _("Display the diff for all files in the top patch"),
+         lambda _action=None: TopPatchDiffDialog(parent=dialogue.main_window).show()
+        ),
+        ("pm_top_patch_extdiff", icons.STOCK_DIFF, _('E_xtdiff'), None,
+         _('Launch extdiff for all files in patch'),
+         lambda _action=None: ifce.PM.launch_extdiff_for_top_patch()
+        ),
+        ("pm_combined_patch_diff", icons.STOCK_DIFF, _("Combined Diff"), "",
+         _("View the combined diff for all files in all currently applied patches"),
+         lambda _action=None: CombinedPatchDiffDialog(parent=dialogue.main_window).show()
+        ),
+    ]
+)

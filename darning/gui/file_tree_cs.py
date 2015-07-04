@@ -67,21 +67,31 @@ class PatchFileTreeView(file_tree.FileTreeView):
         self.action_groups[ws_actions.AC_IN_PM_PGND_MUTABLE + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
             [
                 ('patch_edit_files', gtk.STOCK_EDIT, _('_Edit'), None,
-                 _('Edit the selected file(s)'), lambda _action=None: self.pm_edit_selected_files()),
+                 _('Edit the selected file(s)'),
+                 lambda _action=None: self.pm_edit_selected_files()
+                ),
             ])
         self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
             [
                 ('patch_diff_selected_file', icons.STOCK_DIFF, _('_Diff'), None,
-                 _('Display the diff for selected file'), lambda _action=None: self.pm_diff_selected_file()),
+                 _('Display the diff for selected file'),
+                 lambda _action=None: self.pm_diff_selected_file()
+                ),
             ])
         self.action_groups[ws_actions.AC_IN_PM_PGND_MUTABLE + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
             [
                 ('patch_extdiff_selected_file', icons.STOCK_DIFF, _('E_xtDiff'), None,
-                 _('Launch external diff viewer for selected file'), lambda _action=None: self.pm_extdiff_selected_file()),
+                 _('Launch external diff viewer for selected file'),
+                 lambda _action=None: self.pm_extdiff_selected_file()
+                ),
                 ('patch_copy_file', gtk.STOCK_COPY, _('_Copy'), None,
-                 _('Add a copy of the selected file to the top patch'), lambda _action=None: self.pm_copy_selected_file()),
+                 _('Add a copy of the selected file to the top patch'),
+                 lambda _action=None: self.pm_copy_selected_file()
+                ),
                 ('patch_rename_file', icons.STOCK_RENAME, _('_Rename'), None,
-                 _('Rename the selected file within the top patch'), lambda _action=None: self.pm_rename_selected_file()),
+                 _('Rename the selected file within the top patch'),
+                 lambda _action=None: self.pm_rename_selected_file()
+                ),
             ])
     def pm_delete_selected_files(self):
         return dooph_pm.pm_delete_files(self.get_selected_filepaths())
@@ -144,14 +154,20 @@ class TopPatchFileTreeView(PatchFileTreeView):
         self.action_groups[ws_actions.AC_IN_PM_PGND_MUTABLE + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
             [
                 ('top_patch_drop_selected_files', gtk.STOCK_REMOVE, _('_Drop'), None,
-                 _('Drop/remove the selected files from the top patch'), lambda _action=None: self.pm_drop_selection()),
+                 _('Drop/remove the selected files from the top patch'),
+                 lambda _action=None: self.pm_drop_selection()
+                ),
                 ('top_patch_delete_selected_files', gtk.STOCK_DELETE, _('_Delete'), None,
-                 _('Delete the selected files'), lambda _action=None: self.pm_delete_selection()),
+                 _('Delete the selected files'),
+                 lambda _action=None: self.pm_delete_selection()
+                ),
             ])
         self.action_groups[ws_actions.AC_IN_PM_PGND_MUTABLE + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
             [
                 ('top_patch_reconcile_selected_file', icons.STOCK_MERGE, _('_Reconcile'), None,
-                 _('Launch reconciliation tool for the selected file'), lambda _action=None: self.pm_reconcile_selected_file()),
+                 _('Launch reconciliation tool for the selected file'),
+                 lambda _action=None: self.pm_reconcile_selected_file()
+                ),
             ])
     def pm_drop_selection(self):
         file_list = self.get_selected_filepaths()
@@ -198,7 +214,9 @@ class CombinedPatchFileTreeView(PatchFileTreeView):
         self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
             [
                 ('combined_patch_diff_selected_file', icons.STOCK_DIFF, _('_Diff'), None,
-                 _('Display the combined diff for selected file'), lambda _action=None: self.pm_combined_diff_selected_file()),
+                 _('Display the combined diff for selected file'),
+                 lambda _action=None: self.pm_combined_diff_selected_file()
+                ),
             ])
     def pm_combined_diff_selected_file(self):
         filepaths = self.get_selected_filepaths()

@@ -41,15 +41,23 @@ def deregister_cb(callback):
         pass
 
 def _auto_update_cb():
+    DEBUG = False # set to True to investigate unexpected activity
     invalid_cbs = []
     event_args = {}
     # make sure that the interfaces are up to date so that checks are valid
     event_flags = _check_interfaces(event_args)
+    if DEBUG: print "AA START:", event_flags
     for callback in _REGISTERED_CBS:
         try:
             # pass event_flags in to give the client a chance to skip
             # any checks if existing flags would cause them to update anyway
-            event_flags |= callback(event_flags, event_args)
+            if DEBUG:
+                cb_flags = callback(event_flags, event_args)
+                if cb_flags:
+                    print "AA FIRE:", cb_flags, callback
+                event_flags |= cb_flags
+            else:
+                event_flags |= callback(event_flags, event_args)
         except Exception as edata:
             # TODO: try to be more explicit in naming exception type to catch here
             # this is done to catch the race between a caller has going away and deleting its registers
@@ -57,6 +65,7 @@ def _auto_update_cb():
                 print "AUTO UPDATE:", edata, callback, event_flags, event_args
                 raise edata
             invalid_cbs.append(callback)
+    if DEBUG: print "AA END:", event_flags
     if event_flags:
         ws_event.notify_events(event_flags, **event_args)
     for cb in invalid_cbs:
@@ -75,6 +84,14 @@ AUTO_UPDATE = gutils.TimeOutController(
 )
 
 actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_action(AUTO_UPDATE.toggle_action)
+actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_actions(
+    [
+        ("au_update_all", gtk.STOCK_REFRESH, _("Freshen"), "",
+         _("Freshen all views. Useful after external actions change workspace/playground state and auto update is disabled."),
+         lambda _action=None: trigger_auto_update()
+         ),
+    ]
+)
 
 class AutoUpdater(gobject.GObject):
     """A base class for transient GTK object classes that wish to register
@@ -84,7 +101,7 @@ class AutoUpdater(gobject.GObject):
     def __init__(self):
         gobject.GObject.__init__(self)
         self._auto_updater_cbs = []
-        self.connect('destroy', self._auto_updater_destroy_cb)
+        self.connect("destroy", self._auto_updater_destroy_cb)
 
     def register_auto_update_cb(self, callback):
         """

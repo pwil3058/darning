@@ -1,4 +1,4 @@
-### Copyright (C) 2011 Peter Williams <peter_ono@users.sourceforge.net>
+### Copyright (C) 2010-2015 Peter Williams <pwil3058@gmail.com>
 ###
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
@@ -13,14 +13,16 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import gtk
-import gobject
 import collections
 import os
 
+import gtk
+import gobject
+
+from ..pm_ifce import PatchState
+
 from .. import utils
 from .. import patchlib
-from ..pm_ifce import PatchState
 from .. import scm_ifce
 from .. import pm_ifce
 
@@ -38,9 +40,17 @@ from . import textview
 from . import patch_view
 from . import auto_update
 
+STATUS_ICONS = {
+    PatchState.NOT_APPLIED : None,
+    PatchState.APPLIED_REFRESHED : icons.STOCK_APPLIED,
+    PatchState.APPLIED_NEEDS_REFRESH : icons.STOCK_APPLIED_NEEDS_REFRESH,
+    PatchState.APPLIED_UNREFRESHABLE : icons.STOCK_APPLIED_UNREFRESHABLE,
+}
+
 AC_POP_POSSIBLE = ws_actions.AC_PMIC
-AC_APPLIED, AC_UNAPPLIED, AC_APPLIED_FLAG, AC_APPLIED_NOT_FLAG, AC_APPLIED_MASK = actions.ActionCondns.new_flags_and_mask(4)
 AC_PUSH_POSSIBLE, AC_PUSH_POSSIBLE_MASK = actions.ActionCondns.new_flags_and_mask(1)
+
+AC_APPLIED, AC_UNAPPLIED, AC_APPLIED_FLAG, AC_APPLIED_NOT_FLAG, AC_APPLIED_MASK = actions.ActionCondns.new_flags_and_mask(4)
 AC_ALL_APPLIED_REFRESHED, AC_ALL_APPLIED_REFRESHED_MASK = actions.ActionCondns.new_flags_and_mask(1)
 AC_APPLIED_TOP = AC_APPLIED | AC_APPLIED_FLAG
 AC_APPLIED_NOT_TOP = AC_APPLIED | AC_APPLIED_NOT_FLAG
@@ -66,7 +76,7 @@ def get_pushable_condns():
 class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
     REPOPULATE_EVENTS = ifce.E_CHANGE_WD|ifce.E_NEW_PM
     UPDATE_EVENTS = pm_ifce.E_PATCH_LIST_CHANGES|pm_ifce.E_PATCH_REFRESH
-    PopUp = '/patches_popup'
+    PopUp = "/patches_popup"
     class Model(table.MapManagedTableView.Model):
         Row = collections.namedtuple("Row",    ["name", "icon", "markup"])
         types = Row(name=gobject.TYPE_STRING, icon=gobject.TYPE_STRING, markup=gobject.TYPE_STRING,)
@@ -147,12 +157,6 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
       </popup>
     </ui>
     """
-    status_icons = {
-        PatchState.NOT_APPLIED : None,
-        PatchState.APPLIED_REFRESHED : icons.STOCK_APPLIED,
-        PatchState.APPLIED_NEEDS_REFRESH : icons.STOCK_APPLIED_NEEDS_REFRESH,
-        PatchState.APPLIED_UNREFRESHABLE : icons.STOCK_APPLIED_UNREFRESHABLE,
-    }
     @staticmethod
     def patch_markup(patch_data, selected_guards):
         markup = patch_data.name
@@ -173,7 +177,7 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
         auto_update.AutoUpdater.__init__(self)
         table.MapManagedTableView.__init__(self, busy_indicator=busy_indicator, size_req=size_req)
         self.get_selection().connect("changed", self._selection_changed_cb)
-        self.add_notification_cb(self.REPOPULATE_EVENTS, self._repopulate_list_cb)
+        self.add_notification_cb(self.REPOPULATE_EVENTS, self.repopulate_list)
         self.add_notification_cb(self.UPDATE_EVENTS, self.refresh_contents)
         self.register_auto_update_cb(self._auto_update_list_cb)
         self.repopulate_list()
@@ -231,7 +235,7 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
     def _selection_changed_cb(self, selection):
         # This callback is needed to process applied/unapplied state
         # self.action_groups' callback handles the other selection conditions
-        self.action_groups.update_condns(get_applied_condns(self.seln))
+        self.action_groups.update_condns(get_applied_condns(selection))
     def get_selected_patch(self):
         store, store_iter = self.seln.get_selected()
         return None if store_iter is None else store.get_patch_name(store_iter)
@@ -247,17 +251,17 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
             args["pld_reset_only"] = True
             return pm_ifce.E_PATCH_LIST_CHANGES
         return 0
+    def _get_table_db(self):
+        return ifce.PM.get_patch_list_data()
     def _fetch_contents(self, pld_reset_only=False, **kwargs):
-        self._pld = self._pld.reset() if pld_reset_only else ifce.PM.get_patch_list_data()
-        contents = []
-        for patch_data in self._pld.iter_patches():
-            icon = self.status_icons[patch_data.state]
-            markup = self.patch_markup(patch_data, self._pld.selected)
-            contents.append([patch_data.name, icon, markup])
-        condns = get_pushable_condns()
-        self.action_groups.update_condns(condns)
-        return contents
-    def repopulate_list(self):
+        #condns = get_pushable_condns()
+        #self.action_groups.update_condns(condns)
+        for patch_data in table.MapManagedTableView._fetch_contents(self, pld_reset_only=pld_reset_only, **kwargs):
+            icon = STATUS_ICONS[patch_data.state]
+            markup = self.patch_markup(patch_data, self._table_db.selected_guards)
+            yield [patch_data.name, icon, markup]
+    def repopulate_list(self, **kwargs):
+        dialogue.show_busy()
         self.set_contents()
         condns = get_applied_condns(self.seln)
         condns |= ws_actions.get_in_pm_pgnd_condns()

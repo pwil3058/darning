@@ -19,14 +19,17 @@ Provide an interface to SCM controlling source on which patches sit
 
 from .gui import ws_event
 
-E_FILE_ADDED, E_FILE_DELETED, E_FILE_CHANGES = ws_event.new_event_flags_and_mask(2)
+E_FILE_ADDED, E_FILE_DELETED, E_FILE_MODIFIED, E_FILE_CHANGES = ws_event.new_event_flags_and_mask(3)
 E_FILE_MOVED = E_FILE_ADDED|E_FILE_DELETED
 
-E_COMMIT, E_BACKOUT, E_BRANCH, E_TAG, E_PUSH, E_PULL, E_INIT, E_CLONE, E_CS_CHANGES = ws_event.new_event_flags_and_mask(8)
+E_INDEX_MOD, E_COMMIT, E_BACKOUT, E_BRANCH, E_TAG, E_PUSH, E_PULL, E_INIT, E_CLONE, E_CS_CHANGES = ws_event.new_event_flags_and_mask(9)
 
 E_CHECKOUT, E_BISECT, E_MERGE, E_UPDATE, E_WD_CHANGES = ws_event.new_event_flags_and_mask(4)
 
 E_PGND_RC_CHANGED, E_USER_RC_CHANGED, E_RC_CHANGED = ws_event.new_event_flags_and_mask(2)
+
+E_LOG = ws_event.new_event_flag()
+E_REMOTE = ws_event.new_event_flag()
 
 _BACKEND = {}
 _MISSING_BACKEND = {}
@@ -63,11 +66,23 @@ def get_ifce(dir_path=None):
     return _NULL_BACKEND if pgt is None else _BACKEND[pgt]
 
 def create_new_playground(pgnd_dir, backend):
-    return _BACKEND[backend].create_new_playground(pgnd_dir)
+    return _BACKEND[backend].do_init_dir(pgnd_dir)
+
+def clone_repo_as(repo_path, dir_path, backend):
+    return _BACKEND[backend].do_clone_as(repo_path, dir_path)
+
+class DummyTableData(object):
+    is_current = True
+    def reset(self):
+        return self
+    @staticmethod
+    def iter_rows():
+        for row in []:
+            yield row
 
 class _NULL_BACKEND(object):
     from . import fsdb
-    name = "null"
+    name = "os"
     cmd_label = "null"
     in_valid_pgnd = False
     pgnd_is_mutable = False
@@ -88,8 +103,20 @@ class _NULL_BACKEND(object):
     def get_author_name_and_email():
         return None
     @staticmethod
-    def get_branches_data():
-        return []
+    def get_branches_table_data():
+        return DummyTableData()
+    @staticmethod
+    def get_log_table_data():
+        return DummyTableData()
+    @staticmethod
+    def get_commit_message(commit=None):
+        return None
+    @staticmethod
+    def get_commit_show(commit):
+        return None
+    @staticmethod
+    def get_diff(*args):
+        return ""
     @staticmethod
     def get_extension_enabled(extension):
         return False
@@ -113,6 +140,10 @@ class _NULL_BACKEND(object):
     def get_history_data(rev=None, maxitems=None):
         return []
     @staticmethod
+    def get_index_file_db():
+        from . import fsdb
+        return fsdb.NullFileDb()
+    @staticmethod
     def get_parents_data(rev=None):
         return []
     @staticmethod
@@ -121,6 +152,9 @@ class _NULL_BACKEND(object):
     @staticmethod
     def get_playground_root():
         return None
+    @staticmethod
+    def get_remotes_table_data():
+        return DummyTableData()
     @staticmethod
     def get_revision(filepath=None):
         '''
@@ -135,10 +169,10 @@ class _NULL_BACKEND(object):
         '''
         return cls.status_deco_map[status]
     @staticmethod
-    def get_tags_data():
-        return []
+    def get_tags_table_data():
+        return DummyTableData()
     @staticmethod
-    def get_ws_file_db():
+    def get_wd_file_db():
         '''
         Get the SCM view of the current directory
         '''

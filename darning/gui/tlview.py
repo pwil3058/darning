@@ -124,6 +124,13 @@ class ColumnSpec(object):
         self.cells = cells if cells is not None else list()
         self.sort_key_function = sort_key_function
 
+def simple_column(lbl, *cells):
+    return ColumnSpec(
+        title=lbl,
+        properties={"expand": False, "resizable" : True},
+        cells=cells,
+    )
+
 class CellRendererSpec(object):
     __slots__ = ('cell_renderer', 'properties', 'expand', 'start')
     def __init__(self, cell_renderer, expand=None, start=False):
@@ -144,6 +151,48 @@ class CellSpec(object):
         self.properties = properties if properties is not None else dict()
         self.cell_data_function_spec = cell_data_function_spec
         self.attributes = attributes if attributes is not None else dict()
+
+def stock_icon_cell(model, fld):
+    return CellSpec(
+        cell_renderer_spec=CellRendererSpec(
+            cell_renderer=gtk.CellRendererPixbuf,
+            expand=False,
+            start=True
+        ),
+        properties={},
+        cell_data_function_spec=None,
+        attributes = {"stock_id" : model.col_index("icon")}
+    )
+
+def _text_cell(model, fld, editable):
+    return CellSpec(
+        cell_renderer_spec=CellRendererSpec(
+            cell_renderer=gtk.CellRendererText,
+            expand=False,
+            start=True
+        ),
+        properties={"editable" : editable},
+        cell_data_function_spec=None,
+        attributes = {"text" : model.col_index(fld)}
+    )
+
+def fixed_text_cell(model, fld):
+    return _text_cell(model, fld, False)
+
+def editable_text_cell(model, fld):
+    return _text_cell(model, fld, True)
+
+def mark_up_cell(model, fld):
+    return CellSpec(
+        cell_renderer_spec=CellRendererSpec(
+            cell_renderer=gtk.CellRendererText,
+            expand=False,
+            start=True
+        ),
+        properties={"editable" : False},
+        cell_data_function_spec=None,
+        attributes = {"markup" : model.col_index(fld)}
+    )
 
 class View(gtk.TreeView):
     # TODO: bust View() up into a number of "mix ins" for more flexibility

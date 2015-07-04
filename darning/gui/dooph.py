@@ -66,7 +66,7 @@ def do_overwrite_or_rename(destn, do_op):
         if result.suggests(CmdResult.SUGGEST_OVERWRITE_OR_RENAME):
             resp = dialogue.ask_rename_overwrite_or_cancel(result, clarification=None)
             if resp == gtk.RESPONSE_CANCEL:
-                break
+                return CmdResult.ok() # we don't want to be a nag
             elif resp == dialogue.Response.OVERWRITE:
                 overwrite = True
             elif resp == dialogue.Response.RENAME:
@@ -78,22 +78,25 @@ def do_overwrite_or_rename(destn, do_op):
         break
     return result
 
-def do_force_refresh_overwrite_or_rename(destn, do_op, refresh_op):
+def do_absorb_force_refresh_overwrite_or_rename(destn, do_op, refresh_op):
     force = False
     overwrite = False
+    absorb = False
     refresh_tried = False
     while True:
         dialogue.show_busy()
-        result = do_op(destn, force=force, overwrite=overwrite)
+        result = do_op(destn, absorb=absorb, force=force, overwrite=overwrite)
         dialogue.unshow_busy()
         if refresh_tried:
             result = result - result.SUGGEST_REFRESH
-        if not force and result.suggests(result.SUGGEST_FORCE_ABSORB_OR_REFRESH):
+        if not (force or absorb) and result.suggests(result.SUGGEST_FORCE_ABSORB_OR_REFRESH):
             resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
             if resp == gtk.RESPONSE_CANCEL:
-                break
+                return CmdResult.ok() # we don't want to be a nag
             elif resp == dialogue.Response.FORCE:
                 force = True
+            elif resp == dialogue.Response.ABSORB:
+                absorb = True
             elif resp == dialogue.Response.REFRESH:
                 refresh_tried = True
                 result = refresh_op()
@@ -102,13 +105,63 @@ def do_force_refresh_overwrite_or_rename(destn, do_op, refresh_op):
         elif not overwrite and result.suggests(CmdResult.SUGGEST_OVERWRITE_OR_RENAME):
             resp = dialogue.ask_rename_overwrite_or_cancel(result, clarification=None)
             if resp == gtk.RESPONSE_CANCEL:
-                break
+                return CmdResult.ok() # we don't want to be a nag
             elif resp == dialogue.Response.OVERWRITE:
                 overwrite = True
             elif resp == dialogue.Response.RENAME:
                 destn = get_renamed_destn(destn)
                 if destn is None:
                     break
+            continue
+        dialogue.report_any_problems(result)
+        break
+    return result
+
+def do_force_or_recover(do_op, recover_op):
+    force = False
+    recovery_tried = False
+    while True:
+        dialogue.show_busy()
+        result = do_op(force=force)
+        dialogue.unshow_busy()
+        if not force and result.suggests_force:
+            if dialogue.ask_force_or_cancel(result) == dialogue.Response.FORCE:
+                force = True
+            else:
+                return CmdResult.ok()
+            continue
+        elif not recovery_tried and result.suggests_recover:
+            if dialogue.ask_recover_or_cancel(result) == dialogue.Response.RECOVER:
+                dialogue.show_busy()
+                result = recover_op()
+                dialogue.unshow_busy()
+                if not result.is_ok:
+                    return result
+            else:
+                return CmdResult.ok()
+            continue
+        dialogue.report_any_problems(result)
+        return result
+
+def do_force_or_refresh(do_op, refresh_op):
+    force = False
+    refresh_tried = False
+    while True:
+        dialogue.show_busy()
+        result = do_op(force=force)
+        dialogue.unshow_busy()
+        if refresh_tried:
+            result = result - result.SUGGEST_REFRESH
+        if not force and result.suggests(result.SUGGEST_FORCE_OR_REFRESH):
+            resp = dialogue.ask_force_refresh_or_cancel(result, clarification=None)
+            if resp == gtk.RESPONSE_CANCEL:
+                return CmdResult.ok() # we don't want to be a nag
+            elif resp == dialogue.Response.FORCE:
+                force = True
+            elif resp == dialogue.Response.REFRESH:
+                refresh_tried = True
+                result = refresh_op()
+                dialogue.report_any_problems(result)
             continue
         dialogue.report_any_problems(result)
         break
@@ -127,7 +180,7 @@ def do_force_refresh_or_absorb(do_op, refresh_op):
         if not (absorb or force) and result.suggests(result.SUGGEST_FORCE_ABSORB_OR_REFRESH):
             resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
             if resp == gtk.RESPONSE_CANCEL:
-                break
+                return CmdResult.ok() # we don't want to be a nag
             elif resp == dialogue.Response.FORCE:
                 force = True
             elif resp == dialogue.Response.ABSORB:
@@ -136,6 +189,40 @@ def do_force_refresh_or_absorb(do_op, refresh_op):
                 refresh_tried = True
                 result = refresh_op()
                 dialogue.report_any_problems(result)
+            continue
+        dialogue.report_any_problems(result)
+        break
+    return result
+
+def do_or_discard(do_op):
+    discard = False
+    while True:
+        dialogue.show_busy()
+        result = do_op(discard=discard)
+        dialogue.unshow_busy()
+        if not discard and result.suggests_discard:
+            resp = dialogue.ask_discard_or_cancel(result, clarification=None)
+            if resp == gtk.RESPONSE_CANCEL:
+                return CmdResult.ok() # we don't want to be a nag
+            elif resp == dialogue.Response.DISCARD:
+                discard = True
+            continue
+        dialogue.report_any_problems(result)
+        break
+    return result
+
+def do_or_force(do_op):
+    force = False
+    while True:
+        dialogue.show_busy()
+        result = do_op(force=force)
+        dialogue.unshow_busy()
+        if not force and result.suggests_force:
+            resp = dialogue.ask_force_or_cancel(result, clarification=None)
+            if resp == gtk.RESPONSE_CANCEL:
+                return CmdResult.ok() # we don't want to be a nag
+            elif resp == dialogue.Response.FORCE:
+                force = True
             continue
         dialogue.report_any_problems(result)
         break

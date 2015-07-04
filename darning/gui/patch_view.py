@@ -32,6 +32,7 @@ from . import diff
 from . import ws_event
 from . import gutils
 from . import ifce
+from . import gutils
 
 class Widget(gtk.VBox):
     from ..pm_ifce import PatchState

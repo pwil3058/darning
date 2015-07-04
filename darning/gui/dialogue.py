@@ -1,4 +1,4 @@
-### Copyright (C) 2005-2015 Peter Williams <peter_ono@users.sourceforge.net>
+### Copyright (C) 2005-2015 Peter Williams <pwil3058@gmail.com>
 ###
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
@@ -174,13 +174,9 @@ class SelectFromListDialog(Dialog):
     def make_selection(self):
         res = self.run()
         index = self.cbox.get_active()
-        is_ok = index > 0
-        if is_ok:
-            text = self.cbox.get_model()[index][0]
-        else:
-            text = ''
+        seln = self.cbox.get_model()[index][0] if index > 0 else None
         self.destroy()
-        return (is_ok, text)
+        return seln
 
 class QuestionDialog(Dialog):
     def __init__(self, title=None, parent=None, flags=0, buttons=None, question=""):
@@ -240,6 +236,12 @@ def _form_question(result, clarification):
         return '\n'.join(list(result[1:]) + [clarification])
     else:
         return '\n'.join(result[1:])
+
+
+def ask_discard_or_cancel(result, clarification=None, parent=None):
+    buttons = (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, _('_Discard'), Response.DISCARD)
+    question = _form_question(result, clarification)
+    return ask_question(question, parent, buttons)
 
 def ask_force_refresh_or_cancel(result, clarification=None, parent=None):
     buttons = (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL)

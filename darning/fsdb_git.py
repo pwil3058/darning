@@ -134,9 +134,9 @@ class WsFileDb(fsdb.GenericSnapshotWsFileDb):
                     return status
             return None
     def _get_file_data_text(self, h):
-        stdout = runext.run_get_cmd(["git", "status", "--porcelain", "--ignored", "--untracked=all"])
-        h.update(stdout)
-        return stdout
+        file_data_text = runext.run_get_cmd(["git", "status", "--porcelain", "--ignored", "--untracked=all"])
+        h.update(file_data_text)
+        return file_data_text
     @staticmethod
     def _extract_file_status_snapshot(file_data_text):
         related_file_path_data = []
@@ -164,7 +164,7 @@ class IndexFileDb(fsdb.GenericChangeFileDb):
     def __init__(self):
         fsdb.GenericChangeFileDb.__init__(self)
     def _get_patch_data_text(self, h):
-        patch_status_text = runext.run_get_cmd(["git", "status", "--porcelain", "--untracked-files=no"])
+        patch_status_text = runext.run_get_cmd(["git", "status", "--porcelain", "--untracked-files=no"], default="")
         h.update(patch_status_text)
         return (patch_status_text)
     @staticmethod
@@ -172,6 +172,4 @@ class IndexFileDb(fsdb.GenericChangeFileDb):
         for line in pdt.splitlines():
             if line[0] == " ": continue # not in the index
             file_path, status, extra_data = get_git_file_data(line)
-            if extra_data:
-                related_file_paths.append((file_path, extra_data.path))
             yield (file_path, line[:2], extra_data)

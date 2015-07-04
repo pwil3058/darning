@@ -76,6 +76,7 @@ class PatchListData(object):
     def __getattr__(self, name):
         if name == "is_current": return self._is_current()
         if name == "selected_guards": return self._selected_guards
+        raise AttributeError(name)
     def _finalize(self, pdt):
         assert False, "_finalize() must be defined in child"
     def _is_current(self):
@@ -87,12 +88,12 @@ class PatchListData(object):
         if self._current_text_digest is None:
             return self.__class__(**self._kwargs)
         if self._current_text_digest != self._db_hash_digest:
-            self._db_digest = self._current_text_digest
+            self._db_hash_digest = self._current_text_digest
             self._finalize(self._current_text)
         return self
     def _get_data_text(self, h):
         assert False, "_get_data_text() must be defined in child"
-    def iter_patches(self):
+    def iter_rows(self):
         for patch_data in self._patches_data:
             yield patch_data
 
@@ -115,6 +116,8 @@ class _NULL_BACKEND(object):
     has_guards = False
     has_refresh_non_top = False
     is_extdiff_for_full_patch_ok = False
+    is_poppable = False
+    is_pushable = False
     # no caching so no state ergo all methods will be static/class methods
     # "do" methods should never be called for the null interface
     # so we won't provide them
@@ -143,9 +146,6 @@ class _NULL_BACKEND(object):
         return False
     @staticmethod
     def get_extension_enabled(extension):
-        return False
-    @staticmethod
-    def get_in_progress():
         return False
     @staticmethod
     def get_named_patch_diff_text(patch_name, file_path_list=None):
@@ -227,51 +227,9 @@ class PatchState(object):
     APPLIED_NEEDS_REFRESH = '?'
     APPLIED_UNREFRESHABLE = '!'
 
-def get_destn_dir_path(file_paths, destn):
-    if len(file_paths) == 1:
-        return os.path.relpath(destn if os.path.isdir(destn) else os.path.dirname(destn))
-    elif os.path.isfile(destn):
-        return None
-    else:
-        return os.path.relpath(destn)
-
-def check_for_overwrites(destn_file_paths):
-    overwritten = [file_path for file_path in destn_file_paths if os.path.exists(file_path)]
-    if overwritten:
-        stderr = _("File(s):\n")
-        for file_path in overwritten:
-            stderr += "\t{0}\n".format(utils.quote_if_needed(file_path))
-        return CmdResult.error(stderr=stderr + _("will be overwritten!\n")) | CmdResult.SUGGEST_OVERWRITE_OR_RENAME
-    return CmdResult.ok()
-
-def create_dir(dir_path):
-    from .gui import console
-    console.LOG.start_cmd("mkdir -p " + dir_path)
-    try:
-        os.makedirs(dir_path)
-        result = CmdResult.ok()
-    except OSError as edata:
-        result = CmdResult.error(str(edata))
-    console.LOG.end_cmd(result)
-    return result
-
-def generic_delete_files(file_path_list):
-    from .gui import console
-    from . import utils
-    console.LOG.start_cmd(_('Deleting: {0}').format(utils.quoted_join(file_path_list)))
-    serr = ""
-    for file_path in file_path_list:
-        try:
-            os.remove(file_path)
-            console.LOG.append_stdout(_('Deleted: {0}\n').format(file_path))
-        except os.error as value:
-            errmsg = "{0}: {1}\n".format(value[1], file_path)
-            serr = errmsg
-            console.LOG.append_stderr(errmsg)
-            break
-    console.LOG.end_cmd()
-    ws_event.notify_events(E_FILE_DELETED)
-    return CmdResult.error(stderr=serr) if serr else CmdResult.ok()
+def generic_delete_files(file_paths):
+    from . import os_utils
+    return os_utils.os_delete_files(file_paths, events=E_FILE_DELETED)
 
 def set_patch_file_description(patch_file_path, description, overwrite=False):
     from . import patchlib

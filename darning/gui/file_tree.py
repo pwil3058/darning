@@ -47,6 +47,7 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
     REPOPULATE_EVENTS = ifce.E_CHANGE_WD
     UPDATE_EVENTS = os_utils.E_FILE_CHANGES
     AU_FILE_CHANGE_EVENT = os_utils.E_FILE_CHANGES # event returned by auto_update() if changes found
+    DEFAULT_POPUP = "/files_popup"
     class Model(tlview.TreeView.Model):
         Row = collections.namedtuple('Row', ['name', 'is_dir', 'style', 'foreground', 'icon', 'status', 'related_file_data'])
         types = Row(
@@ -223,10 +224,9 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
             foreground=deco.foreground
         )
         return row
-    def __init__(self, show_hidden=False, hide_clean=False, busy_indicator=None, popup="/files_popup"):
+    def __init__(self, show_hidden=False, hide_clean=False, busy_indicator=None):
         assert (self.REPOPULATE_EVENTS & self.UPDATE_EVENTS) == 0
         dialogue.BusyIndicatorUser.__init__(self, busy_indicator=busy_indicator)
-        self._file_db = fsdb.OsFileDb()
         ws_event.Listener.__init__(self)
         auto_update.AutoUpdater.__init__(self)
         self.show_hidden_action = gtk.ToggleAction('show_hidden_files', _('Show Hidden Files'), _('Show/hide ignored files and those beginning with "."'), None)
@@ -241,7 +241,7 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
         self.hide_clean_action.set_tool_item_type(gtk.ToggleToolButton)
         tlview.TreeView.__init__(self)
         self.set_search_equal_func(self.search_equal_func)
-        ws_actions.AGandUIManager.__init__(self, selection=self.get_selection(), popup=popup)
+        ws_actions.AGandUIManager.__init__(self, selection=self.get_selection(), popup=self.DEFAULT_POPUP)
         self.connect("row-expanded", self.model.on_row_expanded_cb)
         self.connect("row-collapsed", self.model.on_row_collapsed_cb)
         self.connect("button_press_event", self._handle_button_press_cb)
@@ -266,28 +266,42 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
         self.action_groups[actions.AC_DONT_CARE].add_actions(
             [
                 ('refresh_files', gtk.STOCK_REFRESH, _('_Refresh Files'), None,
-                 _('Refresh/update the file tree display'), lambda _action=None: self.update()),
+                 _('Refresh/update the file tree display'),
+                 lambda _action=None: self.update()
+                ),
             ])
         self.action_groups[ws_actions.AC_NOT_IN_PM_PGND|actions.AC_SELN_MADE].add_actions(
             [
                 ("edit_files", gtk.STOCK_EDIT, _('_Edit'), None,
-                 _('Edit the selected file(s)'), self.edit_selected_files_acb),
+                 _('Edit the selected file(s)'),
+                 lambda _action=None: text_edit.edit_files_extern(self.get_selected_filepaths())
+                ),
                 ("copy_files_selection", gtk.STOCK_COPY, _('Copy'), None,
-                 _('Copy the selected file(s)'), self.copy_selected_files_acb),
+                 _('Copy the selected file(s)'),
+                 lambda _action=None: self.copy_files(self.get_selected_filepaths())
+                ),
                 ("move_files_selection", gtk.STOCK_PASTE, _('_Move/Rename'), None,
-                 _('Move the selected file(s)'), self.move_selected_files_acb),
+                 _('Move the selected file(s)'),
+                 lambda _action=None: self.move_files(self.get_selected_filepaths())
+                ),
                 ("delete_files", gtk.STOCK_DELETE, _('_Delete'), None,
-                 _('Delete the selected file(s)'), lambda _action=None: self.delete_selected_files(ask=True)),
+                 _('Delete the selected file(s)'),
+                 lambda _action=None: self.delete_files(self.get_selected_filepaths(), ask=True)
+                ),
             ])
         self.action_groups[ws_actions.AC_NOT_IN_PM_PGND|actions.AC_SELN_UNIQUE].add_actions(
            [
                 ("rename_file", icons.STOCK_RENAME, _('Re_name/Move'), None,
-                 _('Rename/move the selected file'), self.move_selected_files_acb),
+                 _('Rename/move the selected file'),
+                 lambda _action=None: self.move_selected_files()
+                ),
             ])
         self.action_groups[ws_actions.AC_NOT_IN_PM_PGND].add_actions(
             [
                 ("new_file", gtk.STOCK_NEW, _('_New'), None,
-                 _('Create a new file and open for editing'), self.create_new_file_acb),
+                 _('Create a new file and open for editing'),
+                 lambda _action: create_new_file()
+                ),
             ])
     @property
     def show_hidden(self):
@@ -450,6 +464,10 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
         self._file_db = self._file_db.reset() if (fsdb_reset_only and self in fsdb_reset_only) else self._get_file_db()
         self._update_dir('', None)
         self.unshow_busy()
+    def get_selected_filepath(self):
+        store, selection = self.get_selection().get_selected_rows()
+        assert len(selection) == 1
+        return store.fs_path(store.get_iter(selection[0]))
     def get_selected_filepaths(self, expanded=False):
         store, selection = self.get_selection().get_selected_rows()
         filepath_list = [store.fs_path(store.get_iter(x)) for x in selection]
@@ -481,112 +499,52 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
             else:
                 expanded_list.append(filepath)
         return expanded_list
-    def _edit_named_files_extern(self, file_list):
-        text_edit.edit_files_extern(file_list)
-    def edit_selected_files_acb(self, _menu_item):
-        self._edit_named_files_extern(self.get_selected_filepaths())
-    def create_new_file(self, new_file_name, open_for_edit=False):
-        self.show_busy()
+    @staticmethod
+    def create_new_file(open_for_edit=False):
+        new_file_path = dialogue.ask_file_name(_("New File Path"))
+        dialogue.show_busy()
         result = os_utils.os_create_file(new_file_name)
-        self.unshow_busy()
+        dialogue.unshow_busy()
         dialogue.report_any_problems(result)
-        if open_for_edit:
-            self._edit_named_files_extern([new_file_name])
+        if result.is_ok and open_for_edit:
+            text_edit.edit_files_extern([new_file_name])
         return result
-    def create_new_file_acb(self, _menu_item):
-        dialog = gtk.FileChooserDialog(_('New File'), dialogue.main_window,
-                                       gtk.FILE_CHOOSER_ACTION_SAVE,
-                                       (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
-                                        gtk.STOCK_OK, gtk.RESPONSE_OK))
-        dialog.set_default_response(gtk.RESPONSE_OK)
-        dialog.set_position(gtk.WIN_POS_MOUSE)
-        selected_files = self.get_selected_filepaths()
-        if len(selected_files) == 1 and os.path.isdir(selected_files[0]):
-            dialog.set_current_folder(os.path.abspath(selected_files[0]))
-        else:
-            dialog.set_current_folder(os.getcwd())
-        response = dialog.run()
-        if response == gtk.RESPONSE_OK:
-            new_file_name = dialog.get_filename()
-            dialog.destroy()
-            self.create_new_file(new_file_name, True)
-        else:
-            dialog.destroy()
-    def delete_selected_files(self, ask=True):
-        file_paths = self.get_selected_filepaths()
+    @staticmethod
+    def delete_files(file_paths, ask=True):
         if ask and not dialogue.confirm_list_action(file_paths, _('About to be deleted. OK?')):
             return
         os_utils.os_delete_files(file_paths)
-    def _get_target(self, src_file_list):
-        if len(src_file_list) > 1:
-            mode = gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER
-        else:
-            mode = gtk.FILE_CHOOSER_ACTION_SAVE
-        dialog = gtk.FileChooserDialog(_('Target'), dialogue.main_window, mode,
-                                       (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OK, gtk.RESPONSE_OK))
-        dialog.set_default_response(gtk.RESPONSE_OK)
-        if mode == gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER:
-            dialog.set_current_folder(os.getcwd())
-        else:
-            dialog.set_current_folder(os.path.dirname(src_file_list[0]))
-            dialog.set_current_name(os.path.basename(src_file_list[0]))
-        response = dialog.run()
-        if response == gtk.RESPONSE_OK:
-            target = dialog.get_filename()
-        else:
-            target = None
-        dialog.destroy()
-        return (response, target)
-    def _move_or_copy_files(self, file_paths, operation, dry_run_first=True):
-        response, target = self._get_target(file_paths)
-        if response == gtk.RESPONSE_OK:
-            force = False
-            is_ok = not dry_run_first
-            if dry_run_first:
-                self.show_busy()
-                result = operation(file_paths, target, force=False, dry_run=True)
-                self.unshow_busy()
-                if result.suggests_force:
-                    is_ok = force = _check_if_force(result)
-                    if not force:
-                        return
-                elif result.is_less_than_error:
-                    lines = result.stdout.splitlines() + result.stderr.splitlines()
-                    is_ok = not lines or dialogue.confirm_list_action(lines, _('About to be actioned. OK?'))
-                else:
-                    dialogue.report_any_problems(result)
-                    return
-            if is_ok:
-                while True:
-                    self.show_busy()
-                    result = operation(file_paths, target, force=force)
-                    self.unshow_busy()
-                    if not force and result.suggests_force:
-                        force = _check_if_force(result)
-                        if not force:
-                            return
-                        continue
-                    break
-                dialogue.report_any_problems(result)
-    def copy_files(self, file_paths, dry_run_first=True):
-        self._move_or_copy_files(file_paths, os_utils.os_copy_files, dry_run_first=dry_run_first)
-    def copy_selected_files_acb(self, _action=None):
-        self.copy_files(self.get_selected_filepaths())
-    def move_files(self, file_paths, dry_run_first=True):
-        self._move_or_copy_files(file_paths, os_utils.os_move_files, dry_run_first=dry_run_first)
-    def move_selected_files_acb(self, _action=None):
-        self.move_files(self.get_selected_filepaths())
+    @staticmethod
+    def copy_files(file_paths, dry_run_first=True):
+        from . import dooph
+        destn = dooph.ask_destination(file_paths)
+        if not destn:
+            return
+        do_op = lambda destn=None, overwrite=False: os_utils.os_copy_files(file_paths, destn=destn, overwrite=overwrite, dry_run=dry_run_first)
+        result = dooph.do_overwrite_or_rename(destn, do_op)
+        dialogue.report_any_problems(result)
+        return result
+    @staticmethod
+    def move_files(file_paths, dry_run_first=True):
+        from . import dooph
+        destn = dooph.ask_destination(file_paths)
+        if not destn:
+            return
+        do_op = lambda destn=None, overwrite=False: os_utils.os_move_files(file_paths, destn=destn, overwrite=overwrite, dry_run=dry_run_first)
+        result = dooph.do_overwrite_or_rename(destn, do_op)
+        dialogue.report_any_problems(result)
+        return result
 
 class FileTreeWidget(gtk.VBox, ws_event.Listener):
     MENUBAR = "/files_menubar"
     BUTTON_BAR_ACTIONS = ["show_hidden_files"]
     TREE_VIEW = FileTreeView
     SIZE = (240, 320)
-    def __init__(self, busy_indicator=None, show_hidden=False, hide_clean=False, **kwargs):
+    def __init__(self, show_hidden=False, hide_clean=False, **kwargs):
         gtk.VBox.__init__(self)
         ws_event.Listener.__init__(self)
         # file tree view wrapped in scrolled window
-        self.file_tree = self.TREE_VIEW(busy_indicator=busy_indicator, show_hidden=show_hidden, hide_clean=hide_clean, **kwargs)
+        self.file_tree = self.TREE_VIEW(show_hidden=show_hidden, hide_clean=hide_clean, **kwargs)
         scw = gtk.ScrolledWindow()
         scw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
         self.file_tree.get_selection().set_mode(gtk.SELECTION_MULTIPLE)

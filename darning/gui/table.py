@@ -1,5 +1,5 @@
 ### Copyright (C) 2007-2015 Peter Williams <pwil3058@gmail.com>
-
+###
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
 ### the Free Software Foundation; version 2 of the License only.
@@ -27,6 +27,7 @@ from . import ws_event
 from . import tlview
 from . import icons
 from . import dialogue
+from . import auto_update
 
 ALWAYS_ON = 'table_always_on'
 MODIFIED = 'table_modified'
@@ -136,12 +137,38 @@ class Table(gtk.VBox):
         columns = self.model.col_indices(labels)
         return self.get_selected_data(columns)
 
-class TableView(tlview.ListView, ws_actions.AGandUIManager, dialogue.BusyIndicatorUser):
+def simple_text_specification(model, *hdrs_and_flds):
+    specification = tlview.ViewSpec(
+        properties={
+            "enable-grid-lines" : False,
+            "reorderable" : False,
+            "rules_hint" : False,
+            "headers-visible" : True,
+        },
+        selection_mode=gtk.SELECTION_SINGLE,
+        columns=[tlview.simple_column(hdr, tlview.fixed_text_cell(model, fld)) for hdr, fld in hdrs_and_flds]
+    )
+    return specification
+
+class TableView(tlview.ListView, ws_actions.AGandUIManager, dialogue.BusyIndicatorUser, auto_update.AutoUpdater, ws_event.Listener):
+    from . import ifce
     PopUp = None
+    SET_EVENTS = ifce.E_CHANGE_WD
+    REFRESH_EVENTS = 0
+    AU_REQ_EVENTS = 0
     def __init__(self, busy_indicator=None, size_req=None):
         tlview.ListView.__init__(self)
         dialogue.BusyIndicatorUser.__init__(self, busy_indicator)
         ws_actions.AGandUIManager.__init__(self, selection=self.get_selection(), popup=self.PopUp)
+        auto_update.AutoUpdater.__init__(self)
+        ws_event.Listener.__init__(self)
+        self._table_db = self._get_table_db()
+        if self.SET_EVENTS:
+            self.add_notification_cb(self.SET_EVENTS, self.set_contents)
+        if self.REFRESH_EVENTS:
+            self.add_notification_cb(self.REFRESH_EVENTS, self.refresh_contents)
+        if self.AU_REQ_EVENTS:
+            self.register_auto_update_cb(self.auto_update_cb)
         if size_req:
             self.set_size_request(size_req[0], size_req[1])
         self.connect("button_press_event", self._handle_clear_selection_cb)
@@ -150,7 +177,9 @@ class TableView(tlview.ListView, ws_actions.AGandUIManager, dialogue.BusyIndicat
         self.action_groups[actions.AC_DONT_CARE].add_actions(
             [
                 ("table_refresh_contents", gtk.STOCK_REFRESH, _('Refresh'), None,
-                 _('Refresh the tables contents'), lambda _action=None: self.refresh_contents()),
+                 _("Refresh the table's contents"),
+                 lambda _action=None: self.refresh_contents()
+                ),
             ])
     @property
     def model(self):
@@ -158,6 +187,14 @@ class TableView(tlview.ListView, ws_actions.AGandUIManager, dialogue.BusyIndicat
     @property
     def seln(self):
         return self.get_selection()
+    def auto_update_cb(self, events_so_far, args):
+        if (events_so_far & (self.SET_EVENTS|self.REFRESH_EVENTS)) or  self._table_db.is_current:
+            return 0
+        try:
+            args["tbd_reset_only"].append(self)
+        except KeyError:
+            args["tbd_reset_only"] = [self]
+        return self.AU_REQ_EVENTS
     def _handle_clear_selection_cb(self, widget, event):
         if event.type == gtk.gdk.BUTTON_PRESS:
             if event.button == 2:
@@ -168,8 +205,11 @@ class TableView(tlview.ListView, ws_actions.AGandUIManager, dialogue.BusyIndicat
                 self.seln.unselect_all()
                 return True
         return False
-    def _fetch_contents(self, **kwargs):
+    def _get_table_db(self):
         assert False, _("Must be defined in child")
+    def _fetch_contents(self, tbd_reset_only=False, **kwargs):
+        self._table_db = self._table_db.reset() if (tbd_reset_only and self in tbd_reset_only) else self._get_table_db()
+        return self._table_db.iter_rows()
     def _set_contents(self, **kwargs):
         model = self.Model()
         model.set_contents(self._fetch_contents(**kwargs))
@@ -246,42 +286,40 @@ class TableView(tlview.ListView, ws_actions.AGandUIManager, dialogue.BusyIndicat
         self.scroll_to_cell(path, use_align=True, row_align=0.5)
         return True
 
-_NEEDS_RESET = 123
-
 class MapManagedTableView(TableView, gutils.MappedManager):
+    _NEEDS_RESET = 123
     def __init__(self, busy_indicator=None, size_req=None):
-        from . import ifce
         TableView.__init__(self, busy_indicator=busy_indicator, size_req=size_req)
         gutils.MappedManager.__init__(self)
         self._needs_refresh = True
-        self.add_notification_cb(ifce.E_CHANGE_WD, self.reset_contents_if_mapped)
+    def auto_update_cb(self, events_so_far, args):
+        if self._needs_refresh:
+            # This implies (both) that we're not mapped AND that we're
+            # already scheduled for update when we become mapped so
+            # there's no point in wasting effort making any checks
+            return 0
+        return TableView.auto_update_cb(self, events_so_far, args)
     def map_action(self):
-        if self._needs_refresh == _NEEDS_RESET:
-            self.show_busy()
-            self.set_contents()
-            self.unshow_busy()
+        if self._needs_refresh == self._NEEDS_RESET:
+            TableView.set_contents(self)
+            self._needs_refresh = False
         elif self._needs_refresh:
-            self.show_busy()
-            self.refresh_contents()
-            self.unshow_busy()
+            TableView.refresh_contents(self)
+            self._needs_refresh = False
     def unmap_action(self):
         pass
-    def set_contents(self):
-        TableView.set_contents(self)
-        self._needs_refresh = False
-    def refresh_contents(self, **kwargs):
-        TableView.refresh_contents(self, **kwargs)
-        self._needs_refresh = False
-    def refresh_contents_if_mapped(self, **kwargs):
+    def set_contents(self, **kwargs):
         if self.is_mapped:
-            self.refresh_contents()
-        elif not self._needs_refresh:
-            self._needs_refresh = True
-    def reset_contents_if_mapped(self, **kwargs):
-        if self.is_mapped:
-            self.set_contents()
+            TableView.set_contents(self, **kwargs)
+            self._needs_refresh = False
         else:
-            self._needs_refresh = _NEEDS_RESET
+            self._needs_refresh = self._NEEDS_RESET
+    def refresh_contents(self, **kwargs):
+        if self.is_mapped:
+            TableView.refresh_contents(self, **kwargs)
+            self._needs_refresh = False
+        else:
+            self._needs_refresh = True
 
 class TableWidget(gtk.VBox):
     View = TableView

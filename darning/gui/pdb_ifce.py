@@ -71,7 +71,6 @@ def new_playground(description, pgdir=None):
     if in_valid_pgnd:
         from . import config
         config.PgndPathTable.append_saved_pgnd(os.getcwd())
-        ws_event.notify_events(ifce.NEW_PM)
     return result
 
 def do_chdir(new_dir=None):
