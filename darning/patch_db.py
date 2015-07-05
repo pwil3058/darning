@@ -93,7 +93,9 @@ class PickeExtensibleObject(object):
     def __getstate__(self):
         return self.__dict__
     def __getattr__(self, attr):
-        return self.NEW_FIELDS[attr]
+        if attr in self.NEW_FIELDS:
+            return self.NEW_FIELDS[attr]
+        raise AttributeError
 
 class ZippedData(object):
     ZLIB_COMPRESSION_LEVEL = 6
