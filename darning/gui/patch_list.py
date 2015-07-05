@@ -39,6 +39,9 @@ from . import table
 from . import textview
 from . import patch_view
 from . import auto_update
+from . import dooph_pm
+
+from .dooph_pm import AC_POP_POSSIBLE, AC_PUSH_POSSIBLE
 
 STATUS_ICONS = {
     PatchState.NOT_APPLIED : None,
@@ -46,9 +49,6 @@ STATUS_ICONS = {
     PatchState.APPLIED_NEEDS_REFRESH : icons.STOCK_APPLIED_NEEDS_REFRESH,
     PatchState.APPLIED_UNREFRESHABLE : icons.STOCK_APPLIED_UNREFRESHABLE,
 }
-
-AC_POP_POSSIBLE = ws_actions.AC_PMIC
-AC_PUSH_POSSIBLE, AC_PUSH_POSSIBLE_MASK = actions.ActionCondns.new_flags_and_mask(1)
 
 AC_APPLIED, AC_UNAPPLIED, AC_APPLIED_FLAG, AC_APPLIED_NOT_FLAG, AC_APPLIED_MASK = actions.ActionCondns.new_flags_and_mask(4)
 AC_ALL_APPLIED_REFRESHED, AC_ALL_APPLIED_REFRESHED_MASK = actions.ActionCondns.new_flags_and_mask(1)
@@ -69,9 +69,6 @@ def get_applied_condns(seln):
     else:
         cond = AC_UNAPPLIED_NOT_BLOCKED
     return actions.MaskedCondns(cond, AC_APPLIED_MASK)
-
-def get_pushable_condns():
-    return actions.MaskedCondns(AC_PUSH_POSSIBLE if ifce.PM.is_pushable() else 0, AC_PUSH_POSSIBLE)
 
 class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
     REPOPULATE_EVENTS = ifce.E_CHANGE_WD|ifce.E_NEW_PM
@@ -126,7 +123,7 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
     <ui>
       <menubar name="patch_list_menubar">
         <menu name="patch_list_menu" action="menu_patch_list">
-          <menuitem action="patch_list_push_all"/>
+          <menuitem action="pm_push_all"/>
           <menuitem action="patch_list_pop_all"/>
           <menuitem action="patch_list_restore_patch"/>
           <menuitem action="patch_list_scm_absorb_applied_patches"/>
@@ -187,50 +184,74 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
         self.action_groups[ws_actions.AC_IN_PM_PGND].add_actions(
             [
                 ("pm_refresh_patch_list", gtk.STOCK_REFRESH, _('Update Patch List'), None,
-                 _('Refresh/update the patch list display'), lambda _action=False: self.refresh_contents()),
+                 _('Refresh/update the patch list display'),
+                 lambda _action=False: self.refresh_contents()
+                ),
             ])
         self.action_groups[actions.AC_SELN_UNIQUE | ws_actions.AC_IN_PM_PGND].add_actions(
             [
                 ("pm_edit_patch_descr", gtk.STOCK_EDIT, _('Description'), None,
-                 _('Edit the selected patch\'s description'), self.do_edit_description),
+                 _('Edit the selected patch\'s description'),
+                 lambda _action=None: PatchDescrEditDialog(self.get_selected_patch(), parent=None).show()
+                ),
                 ("patch_list_patch_view", icons.STOCK_DIFF, _('Details'), None,
-                 _('View the selected patch\'s details'), self.do_view_selected_patch),
+                 _('View the selected patch\'s details'),
+                 lambda _action=None: patch_view.Dialogue(self.get_selected_patch()).show()
+                ),
                 ("patch_list_export_patch", gtk.STOCK_SAVE_AS, _('Export'), None,
-                 _('Export the selected patch to a text file'), self.do_export),
+                 _('Export the selected patch to a text file'),
+                 lambda _action=None: dooph_pm.pm_do_export_named_patch(self.get_selected_patch())
+                ),
             ])
         self.action_groups[actions.AC_SELN_UNIQUE | ws_actions.AC_IN_PM_PGND_MUTABLE].add_actions(
             [
                 ("pm_set_patch_guards", icons.STOCK_PATCH_GUARD, None, None,
-                 _('Set guards on the selected patch'), self.do_set_guards),
+                 _('Set guards on the selected patch'),
+                 lambda _action=None: dooph_pm.pm_do_set_guards_on_patch(self.get_selected_patch())
+                ),
                 ("patch_list_rename", icons.STOCK_RENAME, _('Rename'), None,
-                 _('Rename the selected patch'), self.do_rename),
+                 _('Rename the selected patch'),
+                 lambda _action=None: dooph_pm.pm_do_rename_patch(self.get_selected_patch())
+                ),
                 ("patch_list_duplicate", gtk.STOCK_COPY, _('Duplicate'), None,
-                 _('Duplicate the selected patch after the top applied patch'), self.do_duplicate),
+                 _('Duplicate the selected patch after the top applied patch'),
+                 lambda _action=None: dooph_pm.pm_do_duplicate_patch(self.get_selected_patch())
+                ),
             ])
         self.action_groups[actions.AC_SELN_UNIQUE | AC_PUSH_POSSIBLE | ws_actions.AC_IN_PM_PGND_MUTABLE | AC_UNAPPLIED_NOT_BLOCKED].add_actions(
             [
                 ("patch_list_push_to", icons.STOCK_PUSH_PATCH, _('Push To'), None,
-                 _('Apply all unguarded unapplied patches up to the selected patch.'), self.do_push_patches_to),
+                 _('Apply all unguarded unapplied patches up to the selected patch.'),
+                 lambda _action=None: dooph_pm.pm_do_push_to(self.get_selected_patch())
+                ),
             ])
         self.action_groups[actions.AC_SELN_UNIQUE | ws_actions.AC_IN_PM_PGND_MUTABLE | AC_UNAPPLIED].add_actions(
             [
                 ("patch_list_remove", gtk.STOCK_DELETE, _('Remove'), None,
-                 _('Remove the selected patch from the series.'), self.do_remove),
+                 _('Remove the selected patch from the series.'),
+                 lambda _action=None: dooph_pm.pm_do_remove_patch(self.get_selected_patch())
+                ),
             ])
         self.action_groups[actions.AC_SELN_UNIQUE | AC_POP_POSSIBLE | ws_actions.AC_IN_PM_PGND_MUTABLE | AC_APPLIED_NOT_TOP].add_actions(
             [
                 ("patch_list_pop_to", icons.STOCK_POP_PATCH, _('Pop To'), None,
-                 _('Apply all applied patches down to the selected patch.'), self.do_pop_patches_to),
+                 _('Apply all applied patches down to the selected patch.'),
+                 lambda _action=None: dooph_pm.pm_do_pop_to(self.get_selected_patch())
+                ),
             ])
         self.action_groups[actions.AC_SELN_UNIQUE | AC_POP_POSSIBLE | ws_actions.AC_IN_PM_PGND_MUTABLE | AC_APPLIED].add_actions(
             [
                 ("patch_list_refresh_selected", icons.STOCK_PUSH_PATCH, _('Refresh'), None,
-                 _('Refresh the selected patch.'), self.do_refresh_selected_patch_acb),
+                 _('Refresh the selected patch.'),
+                 lambda _action=None: dooph_pm.pm_do_refresh_named_patch(self.get_selected_patch())
+                ),
             ])
         self.action_groups[actions.AC_SELN_UNIQUE | AC_POP_POSSIBLE | ws_actions.AC_IN_PM_PGND_MUTABLE | AC_UNAPPLIED].add_actions(
             [
                 ("patch_list_fold_selected", icons.STOCK_FOLD_PATCH, _('Fold'), None,
-                 _('Fold the selected patch into the top applied patch.'), self.do_fold_patch_acb),
+                 _('Fold the selected patch into the top applied patch.'),
+                 lambda _action=None: dooph_pm.pm_do_fold_patch(self.get_selected_patch())
+                ),
             ])
     def _selection_changed_cb(self, selection):
         # This callback is needed to process applied/unapplied state
@@ -254,8 +275,7 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
     def _get_table_db(self):
         return ifce.PM.get_patch_list_data()
     def _fetch_contents(self, pld_reset_only=False, **kwargs):
-        #condns = get_pushable_condns()
-        #self.action_groups.update_condns(condns)
+        self.action_groups.update_condns(dooph_pm.get_pushable_condns())
         for patch_data in table.MapManagedTableView._fetch_contents(self, pld_reset_only=pld_reset_only, **kwargs):
             icon = STATUS_ICONS[patch_data.state]
             markup = self.patch_markup(patch_data, self._table_db.selected_guards)
@@ -270,178 +290,12 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
         self.show_busy()
         self.repopulate_list()
         self.unshow_busy()
-    def do_edit_description(self, _action=None):
-        patch = self.get_selected_patch()
-        PatchDescrEditDialog(patch, parent=None).show()
-    def do_set_guards(self, _action=None):
-        patch = self.get_selected_patch()
-        cguards = ' '.join(ifce.PM.get_patch_guards(patch))
-        dialog = dialogue.ReadTextDialog(_('Set Guards: {0}').format(patch), _('Guards:'), cguards)
-        while True:
-            response = dialog.run()
-            if response == gtk.RESPONSE_OK:
-                guards = dialog.entry.get_text()
-                self.show_busy()
-                result = ifce.PM.do_set_patch_guards(patch, guards)
-                self.unshow_busy()
-                dialogue.report_any_problems(result)
-                if result.suggests_edit:
-                    continue
-                dialog.destroy()
-            else:
-                dialog.destroy()
-            break
-    def do_push_patches_to(self, action=None):
-        patchname = self.get_selected_patch()
-        while ifce.PM.is_pushable() and not ifce.PM.is_top_patch(patchname):
-            if not push_next_patch_acb(None):
-                break
-    def do_pop_patches_to(self, action=None):
-        patchname = self.get_selected_patch()
-        while ifce.PM.is_poppable() and not ifce.PM.is_top_patch(patchname):
-            if not pop_top_patch_acb(None):
-                break
-    def do_remove(self, action=None):
-        patchname = self.get_selected_patch()
-        result = ifce.PM.do_remove_patch(patchname)
-        dialogue.report_any_problems(result)
-    def do_view_selected_patch(self, action=None):
-        patchname = self.get_selected_patch()
-        patch_view.Dialogue(patchname).show()
-    def do_duplicate(self, action=None):
-        patchname = self.get_selected_patch()
-        description = ifce.PM.get_patch_description(patchname)
-        dialog = DuplicatePatchDialog(patchname, description, parent=dialogue.main_window)
-        refresh_tried = False
-        while True:
-            response = dialog.run()
-            if response == gtk.RESPONSE_OK:
-                as_patchname = dialog.get_new_patch_name()
-                newdescription = dialog.get_descr()
-                dialog.show_busy()
-                result = ifce.PM.do_duplicate_patch(patchname, as_patchname, newdescription)
-                dialog.unshow_busy()
-                if not refresh_tried and result.suggests_refresh:
-                    resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
-                    if resp == gtk.RESPONSE_CANCEL:
-                        break
-                    elif resp == dialogue.Response.REFRESH:
-                        refresh_tried = True
-                        dialogue.show_busy()
-                        result = ifce.PM.do_refresh_patch()
-                        dialogue.unshow_busy()
-                        dialogue.report_any_problems(result)
-                    continue
-                dialogue.report_any_problems(result)
-                if result.suggests_rename:
-                    continue
-            break
-        dialog.destroy()
-    def do_fold_patch_acb(self, action=None):
-        patchname = self.get_selected_patch()
-        refresh_tried = False
-        force = False
-        absorb = False
-        while True:
-            dialogue.show_busy()
-            result = ifce.PM.do_fold_named_patch(patchname, absorb=absorb, force=force)
-            dialogue.unshow_busy()
-            if refresh_tried:
-                result = result - result.SUGGEST_REFRESH
-            if not (absorb or force) and result.suggests(result.SUGGEST_FORCE_ABSORB_OR_REFRESH):
-                resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
-                if resp == gtk.RESPONSE_CANCEL:
-                    break
-                elif resp == dialogue.Response.FORCE:
-                    force = True
-                elif resp == dialogue.Response.ABSORB:
-                    absorb = True
-                elif resp == dialogue.Response.REFRESH:
-                    refresh_tried = True
-                    dialogue.show_busy()
-                    patch_file_list = ifce.PM.get_filepaths_in_named_patch(patchname)
-                    top_patch_file_list = ifce.PM.get_filepaths_in_top_patch(patch_file_list)
-                    file_list = [filepath for filepath in patch_file_list if filepath not in top_patch_file_list]
-                    result = ifce.PM.do_refresh_overlapped_files(file_list)
-                    dialogue.unshow_busy()
-                    dialogue.report_any_problems(result)
-                continue
-            dialogue.report_any_problems(result)
-            break
-    def do_export(self, action=None):
-        patchname = self.get_selected_patch()
-        do_export_named_patch(self, patchname)
-    def do_refresh_selected_patch_acb(self, _arg):
-        patchname = self.get_selected_patch()
-        dialogue.show_busy()
-        result = ifce.PM.do_refresh_patch(patchname)
-        dialogue.unshow_busy()
-        dialogue.report_any_problems(result)
-    def do_rename(self, _action=None):
-        patchname = self.get_selected_patch()
-        dialog = dialogue.ReadTextDialog("Rename Patch: %s" % patchname, "New Name:", patchname)
-        while dialog.run() == gtk.RESPONSE_OK:
-            new_name = dialog.entry.get_text()
-            if patchname == new_name:
-                break
-            self.show_busy()
-            result = ifce.PM.do_rename_patch(patchname, new_name)
-            self.unshow_busy()
-            dialogue.report_any_problems(result)
-            if not result.suggests_rename:
-                break
-        dialog.destroy()
 
 class List(table.TableWidget):
     View = ListView
     def __init__(self, busy_indicator=None):
         table.TableWidget.__init__(self, scroll_bar=True, busy_indicator=busy_indicator, size_req=None)
         self.header.lhs.pack_start(self.view.ui_manager.get_widget('/patch_list_menubar'), expand=True, fill=True)
-
-def do_export_named_patch(parent, patchname, suggestion=None, busy_indicator=None):
-    if not suggestion:
-        suggestion = utils.convert_patchname_to_filename(patchname)
-    if busy_indicator is None:
-        busy_indicator = dialogue.main_window
-    PROMPT = _('Export as ...')
-    export_filename = dialogue.ask_file_name(PROMPT, suggestion=suggestion, existing=False)
-    if export_filename is None:
-        return
-    force = False
-    overwrite = False
-    refresh_tried = False
-    while True:
-        busy_indicator.show_busy()
-        result = ifce.PM.do_export_patch_as(patchname, export_filename, force=force, overwrite=overwrite)
-        busy_indicator.unshow_busy()
-        if refresh_tried:
-            result = result - result.SUGGEST_REFRESH
-        if result.suggests(result.SUGGEST_FORCE_OR_REFRESH):
-            resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
-            if resp == gtk.RESPONSE_CANCEL:
-                return
-            elif resp == dialogue.Response.FORCE:
-                force = True
-            elif resp == dialogue.Response.REFRESH:
-                refresh_tried = True
-                dialogue.show_busy()
-                result = ifce.PM.do_refresh_patch()
-                dialogue.unshow_busy()
-                dialogue.report_any_problems(result)
-            continue
-        elif result.suggests_rename:
-            resp = dialogue.ask_rename_overwrite_or_cancel(result, clarification=None)
-            if resp == gtk.RESPONSE_CANCEL:
-                return
-            elif resp == dialogue.Response.OVERWRITE:
-                overwrite = True
-            elif resp == dialogue.Response.RENAME:
-                export_filename = dialogue.ask_file_name(PROMPT, suggestion=export_filename, existing=False)
-                if export_filename is None:
-                    return
-            continue
-        dialogue.report_any_problems(result)
-        break
 
 class PatchDescrEditDialog(dialogue.Dialog):
     class Widget(text_edit.DbMessageWidget):
@@ -571,87 +425,6 @@ class SeriesDescrEditDialog(dialogue.Dialog):
                     self.destroy()
             else:
                 self.destroy()
-
-class NewSeriesDescrDialog(dialogue.Dialog):
-    class Widget(text_edit.DbMessageWidget):
-        UI_DESCR = '''
-            <ui>
-              <menubar name="menubar">
-                <menu name="ndd_menu" action="load_menu">
-                  <separator/>
-                  <menuitem action="text_edit_insert_from"/>
-                </menu>
-              </menubar>
-              <toolbar name="toolbar">
-                <toolitem action="text_edit_ack"/>
-                <toolitem action="text_edit_sign_off"/>
-                <toolitem action="text_edit_author"/>
-              </toolbar>
-            </ui>
-        '''
-        def __init__(self):
-            text_edit.DbMessageWidget.__init__(self)
-        def populate_action_groups(self):
-            text_edit.DbMessageWidget.populate_action_groups(self)
-            self.action_groups[0].add_actions(
-                [
-                    ("load_menu", None, _('_File')),
-                ])
-    def __init__(self, parent=None):
-        flags = gtk.DIALOG_MODAL | gtk.DIALOG_DESTROY_WITH_PARENT
-        title = _('Patch Series Description: %s -- gdarn') % utils.path_rel_home(os.getcwd())
-        dialogue.Dialog.__init__(self, title, parent, flags,
-                                 (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
-                                  gtk.STOCK_OK, gtk.RESPONSE_OK))
-        if not parent:
-            self.set_icon_from_file(icons.APP_ICON_FILE)
-        self.edit_descr_widget = self.Widget()
-        hbox = gtk.HBox()
-        menubar = self.edit_descr_widget.ui_manager.get_widget("/menubar")
-        hbox.pack_start(menubar, fill=True, expand=False)
-        toolbar = self.edit_descr_widget.ui_manager.get_widget("/toolbar")
-        toolbar.set_style(gtk.TOOLBAR_BOTH)
-        toolbar.set_orientation(gtk.ORIENTATION_HORIZONTAL)
-        hbox.pack_end(toolbar, fill=False, expand=False)
-        hbox.show_all()
-        self.vbox.pack_start(hbox, expand=False)
-        self.vbox.pack_start(self.edit_descr_widget)
-        self.set_focus_child(self.edit_descr_widget)
-        self.edit_descr_widget.show_all()
-    def get_descr(self):
-        return self.edit_descr_widget.get_contents()
-
-class NewPatchDialog(NewSeriesDescrDialog):
-    def __init__(self, parent=None):
-        NewSeriesDescrDialog.__init__(self, parent=parent)
-        self.set_title(_('New Patch: {0} -- gdarn').format(utils.path_rel_home(os.getcwd())))
-        self.hbox = gtk.HBox()
-        self.hbox.pack_start(gtk.Label(_('New Patch Name:')), fill=False, expand=False)
-        self.new_name_entry = gtk.Entry()
-        self.new_name_entry.set_width_chars(32)
-        self.hbox.pack_start(self.new_name_entry)
-        self.hbox.show_all()
-        self.vbox.pack_start(self.hbox)
-        self.vbox.reorder_child(self.hbox, 0)
-    def get_new_patch_name(self):
-        return self.new_name_entry.get_text()
-
-class DuplicatePatchDialog(NewSeriesDescrDialog):
-    def __init__(self, patchname, olddescr, parent=None):
-        NewSeriesDescrDialog.__init__(self, parent=parent)
-        self.set_title(_('Duplicate Patch: {0}: {1} -- gdarn').format(patchname, utils.path_rel_home(os.getcwd())))
-        self.hbox = gtk.HBox()
-        self.hbox.pack_start(gtk.Label(_('Duplicate Patch Name:')), fill=False, expand=False)
-        self.new_name_entry = gtk.Entry()
-        self.new_name_entry.set_width_chars(32)
-        self.new_name_entry.set_text(patchname + '.duplicate')
-        self.hbox.pack_start(self.new_name_entry)
-        self.edit_descr_widget.set_contents(olddescr)
-        self.hbox.show_all()
-        self.vbox.pack_start(self.hbox)
-        self.vbox.reorder_child(self.hbox, 0)
-    def get_new_patch_name(self):
-        return self.new_name_entry.get_text()
 
 class ImportPatchDialog(dialogue.Dialog):
     def __init__(self, epatch, parent=None):
@@ -812,12 +585,6 @@ class RestorePatchDialog(dialogue.Dialog):
     def get_as_name(self):
         return self.as_name.get_text()
 
-def _update_class_indep_pushable_cb(**kwargs):
-    condns = get_pushable_condns()
-    actions.CLASS_INDEP_AGS.update_condns(condns)
-
-ws_event.add_notification_cb(ifce.E_CHANGE_WD|pm_ifce.E_PATCH_LIST_CHANGES, _update_class_indep_pushable_cb)
-
 def _update_class_indep_absorbable_cb(**kwargs):
     condns = actions.MaskedCondns(AC_ALL_APPLIED_REFRESHED if ifce.PM.all_applied_patches_refreshed() else 0, AC_ALL_APPLIED_REFRESHED)
     actions.CLASS_INDEP_AGS.update_condns(condns)
@@ -837,26 +604,6 @@ def new_playground_acb(_arg):
 
 def edit_series_description_acb(_arg):
     SeriesDescrEditDialog(parent=dialogue.main_window).show()
-
-def init_cwd_acb(_arg):
-    dlg = NewSeriesDescrDialog(parent=dialogue.main_window)
-    if dlg.run() == gtk.RESPONSE_OK:
-        dlg.show_busy()
-        result = ifce.PM.new_playground(dlg.get_descr())
-        dlg.unshow_busy()
-        dialogue.report_any_problems(result)
-    dlg.destroy()
-
-def new_patch_acb(_arg):
-    dlg = NewPatchDialog(parent=dialogue.main_window)
-    while dlg.run() == gtk.RESPONSE_OK:
-        dlg.show_busy()
-        result = ifce.PM.do_create_new_patch(dlg.get_new_patch_name(), dlg.get_descr())
-        dlg.unshow_busy()
-        dialogue.report_any_problems(result)
-        if not result.suggests_rename:
-            break
-    dlg.destroy()
 
 def restore_patch_acb(_arg):
     dlg = RestorePatchDialog(parent=dialogue.main_window)
@@ -946,67 +693,6 @@ def fold_patch_acb(_arg):
         break
     dlg.destroy()
 
-def push_next_patch_acb(_arg):
-    force = False
-    absorb = True
-    refresh_tried = False
-    while True:
-        dialogue.show_busy()
-        result = ifce.PM.do_push_next_patch(absorb=absorb, force=force)
-        dialogue.unshow_busy()
-        if refresh_tried:
-            result = result - result.SUGGEST_REFRESH
-        if not (absorb or force) and result.suggests(result.SUGGEST_FORCE_ABSORB_OR_REFRESH):
-            resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
-            if resp == gtk.RESPONSE_CANCEL:
-                return False
-            elif resp == dialogue.Response.FORCE:
-                force = True
-            elif resp == dialogue.Response.ABSORB:
-                absorb = True
-            elif resp == dialogue.Response.REFRESH:
-                refresh_tried = True
-                dialogue.show_busy()
-                file_list = ifce.PM.get_filepaths_in_next_patch()
-                result = ifce.PM.do_refresh_overlapped_files(file_list)
-                dialogue.unshow_busy()
-                dialogue.report_any_problems(result)
-            continue
-        dialogue.report_any_problems(result)
-        break
-    return result.is_ok
-
-def pop_top_patch_acb(_arg):
-    refresh_tried = False
-    while True:
-        dialogue.show_busy()
-        result = ifce.PM.do_pop_top_patch()
-        dialogue.unshow_busy()
-        if not refresh_tried and result.suggests_refresh:
-            resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
-            if resp == gtk.RESPONSE_CANCEL:
-                return False
-            elif resp == dialogue.Response.REFRESH:
-                refresh_tried = True
-                dialogue.show_busy()
-                result = ifce.PM.do_refresh_patch()
-                dialogue.unshow_busy()
-                dialogue.report_any_problems(result)
-            continue
-        dialogue.report_any_problems(result)
-        break
-    return result.is_ok
-
-def pop_all_patches_acb(*args,**kwargs):
-    while ifce.PM.is_poppable():
-        if not pop_top_patch_acb(None):
-            break
-
-def push_all_patches_acb(*args,**kwargs):
-    while ifce.PM.is_pushable():
-        if not push_next_patch_acb(None):
-            break
-
 def refresh_top_patch_acb(_arg):
     dialogue.show_busy()
     result = ifce.PM.do_refresh_patch()
@@ -1044,16 +730,8 @@ actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_actions(
          _('Create a new intitialized playground'), new_playground_acb),
     ])
 
-actions.CLASS_INDEP_AGS[ws_actions.AC_NOT_IN_PM_PGND].add_actions(
-    [
-        ("config_init_cwd", icons.STOCK_INIT, _('_Initialize'), "",
-         _('Create a patch series in the current directory'), init_cwd_acb),
-    ])
-
 actions.CLASS_INDEP_AGS[ws_actions.AC_IN_PM_PGND_MUTABLE].add_actions(
     [
-        ("patch_list_new_patch", icons.STOCK_NEW_PATCH, None, None,
-         _('Create a new patch'), new_patch_acb),
         ("patch_list_restore_patch", icons.STOCK_IMPORT_PATCH, _('Restore Patch'), None,
          _('Restore a previously removed patch behind the top applied patch'), restore_patch_acb),
         ("patch_list_import_patch", icons.STOCK_IMPORT_PATCH, None, None,
@@ -1068,22 +746,10 @@ actions.CLASS_INDEP_AGS[ws_actions.AC_IN_PM_PGND].add_actions(
          _('Edit the series\' description'), edit_series_description_acb),
     ])
 
-actions.CLASS_INDEP_AGS[AC_PUSH_POSSIBLE | ws_actions.AC_IN_PM_PGND_MUTABLE].add_actions(
-    [
-        ("patch_list_push", icons.STOCK_PUSH_PATCH, _('Push'), None,
-         _('Apply the next unapplied patch'), push_next_patch_acb),
-        ("patch_list_push_all", icons.STOCK_PUSH_PATCH, _('Push All'), None,
-         _('Apply all unguarded unapplied patches.'), push_all_patches_acb),
-    ])
-
 actions.CLASS_INDEP_AGS[AC_POP_POSSIBLE | ws_actions.AC_IN_PM_PGND_MUTABLE].add_actions(
     [
         ("patch_list_fold_external_patch", icons.STOCK_FOLD_PATCH, None, None,
          _('Fold an external patch into the top applied patch'), fold_patch_acb),
-        ("patch_list_pop", icons.STOCK_POP_PATCH, _('Pop'), None,
-         _('Pop the top applied patch'), pop_top_patch_acb),
-        ("patch_list_pop_all", icons.STOCK_POP_PATCH, _('Pop All'), None,
-         _('Pop all applied patches'), pop_all_patches_acb),
     ])
 
 actions.CLASS_INDEP_AGS[ws_actions.AC_PMIC | ws_actions.AC_IN_PM_PGND_MUTABLE].add_actions(

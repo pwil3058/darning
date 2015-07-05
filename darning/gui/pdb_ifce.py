@@ -415,7 +415,7 @@ def do_refresh_patch(patchname=None):
 def do_remove_patch(patchname):
     RCTX.reset()
     console.LOG.start_cmd('remove patch: {0}\n'.format(patchname))
-    eflags =patch_db.do_remove_patch(patchname)
+    result = _map_do(patch_db.do_remove_patch(patchname))
     console.LOG.end_cmd()
     ws_event.notify_events(pm_ifce.E_DELETE_PATCH)
     return result
