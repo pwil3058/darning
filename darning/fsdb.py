@@ -39,10 +39,10 @@ STATUS_DECO_MAP = {
 }
 
 # Contained File Relative Data
-CFRD = collections.namedtuple("CFRD", ["sub_dir_relpath", "name"])
+CFRD = collections.namedtuple("CFRD", ["subdir_relpath", "name"])
 def get_file_path_relative_data(file_path, base_dir_path=None):
     data = CFRD(*os.path.split(os.path.relpath(file_path, os.curdir if base_dir_path is None else base_dir_path)))
-    return None if data.sub_dir_relpath.startswith(os.pardir) else data
+    return None if data.subdir_relpath.startswith(os.pardir) else data
 
 def split_path(path):
     if os.path.isabs(path):
@@ -217,10 +217,10 @@ class GenericSnapshotWsFileDb(OsFileDb):
                 subdir, name = os.path.split(os.path.relpath(file_path, self._dir_path))
                 if subdir:
                     while subdir:
-                        base_sub_dir = subdir
+                        base_subdir = subdir
                         subdir = os.path.dirname(subdir)
-                    if base_sub_dir not in self._subdirs:
-                        self._add_sub_dir(name=base_subdir, status=False)
+                    if base_subdir not in self._subdirs:
+                        self._add_subdir(name=base_subdir, status=False)
                 else:
                     if rfd:
                         rfd = RFD(path=os.path.relpath(rfd.path, self._dir_path), relation=rfd.relation)

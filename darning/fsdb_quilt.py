@@ -41,10 +41,10 @@ STATUS_DECO_MAP = {
 }
 
 # Contained File Relative Data
-CFRD = collections.namedtuple("CFRD", ["sub_dir_relpath", "name"])
+CFRD = collections.namedtuple("CFRD", ["subdir_relpath", "name"])
 def get_file_path_relative_data(file_path, base_dir_path=None):
     data = CFRD(*os.path.split(os.path.relpath(file_path, os.curdir if base_dir_path is None else base_dir_path)))
-    return None if data.sub_dir_relpath.startswith(os.pardir) else data
+    return None if data.subdir_relpath.startswith(os.pardir) else data
 
 def iterate_quilt_file_data(patch_text):
     if not patch_text:
