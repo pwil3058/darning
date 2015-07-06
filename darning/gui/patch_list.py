@@ -191,7 +191,7 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
             [
                 ("pm_edit_patch_descr", gtk.STOCK_EDIT, _("Description"), None,
                  _("Edit the selected patch's description"),
-                 lambda _action=None: PatchDescrEditDialog(self.get_selected_patch(), parent=None).show()
+                 lambda _action=None: dooph_pm.PatchDescrEditDialog(self.get_selected_patch(), parent=None).show()
                 ),
                 ("patch_list_patch_view", icons.STOCK_DIFF, _("Details"), None,
                  _("View the selected patch's details"),
