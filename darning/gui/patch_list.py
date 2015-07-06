@@ -267,7 +267,7 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
             return pm_ifce.E_POP
         elif napplied > self._applied_count:
             return pm_ifce.E_PUSH
-        elif napplied != 0 and not self._pld.is_current:
+        elif napplied != 0 and not self._table_db.is_current:
             args["pld_reset_only"] = True
             return pm_ifce.E_PATCH_LIST_CHANGES
         return 0
@@ -275,9 +275,12 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
         return ifce.PM.get_patch_list_data()
     def _fetch_contents(self, pld_reset_only=False, **kwargs):
         self.action_groups.update_condns(dooph_pm.get_pushable_condns())
+        self._applied_count = 0
         for patch_data in table.MapManagedTableView._fetch_contents(self, pld_reset_only=pld_reset_only, **kwargs):
             icon = STATUS_ICONS[patch_data.state]
             markup = patch_markup(patch_data, self._table_db.selected_guards)
+            if patch_data.state != PatchState.NOT_APPLIED:
+                self._applied_count += 1
             yield [patch_data.name, icon, markup]
     def repopulate_list(self, **kwargs):
         dialogue.show_busy()
