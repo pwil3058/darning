@@ -113,9 +113,9 @@ class ReportContext(object):
         self.stderr.text = ''
 
 RCTX = ReportContext()
-rctx.reset(RCTX.stdout, RCTX.stderr)
 
 def open_db():
+    rctx.reset(RCTX.stdout, RCTX.stderr)
     result = patch_db.load_db(lock=True)
     if result is True:
         return CmdResult.ok()

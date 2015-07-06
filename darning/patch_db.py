@@ -640,8 +640,8 @@ class PatchData(PickeExtensibleObject):
     '''Store data for changes to a number of files as a single patch'''
     NEW_FIELDS = { "_db" : None }
     Guards = collections.namedtuple('Guards', ['positive', 'negative'])
-    def __init__(self, name, description):
-        self._db = None
+    def __init__(self, name, description, database=None):
+        self._db = database
         self.files = dict()
         self.set_name(name, first=True)
         self.description = _tidy_text(description) if description is not None else ''
@@ -1139,25 +1139,25 @@ def open_db(mutable=False):
 # modules exported functions.  They may emit output to stderr and
 # should only be used where that is a requirement.  Use DataBase
 # methods otherwise.
-def _get_patch(patchname):
+def _get_patch(patchname, db):
     '''Return the named patch'''
-    patch_index = _DB.series_index_for_patchname(patchname)
+    patch_index = db.series_index_for_patchname(patchname)
     if patch_index is None:
         RCTX.stderr.write(_('{0}: patch is NOT known.\n').format(patchname))
         return None
-    return  _DB.series[patch_index]
+    return  db.series[patch_index]
 
-def _get_top_patch():
+def _get_top_patch(db):
     '''Return the top applied patch'''
-    top_patch = _DB.get_top_patch()
+    top_patch = db.get_top_patch()
     if top_patch is None:
         RCTX.stderr.write(_('No patches applied.\n'))
         return None
     return top_patch
 
-def _get_named_or_top_patch(patchname):
+def _get_named_or_top_patch(patchname, db):
     '''Return the named or top applied patch'''
-    return _get_patch(patchname) if patchname is not None else _get_top_patch()
+    return _get_patch(patchname, db) if patchname is not None else _get_top_patch(db)
 
 def get_kept_patch_names():
     '''Get a list of names for patches that have been kept on removal'''
@@ -1230,7 +1230,7 @@ def do_create_new_patch(patchname, description):
     elif not utils.is_valid_dir_name(patchname):
         RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(patchname, utils.ALLOWED_DIR_NAME_CHARS_MSG))
         return CmdResult.ERROR|CmdResult.SUGGEST_RENAME
-    patch = PatchData(patchname, description)
+    patch = PatchData(patchname, description, _DB)
     _DB.insert_patch(patch)
     dump_db()
     old_top = _DB.get_top_patch()
@@ -1250,7 +1250,7 @@ def do_rename_patch(patchname, newname):
     elif not utils.is_valid_dir_name(newname):
         RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(newname, utils.ALLOWED_DIR_NAME_CHARS_MSG))
         return CmdResult.ERROR|CmdResult.SUGGEST_RENAME
-    patch = _get_patch(patchname)
+    patch = _get_patch(patchname, _DB)
     if patch is None:
         return CmdResult.ERROR
     patch.set_name(newname)
@@ -1279,7 +1279,7 @@ def do_import_patch(epatch, patchname, overwrite=False):
         RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(patchname, utils.ALLOWED_DIR_NAME_CHARS_MSG))
         return CmdResult.ERROR|CmdResult.SUGGEST_RENAME
     descr = utils.make_utf8_compliant(epatch.get_description())
-    patch = PatchData(patchname, descr)
+    patch = PatchData(patchname, descr, _DB)
     renames = dict()
     for diff_plus in epatch.diff_pluses:
         filepath_plus = diff_plus.get_file_path_plus(epatch.num_strip_levels)
@@ -1341,7 +1341,7 @@ def do_fold_epatch(epatch, absorb=False, force=False):
     '''Fold an external patch into the top patch.'''
     assert is_writable()
     assert not (absorb and force)
-    top_patch = _get_top_patch()
+    top_patch = _get_top_patch(_DB)
     if not top_patch:
         return CmdResult.ERROR
     def _apply_diff_plus(diff_plus):
@@ -1496,7 +1496,7 @@ def do_fold_named_patch(patchname, absorb=False, force=False):
     '''Fold a name internal patch into the top patch.'''
     assert is_writable()
     assert not (absorb and force)
-    patch = _get_patch(patchname)
+    patch = _get_patch(patchname, _DB)
     if not patch:
         return CmdResult.ERROR
     elif patch.is_applied():
@@ -1569,7 +1569,7 @@ def get_file_diff(filepath, patchname, with_timestamps=False):
 
 def get_diff_for_files(filepaths, patchname, with_timestamps=False):
     assert is_readable()
-    patch = _get_named_or_top_patch(patchname)
+    patch = _get_named_or_top_patch(patchname, _DB)
     if patch is None:
         return False
     if filepaths:
@@ -1883,7 +1883,7 @@ def is_patch_pushable(patchname):
 def do_unapply_top_patch():
     '''Unapply the top applied patch'''
     assert is_writable()
-    top_patch = _get_top_patch()
+    top_patch = _get_top_patch(_DB)
     if not top_patch:
         return CmdResult.ERROR
     if top_patch.needs_refresh():
@@ -1940,13 +1940,13 @@ def get_filepaths_in_next_patch(filepaths=None):
 
 def get_named_or_top_patch_name(arg):
     '''Return the name of the named or top patch if arg is None or None if arg is not a valid patchname'''
-    patch = _get_named_or_top_patch(arg)
+    patch = _get_named_or_top_patch(arg, _DB)
     return None if patch is None else patch.name
 
 def do_add_files_to_top_patch(filepaths, absorb=False, force=False):
     '''Add the named files to the named patch'''
     assert not (absorb and force)
-    top_patch = _get_top_patch()
+    top_patch = _get_top_patch(_DB)
     if top_patch is None:
         return CmdResult.ERROR
     prepend_subdir(filepaths)
@@ -1980,7 +1980,7 @@ def do_add_files_to_top_patch(filepaths, absorb=False, force=False):
 
 def do_delete_files_in_top_patch(filepaths):
     assert is_writable()
-    top_patch = _get_top_patch()
+    top_patch = _get_top_patch(_DB)
     if top_patch is None:
         return CmdResult.ERROR
     nonexists = 0
@@ -2004,7 +2004,7 @@ def do_delete_files_in_top_patch(filepaths):
 
 def do_copy_file_to_top_patch(filepath, as_filepath, overwrite=False):
     assert is_writable()
-    top_patch = _get_top_patch()
+    top_patch = _get_top_patch(_DB)
     if top_patch is None:
         return CmdResult.ERROR
     filepath = rel_basedir(filepath)
@@ -2051,7 +2051,7 @@ def do_rename_file_in_top_patch(filepath, new_filepath, force=False, overwrite=F
         if os.path.exists(top_patch.files[filepath].stashed_path):
             os.remove(top_patch.files[filepath].stashed_path)
         top_patch.drop_file(filepath)
-    top_patch = _get_top_patch()
+    top_patch = _get_top_patch(_DB)
     if top_patch is None:
         return CmdResult.ERROR
     filepath = rel_basedir(filepath)
@@ -2116,7 +2116,7 @@ def do_rename_file_in_top_patch(filepath, new_filepath, force=False, overwrite=F
 def do_drop_files_fm_patch(patchname, filepaths):
     '''Drop the named file from the named patch'''
     assert is_writable()
-    patch = _get_named_or_top_patch(patchname)
+    patch = _get_named_or_top_patch(patchname, _DB)
     if patch is None:
         return CmdResult.ERROR
     elif patch.is_applied() and _DB.get_top_patch() != patch:
@@ -2139,7 +2139,7 @@ def do_drop_files_fm_patch(patchname, filepaths):
 def do_duplicate_patch(patchname, as_patchname, newdescription):
     '''Create a duplicate of the named patch with a new name and new description (after the top patch)'''
     assert is_writable()
-    patch = _get_patch(patchname)
+    patch = _get_patch(patchname, _DB)
     if patch is None:
         return CmdResult.ERROR
     if patch.needs_refresh():
@@ -2182,7 +2182,7 @@ def do_refresh_overlapped_files(file_list):
 def do_refresh_patch(patchname=None):
     '''Refresh the named (or top applied) patch'''
     assert is_writable()
-    patch = _get_named_or_top_patch(patchname)
+    patch = _get_named_or_top_patch(patchname, _DB)
     if patch is None:
         return CmdResult.ERROR
     if not patch.is_applied():
@@ -2201,7 +2201,7 @@ def do_remove_patch(patchname):
     '''Remove the named patch from the series'''
     assert is_writable()
     assert patchname
-    patch = _get_patch(patchname)
+    patch = _get_patch(patchname, _DB)
     if patch is None:
         return CmdResult.ERROR
     if patch.is_applied():
@@ -2245,7 +2245,7 @@ def _tidy_text(text):
 
 def do_set_patch_description(patchname, text):
     assert is_writable()
-    patch = _get_named_or_top_patch(patchname)
+    patch = _get_named_or_top_patch(patchname, _DB)
     if not patch:
         return CmdResult.ERROR
     old_description = patch.description
@@ -2297,7 +2297,7 @@ def get_patch_guards(patchname):
 
 def do_set_patch_guards(patchname, guards):
     assert is_writable()
-    patch = _get_named_or_top_patch(patchname)
+    patch = _get_named_or_top_patch(patchname, _DB)
     if not patch:
         return CmdResult.ERROR
     patch.pos_guards = set(guards.positive)
@@ -2345,7 +2345,7 @@ def get_extdiff_files_for(filepath, patchname):
 
 def get_reconciliation_paths(filepath):
     assert is_readable()
-    top_patch = _get_top_patch()
+    top_patch = _get_top_patch(_DB)
     if not top_patch:
         return None
     assert filepath in top_patch.files
@@ -2388,7 +2388,7 @@ def get_textpatch(patchname, with_timestamps=False):
 
 def do_export_patch_as(patchname, export_filename, force=False, overwrite=False, with_timestamps=False):
     assert is_writable()
-    patch = _get_named_or_top_patch(patchname)
+    patch = _get_named_or_top_patch(patchname, _DB)
     if not patch:
         return CmdResult.ERROR
     textpatch = TextPatch(patch, with_timestamps=with_timestamps)
