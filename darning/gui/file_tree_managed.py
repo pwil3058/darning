@@ -48,6 +48,17 @@ class WSTreeView(file_tree.FileTreeView):
           <menuitem action="refresh_files"/>
         </menu>
       </menubar>
+      <popup name="files_popup">
+          <menuitem action="edit_files"/>
+        <separator/>
+          <menuitem action="copy_files_selection"/>
+          <menuitem action="move_files_selection"/>
+          <menuitem action="rename_file"/>
+        <separator/>
+          <menuitem action="delete_files"/>
+        <separator/>
+      </popup>
+      <popup name="scmic_files_popup"/>
       <popup name="pmic_files_popup">
         <separator/>
           <menuitem action='pm_edit_files_in_top_patch'/>
@@ -67,6 +78,15 @@ class WSTreeView(file_tree.FileTreeView):
     DEFAULT_POPUP = "/pmic_files_popup"
     def __init__(self, busy_indicator=None, show_hidden=False, hide_clean=False):
         file_tree.FileTreeView.__init__(self, busy_indicator=busy_indicator, show_hidden=show_hidden, hide_clean=hide_clean)
+        self._update_popup_cb()
+        self.add_notification_cb(pm_ifce.E_PATCH_STACK_CHANGES|ifce.E_NEW_PM|ifce.E_CHANGE_WD, self._update_popup_cb)
+    def _update_popup_cb(self, **kwargs):
+        if ifce.PM.is_poppable:
+            self.set_popup("/pmic_files_popup")
+        elif ifce.SCM.in_valid_pgnd:
+            self.set_popup("/scmic_files_popup")
+        else:
+            self.set_popup(self.DEFAULT_POPUP)
     def populate_action_groups(self):
         file_tree.FileTreeView.populate_action_groups(self)
         self.action_groups[actions.AC_DONT_CARE].add_actions(
@@ -77,26 +97,26 @@ class WSTreeView(file_tree.FileTreeView):
             [
                 ('pm_add_files_to_top_patch', gtk.STOCK_ADD, _('_Add'), None,
                  _('Add the selected files to the top patch'),
-                 lambda _action=None: self.pm_add_selected_files()
+                 lambda _action=None: dooph_pm.pm_add_files(self.get_selected_filepaths())
                 ),
                 ('pm_edit_files_in_top_patch', gtk.STOCK_EDIT, _('_Edit'), None,
                  _('Open the selected files for editing after adding them to the top patch'),
-                 lambda _action=None: self.pm_edit_selected_files()
+                 lambda _action=None: dooph_pm.pm_do_edit_files(self.get_selected_filepaths())
                 ),
                 ('pm_delete_files_in_top_patch', gtk.STOCK_DELETE, _('_Delete'), None,
                  _('Add the selected files to the top patch and then delete them'),
-                 lambda _action=None: self.pm_delete_selected_files()
+                 lambda _action=None: dooph_pm.pm_delete_files(self.get_selected_filepaths())
                 ),
             ])
         self.action_groups[ws_actions.AC_IN_PM_PGND_MUTABLE + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
             [
                 ('pm_copy_file_to_top_patch', gtk.STOCK_COPY, _('_Copy'), None,
                  _('Add a copy of the selected file to the top patch'),
-                 lambda _action=None: self.pm_copy_selected_file()
+                 lambda _action=None: dooph_pm.pm_copy_file(self.get_selected_filepath())
                 ),
                 ('pm_rename_file_in_top_patch', icons.STOCK_RENAME, _('_Rename'), None,
                  _('Rename the selected file within the top patch'),
-                 lambda _action=None: self.pm_rename_selected_file()
+                 lambda _action=None: dooph_pm.pm_rename_file(self.get_selected_filepath())
                 ),
             ])
         self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC].add_actions(
@@ -106,25 +126,6 @@ class WSTreeView(file_tree.FileTreeView):
                  lambda _action=None: self.pm_select_unsettled()
                 ),
             ])
-    def pm_delete_selected_files(self):
-        return dooph_pm.pm_delete_files(self.get_selected_filepaths())
-    def pm_add_selected_files(self):
-        file_paths = self.get_selected_filepaths()
-        return dooph_pm.pm_add_files(file_paths)
-    def pm_copy_selected_file(self):
-        file_paths = self.get_selected_filepaths()
-        assert len(file_paths) == 1
-        return dooph_pm.pm_copy_file(file_paths[0])
-    def pm_rename_selected_file(self):
-        file_paths = self.get_selected_filepaths()
-        assert len(file_paths) == 1
-        return dooph_pm.pm_rename_file(file_paths[0])
-    def pm_edit_selected_files(self):
-        file_paths = self.get_selected_filepaths()
-        if len(file_paths) == 0:
-            return
-        if dooph_pm.pm_add_files(file_paths).is_ok:
-            text_edit.edit_files_extern(file_paths)
     @staticmethod
     def _get_file_db():
         return ifce.SCM.get_ws_file_db()

@@ -37,9 +37,9 @@ class Darning(gtk.Window, dialogue.BusyIndicator, ws_actions.AGandUIManager):
         <menubar name="gdarn_left_menubar">
             <menu name="gdarn_pgnd" action="actions_wd_menu">
               <menuitem action="config_change_playground"/>
-              <menuitem action="config_new_playground"/>
+              <menuitem action="pm_create_new_pgnd"/>
               <menuitem action="pm_init_cwd"/>
-              <menuitem action='patch_list_edit_series_descr'/>
+              <menuitem action='pm_edit_series_descr'/>
               <menuitem action="actions_quit"/>
             </menu>
         </menubar>
@@ -52,14 +52,14 @@ class Darning(gtk.Window, dialogue.BusyIndicator, ws_actions.AGandUIManager):
         <toolbar name="gdarn_patches_toolbar">
            <separator/>
             <toolitem name="New" action="pm_new_patch"/>
-            <toolitem name="Import" action="patch_list_import_patch"/>
-            <toolitem name="Fold" action="patch_list_fold_external_patch"/>
+            <toolitem name="Import" action="pm_import_patch"/>
+            <toolitem name="Fold" action="pm_fold_external_patch"/>
            <separator/>
-            <toolitem name="Refresh" action="patch_list_refresh_top_patch"/>
+            <toolitem name="Refresh" action="pm_refresh_top_patch"/>
             <toolitem name="Push" action="pm_push"/>
             <toolitem name="Pop" action="pm_pop"/>
            <separator/>
-            <toolitem name="Select" action="patch_list_select_guards"/>
+            <toolitem name="Select" action="pm_select_guards"/>
            <separator/>
             <toolitem action="pm_add_new_file"/>
         </toolbar>
