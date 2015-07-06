@@ -32,6 +32,8 @@ import sys
 import zlib
 import tempfile
 
+from contextlib import contextmanager
+
 from .cmd_result import CmdResult
 
 from . import rctx as RCTX
@@ -383,7 +385,7 @@ class FileData(GenericFileData):
             self.orig_mode = None
     def get_reconciliation_paths(self):
         assert is_readable()
-        assert self.patch == _DB.get_top_patch()
+        assert self.patch.is_top_patch
         # make it hard for the user to (accidentally) create these files if they don't exist
         before = self.before_file_path if os.path.exists(self.before_file_path) else '/dev/null'
         stashed = self.stashed_path if os.path.exists(self.stashed_path) else '/dev/null'
@@ -636,13 +638,17 @@ class PatchTable(object):
 
 class PatchData(PickeExtensibleObject):
     '''Store data for changes to a number of files as a single patch'''
+    NEW_FIELDS = { "_db" : None }
     Guards = collections.namedtuple('Guards', ['positive', 'negative'])
     def __init__(self, name, description):
+        self._db = None
         self.files = dict()
         self.set_name(name, first=True)
         self.description = _tidy_text(description) if description is not None else ''
         self.pos_guards = set()
         self.neg_guards = set()
+    def set_db(self, db):
+        self._db = db
     def set_name(self, newname, first=False):
         if not first:
             old_cached_orig_dir_path = self.cached_orig_dir_path
@@ -667,25 +673,25 @@ class PatchData(PickeExtensibleObject):
         '''Return the applied patch above me (if any) which contains this file'''
         assert is_readable()
         try:
-            index = _DB.applied_patches.index(self) + 1
+            index = self._db.applied_patches.index(self) + 1
         except ValueError:
             return None
-        while index < len(_DB.applied_patches):
-            if filepath in _DB.applied_patches[index].files:
-                return _DB.applied_patches[index]
+        while index < len(self._db.applied_patches):
+            if filepath in self._db.applied_patches[index].files:
+                return self._db.applied_patches[index]
             index += 1
         return None
     def add_file(self, file_data):
-        assert not self.is_applied() or _DB.get_top_patch() == self
+        assert not self.is_applied() or self._db.get_top_patch() == self
         assert file_data.path not in self.files
         self.files[file_data.path] = file_data
         if self.is_applied():
-            _DB.add_to_combined_patch(file_data)
+            self._db.add_to_combined_patch(file_data)
         for cf_fd in [fd for fd in self.files.values() if fd.came_from_path == file_data.path]:
             cf_fd.set_before_file_path()
     def drop_file(self, filepath):
         if self.is_applied():
-            _DB.drop_fm_combined_patch(filepath)
+            self._db.drop_fm_combined_patch(filepath)
         del self.files[filepath]
         for cf_fd in [fd for fd in self.files.values() if fd.came_from_path == filepath]:
             cf_fd.set_before_file_path()
@@ -702,7 +708,7 @@ class PatchData(PickeExtensibleObject):
                 self.files[renamed_from].reset_renamed_to(None)
             dump_db()
             return
-        assert _DB.applied_patches[-1] == self
+        assert self._db.applied_patches[-1] == self
         corig_f_path = self.files[filepath].cached_orig_path
         if os.path.exists(filepath):
             os.remove(filepath)
@@ -757,12 +763,15 @@ class PatchData(PickeExtensibleObject):
         return PatchTable.Row(name=self.name, state=state, pos_guards=self.pos_guards, neg_guards=self.neg_guards)
     def is_applied(self):
         '''Is this patch applied?'''
-        return self in _DB.applied_patches
+        return self in self._db.applied_patches
+    @property
+    def is_top_patch(self):
+        return self._db.applied_patches and self._db.applied_patches[-1] == self
     def is_blocked_by_guard(self):
         '''Is the this patch blocked from being applied by any guards?'''
-        if (self.pos_guards & _DB.selected_guards) != self.pos_guards:
+        if (self.pos_guards & self._db.selected_guards) != self.pos_guards:
             return True
-        if len(self.neg_guards & _DB.selected_guards) != 0:
+        if len(self.neg_guards & self._db.selected_guards) != 0:
             return True
         return False
     def is_overlapped(self):
@@ -918,6 +927,7 @@ class DataBase(PickeExtensibleObject):
         else:
             top_index = self.series_index_for_top()
             index = top_index + 1 if top_index is not None else 0
+        patch.set_db(self)
         self.series.insert(index, patch)
     def append_to_applied(self, patch):
         self.applied_patches.append(patch)
@@ -1085,6 +1095,8 @@ def load_db(lock=True):
         fobj.close()
     if lock and lock_state is not True:
         return Failure(_('Database is read only. Lock held by: {0}').format(holder))
+    for patch in _DB.series:
+        patch.set_db(_DB)
     if _DB.applied_patches is None:
         _DB.applied_patches = _generate_applied_patch_list()
     else:
@@ -1099,6 +1111,29 @@ def dump_db():
         cPickle.dump(_DB, fobj)
     finally:
         fobj.close()
+
+# Make a context manager locking/opening/closing database
+@contextmanager
+def open_db(mutable=False):
+    assert DataBase.exists()
+    import fcntl
+    fobj = os.open(DataBase._LOCK_FILE, os.O_RDWR if mutable else os.O_RDONLY)
+    fcntl.lockf(fobj, fcntl.LOCK_EX if mutable else fcntl.LOCK_SH)
+    db = cPickle.load(open(DataBase._FILE, 'rb'))
+    # TODO: get rid of this code when version upgraded
+    for patch in db.series:
+        patch.set_db(db)
+    if db.applied_patches is None:
+        db.applied_patches = _generate_applied_patch_list()
+    else:
+        _verify_applied_patch_list(dbss.applied_patches)
+    try:
+        yield db
+    finally:
+        if mutable:
+            cPickle.dump(db, open(DataBase._FILE, 'wb'))
+        fcntl.lockf(fobj, fcntl.LOCK_UN)
+        os.close(fobj)
 
 # The next three functions are wrappers for common functionality in
 # modules exported functions.  They may emit output to stderr and
