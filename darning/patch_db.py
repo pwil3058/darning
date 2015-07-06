@@ -1033,37 +1033,36 @@ def release_db():
     if writeable:
         DataBase.unlock()
 
+def _set_of_dirs_in_dir(dir_path):
+    return {item for item in os.listdir(dir_path) if os.path.isdir(os.path.join(dir_path, item))}
+
+def _generate_applied_patch_list():
+    '''Get an ordered list of applied patches'''
+    applied = list()
+    applied_set = _set_of_dirs_in_dir(DataBase._ORIGINALS_DIR)
+    if len(applied_set) == 0:
+        return []
+    for patch in _DB.series:
+        if patch.name in applied_set:
+            applied.append(patch)
+            applied_set.remove(patch.name)
+            if len(applied_set) == 0:
+                break
+    assert len(applied_set) == 0, 'Series/applied patches discrepency'
+    return applied
+
+def _verify_applied_patch_list(applied):
+    '''Verify that the applied list is consistent with DataBase._ORIGINALS_DIR.'''
+    applied_set = _set_of_dirs_in_dir(DataBase._ORIGINALS_DIR)
+    assert len(applied_set) == len(applied), 'Series/applied patches discrepency'
+    for patch in applied:
+        assert patch.name in applied_set, 'Series/applied patches discrepency'
+
 def load_db(lock=True):
     '''Load the database for access (read only unless lock is True)'''
     global _DB
     assert DataBase.exists()
     assert not is_readable()
-    def _isdir(item):
-        '''Is item a directory?'''
-        return os.path.isdir(os.path.join(DataBase._ORIGINALS_DIR, item))
-    def _generate_applied_patch_list():
-        '''Get an ordered list of applied patches'''
-        def isdir(item):
-            '''Is item a directory?'''
-            return os.path.isdir(os.path.join(DataBase._ORIGINALS_DIR, item))
-        applied = list()
-        applied_set = set([item for item in os.listdir(DataBase._ORIGINALS_DIR) if _isdir(item)])
-        if len(applied_set) == 0:
-            return []
-        for patch in _DB.series:
-            if patch.name in applied_set:
-                applied.append(patch)
-                applied_set.remove(patch.name)
-                if len(applied_set) == 0:
-                    break
-        assert len(applied_set) == 0, 'Series/applied patches discrepency'
-        return applied
-    def _verify_applied_patch_list(applied):
-        '''Verify that the applied list is consistent with DataBase._ORIGINALS_DIR.'''
-        applied_set = set([item for item in os.listdir(DataBase._ORIGINALS_DIR) if _isdir(item)])
-        assert len(applied_set) == len(applied), 'Series/applied patches discrepency'
-        for patch in applied:
-            assert patch.name in applied_set, 'Series/applied patches discrepency'
     while lock:
         lock_state = DataBase.lock()
         if isinstance(lock_state, Failure):
