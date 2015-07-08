@@ -21,7 +21,6 @@ import pango
 
 from ..cmd_result import CmdResult, CmdFailure
 
-from .. import rctx
 from .. import patch_db
 from .. import fsdb
 from .. import utils
@@ -34,28 +33,22 @@ from . import ws_event
 from . import console
 
 in_valid_pgnd = False
-pgnd_is_mutable = False
 
 def init(*args, **kwargs):
     global in_valid_pgnd
-    global pgnd_is_mutable
     root = find_base_dir(remember_sub_dir=False)
     if root:
         os.chdir(root)
-        result = open_db()
-        in_valid_pgnd = is_readable()
-        pgnd_is_mutable = is_writable()
+        in_valid_pgnd = True
         if in_valid_pgnd:
             from . import config
             config.PgndPathTable.append_saved_pgnd(root)
     else:
         in_valid_pgnd = False
-        pgnd_is_mutable = False
-        result = CmdResult.ok()
-    return result
+    return CmdResult.ok()
 
 def new_playground(description, pgdir=None):
-    global in_valid_pgnd, pgnd_is_mutable
+    global in_valid_pgnd
     if pgdir is not None:
         result = chdir(pgdir)
         if not result.is_ok:
@@ -65,17 +58,14 @@ def new_playground(description, pgdir=None):
     result = do_initialization(description)
     if not result.is_ok:
         return result
-    result = open_db()
-    in_valid_pgnd = is_readable()
-    pgnd_is_mutable = is_writable()
+    in_valid_pgnd = patch_db.DataBase.exists
     if in_valid_pgnd:
         from . import config
         config.PgndPathTable.append_saved_pgnd(os.getcwd())
-    return result
+    return CmdResult.ok()
 
 def do_chdir(new_dir=None):
-    global in_valid_pgnd, pgnd_is_mutable
-    close_db()
+    global in_valid_pgnd
     if new_dir:
         try:
             os.chdir(new_dir)
@@ -83,9 +73,7 @@ def do_chdir(new_dir=None):
             import errno
             ecode = errno.errorcode[err.errno]
             emsg = err.strerror
-            open_db()
-            in_valid_pgnd = is_readable()
-            pgnd_is_mutable = is_writable()
+            in_valid_pgnd = patch_db.DataBase.exists
             return CmdResult.error(stderr='%s: "%s" :%s' % (ecode, new_dir, emsg))
     return init()
 
@@ -114,18 +102,6 @@ class ReportContext(object):
 
 RCTX = ReportContext()
 
-def open_db():
-    rctx.reset(RCTX.stdout, RCTX.stderr)
-    result = patch_db.load_db(lock=True)
-    if result is True:
-        return CmdResult.ok()
-    return CmdResult.error(stderr=str(result) + '\n')
-
-def close_db():
-    '''Close the patch database if it is open'''
-    if patch_db.is_readable():
-        patch_db.release_db()
-
 def _map_do(ecode):
     return CmdResult(ecode, RCTX.stdout.text, RCTX.stderr.text)
 
@@ -139,18 +115,18 @@ def do_initialization(description):
     return result
 
 def get_in_progress():
-    return patch_db.is_readable() and patch_db.get_applied_patch_count() > 0
+    return patch_db.DataBase.exists and patch_db.get_applied_patch_count() > 0
 
 def get_applied_patch_count():
     return patch_db.get_applied_patch_count()
 
 def get_all_patches_data():
-    if not patch_db.is_readable():
+    if not patch_db.DataBase.exists:
         return []
     return patch_db.get_patch_table_data()
 
 def get_selected_guards():
-    if not patch_db.is_readable():
+    if not patch_db.DataBase.exists:
         return set()
     return patch_db.get_selected_guards()
 
@@ -182,12 +158,12 @@ def get_patch_list_data():
     return PatchListData()
 
 def get_patch_description(patch):
-    if not patch_db.is_readable():
+    if not patch_db.DataBase.exists:
         raise CmdFailure(_('Database is unreadable'))
     return patch_db.get_patch_description(patch)
 
 def get_series_description():
-    if not patch_db.is_readable():
+    if not patch_db.DataBase.exists:
         raise CmdFailure(_('Database is unreadable'))
     return patch_db.get_series_description()
 
@@ -255,19 +231,22 @@ class CombinedPatchFileDb(PatchFileDb):
         return patch_status_text
 
 def get_patch_file_db(patch):
-    if not patch_db.is_readable():
+    if not patch_db.DataBase.exists:
         return fsdb.NullFileDb()
     return PatchFileDb(patch)
 
 def get_top_patch_file_db(patch=None):
-    if not patch_db.is_readable():
+    if not patch_db.DataBase.exists:
         return fsdb.NullFileDb()
     return PatchFileDb(None)
 
 def get_combined_patch_file_db():
-    if not patch_db.is_readable():
+    if not patch_db.DataBase.exists:
         return fsdb.NullFileDb()
     return CombinedPatchFileDb()
+
+def get_textpatch(patch_name):
+    return patch_db.get_textpatch(patch_name)
 
 def get_filepaths_in_next_patch(filepaths=None):
     '''
@@ -275,7 +254,7 @@ def get_filepaths_in_next_patch(filepaths=None):
     If filepaths is not None restrict the returned list to names that
     are also in filepaths.
     '''
-    if not patch_db.is_readable():
+    if not patch_db.DataBase.exists:
         return []
     return patch_db.get_filepaths_in_next_patch(filepaths=filepaths)
 
@@ -285,7 +264,7 @@ def get_filepaths_in_top_patch(filepaths=None):
     If filepaths is not None restrict the returned list to names that
     are also in filepaths.
     '''
-    if not patch_db.is_readable():
+    if not patch_db.DataBase.exists:
         return []
     return patch_db.get_filepaths_in_patch(patchname=None, filepaths=filepaths)
 
@@ -295,50 +274,50 @@ def get_filepaths_in_named_patch(patchname, filepaths=None):
     If filepaths is not None restrict the returned list to names that
     are also in filepaths.
     '''
-    if not patch_db.is_readable():
+    if not patch_db.DataBase.exists:
         return []
     return patch_db.get_filepaths_in_patch(patchname=patchname, filepaths=filepaths)
 
 def get_file_diff(filepath, patchname):
-    if not patch_db.is_readable():
+    if not patch_db.DataBase.exists:
         return None
     return patch_db.get_file_diff(filepath, patchname)
 
 def get_file_combined_diff(filepath):
-    if not patch_db.is_readable():
+    if not patch_db.DataBase.exists:
         return None
     return patch_db.get_file_combined_diff(filepath)
 
 def get_patch_guards(patch):
-    if not patch_db.is_readable():
+    if not patch_db.DataBase.exists:
         return ''
     guards = patch_db.get_patch_guards(patch)
     return ['+' + grd for grd in guards.positive] + ['-' + grd for grd in guards.negative]
 
 def get_top_patch_for_file(filepath):
-    if not patch_db.is_readable():
+    if not patch_db.DataBase.exists:
         return None
     return patch_db.get_top_patch_for_file(filepath)
 
 def get_kept_patch_names():
-    if not patch_db.is_readable():
+    if not patch_db.DataBase.exists:
         return []
     return patch_db.get_kept_patch_names()
 
 def get_extdiff_files_for(filepath, patchname):
-    if not patch_db.is_readable():
+    if not patch_db.DataBase.exists:
         return None
     if patchname is None:
         patchname = patch_db.get_top_patch_for_file(filepath)
     return patch_db.get_extdiff_files_for(filepath, patchname)
 
 def get_reconciliation_paths(filepath):
-    if not patch_db.is_readable():
+    if not patch_db.DataBase.exists:
         return None
     return patch_db.get_reconciliation_paths(filepath)
 
 def get_outstanding_changes_below_top():
-    if not patch_db.is_readable():
+    if not patch_db.DataBase.exists:
         return None
     return patch_db.get_outstanding_changes_below_top()
 
@@ -562,7 +541,7 @@ def do_scm_absorb_applied_patches():
     return result
 
 def is_pushable():
-    if not patch_db.is_readable():
+    if not patch_db.DataBase.exists:
         return False
     return patch_db.is_pushable()
 
@@ -570,20 +549,14 @@ def is_poppable():
     return get_in_progress()
 
 def is_top_patch(patchname):
-    if not patch_db.is_readable():
+    if not patch_db.DataBase.exists:
         return False
     return patch_db.is_top_patch(patchname)
 
 def is_blocked_by_guard(patchname):
-    if not patch_db.is_readable():
+    if not patch_db.DataBase.exists:
         return False
     return patch_db.is_blocked_by_guard(patchname)
-
-def is_readable():
-    return patch_db.is_readable()
-
-def is_writable():
-    return patch_db.is_writable()
 
 def all_applied_patches_refreshed():
     return patch_db.all_applied_patches_refreshed()

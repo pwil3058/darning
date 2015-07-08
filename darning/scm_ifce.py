@@ -85,7 +85,6 @@ class _NULL_BACKEND(object):
     name = "os"
     cmd_label = "null"
     in_valid_pgnd = False
-    pgnd_is_mutable = False
     status_deco_map = fsdb.STATUS_DECO_MAP
     @staticmethod
     def copy_clean_version_to(filepath, target_name):

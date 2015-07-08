@@ -22,6 +22,7 @@ from ..config_data import APP_NAME
 from .. import scm_ifce
 from .. import utils
 from .. import options
+from .. import rctx
 
 from . import pdb_ifce as PM
 from . import ws_event
@@ -36,10 +37,34 @@ _cached_pm_in_valid_pgnd = PM.in_valid_pgnd
 
 CURDIR = os.getcwd()
 
+class ReportContext(object):
+    class OutFile(object):
+        def __init__(self):
+            self.text = ''
+        def write(self, text):
+            self.text += text
+            console.LOG.append_stdout(text)
+    class ErrFile(object):
+        def __init__(self):
+            self.text = ''
+        def write(self, text):
+            self.text += text
+            console.LOG.append_stderr(text)
+    def __init__(self):
+        self.stdout = self.OutFile()
+        self.stderr = self.ErrFile()
+    @property
+    def message(self):
+        return "\n".join([self.stdout.text, self.stderr.text])
+    def reset(self):
+        self.stdout.text = ''
+        self.stderr.text = ''
+
 def init(log=False):
     global SCM
     global CURDIR
     global _cached_pm_in_valid_pgnd
+    rctx.reset(PM.RCTX.stdout, PM.RCTX.stderr)
     options.load_global_options()
     result = PM.init()
     _cached_pm_in_valid_pgnd = PM.in_valid_pgnd

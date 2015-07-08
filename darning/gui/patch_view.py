@@ -20,7 +20,6 @@ import hashlib
 
 import gtk
 
-from .. import patch_db
 from .. import patchlib
 from .. import utils
 from .. import pm_ifce
@@ -107,7 +106,7 @@ class Widget(gtk.VBox):
             else:
                 raise
     def get_epatch(self):
-        epatch = patch_db.get_textpatch(self.patchname)
+        epatch = ifce.PM.get_textpatch(self.patchname)
         self.text_digest = epatch.get_hash_digest()
         return epatch
     @property
@@ -116,11 +115,11 @@ class Widget(gtk.VBox):
     @staticmethod
     def _make_file_label(filepath, validity):
         hbox = gtk.HBox()
-        if validity == patch_db.FileData.Validity.REFRESHED:
+        if validity == ifce.PM.FileData.Validity.REFRESHED:
             icon = icons.STOCK_FILE_REFRESHED
-        elif validity == patch_db.FileData.Validity.NEEDS_REFRESH:
+        elif validity == ifce.PM.FileData.Validity.NEEDS_REFRESH:
             icon = icons.STOCK_FILE_NEEDS_REFRESH
-        elif validity == patch_db.FileData.Validity.UNREFRESHABLE:
+        elif validity == ifce.PM.FileData.Validity.UNREFRESHABLE:
             icon = icons.STOCK_FILE_UNREFRESHABLE
         else:
             icon = gtk.STOCK_FILE
@@ -137,7 +136,7 @@ class Widget(gtk.VBox):
         frame.add(widget)
         return frame
     def update(self):
-        epatch = patch_db.get_textpatch(self.patchname)
+        epatch = ifce.PM.get_textpatch(self.patchname)
         digest = epatch.get_hash_digest()
         if digest == self.text_digest:
             return
@@ -164,7 +163,7 @@ class Dialogue(dialogue.AmodalDialog):
         self.vbox.pack_start(self.widget, expand=True, fill=True)
         self.refresh_action = gtk.Action('patch_view_refresh', _('_Refresh'), _('Refresh this patch in database.'), icons.STOCK_REFRESH_PATCH)
         self.refresh_action.connect('activate', self._refresh_acb)
-        self.refresh_action.set_sensitive(patch_db.is_top_patch(self.widget.patchname))
+        self.refresh_action.set_sensitive(ifce.PM.is_top_patch(self.widget.patchname))
         refresh_button = gutils.ActionButton(self.refresh_action)
         self.auc = gutils.TimeOutController(toggle_data=self.AUTO_UPDATE_TD, function=self._update_display_cb, is_on=False, interval=10000)
         self.action_area.pack_start(gutils.ActionCheckButton(self.auc.toggle_action))
@@ -184,7 +183,7 @@ class Dialogue(dialogue.AmodalDialog):
     def _update_display_cb(self, **kwargs):
         self.show_busy()
         self.widget.update()
-        self.refresh_action.set_sensitive(patch_db.is_top_patch(self.widget.patchname))
+        self.refresh_action.set_sensitive(ifce.PM.is_top_patch(self.widget.patchname))
         self.unshow_busy()
     def _refresh_acb(self, _action):
         self.show_busy()

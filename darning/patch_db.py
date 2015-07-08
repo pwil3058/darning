@@ -325,7 +325,6 @@ class FileData(GenericFileData):
             self.do_refresh()
     def do_stash_current(self, overlapping_patch):
         '''Stash the current version of this file for later reference'''
-        assert is_writable()
         assert self.patch.is_applied()
         assert self.needs_refresh() is False
         self.do_delete_stash()
@@ -335,7 +334,6 @@ class FileData(GenericFileData):
             shutil.copy2(source, self.stashed_path)
             utils.do_turn_off_write_for_file(self.stashed_path)
     def do_delete_stash(self):
-        assert is_writable()
         if os.path.exists(self.stashed_path):
             os.remove(self.stashed_path)
     def _copy_refreshed_version_to(self, target_name):
@@ -360,7 +358,6 @@ class FileData(GenericFileData):
             _do_apply_diff_to_file(target_name, self.diff)
     def do_cache_original(self, overlaps=OverlapData()):
         '''Cache the original of the named file for this patch'''
-        assert is_writable()
         assert self.patch.is_applied()
         assert self.get_overlapping_patch() is None
         olurpatch = overlaps.unrefreshed.get(self.path, None)
@@ -384,7 +381,6 @@ class FileData(GenericFileData):
         else:
             self.orig_mode = None
     def get_reconciliation_paths(self):
-        assert is_readable()
         assert self.patch.is_top_patch
         # make it hard for the user to (accidentally) create these files if they don't exist
         before = self.before_file_path if os.path.exists(self.before_file_path) else '/dev/null'
@@ -454,7 +450,6 @@ class FileData(GenericFileData):
         return self.get_applied_validity()
     def get_overlapping_patch(self):
         '''Return the applied patch (if any) which overlaps the this file'''
-        assert is_readable()
         assert self.patch.is_applied()
         return self.patch.get_overlapping_patch_for_path(self.path)
     @property
@@ -468,7 +463,6 @@ class FileData(GenericFileData):
             return fsdb.RFD(self.renamed_to, fsdb.Relation.MOVED_TO)
         return None
     def generate_diff_preamble(self, overlapping_patch, old_combined=False):
-        assert is_readable()
         if self.patch.is_applied():
             if overlapping_patch is not None:
                 after_mode = overlapping_patch.files[self.path].before_mode
@@ -484,7 +478,6 @@ class FileData(GenericFileData):
             after_hash = self.after_hash
         return self._generate_diff_preamble(after_mode, after_hash, old_combined=old_combined)
     def has_actionable_preamble(self, old_combined=False):
-        assert is_readable()
         if self.patch.is_applied():
             overlapping_patch = None if old_combined else self.get_overlapping_patch()
             if overlapping_patch is not None:
@@ -497,14 +490,12 @@ class FileData(GenericFileData):
             after_mode = self.after_mode
         return self._has_actionable_preamble(after_mode, old_combined)
     def generate_diff(self, overlapping_patch, old_combined=False, with_timestamps=False):
-        assert is_readable()
         assert self.patch.is_applied()
         assert overlapping_patch is None or not old_combined
         to_file = self.path if overlapping_patch is None else overlapping_patch.files[self.path].cached_orig_path
         fm_file = self.cached_orig_path if old_combined else self.before_file_path
         return self._generate_diff(fm_file, to_file, with_timestamps=with_timestamps)
     def get_diff_plus(self, old_combined=False, as_refreshed=False, with_timestamps=False):
-        assert is_readable()
         assert not (old_combined and as_refreshed)
         overlapping_patch = None if (old_combined or not self.patch.is_applied()) else self.get_overlapping_patch()
         preamble = self.generate_diff_preamble(overlapping_patch=overlapping_patch, old_combined=old_combined)
@@ -518,13 +509,11 @@ class FileData(GenericFileData):
         return diff_plus
     def do_refresh(self, quiet=True, with_timestamps=False):
         '''Refresh the named file in this patch'''
-        assert is_writable()
         assert self.patch.is_applied()
         overlapping_patch = self.get_overlapping_patch()
         if self._has_unresolved_merges(overlapping_patch):
             # ensure this file shows up as needing refresh
             self.after_hash = False
-            dump_db()
             RCTX.stderr.write(_('"{0}": file has unresolved merge(s).\n').format(rel_subdir(self.path)))
             return CmdResult.ERROR
         overlapping_file_data = None if overlapping_patch is None else overlapping_patch.files[self.path]
@@ -547,7 +536,6 @@ class FileData(GenericFileData):
         self.before_hash = utils.get_git_hash_for_file(self.before_file_path)
         self.after_hash = utils.get_git_hash_for_file(self.path if overlapping_file_data is None else overlapping_file_data.cached_orig_path)
         self.do_stash_current(overlapping_patch)
-        dump_db()
         return CmdResult.OK
 
 class CombinedFileData(GenericFileData):
@@ -577,7 +565,6 @@ class CombinedFileData(GenericFileData):
     def get_applied_validity(self):
         return self.top.get_applied_validity()
     def generate_diff_preamble(self):
-        assert is_readable()
         if os.path.exists(self.path):
             after_mode = utils.get_mode_for_file(self.path)
             after_hash = utils.get_git_hash_for_file(self.path)
@@ -586,19 +573,16 @@ class CombinedFileData(GenericFileData):
             after_hash = None
         return self._generate_diff_preamble(after_mode, after_hash)
     def has_actionable_preamble(self, old_combined=False):
-        assert is_readable()
         if os.path.exists(self.path):
             after_mode = utils.get_mode_for_file(self.path)
         else:
             after_mode = self.before_mode if self.renamed_to else None
         return self._has_actionable_preamble(after_mode, old_combined)
     def generate_diff(self, with_timestamps=False):
-        assert is_readable()
         to_file = self.path
         fm_file = self.cached_orig_path
         return self._generate_diff(fm_file, to_file, with_timestamps=with_timestamps)
     def get_diff_plus(self, with_timestamps=False):
-        assert is_readable()
         assert not self.was_ephemeral()
         preamble = self.generate_diff_preamble()
         diff = self.generate_diff(with_timestamps=with_timestamps)
@@ -671,7 +655,6 @@ class PatchData(PickeExtensibleObject):
         return os.path.join(self.cached_orig_dir_path, filepath)
     def get_overlapping_patch_for_path(self, filepath):
         '''Return the applied patch above me (if any) which contains this file'''
-        assert is_readable()
         try:
             index = self._db.applied_patches.index(self) + 1
         except ValueError:
@@ -697,7 +680,6 @@ class PatchData(PickeExtensibleObject):
             cf_fd.set_before_file_path()
     def do_drop_file(self, filepath):
         '''Drop the named file from this patch'''
-        assert is_writable()
         assert filepath in self.files
         renamed_from = self.files[filepath].came_from_path if self.files[filepath].came_as_rename else None
         self.files[filepath].do_delete_stash()
@@ -706,7 +688,6 @@ class PatchData(PickeExtensibleObject):
             self.drop_file(filepath)
             if renamed_from is not None:
                 self.files[renamed_from].reset_renamed_to(None)
-            dump_db()
             return
         assert self._db.applied_patches[-1] == self
         corig_f_path = self.files[filepath].cached_orig_path
@@ -724,7 +705,6 @@ class PatchData(PickeExtensibleObject):
             self.files[renamed_to].reset_came_from(filepath, False)
         if renamed_from is not None and renamed_from in self.files:
             self.files[renamed_from].reset_renamed_to(None)
-        dump_db()
         if renamed_from is not None:
             self.files[renamed_from].reset_renamed_to(None)
     def get_filepaths(self, filepaths=None):
@@ -854,37 +834,6 @@ class DataBase(PickeExtensibleObject):
     def exists():
         '''Does the current directory contain a patch database?'''
         return os.path.isfile(DataBase._FILE)
-    @staticmethod
-    def is_my_lock():
-        return True
-        '''Am I the process holding the lock?'''
-        try:
-            lock_pid = open(DataBase._LOCK_FILE).read()
-        except IOError:
-            lock_pid = False
-        return lock_pid and lock_pid == str(os.getpid())
-    @staticmethod
-    def lock():
-        return True
-        '''Lock the database in the given (or current) directory'''
-        try:
-            lf_fd = os.open(DataBase._LOCK_FILE, os.O_WRONLY|os.O_EXCL|os.O_CREAT, stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
-        except OSError as edata:
-            if edata.errno == errno.EEXIST:
-                return False
-            else:
-                return Failure('%s: %s' % (DataBase._LOCK_FILE, edata.strerror))
-        if lf_fd == -1:
-            return Failure(_('{0}: Unable to open').format(DataBase._LOCK_FILE))
-        os.write(lf_fd, str(os.getpid()))
-        os.close(lf_fd)
-        return True
-    @staticmethod
-    def unlock():
-        return
-        '''Unock the database in the given (or current) directory'''
-        assert DataBase.is_my_lock()
-        os.remove(DataBase._LOCK_FILE)
     def get_top_patch(self):
         return self.applied_patches[-1] if self.applied_patches else None
     def series_index_for_patchname(self, patchname):
@@ -922,7 +871,6 @@ class DataBase(PickeExtensibleObject):
         return self.patch_fm_name(patchname) in self.applied_patches
     def insert_patch(self, patch, after=None):
         '''Insert given patch into series after the top or nominated patch'''
-        assert is_writable()
         assert self.series_index_for_patchname(patch.name) is None
         if after is not None:
             index = self.series_index_for_patchname(after) + 1
@@ -951,7 +899,6 @@ class DataBase(PickeExtensibleObject):
             # Using new mechanism
             self.combined_patch = self.combined_patch.prev
 
-_DB_obsolete = None
 _SUB_DIR = None
 
 def rel_subdir(filepath):
@@ -986,16 +933,6 @@ def find_base_dir(remember_sub_dir=False):
                 subdir_parts.insert(0, basename)
     return None
 
-def is_readable():
-    return True
-    '''Is the database open for reading?'''
-    return DataBase.exists() and _DB is not None
-
-def is_writable():
-    return True
-    '''Is the databas modifiable?'''
-    return is_readable() and DataBase.is_my_lock()
-
 def do_create_db(description):
     '''Create a patch database in the current directory?'''
     def rollback():
@@ -1021,15 +958,13 @@ def do_create_db(description):
         os.mkdir(DataBase._DIR, dir_mode)
         os.mkdir(DataBase._ORIGINALS_DIR, dir_mode)
         os.mkdir(DataBase._STASH_DIR, dir_mode)
-        lock_state = DataBase.lock()
-        assert lock_state is True
+        open(DataBase._LOCK_FILE, "w").write("0")
         db_obj = DataBase(description, None)
         fobj = open(DataBase._FILE, 'wb', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
         try:
             cPickle.dump(db_obj, fobj)
         finally:
             fobj.close()
-            DataBase.unlock()
     except OSError as edata:
         rollback()
         RCTX.stderr.write(edata.strerror)
@@ -1038,16 +973,6 @@ def do_create_db(description):
         rollback()
         raise
     return CmdResult.OK
-
-def release_db():
-    return
-    '''Release access to the database'''
-    assert is_readable()
-    global _DB
-    writeable = is_writable()
-    _DB = None
-    if writeable:
-        DataBase.unlock()
 
 def _set_of_dirs_in_dir(dir_path):
     return {item for item in os.listdir(dir_path) if os.path.isdir(os.path.join(dir_path, item))}
@@ -1073,52 +998,6 @@ def _verify_applied_patch_list(applied):
     assert len(applied_set) == len(applied), 'Series/applied patches discrepency'
     for patch in applied:
         assert patch.name in applied_set, 'Series/applied patches discrepency'
-
-def load_db(lock=True):
-    return True
-    '''Load the database for access (read only unless lock is True)'''
-    global _DB
-    assert DataBase.exists()
-    assert not is_readable()
-    while lock:
-        lock_state = DataBase.lock()
-        if isinstance(lock_state, Failure):
-            return lock_state
-        elif lock_state is False:
-            try:
-                holder = open(DataBase._LOCK_FILE).read()
-            except OSError as edata:
-                if edata.errno == errno.ENOENT:
-                    continue
-        break
-    fobj = open(DataBase._FILE, 'rb')
-    try:
-        _DB = cPickle.load(fobj)
-    except Exception:
-        # Just in case higher level code catches and handles
-        _DB = None
-        raise
-    finally:
-        fobj.close()
-    if lock and lock_state is not True:
-        return Failure(_('Database is read only. Lock held by: {0}').format(holder))
-    for patch in _DB.series:
-        patch.set_db(_DB)
-    if _DB.applied_patches is None:
-        _DB.applied_patches = _generate_applied_patch_list()
-    else:
-        _verify_applied_patch_list(_DB.applied_patches)
-    return True
-
-def dump_db():
-    return # the context manager now takes care of this
-    '''Dump in memory database to file'''
-    assert is_writable()
-    fobj = open(DataBase._FILE, 'wb')
-    try:
-        cPickle.dump(_DB, fobj)
-    finally:
-        fobj.close()
 
 # Make a context manager locking/opening/closing database
 @contextmanager
@@ -1198,7 +1077,6 @@ def _get_combined_patch_file_table_old(_DB):
             self.presence = presence
             self.validity = validity
             self.related_file_data = related_file_data
-    assert is_readable()
     if len(_DB.applied_patches) == 0:
         return []
     file_map = {}
@@ -1249,7 +1127,6 @@ def do_create_new_patch(patchname, description):
             return CmdResult.ERROR|CmdResult.SUGGEST_RENAME
         patch = PatchData(patchname, description, _DB)
         _DB.insert_patch(patch)
-        dump_db()
         old_top = _DB.get_top_patch()
         # Ignore result of apply as it cannot fail with no files in the patch
         _do_apply_next_patch(_DB)
@@ -1272,7 +1149,6 @@ def do_rename_patch(patchname, newname):
             return CmdResult.ERROR
         patch.set_name(newname)
         RCTX.stdout.write(_('{0}: patch renamed as "{1}".\n').format(patchname, patch.name))
-        dump_db()
         return CmdResult.OK
 
 def do_import_patch(epatch, patchname, overwrite=False):
@@ -1347,7 +1223,6 @@ def do_import_patch(epatch, patchname, overwrite=False):
             patch.files[old_path].renamed_to = renames[old_path]
             patch.files[old_path].set_before_file_path()
         _DB.insert_patch(patch)
-        dump_db()
         if _DB.applied_patches:
             RCTX.stdout.write(_('{0}: patch inserted after patch "{1}".\n').format(patchname, _DB.get_top_patch().name))
         else:
@@ -1356,14 +1231,12 @@ def do_import_patch(epatch, patchname, overwrite=False):
 
 def _do_fold_epatch(_DB, epatch, absorb=False, force=False):
     '''Fold an external patch into the top patch.'''
-    #assert is_writable()
     assert not (absorb and force)
     top_patch = _get_top_patch(_DB)
     if not top_patch:
         return CmdResult.ERROR
     def _apply_diff_plus(diff_plus):
         filepath = diff_plus.get_file_path(epatch.num_strip_levels)
-        dump_db()
         RCTX.stdout.write(_('Patching file "{0}".\n').format(rel_subdir(filepath)))
         if drop_atws:
             atws_lines = diff_plus.fix_trailing_whitespace()
@@ -1528,7 +1401,6 @@ def do_fold_named_patch(patchname, absorb=False, force=False):
         if result not in [CmdResult.OK, CmdResult.WARNING]:
             return result
         _DB.series.remove(patch)
-        dump_db()
         RCTX.stdout.write(_('"{0}": patch folded into patch "{1}".\n').format(patchname, _DB.get_top_patch().name))
         return result
 
@@ -1559,7 +1431,6 @@ def _get_overlap_data(_DB, filepaths, patch=None):
     overlapped by the files in filelist if they are added to the named
     (or next, if patchname is None) patch.
     '''
-    #assert is_readable()
     assert patch is None or patch.is_applied()
     if not filepaths:
         return OverlapData()
@@ -1613,7 +1484,6 @@ def get_diff_for_files(filepaths, patchname, with_timestamps=False):
         return diff
 
 def _get_file_combined_diff_old(_DB, filepath, with_timestamps=False):
-    #assert is_readable()
     patch = None
     for applied_patch in _DB.applied_patches:
         if filepath in applied_patch.files:
@@ -1632,7 +1502,6 @@ def get_file_combined_diff(filepath, with_timestamps=False):
         return _DB.combined_patch.files[filepath].get_diff_plus(with_timestamps=with_timestamps)
 
 def _get_combined_diff_for_files_old(_DB, filepaths, with_timestamps=False):
-    #assert is_readable()
     file_list = []
     if filepaths:
         is_ok = True
@@ -1695,7 +1564,6 @@ def get_combined_diff_for_files(filepaths, with_timestamps=False):
 
 def _do_apply_next_patch(_DB, absorb=False, force=False):
     '''Apply the next patch in the series'''
-    #assert is_writable()
     assert not (absorb and force)
     def _apply_file_data_patch(file_data, biggest_ecode):
         patch_ok = True
@@ -1790,7 +1658,6 @@ def _do_apply_next_patch(_DB, absorb=False, force=False):
             RCTX.stdout.write(_('Unrefreshed changes incorporated.\n'))
         elif file_data.path in overlaps.uncommitted:
             RCTX.stdout.write(_('Uncommited changes incorporated.\n'))
-        dump_db()
         return biggest_ecode
     next_index = _DB.series_index_for_next()
     if next_index is None:
@@ -1811,7 +1678,6 @@ def _do_apply_next_patch(_DB, absorb=False, force=False):
     os.mkdir(next_patch.cached_orig_dir_path)
     _DB.append_to_applied(next_patch)
     if len(next_patch.files) == 0:
-        dump_db()
         return CmdResult.OK
     drop_atws = options.get('push', 'drop_added_tws')
     copies = []
@@ -1854,7 +1720,6 @@ def _do_apply_next_patch(_DB, absorb=False, force=False):
                 os.chmod(file_data.path, file_data.before_mode)
             except OSError as edata:
                 RCTX.stderr.write(edata)
-    dump_db()
     # and finally apply any patches
     for file_data in next_patch.files.values():
         if file_data in creates:
@@ -1918,7 +1783,6 @@ def is_patch_pushable(patchname):
 
 def _do_unapply_top_patch(_DB):
     '''Unapply the top applied patch'''
-    #assert is_writable()
     top_patch = _get_top_patch(_DB)
     if not top_patch:
         return CmdResult.ERROR
@@ -1944,7 +1808,6 @@ def _do_unapply_top_patch(_DB):
                     RCTX.stderr.write(_('"{0}": adds trailing white space to "{1}" at line(s) {{{2}}}.\n').format(top_patch.name, rel_subdir(file_data.path), ', '.join([str(line) for line in atws_lines])))
     shutil.rmtree(top_patch.cached_orig_dir_path)
     _DB.pop_top_patch()
-    dump_db()
     new_top_patch= _DB.get_top_patch()
     if new_top_patch is None:
         RCTX.stdout.write(_('There are now no patches applied.\n'))
@@ -2016,7 +1879,6 @@ def _do_add_files_to_top_patch(_DB, filepaths, absorb=False, force=False):
             RCTX.stderr.write(_('{0}: Uncommited SCM changes have been incorporated in patch "{1}".\n').format(rfilepath, top_patch.name))
         elif filepath in overlaps.unrefreshed:
             RCTX.stderr.write(_('{0}: Unrefeshed changes in patch "{2}" incorporated in patch "{1}".\n').format(rfilepath, top_patch.name, overlaps.unrefreshed[filepath].name))
-        dump_db() # do this now to minimize problems if interrupted
     return CmdResult.WARNING if issued_warning else CmdResult.OK
 
 def do_add_files_to_top_patch(filepaths, absorb=False, force=False):
@@ -2037,7 +1899,6 @@ def do_delete_files_in_top_patch(filepaths):
                 continue
             if filepath not in top_patch.files:
                 top_patch.add_file(FileData(filepath, top_patch))
-            dump_db()
             try:
                 os.remove(filepath)
             except OSError as edata:
@@ -2078,7 +1939,6 @@ def do_copy_file_to_top_patch(filepath, as_filepath, overwrite=False):
             top_patch.add_file(FileData(as_filepath, top_patch, came_from_path=came_from_path))
         else:
             top_patch.add_file(FileData(as_filepath, top_patch))
-        dump_db()
         try:
             shutil.copy2(filepath, as_filepath)
         except OSError as edata:
@@ -2086,7 +1946,6 @@ def do_copy_file_to_top_patch(filepath, as_filepath, overwrite=False):
             return CmdResult.ERROR
         if needs_refresh:
             top_patch.files[as_filepath].reset_came_from(came_from_path if record_copy else None, False)
-        dump_db()
         RCTX.stdout.write(_('{0}: file copied to "{1}" in patch "{2}".\n').format(rel_subdir(filepath), rel_subdir(as_filepath), top_patch.name))
         return CmdResult.OK
 
@@ -2142,7 +2001,6 @@ def do_rename_file_in_top_patch(filepath, new_filepath, force=False, overwrite=F
             needs_refresh = True
         else:
             top_patch.add_file(FileData(new_filepath, top_patch, came_from_path=came_from_path, as_rename=as_rename))
-        dump_db()
         try:
             os.rename(filepath, new_filepath)
         except OSError as edata:
@@ -2154,7 +2012,6 @@ def do_rename_file_in_top_patch(filepath, new_filepath, force=False, overwrite=F
             if is_boomerang:
                 top_patch.files[new_filepath].renamed_to = None
             top_patch.files[new_filepath].reset_came_from(came_from_path, as_rename)
-        dump_db()
         RCTX.stdout.write(_('{0}: file renamed to "{1}" in patch "{2}".\n').format(rel_subdir(filepath), rel_subdir(new_filepath), top_patch.name))
         return CmdResult.OK
 
@@ -2202,7 +2059,6 @@ def do_duplicate_patch(patchname, as_patchname, newdescription):
         newpatch.set_name(as_patchname)
         newpatch.description = _tidy_text(newdescription)
         _DB.insert_patch(newpatch)
-        dump_db()
         RCTX.stdout.write(_('{0}: patch duplicated as "{1}"\n').format(patch.name, as_patchname))
         return CmdResult.OK
 
@@ -2255,7 +2111,6 @@ def _do_remove_patch(_DB, patchname):
     if options.get('remove', 'keep_patch_backup'):
         _DB.kept_patches[patch.name] = patch
     _DB.series.remove(patch)
-    dump_db()
     shutil.rmtree(patch.stash_dir_path)
     RCTX.stdout.write(_('Patch "{0}" removed (but available for restoration).\n').format(patchname))
     return CmdResult.OK
@@ -2282,7 +2137,6 @@ def do_restore_patch(patchname, as_patchname):
             patch.set_name(as_patchname)
         _DB.insert_patch(patch)
         del _DB.kept_patches[patchname]
-        dump_db()
         return CmdResult.OK
 
 def _tidy_text(text):
@@ -2302,7 +2156,6 @@ def do_set_patch_description(patchname, text):
         if text:
             text = _tidy_text(text)
         patch.description = text if text is not None else ''
-        dump_db()
         if old_description != patch.description:
             change_lines = difflib.ndiff(old_description.splitlines(True), patch.description.splitlines(True))
             RCTX.stdout.write(''.join(change_lines))
@@ -2320,7 +2173,6 @@ def do_set_series_description(text):
         if text:
             text = _tidy_text(text)
         _DB.description = text if text is not None else ''
-        dump_db()
         if old_description != _DB.description:
             change_lines = difflib.ndiff(old_description.splitlines(True), _DB.description.splitlines(True))
             RCTX.stdout.write(''.join(change_lines))
@@ -2346,13 +2198,11 @@ def get_patch_guards(patchname):
         return PatchData.Guards(positive=patch_data.pos_guards, negative=patch_data.neg_guards)
 
 def _do_set_patch_guards(_DB, patchname, guards):
-    #assert is_writable()
     patch = _get_named_or_top_patch(patchname, _DB)
     if not patch:
         return CmdResult.ERROR
     patch.pos_guards = set(guards.positive)
     patch.neg_guards = set(guards.negative)
-    dump_db()
     RCTX.stdout.write(_('{0}: patch positive guards = {{{1}}}\n').format(patchname, ', '.join(sorted(patch.pos_guards))))
     RCTX.stdout.write(_('{0}: patch negative guards = {{{1}}}\n').format(patchname, ', '.join(sorted(patch.neg_guards))))
     return CmdResult.OK
@@ -2384,7 +2234,6 @@ def do_select_guards(guards):
             RCTX.stderr.write(_('Aborted.\n'))
             return CmdResult.ERROR|CmdResult.SUGGEST_EDIT
         _DB.selected_guards = set(guards)
-        dump_db()
         RCTX.stdout.write(_('{{{0}}}: is now the set of selected guards.\n').format(', '.join(sorted(_DB.selected_guards))))
         return CmdResult.OK
 

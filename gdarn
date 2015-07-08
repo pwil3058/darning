@@ -118,5 +118,3 @@ except (SystemExit, KeyboardInterrupt):
 except BaseException:
     report_exception(sys.exc_info())
     sys.exit(3)
-finally:
-    ifce.close()

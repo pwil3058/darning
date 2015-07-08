@@ -25,6 +25,7 @@ $ ls -a
 Check that the expected files and directories are in place
 $ ls .darning.dbd
 > database
+> lock_db
 > orig
 > stash
 $ ls .darning.dbd/orig/

@@ -110,8 +110,6 @@ class _NULL_BACKEND(object):
     name = "null"
     cmd_label = "null"
     in_valid_pgnd = False
-    pgnd_is_mutable = False
-    has_add_files = False
     has_finish_patch = False
     has_guards = False
     has_refresh_non_top = False

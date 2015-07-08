@@ -23,7 +23,6 @@ import hashlib
 from .. import config_data
 from .. import utils
 from .. import urlops
-from .. import patch_db
 
 from . import dialogue
 from . import gutils

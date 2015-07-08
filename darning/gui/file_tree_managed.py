@@ -93,7 +93,7 @@ class WSTreeView(file_tree.FileTreeView):
             [
                 ("scm_files_menu_files", None, _("_Files")),
             ])
-        self.action_groups[ws_actions.AC_IN_PM_PGND_MUTABLE + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
+        self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
             [
                 ('pm_add_files_to_top_patch', gtk.STOCK_ADD, _('_Add'), None,
                  _('Add the selected files to the top patch'),
@@ -108,7 +108,7 @@ class WSTreeView(file_tree.FileTreeView):
                  lambda _action=None: dooph_pm.pm_delete_files(self.get_selected_filepaths())
                 ),
             ])
-        self.action_groups[ws_actions.AC_IN_PM_PGND_MUTABLE + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
+        self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
             [
                 ('pm_copy_file_to_top_patch', gtk.STOCK_COPY, _('_Copy'), None,
                  _('Add a copy of the selected file to the top patch'),

@@ -17,8 +17,6 @@ import hashlib
 
 import gtk
 
-from .. import patch_db
-
 from .. import pm_ifce
 
 from . import gutils
@@ -64,7 +62,7 @@ class PatchFileTreeView(file_tree.FileTreeView):
         return ifce.PM.get_patch_file_db(self._patch)
     def populate_action_groups(self):
         file_tree.FileTreeView.populate_action_groups(self)
-        self.action_groups[ws_actions.AC_IN_PM_PGND_MUTABLE + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
+        self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
             [
                 ('patch_edit_files', gtk.STOCK_EDIT, _('_Edit'), None,
                  _('Edit the selected file(s)'),
@@ -78,7 +76,7 @@ class PatchFileTreeView(file_tree.FileTreeView):
                  lambda _action=None: self.pm_diff_selected_file()
                 ),
             ])
-        self.action_groups[ws_actions.AC_IN_PM_PGND_MUTABLE + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
+        self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
             [
                 ('patch_extdiff_selected_file', icons.STOCK_DIFF, _('E_xtDiff'), None,
                  _('Launch external diff viewer for selected file'),
@@ -151,7 +149,7 @@ class TopPatchFileTreeView(PatchFileTreeView):
         PatchFileTreeView.__init__(self, patch=None, **kwargs)
     def populate_action_groups(self):
         PatchFileTreeView.populate_action_groups(self)
-        self.action_groups[ws_actions.AC_IN_PM_PGND_MUTABLE + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
+        self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
             [
                 ('top_patch_drop_selected_files', gtk.STOCK_REMOVE, _('_Drop'), None,
                  _('Drop/remove the selected files from the top patch'),
@@ -162,7 +160,7 @@ class TopPatchFileTreeView(PatchFileTreeView):
                  lambda _action=None: self.pm_delete_selection()
                 ),
             ])
-        self.action_groups[ws_actions.AC_IN_PM_PGND_MUTABLE + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
+        self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
             [
                 ('top_patch_reconcile_selected_file', icons.STOCK_MERGE, _('_Reconcile'), None,
                  _('Launch reconciliation tool for the selected file'),

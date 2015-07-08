@@ -202,7 +202,7 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
                  lambda _action=None: dooph_pm.pm_do_export_named_patch(self.get_selected_patch())
                 ),
             ])
-        self.action_groups[actions.AC_SELN_UNIQUE | ws_actions.AC_IN_PM_PGND_MUTABLE].add_actions(
+        self.action_groups[actions.AC_SELN_UNIQUE | ws_actions.AC_IN_PM_PGND].add_actions(
             [
                 ("pm_set_patch_guards", icons.STOCK_PATCH_GUARD, None, None,
                  _("Set guards on the selected patch"),
@@ -217,35 +217,35 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
                  lambda _action=None: dooph_pm.pm_do_duplicate_patch(self.get_selected_patch())
                 ),
             ])
-        self.action_groups[actions.AC_SELN_UNIQUE | AC_PUSH_POSSIBLE | ws_actions.AC_IN_PM_PGND_MUTABLE | AC_UNAPPLIED_NOT_BLOCKED].add_actions(
+        self.action_groups[actions.AC_SELN_UNIQUE | AC_PUSH_POSSIBLE | ws_actions.AC_IN_PM_PGND | AC_UNAPPLIED_NOT_BLOCKED].add_actions(
             [
                 ("patch_list_push_to", icons.STOCK_PUSH_PATCH, _("Push To"), None,
                  _("Apply all unguarded unapplied patches up to the selected patch."),
                  lambda _action=None: dooph_pm.pm_do_push_to(self.get_selected_patch())
                 ),
             ])
-        self.action_groups[actions.AC_SELN_UNIQUE | ws_actions.AC_IN_PM_PGND_MUTABLE | AC_UNAPPLIED].add_actions(
+        self.action_groups[actions.AC_SELN_UNIQUE | ws_actions.AC_IN_PM_PGND | AC_UNAPPLIED].add_actions(
             [
                 ("patch_list_remove", gtk.STOCK_DELETE, _("Remove"), None,
                  _("Remove the selected patch from the series."),
                  lambda _action=None: dooph_pm.pm_do_remove_patch(self.get_selected_patch())
                 ),
             ])
-        self.action_groups[actions.AC_SELN_UNIQUE | AC_POP_POSSIBLE | ws_actions.AC_IN_PM_PGND_MUTABLE | AC_APPLIED_NOT_TOP].add_actions(
+        self.action_groups[actions.AC_SELN_UNIQUE | AC_POP_POSSIBLE | ws_actions.AC_IN_PM_PGND | AC_APPLIED_NOT_TOP].add_actions(
             [
                 ("patch_list_pop_to", icons.STOCK_POP_PATCH, _("Pop To"), None,
                  _("Apply all applied patches down to the selected patch."),
                  lambda _action=None: dooph_pm.pm_do_pop_to(self.get_selected_patch())
                 ),
             ])
-        self.action_groups[actions.AC_SELN_UNIQUE | AC_POP_POSSIBLE | ws_actions.AC_IN_PM_PGND_MUTABLE | AC_APPLIED].add_actions(
+        self.action_groups[actions.AC_SELN_UNIQUE | AC_POP_POSSIBLE | ws_actions.AC_IN_PM_PGND | AC_APPLIED].add_actions(
             [
                 ("patch_list_refresh_selected", icons.STOCK_PUSH_PATCH, _("Refresh"), None,
                  _("Refresh the selected patch."),
                  lambda _action=None: dooph_pm.pm_do_refresh_named_patch(self.get_selected_patch())
                 ),
             ])
-        self.action_groups[actions.AC_SELN_UNIQUE | AC_POP_POSSIBLE | ws_actions.AC_IN_PM_PGND_MUTABLE | AC_UNAPPLIED].add_actions(
+        self.action_groups[actions.AC_SELN_UNIQUE | AC_POP_POSSIBLE | ws_actions.AC_IN_PM_PGND | AC_UNAPPLIED].add_actions(
             [
                 ("patch_list_fold_selected", icons.STOCK_FOLD_PATCH, _("Fold"), None,
                  _("Fold the selected patch into the top applied patch."),

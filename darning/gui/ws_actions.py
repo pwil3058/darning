@@ -27,16 +27,13 @@ from . import ifce
 from .. import scm_ifce
 from .. import pm_ifce
 
-AC_NOT_IN_PM_PGND, AC_IN_PM_PGND, AC_IN_PM_PGND_MUTABLE, AC_IN_PM_PGND_MASK = actions.ActionCondns.new_flags_and_mask(3)
+AC_NOT_IN_PM_PGND, AC_IN_PM_PGND, AC_IN_PM_PGND_MASK = actions.ActionCondns.new_flags_and_mask(2)
 AC_NOT_IN_SCM_PGND, AC_IN_SCM_PGND, AC_IN_SCM_PGND_MASK = actions.ActionCondns.new_flags_and_mask(2)
 AC_NOT_PMIC, AC_PMIC, AC_PMIC_MASK = actions.ActionCondns.new_flags_and_mask(2)
 
 def get_in_pm_pgnd_condns():
     if ifce.PM.in_valid_pgnd:
-        if ifce.PM.pgnd_is_mutable:
-            conds = AC_IN_PM_PGND | AC_IN_PM_PGND_MUTABLE
-        else:
-            conds = AC_IN_PM_PGND
+        conds = AC_IN_PM_PGND
     else:
         conds = AC_NOT_IN_PM_PGND
     return actions.MaskedCondns(conds, AC_IN_PM_PGND_MASK)

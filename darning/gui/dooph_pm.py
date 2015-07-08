@@ -512,7 +512,7 @@ actions.CLASS_INDEP_AGS[ws_actions.AC_NOT_IN_PM_PGND].add_actions(
     ]
 )
 
-actions.CLASS_INDEP_AGS[ws_actions.AC_PMIC | ws_actions.AC_IN_PM_PGND_MUTABLE].add_actions(
+actions.CLASS_INDEP_AGS[ws_actions.AC_PMIC | ws_actions.AC_IN_PM_PGND].add_actions(
     [
         ("pm_add_new_file", gtk.STOCK_NEW, _("New"), None,
          _("Add a new file to the top applied patch"),
@@ -525,7 +525,7 @@ actions.CLASS_INDEP_AGS[ws_actions.AC_PMIC | ws_actions.AC_IN_PM_PGND_MUTABLE].a
     ]
 )
 
-actions.CLASS_INDEP_AGS[AC_POP_POSSIBLE | ws_actions.AC_IN_PM_PGND_MUTABLE].add_actions(
+actions.CLASS_INDEP_AGS[AC_POP_POSSIBLE | ws_actions.AC_IN_PM_PGND].add_actions(
     [
         ("pm_pop", icons.STOCK_POP_PATCH, _("Pop"), None,
          _("Pop the top applied patch"),
@@ -542,7 +542,7 @@ actions.CLASS_INDEP_AGS[AC_POP_POSSIBLE | ws_actions.AC_IN_PM_PGND_MUTABLE].add_
     ]
 )
 
-actions.CLASS_INDEP_AGS[AC_PUSH_POSSIBLE | ws_actions.AC_IN_PM_PGND_MUTABLE].add_actions(
+actions.CLASS_INDEP_AGS[AC_PUSH_POSSIBLE | ws_actions.AC_IN_PM_PGND].add_actions(
     [
         ("pm_push", icons.STOCK_PUSH_PATCH, _("Push"), None,
          _("Apply the next unapplied patch"),
@@ -555,7 +555,7 @@ actions.CLASS_INDEP_AGS[AC_PUSH_POSSIBLE | ws_actions.AC_IN_PM_PGND_MUTABLE].add
     ]
 )
 
-actions.CLASS_INDEP_AGS[ws_actions.AC_IN_PM_PGND_MUTABLE].add_actions(
+actions.CLASS_INDEP_AGS[ws_actions.AC_IN_PM_PGND].add_actions(
     [
         ("pm_new_patch", icons.STOCK_NEW_PATCH, None, None,
          _("Create a new patch"),
@@ -580,7 +580,7 @@ actions.CLASS_INDEP_AGS[ws_actions.AC_IN_PM_PGND_MUTABLE].add_actions(
     ]
 )
 
-actions.CLASS_INDEP_AGS[AC_ALL_APPLIED_REFRESHED | ws_actions.AC_IN_SCM_PGND | ws_actions.AC_IN_PM_PGND_MUTABLE].add_actions(
+actions.CLASS_INDEP_AGS[AC_ALL_APPLIED_REFRESHED | ws_actions.AC_IN_SCM_PGND | ws_actions.AC_IN_PM_PGND].add_actions(
     [
         ("pm_scm_absorb_applied_patches", icons.STOCK_FINISH_PATCH, _("Absorb All"), None,
          _("Absorb all applied patches into underlying SCM repository"),
@@ -691,7 +691,7 @@ class SeriesDescrEditDialog(dialogue.Dialog):
         """
         def __init__(self):
             text_edit.DbMessageWidget.__init__(self)
-            self.view.set_editable(ifce.PM.is_writable())
+            self.view.set_editable(True)
             self.load_text_fm_db()
         def populate_action_groups(self):
             text_edit.DbMessageWidget.populate_action_groups(self)
@@ -755,7 +755,7 @@ class PatchDescrEditDialog(dialogue.Dialog):
         """
         def __init__(self, patch):
             text_edit.DbMessageWidget.__init__(self)
-            self.view.set_editable(ifce.PM.is_writable())
+            self.view.set_editable(True)
             self._patch = patch
             self.load_text_fm_db()
         def populate_action_groups(self):
