@@ -15,8 +15,6 @@
 
 '''Have the underlying SCM absorb the applied patches.'''
 
-from .. import patch_db
-
 from . import cli_args
 from . import db_utils
 
@@ -27,8 +25,8 @@ PARSER = cli_args.SUB_CMD_PARSER.add_parser(
 
 def run_absorb(args):
     '''Execute the "absorb" sub command using the supplied args'''
-    db_utils.open_db(modifiable=True)
+    PM = db_utils.get_pm_db()
     db_utils.set_report_context(verbose=True)
-    return patch_db.do_scm_absorb_applied_patches()
+    return PM.do_scm_absorb_applied_patches()
 
 PARSER.set_defaults(run_cmd=run_absorb)

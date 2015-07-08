@@ -15,8 +15,6 @@
 
 '''Copy a file within the current top patch.'''
 
-from .. import patch_db
-
 from . import cli_args
 from . import db_utils
 from . import msg
@@ -45,8 +43,8 @@ PARSER.add_argument(
 
 def run_copy(args):
     '''Execute the "copy" sub command using the supplied args'''
-    db_utils.open_db(modifiable=True)
+    PM = db_utils.get_pm_db()
     db_utils.set_report_context(verbose=True)
-    return patch_db.do_copy_file_to_top_patch(args.from_path, args.to_path, overwrite=args.opt_overwrite)
+    return PM.do_copy_file_to_top_patch(args.from_path, args.to_path, overwrite=args.opt_overwrite)
 
 PARSER.set_defaults(run_cmd=run_copy)

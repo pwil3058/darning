@@ -19,8 +19,6 @@ import sys
 
 from ..cmd_result import CmdResult
 
-from .. import patch_db
-
 from . import cli_args
 from . import db_utils
 
@@ -45,34 +43,33 @@ GROUP.add_argument(
     help=_('the name of the patch whose files are to be listed.'),
 )
 
-VAL_MAP = {
-    None: ' ',
-    patch_db.FileData.Validity.REFRESHED: '+',
-    patch_db.FileData.Validity.NEEDS_REFRESH: '?',
-    patch_db.FileData.Validity.UNREFRESHABLE: '!',
-}
-
-def format_file_data(file_data):
+def format_file_data(PM, file_data):
+    VAL_MAP = {
+        None: ' ',
+        PM.FileData.Validity.REFRESHED: '+',
+        PM.FileData.Validity.NEEDS_REFRESH: '?',
+        PM.FileData.Validity.UNREFRESHABLE: '!',
+    }
     def status_to_str(status):
         return '{0}:{1}'.format(status.presence, VAL_MAP[status.validity])
     if file_data.related_file_data:
-        return '{0}: {1} {2} {3}\n'.format(status_to_str(file_data.status), patch_db.rel_subdir(file_data.name), file_data.related_file_data.relation, patch_db.rel_subdir(file_data.related_file_data.path))
+        return '{0}: {1} {2} {3}\n'.format(status_to_str(file_data.status), PM.rel_subdir(file_data.name), file_data.related_file_data.relation, PM.rel_subdir(file_data.related_file_data.path))
     else:
-        return '{0}: {1}\n'.format(status_to_str(file_data.status), patch_db.rel_subdir(file_data.name))
+        return '{0}: {1}\n'.format(status_to_str(file_data.status), PM.rel_subdir(file_data.name))
 
 def run_files(args):
     '''Execute the "files" sub command using the supplied args'''
-    db_utils.open_db(modifiable=True)
+    PM = db_utils.get_pm_db()
     db_utils.set_report_context(verbose=True)
-    patchname = patch_db.get_named_or_top_patch_name(args.patchname)
+    patchname = PM.get_named_or_top_patch_name(args.patchname)
     if patchname is None:
         return CmdResult.ERROR
     if args.opt_combined:
-        for file_data in sorted(patch_db.get_combined_patch_file_table()):
-            sys.stdout.write(format_file_data(file_data))
+        for file_data in sorted(PM.get_combined_patch_file_table()):
+            sys.stdout.write(format_file_data(PM, file_data))
     else:
-        for file_data in sorted(patch_db.get_patch_file_table(patchname)):
-            sys.stdout.write(format_file_data(file_data))
+        for file_data in sorted(PM.get_patch_file_table(patchname)):
+            sys.stdout.write(format_file_data(PM, file_data))
     return CmdResult.OK
 
 PARSER.set_defaults(run_cmd=run_files)

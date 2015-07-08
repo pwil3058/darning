@@ -15,8 +15,6 @@
 
 '''Apply the next patch in the series.'''
 
-from .. import patch_db
-
 from . import cli_args
 from . import db_utils
 
@@ -39,8 +37,8 @@ cli_args.add_quiet_option(GROUP, helptext=_('operate quietly.  Only abnormal res
 
 def run_push(args):
     '''Execute the "push" sub command using the supplied args'''
-    db_utils.open_db(modifiable=True)
+    PM = db_utils.get_pm_db()
     db_utils.set_report_context(verbose=not args.opt_quiet)
-    return patch_db.do_apply_next_patch(absorb=args.opt_absorb, force=args.opt_force)
+    return PM.do_apply_next_patch(absorb=args.opt_absorb, force=args.opt_force)
 
 PARSER.set_defaults(run_cmd=run_push)

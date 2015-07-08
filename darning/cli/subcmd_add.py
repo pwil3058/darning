@@ -15,8 +15,6 @@
 
 '''Unapply the current top patch.'''
 
-from .. import patch_db
-
 from . import cli_args
 from . import db_utils
 from . import msg
@@ -40,8 +38,8 @@ cli_args.add_files_argument(PARSER, helptext=_('the file(s) to be added.'))
 
 def run_add(args):
     '''Execute the "add" sub command using the supplied args'''
-    db_utils.open_db(modifiable=True)
+    PM = db_utils.get_pm_db()
     db_utils.set_report_context(verbose=True)
-    return patch_db.do_add_files_to_top_patch(args.filepaths, absorb=args.opt_absorb, force=args.opt_force)
+    return PM.do_add_files_to_top_patch(args.filepaths, absorb=args.opt_absorb, force=args.opt_force)
 
 PARSER.set_defaults(run_cmd=run_add)

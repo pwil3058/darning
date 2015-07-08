@@ -15,8 +15,6 @@
 
 '''Unapply the current top patch.'''
 
-from .. import patch_db
-
 from . import cli_args
 from . import db_utils
 
@@ -31,8 +29,8 @@ cli_args.add_verbose_option(PARSER, helptext=_('display diff output.'))
 
 def run_refresh(args):
     '''Execute the "refresh" sub command using the supplied args'''
-    db_utils.open_db(modifiable=True)
+    PM = db_utils.get_pm_db()
     db_utils.set_report_context(verbose=args.opt_verbose)
-    return patch_db.do_refresh_patch(args.opt_patch)
+    return PM.do_refresh_patch(args.opt_patch)
 
 PARSER.set_defaults(run_cmd=run_refresh)

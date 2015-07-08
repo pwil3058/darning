@@ -25,18 +25,14 @@ from .. import rctx
 from .. import patch_db
 from .. import scm_ifce
 
-def open_db(modifiable):
+def get_pm_db():
     '''Change directory to the base direcory and open the database'''
     BASE_DIR = patch_db.find_base_dir(remember_sub_dir=True)
     if BASE_DIR:
         os.chdir(BASE_DIR)
     else:
         sys.exit(_('Valid database NOT found.'))
-    result = patch_db.load_db(modifiable)
-    if not result:
-        sys.exit(str(result))
-    atexit.register(patch_db.release_db)
-    return True
+    return patch_db
 
 def set_report_context(verbose=True):
     if not verbose:

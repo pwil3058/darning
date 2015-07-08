@@ -15,8 +15,6 @@
 
 '''Fold the nominated patch into the current top patch.'''
 
-from .. import patch_db
-
 from . import cli_args
 from . import db_utils
 from . import msg
@@ -44,8 +42,8 @@ PARSER.add_argument(
 
 def run_fold(args):
     '''Execute the "fold" sub command using the supplied args'''
-    db_utils.open_db(modifiable=True)
+    PM = db_utils.get_pm_db()
     db_utils.set_report_context(verbose=True)
-    return patch_db.do_fold_named_patch(args.patchname, absorb=args.opt_absorb, force=args.opt_force)
+    return PM.do_fold_named_patch(args.patchname, absorb=args.opt_absorb, force=args.opt_force)
 
 PARSER.set_defaults(run_cmd=run_fold)

@@ -15,8 +15,6 @@
 
 '''Drop files from a patch.'''
 
-from .. import patch_db
-
 from . import cli_args
 from . import db_utils
 from . import msg
@@ -32,8 +30,8 @@ cli_args.add_files_argument(PARSER, helptext=_('the file(s) to be dropped.'))
 
 def run_drop(args):
     '''Execute the "drop" sub command using the supplied args'''
-    db_utils.open_db(modifiable=True)
+    PM = db_utils.get_pm_db()
     db_utils.set_report_context(verbose=True)
-    return patch_db.do_drop_files_fm_patch(args.opt_patch, args.filepaths)
+    return PM.do_drop_files_fm_patch(args.opt_patch, args.filepaths)
 
 PARSER.set_defaults(run_cmd=run_drop)

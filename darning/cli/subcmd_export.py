@@ -19,8 +19,6 @@ import sys
 
 from ..cmd_result import CmdResult
 
-from .. import patch_db
-
 from . import cli_args
 from . import db_utils
 
@@ -47,15 +45,15 @@ GROUP.add_argument(
 
 def run_export(args):
     '''Execute the "export" sub command using the supplied args'''
-    db_utils.open_db(modifiable=False)
+    PM = db_utils.get_pm_db()
     db_utils.set_report_context(verbose=True)
-    patchname = patch_db.get_named_or_top_patch_name(args.patchname)
+    patchname = PM.get_named_or_top_patch_name(args.patchname)
     if patchname is None:
         return CmdResult.ERROR
     if args.opt_combined:
-        tpatch = patch_db.get_combined_textpatch()
+        tpatch = PM.get_combined_textpatch()
     else:
-        tpatch = patch_db.get_textpatch(patchname)
+        tpatch = PM.get_textpatch(patchname)
     sys.stdout.write(str(tpatch))
     return CmdResult.OK
 

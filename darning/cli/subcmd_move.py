@@ -15,8 +15,6 @@
 
 '''Move/rename a file within the current top patch.'''
 
-from .. import patch_db
-
 from . import cli_args
 from . import db_utils
 from . import msg
@@ -49,8 +47,8 @@ PARSER.add_argument(
 
 def run_move(args):
     '''Execute the "move" sub command using the supplied args'''
-    db_utils.open_db(modifiable=True)
+    PM = db_utils.get_pm_db()
     db_utils.set_report_context(verbose=True)
-    return patch_db.do_rename_file_in_top_patch(args.from_path, args.to_path, force=args.opt_force, overwrite=args.opt_overwrite)
+    return PM.do_rename_file_in_top_patch(args.from_path, args.to_path, force=args.opt_force, overwrite=args.opt_overwrite)
 
 PARSER.set_defaults(run_cmd=run_move)

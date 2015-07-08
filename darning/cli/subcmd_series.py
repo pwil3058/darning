@@ -19,8 +19,6 @@ import sys
 
 from ..cmd_result import CmdResult
 
-from .. import patch_db
-
 from . import cli_args
 from . import db_utils
 
@@ -57,18 +55,18 @@ def format_patch_data(patch_data):
 
 def run_series(args):
     '''Execute the "series" sub command using the supplied args'''
-    db_utils.open_db(modifiable=True)
+    PM = db_utils.get_pm_db()
     db_utils.set_report_context(verbose=True)
-    table = patch_db.get_patch_table_data()
+    table = PM.get_patch_table_data()
     if args.opt_applied:
-        for patch_data in [pdat for pdat in table if pdat.state != patch_db.PatchState.NOT_APPLIED]:
+        for patch_data in [pdat for pdat in table if pdat.state != PM.PatchState.NOT_APPLIED]:
             sys.stdout.write('{0}\n'.format(patch_data.name))
     elif args.opt_unapplied:
-        for patch_data in [pdat for pdat in table if pdat.state == patch_db.PatchState.NOT_APPLIED]:
+        for patch_data in [pdat for pdat in table if pdat.state == PM.PatchState.NOT_APPLIED]:
             sys.stdout.write('{0}\n'.format(patch_data.name))
     elif args.opt_blocked:
-        for patch_data in [pdat for pdat in table if pdat.state == patch_db.PatchState.NOT_APPLIED]:
-            if not patch_db.is_patch_pushable(patch_data.name):
+        for patch_data in [pdat for pdat in table if pdat.state == PM.PatchState.NOT_APPLIED]:
+            if not PM.is_patch_pushable(patch_data.name):
                 sys.stdout.write('{0}\n'.format(patch_data.name))
     else:
         for patch_data in table:

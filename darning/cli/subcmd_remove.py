@@ -15,8 +15,6 @@
 
 '''Remove a named patch from the series.'''
 
-from .. import patch_db
-
 from . import cli_args
 from . import db_utils
 
@@ -33,8 +31,8 @@ PARSER.add_argument(
 
 def run_remove(args):
     '''Execute the "new" sub command using the supplied args'''
-    db_utils.open_db(modifiable=True)
+    PM = db_utils.get_pm_db()
     db_utils.set_report_context(verbose=True)
-    return patch_db.do_remove_patch(args.patchname)
+    return PM.do_remove_patch(args.patchname)
 
 PARSER.set_defaults(run_cmd=run_remove)

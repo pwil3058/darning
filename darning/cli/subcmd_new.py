@@ -15,8 +15,6 @@
 
 '''Create a new patch in the series behind the current top patch.'''
 
-from .. import patch_db
-
 from . import cli_args
 from . import db_utils
 
@@ -35,8 +33,8 @@ PARSER.add_argument(
 
 def run_new(args):
     '''Execute the "new" sub command using the supplied args'''
-    db_utils.open_db(modifiable=True)
+    PM = db_utils.get_pm_db()
     db_utils.set_report_context(verbose=True)
-    return patch_db.do_create_new_patch(args.patchname, args.opt_description)
+    return PM.do_create_new_patch(args.patchname, args.opt_description)
 
 PARSER.set_defaults(run_cmd=run_new)

@@ -19,8 +19,6 @@ import sys
 
 from ..cmd_result import CmdResult
 
-from .. import patch_db
-
 from . import cli_args
 from . import db_utils
 
@@ -59,12 +57,12 @@ PARSER.add_argument(
 
 def run_diff(args):
     '''Execute the "diff" sub command using the supplied args'''
-    db_utils.open_db(modifiable=False)
+    PM = db_utils.get_pm_db()
     db_utils.set_report_context(verbose=True)
     if args.opt_combined:
-        diff = patch_db.get_combined_diff_for_files(args.filepaths, args.opt_withtimestamps)
+        diff = PM.get_combined_diff_for_files(args.filepaths, args.opt_withtimestamps)
     else:
-        diff = patch_db.get_diff_for_files(args.filepaths, args.opt_patch, args.opt_withtimestamps)
+        diff = PM.get_diff_for_files(args.filepaths, args.opt_patch, args.opt_withtimestamps)
     if diff is False:
         return CmdResult.ERROR
     sys.stdout.write(diff)

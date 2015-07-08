@@ -25,7 +25,6 @@ import darning.version
 
 from darning import i18n
 from darning.cli import db_utils
-from darning import patch_db
 
 PARSER = argparse.ArgumentParser(description=_('Provide a "darning" test file tree.'))
 
@@ -88,9 +87,9 @@ MODIFY_PARSER.add_argument(
 
 def modify_cmd(args):
     '''Execute the "modify" sub command using the supplied args'''
-    db_utils.open_db(modifiable=False)
+    PM = db_utils.get_pm_db()
     db_utils.set_report_context(verbose=False)
-    top_patch_name = patch_db.get_named_or_top_patch_name(None)
+    top_patch_name = PM.get_named_or_top_patch_name(None)
     ending = '' if args.opt_no_newline else '\n'
     if top_patch_name is None:
         template = 'No Patches Applied; Path: "{{0}}"{0}'.format(ending)

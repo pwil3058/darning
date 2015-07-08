@@ -20,7 +20,6 @@ import sys
 
 from ..cmd_result import CmdResult
 
-from .. import patch_db
 from .. import patchlib
 
 from . import cli_args
@@ -55,7 +54,7 @@ PARSER.add_argument(
 
 def run_import(args):
     '''Execute the "import" sub command using the supplied args'''
-    db_utils.open_db(modifiable=True)
+    PM = db_utils.get_pm_db()
     db_utils.set_report_context(verbose=True)
     if not args.patchname:
         args.patchname = os.path.basename(args.patchfile)
@@ -79,7 +78,7 @@ def run_import(args):
             sys.stderr.write(_('Strip level auto detection failed.  Please use -p option.'))
             return CmdResult.ERROR
     epatch.set_strip_level(int(args.opt_strip_level))
-    eflags = patch_db.do_import_patch(epatch, args.patchname)
+    eflags = PM.do_import_patch(epatch, args.patchname)
     if eflags != CmdResult.OK:
         return eflags
     sys.stdout.write(_('Imported "{0}" as patch "{1}".\n').format(args.patchfile, args.patchname))
