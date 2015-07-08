@@ -139,3 +139,28 @@ class ConsoleLogWidget(gtk.VBox, dialogue.BusyIndicatorUser):
         auto_update.trigger_auto_update()
 
 LOG = ConsoleLogWidget()
+
+class ReportContext(object):
+    class OutFile(object):
+        def __init__(self):
+            self.text = ''
+        def write(self, text):
+            self.text += text
+            LOG.append_stdout(text)
+    class ErrFile(object):
+        def __init__(self):
+            self.text = ''
+        def write(self, text):
+            self.text += text
+            LOG.append_stderr(text)
+    def __init__(self):
+        self.stdout = self.OutFile()
+        self.stderr = self.ErrFile()
+    @property
+    def message(self):
+        return "\n".join([self.stdout.text, self.stderr.text])
+    def reset(self):
+        self.stdout.text = ''
+        self.stderr.text = ''
+
+RCTX = ReportContext()

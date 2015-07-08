@@ -26,7 +26,7 @@ from .. import rctx
 
 from . import pdb_ifce as PM
 from . import ws_event
-from .console import LOG
+from .console import LOG, RCTX
 
 E_NEW_SCM, E_NEW_PM, E_NEW_SCM_OR_PM = ws_event.new_event_flags_and_mask(2)
 
@@ -37,34 +37,11 @@ _cached_pm_in_valid_pgnd = PM.in_valid_pgnd
 
 CURDIR = os.getcwd()
 
-class ReportContext(object):
-    class OutFile(object):
-        def __init__(self):
-            self.text = ''
-        def write(self, text):
-            self.text += text
-            console.LOG.append_stdout(text)
-    class ErrFile(object):
-        def __init__(self):
-            self.text = ''
-        def write(self, text):
-            self.text += text
-            console.LOG.append_stderr(text)
-    def __init__(self):
-        self.stdout = self.OutFile()
-        self.stderr = self.ErrFile()
-    @property
-    def message(self):
-        return "\n".join([self.stdout.text, self.stderr.text])
-    def reset(self):
-        self.stdout.text = ''
-        self.stderr.text = ''
-
 def init(log=False):
     global SCM
     global CURDIR
     global _cached_pm_in_valid_pgnd
-    rctx.reset(PM.RCTX.stdout, PM.RCTX.stderr)
+    rctx.reset(RCTX.stdout, RCTX.stderr)
     options.load_global_options()
     result = PM.init()
     _cached_pm_in_valid_pgnd = PM.in_valid_pgnd

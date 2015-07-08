@@ -77,30 +77,7 @@ def do_chdir(new_dir=None):
             return CmdResult.error(stderr='%s: "%s" :%s' % (ecode, new_dir, emsg))
     return init()
 
-class ReportContext(object):
-    class OutFile(object):
-        def __init__(self):
-            self.text = ''
-        def write(self, text):
-            self.text += text
-            console.LOG.append_stdout(text)
-    class ErrFile(object):
-        def __init__(self):
-            self.text = ''
-        def write(self, text):
-            self.text += text
-            console.LOG.append_stderr(text)
-    def __init__(self):
-        self.stdout = self.OutFile()
-        self.stderr = self.ErrFile()
-    @property
-    def message(self):
-        return "\n".join([self.stdout.text, self.stderr.text])
-    def reset(self):
-        self.stdout.text = ''
-        self.stderr.text = ''
-
-RCTX = ReportContext()
+from .console import RCTX
 
 def _map_do(ecode):
     return CmdResult(ecode, RCTX.stdout.text, RCTX.stderr.text)
