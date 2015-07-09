@@ -171,7 +171,7 @@ class _NULL_BACKEND(object):
     def get_tags_table_data():
         return DummyTableData()
     @staticmethod
-    def get_wd_file_db():
+    def get_ws_file_db():
         '''
         Get the SCM view of the current directory
         '''
