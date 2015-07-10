@@ -916,17 +916,18 @@ def prepend_subdir(filepaths):
         filepaths[findex] = rel_basedir(filepaths[findex])
     return filepaths
 
-def find_base_dir(remember_sub_dir=False):
+def find_base_dir(dir_path=None, remember_sub_dir=False):
     '''Find the nearest directory above that contains a database'''
     global _SUB_DIR
-    dirpath = os.getcwd()
+    if dir_path is None:
+        dir_path = os.getcwd()
     subdir_parts = []
     while True:
-        if os.path.isdir(os.path.join(dirpath, DataBase._DIR)):
+        if os.path.isdir(os.path.join(dir_path, DataBase._DIR)):
             _SUB_DIR = None if not subdir_parts else os.path.join(*subdir_parts)
-            return dirpath
+            return dir_path
         else:
-            dirpath, basename = os.path.split(dirpath)
+            dir_path, basename = os.path.split(dir_path)
             if not basename:
                 break
             if remember_sub_dir:
@@ -2244,7 +2245,7 @@ def get_extdiff_files_for(filepath, patchname):
         assert filepath in patch.files
         assert patch.get_overlapping_patch_for_path(filepath) is None
         before = patch.files[filepath].before_file_path
-        return _O_IP_PAIR(original_version=before, patched_version=filepath)
+        return _O_IP_PAIR(original_version=before if os.path.exists(before) else "/dev/null", patched_version=filepath if os.path.exists(filepath) else "/dev/null")
 
 def get_reconciliation_paths(filepath):
     with open_db(mutable=False) as _DB:
