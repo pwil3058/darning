@@ -282,6 +282,19 @@ class FileData(GenericFileData):
             if came_from_path is None:
                 # The file won't exist yet so "needs refresh" will be True
                 self.do_stash_current(None)
+    def clone_for_patch(self, patch):
+        file_data = FileData(self.path, patch)
+        file_data.came_from_path = self.came_from_path
+        file_data.came_as_rename = self.came_as_rename
+        file_data.renamed_to = self.renamed_to
+        file_data.diff = self.diff
+        file_data.orig_mode = self.orig_mode
+        file_data.before_mode = self.before_mode
+        file_data.before_hash = self.before_hash
+        file_data.after_mode = self.after_mode
+        file_data.after_hash = self.after_hash
+        file_data.reset_reference_paths()
+        return file_data
     def set_before_file_path(self):
         if self.came_from_path:
             if self.came_from_path in self.patch.files:
@@ -631,6 +644,13 @@ class PatchData(PickeExtensibleObject):
         self.description = _tidy_text(description) if description is not None else ''
         self.pos_guards = set()
         self.neg_guards = set()
+    def clone_as(self, name, description, database):
+        patch_data = PatchData(name, description, database)
+        for file_path, file_data in self.files.iteritems():
+            patch_data.files[file_path] = file_data.clone_for_patch(patch_data)
+        patch_data.pos_guards = self.pos_guards.copy()
+        patch_data.neg_guards = self.neg_guards.copy()
+        return patch_data
     def set_db(self, db):
         self._db = db
     def set_name(self, newname, first=False):
@@ -2056,9 +2076,7 @@ def do_duplicate_patch(patchname, as_patchname, newdescription):
         elif not utils.is_valid_dir_name(as_patchname):
             RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(as_patchname, utils.ALLOWED_DIR_NAME_CHARS_MSG))
             return CmdResult.ERROR|CmdResult.SUGGEST_RENAME
-        newpatch = copy.deepcopy(patch)
-        newpatch.set_name(as_patchname)
-        newpatch.description = _tidy_text(newdescription)
+        newpatch = patch.clone_as(as_patchname, _tidy_text(newdescription), _DB)
         _DB.insert_patch(newpatch)
         RCTX.stdout.write(_('{0}: patch duplicated as "{1}"\n').format(patch.name, as_patchname))
         return CmdResult.OK
