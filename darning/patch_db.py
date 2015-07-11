@@ -663,7 +663,6 @@ class PatchData(PickeExtensibleObject):
         if not first and os.path.exists(old_cached_orig_dir_path):
             os.rename(old_cached_orig_dir_path, self.cached_orig_dir_path)
         if not first:
-            #TODO: find out why this fires when restoring deleted patch
             assert os.path.exists(old_stash_dir_path)
             os.rename(old_stash_dir_path, self.stash_dir_path)
         else:
@@ -2153,7 +2152,7 @@ def do_restore_patch(patchname, as_patchname):
             return CmdResult.ERROR|CmdResult.SUGGEST_RENAME
         patch = _DB.kept_patches[patchname]
         if as_patchname:
-            patch.set_name(as_patchname)
+            patch.set_name(as_patchname, first=True)
         _DB.insert_patch(patch)
         del _DB.kept_patches[patchname]
         return CmdResult.OK
