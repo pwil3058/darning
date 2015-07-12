@@ -938,8 +938,7 @@ def prepend_subdir(filepaths):
 def find_base_dir(dir_path=None, remember_sub_dir=False):
     '''Find the nearest directory above that contains a database'''
     global _SUB_DIR
-    if dir_path is None:
-        dir_path = os.getcwd()
+    dir_path = os.getcwd() if dir_path is None else os.path.abspath(os.path.expanduser(dir_path))
     subdir_parts = []
     while True:
         if os.path.isdir(os.path.join(dir_path, DataBase._DIR)):
@@ -953,34 +952,41 @@ def find_base_dir(dir_path=None, remember_sub_dir=False):
                 subdir_parts.insert(0, basename)
     return None
 
-def do_create_db(description):
+def do_create_db(dir_path=None, description=None):
     '''Create a patch database in the current directory?'''
     def rollback():
         '''Undo steps that were completed before failure occured'''
-        for filnm in [DataBase._FILE, DataBase._LOCK_FILE ]:
+        for filnm in [data_base_file_path, data_base_lock_file_path]:
             if os.path.exists(filnm):
                 os.remove(filnm)
-        for dirnm in [DataBase._ORIGINALS_DIR, DataBase._DIR]:
+        for dirnm in [data_base_orig_dir_path, data_base_stash_dir_path, data_base_dir_path]:
             if os.path.exists(dirnm):
                 os.rmdir(dirnm)
-    root = find_base_dir(remember_sub_dir=False)
+    if not dir_path:
+        dir_path = os.getcwd()
+    root = find_base_dir(dir_path=dir_path, remember_sub_dir=False)
     if root is not None:
         RCTX.stderr.write(_('Inside existing playground: "{0}".\n').format(os.path.relpath(root)))
         return CmdResult.ERROR
-    elif os.path.exists(DataBase._DIR):
-        if os.path.exists(DataBase._ORIGINALS_DIR) and os.path.exists(DataBase._FILE):
+    data_base_dir_path = os.path.join(dir_path, DataBase._DIR)
+    data_base_orig_dir_path = os.path.join(dir_path, DataBase._ORIGINALS_DIR)
+    data_base_file_path = os.path.join(dir_path, DataBase._FILE)
+    if os.path.exists(data_base_dir_path):
+        if os.path.exists(data_base_orig_dir_path) and os.path.exists(data_base_file_path):
             RCTX.stderr.write(_('Database already exists.\n'))
         else:
             RCTX.stderr.write(_('Database directory exists.\n'))
         return CmdResult.ERROR
+    data_base_stash_dir_path = os.path.join(dir_path, DataBase._STASH_DIR)
+    data_base_lock_file_path = os.path.join(dir_path, DataBase._LOCK_FILE)
     try:
         dir_mode = stat.S_IRWXU|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH
-        os.mkdir(DataBase._DIR, dir_mode)
-        os.mkdir(DataBase._ORIGINALS_DIR, dir_mode)
-        os.mkdir(DataBase._STASH_DIR, dir_mode)
-        open(DataBase._LOCK_FILE, "w").write("0")
+        os.mkdir(data_base_dir_path, dir_mode)
+        os.mkdir(data_base_orig_dir_path, dir_mode)
+        os.mkdir(data_base_stash_dir_path, dir_mode)
+        open(data_base_lock_file_path, "w").write("0")
         db_obj = DataBase(description, None)
-        fobj = open(DataBase._FILE, 'wb', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
+        fobj = open(data_base_file_path, 'wb', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
         try:
             cPickle.dump(db_obj, fobj)
         finally:

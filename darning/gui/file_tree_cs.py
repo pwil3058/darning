@@ -31,6 +31,8 @@ from . import diff
 from . import file_tree
 from . import dooph_pm
 
+# TODO: fix file_tree_cs
+
 class PatchFileTreeView(file_tree.FileTreeView):
     REPOPULATE_EVENTS = pm_ifce.E_POP|pm_ifce.E_PUSH|pm_ifce.E_PATCH_STACK_CHANGES
     UPDATE_EVENTS = pm_ifce.E_PATCH_REFRESH|pm_ifce.E_FILE_CHANGES
@@ -114,7 +116,7 @@ class PatchFileTreeView(file_tree.FileTreeView):
     def pm_extdiff_selected_file(self):
         filepaths = self.get_selected_filepaths()
         assert len(filepaths) == 1
-        files = ifce.PM.get_extdiff_files_for(filepath=filepaths[0], patchname=self.patch)
+        files = ifce.PM.get_extdiff_files_for(file_path=filepaths[0], patch_name=self.patch)
         dialogue.report_any_problems(diff.launch_external_diff(files.original_version, files.patched_version))
 
 class PatchFileTreeWidget(file_tree.FileTreeWidget):
@@ -126,6 +128,9 @@ class PatchFileTreeWidget(file_tree.FileTreeWidget):
         file_tree.FileTreeWidget.__init__(self, patch=patch, **kwargs)
 
 class TopPatchFileTreeView(PatchFileTreeView):
+    REPOPULATE_EVENTS = ifce.E_CHANGE_WD|ifce.E_NEW_PM|pm_ifce.E_PATCH_STACK_CHANGES|pm_ifce.E_PUSH|pm_ifce.E_POP|pm_ifce.E_NEW_PATCH
+    UPDATE_EVENTS = pm_ifce.E_FILE_CHANGES|pm_ifce.E_PATCH_REFRESH
+    AUTO_EXPAND = True
     UI_DESCR = '''
     <ui>
       <popup name="files_popup">
@@ -178,10 +183,21 @@ class TopPatchFileTreeView(PatchFileTreeView):
         result = ifce.PM.do_drop_files_from_patch(file_list, self.patch)
         dialogue.unshow_busy()
         dialogue.report_any_problems(result)
+    def pm_delete_selection(self):
+        file_paths = self.get_selected_filepaths()
+        if len(file_paths) == 0:
+            return
+        emsg = '\n'.join(file_paths + ["", _('Confirm delete selected file(s)?')])
+        if not dialogue.ask_ok_cancel(emsg):
+            return
+        dialogue.show_busy()
+        result = ifce.PM.do_delete_files_in_top_patch(file_paths)
+        dialogue.unshow_busy()
+        dialogue.report_any_problems(result)
     def pm_reconcile_selected_file(self):
         filepaths = self.get_selected_filepaths()
         assert len(filepaths) == 1
-        files = ifce.PM.get_reconciliation_paths(filepath=filepaths[0])
+        files = ifce.PM.get_reconciliation_paths(file_path=filepaths[0])
         dialogue.report_any_problems(diff.launch_reconciliation_tool(files.original_version, files.patched_version, files.stashed_version))
 
 class TopPatchFileTreeWidget(PatchFileTreeWidget):
@@ -190,7 +206,7 @@ class TopPatchFileTreeWidget(PatchFileTreeWidget):
         assert patch is None
         PatchFileTreeWidget.__init__(self, patch=None)
 
-class CombinedPatchFileTreeView(PatchFileTreeView):
+class CombinedPatchFileTreeView(TopPatchFileTreeView):
     UI_DESCR = '''
     <ui>
       <popup name="files_popup">

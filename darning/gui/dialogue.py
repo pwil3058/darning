@@ -357,6 +357,7 @@ def ask_file_name(prompt, suggestion=None, existing=True, parent=None):
     dialog.destroy()
     return new_file_name
 
+#TODO: fix ask_dir_name for broken mode gtk.FILE_CHOOSER_ACTION_CREATE_FOLDER
 def ask_dir_name(prompt, suggestion=None, existing=True, parent=None):
     if existing:
         mode = gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER
@@ -375,6 +376,8 @@ def ask_dir_name(prompt, suggestion=None, existing=True, parent=None):
             dirname = os.path.dirname(suggestion)
             if dirname:
                 dialog.set_current_folder(dirname)
+            else:
+                dialog.set_current_folder(os.getcwd())
     else:
         dialog.set_current_folder(os.getcwd())
     response = dialog.run()

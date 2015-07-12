@@ -103,7 +103,7 @@ class NullPatchListData(object):
         if name == "selected_guards": return []
     def reset(self):
         pass
-    def iter_patches(self):
+    def iter_rows(self):
         return []
 
 class _NULL_BACKEND(object):
@@ -116,6 +116,7 @@ class _NULL_BACKEND(object):
     is_extdiff_for_full_patch_ok = False
     is_poppable = False
     is_pushable = False
+    all_applied_patches_refreshed = False
     # no caching so no state ergo all methods will be static/class methods
     # "do" methods should never be called for the null interface
     # so we won't provide them
@@ -123,6 +124,9 @@ class _NULL_BACKEND(object):
     @staticmethod
     def get_applied_patches():
         return []
+    @staticmethod
+    def get_applied_patch_count():
+        return 0
     @staticmethod
     def get_author_name_and_email():
         return None

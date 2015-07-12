@@ -18,3 +18,6 @@ from . import i18n
 # import SCM backend interfaces here
 from . import scm_ifce_git
 from . import scm_ifce_hg
+
+# import PM backend interfaces here
+from . import pm_ifce_darning

@@ -42,7 +42,7 @@ def get_in_scm_pgnd_condns():
     return actions.MaskedCondns(AC_IN_SCM_PGND if ifce.SCM.in_valid_pgnd else AC_NOT_IN_SCM_PGND, AC_IN_SCM_PGND_MASK)
 
 def get_pmic_condns():
-    return actions.MaskedCondns(AC_PMIC if ifce.PM.is_poppable() else AC_NOT_PMIC, AC_PMIC_MASK)
+    return actions.MaskedCondns(AC_PMIC if ifce.PM.is_poppable else AC_NOT_PMIC, AC_PMIC_MASK)
 
 def _update_class_indep_pm_pgnd_cb(**kwargs):
     actions.CLASS_INDEP_AGS.update_condns(get_in_pm_pgnd_condns())

@@ -35,13 +35,15 @@ from . import text_edit
 from . import recollect
 from . import tlview
 from . import table
+from . import gutils
+from . import textview
 
 AC_POP_POSSIBLE = ws_actions.AC_PMIC
 AC_PUSH_POSSIBLE, AC_PUSH_POSSIBLE_MASK = actions.ActionCondns.new_flags_and_mask(1)
 AC_ALL_APPLIED_REFRESHED, AC_ALL_APPLIED_REFRESHED_MASK = actions.ActionCondns.new_flags_and_mask(1)
 
 def get_pushable_condns():
-    return actions.MaskedCondns(AC_PUSH_POSSIBLE if ifce.PM.is_pushable() else 0, AC_PUSH_POSSIBLE)
+    return actions.MaskedCondns(AC_PUSH_POSSIBLE if ifce.PM.is_pushable else 0, AC_PUSH_POSSIBLE)
 
 def _update_class_indep_pushable_cb(**kwargs):
     actions.CLASS_INDEP_AGS.update_condns(get_pushable_condns())
@@ -49,30 +51,30 @@ def _update_class_indep_pushable_cb(**kwargs):
 ws_event.add_notification_cb(ifce.E_CHANGE_WD|pm_ifce.E_PATCH_LIST_CHANGES, _update_class_indep_pushable_cb)
 
 def _update_class_indep_absorbable_cb(**kwargs):
-    condns = actions.MaskedCondns(AC_ALL_APPLIED_REFRESHED if ifce.PM.all_applied_patches_refreshed() else 0, AC_ALL_APPLIED_REFRESHED)
+    condns = actions.MaskedCondns(AC_ALL_APPLIED_REFRESHED if ifce.PM.all_applied_patches_refreshed else 0, AC_ALL_APPLIED_REFRESHED)
     actions.CLASS_INDEP_AGS.update_condns(condns)
 
 ws_event.add_notification_cb(ifce.E_CHANGE_WD|scm_ifce.E_FILE_CHANGES|pm_ifce.E_FILE_CHANGES|pm_ifce.E_PATCH_LIST_CHANGES, _update_class_indep_absorbable_cb)
 
 def pm_initialize_curdir():
-    dlg = NewSeriesDescrDialog(parent=dialogue.main_window)
-    if dlg.run() == gtk.RESPONSE_OK:
-        dlg.show_busy()
-        result = ifce.PM.new_playground(dlg.get_descr())
-        dlg.unshow_busy()
-        dialogue.report_any_problems(result)
-    dlg.destroy()
+    req_backend = ifce.choose_backend()
+    if not req_backend:
+        return
+    result = ifce.init_current_dir(req_backend)
+    dialogue.report_any_problems(result)
 
 def pm_do_create_new_pgnd():
-    newpg = dialogue.ask_dir_name(_("Select/create playground .."), existing=False, suggestion=".")
-    if newpg is not None:
-        dlg = NewSeriesDescrDialog(parent=dialogue.main_window)
-        if dlg.run() == gtk.RESPONSE_OK:
-            dlg.show_busy()
-            result = ifce.PM.new_playground(dlg.get_descr(), newpg)
-            dlg.unshow_busy()
-            dialogue.report_any_problems(result)
-        dlg.destroy()
+    req_backend = ifce.choose_backend()
+    if not req_backend:
+        return
+    new_pgnd_path = dialogue.ask_dir_name(_("Select/create playground .."))
+    if new_pgnd_path is not None:
+        result = ifce.create_new_playground(new_pgnd_path, req_backend)
+        dialogue.report_any_problems(result)
+        if not result.is_ok:
+            return
+        result = ifce.chdir(new_pgnd_path)
+        dialogue.report_any_problems(result)
 
 def pm_delete_files(file_paths):
     if len(file_paths) == 0:
@@ -168,12 +170,12 @@ def pm_do_pop():
     return result.is_ok
 
 def pm_do_pop_all():
-    while ifce.PM.is_poppable():
+    while ifce.PM.is_poppable:
         if not pm_do_pop():
             break
 
 def pm_do_pop_to(patch_name):
-    while ifce.PM.is_poppable() and not ifce.PM.is_top_patch(patch_name):
+    while ifce.PM.is_poppable and not ifce.PM.is_top_patch(patch_name):
         if not pm_do_pop():
             break
 
@@ -208,12 +210,12 @@ def pm_do_push():
     return result.is_ok
 
 def pm_do_push_all():
-    while ifce.PM.is_pushable():
+    while ifce.PM.is_pushable:
         if not pm_do_push():
             break
 
 def pm_do_push_to(patch_name):
-    while ifce.PM.is_pushable() and not ifce.PM.is_top_patch(patch_name):
+    while ifce.PM.is_pushable and not ifce.PM.is_top_patch(patch_name):
         if not pm_do_push():
             break
 
@@ -285,6 +287,7 @@ def pm_do_fold_patch(patch_name):
         break
 
 def pm_do_fold_external_patch():
+    from .. import patchlib
     patch_file = dialogue.ask_file_name(_("Select patch file to be folded"))
     if patch_file is None:
         return
@@ -328,6 +331,7 @@ def pm_do_fold_external_patch():
     dlg.destroy()
 
 def pm_do_import_patch():
+    from .. import patchlib
     patch_file = dialogue.ask_file_name(_("Select patch file to be imported"))
     if patch_file is None:
         return
