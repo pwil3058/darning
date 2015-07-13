@@ -56,12 +56,36 @@ def _update_class_indep_absorbable_cb(**kwargs):
 
 ws_event.add_notification_cb(ifce.E_CHANGE_WD|scm_ifce.E_FILE_CHANGES|pm_ifce.E_FILE_CHANGES|pm_ifce.E_PATCH_LIST_CHANGES, _update_class_indep_absorbable_cb)
 
-def pm_initialize_curdir():
-    req_backend = ifce.choose_backend()
-    if not req_backend:
-        return
-    result = ifce.init_current_dir(req_backend)
+def pm_add_files(file_paths):
+    do_op = lambda absorb=False, force=False : ifce.PM.do_add_files_to_top_patch(file_paths, absorb=absorb, force=force)
+    refresh_op = lambda : ifce.PM.do_refresh_overlapped_files(file_paths)
+    result = dooph.do_force_refresh_or_absorb(do_op, refresh_op)
     dialogue.report_any_problems(result)
+    return result
+
+def pm_add_new_file_to_top_patch():
+    filepath = dialogue.ask_file_name(_("Enter path for new file"), existing=False)
+    if not filepath:
+        return
+    pm_add_files([filepath])
+
+def pm_copy_file(file_path):
+    destn = dooph.ask_destination([file_path])
+    if not destn:
+        return
+    do_op = lambda destn, overwrite=False : ifce.PM.do_copy_file_to_top_patch(file_path, destn, overwrite=overwrite)
+    result = dooph.do_overwrite_or_rename(destn, do_op)
+    dialogue.report_any_problems(result)
+    return result
+
+def pm_copy_files(file_paths):
+    destn = dooph.ask_destination(file_paths)
+    if not destn:
+        return
+    do_op = lambda destn, overwrite=False : ifce.PM.do_copy_files(file_paths, destn, overwrite=overwrite)
+    result = dooph.do_overwrite_or_rename(destn, do_op)
+    dialogue.report_any_problems(result)
+    return result
 
 def pm_do_create_new_pgnd():
     req_backend = ifce.choose_backend()
@@ -84,147 +108,6 @@ def pm_delete_files(file_paths):
     dialogue.unshow_busy()
     dialogue.report_any_problems(result)
     return result
-
-def pm_add_files(file_paths):
-    do_op = lambda absorb=False, force=False : ifce.PM.do_add_files_to_top_patch(file_paths, absorb=absorb, force=force)
-    refresh_op = lambda : ifce.PM.do_refresh_overlapped_files(file_paths)
-    result = dooph.do_force_refresh_or_absorb(do_op, refresh_op)
-    dialogue.report_any_problems(result)
-    return result
-
-def pm_copy_files(file_paths):
-    destn = dooph.ask_destination(file_paths)
-    if not destn:
-        return
-    do_op = lambda destn, overwrite=False : ifce.PM.do_copy_files(file_paths, destn, overwrite=overwrite)
-    result = dooph.do_overwrite_or_rename(destn, do_op)
-    dialogue.report_any_problems(result)
-    return result
-
-def pm_do_edit_files(file_paths):
-    if len(file_paths) == 0:
-        return
-    if pm_add_files(file_paths).is_ok:
-        text_edit.edit_files_extern(file_paths)
-
-def pm_move_files(file_paths):
-    destn = dooph.ask_destination(file_paths)
-    if not destn:
-        return
-    do_op = lambda destn, force=False, overwrite=False : ifce.PM.do_move_files(file_paths, destn, force=force, overwrite=overwrite)
-    refresh_op = lambda : ifce.PM.do_refresh_overlapped_files(file_paths)
-    result = dooph.do_force_refresh_overwrite_or_rename(destn, do_op, refresh_op)
-    dialogue.report_any_problems(result)
-    return result
-
-def pm_copy_file(file_path):
-    destn = dooph.ask_destination([file_path])
-    if not destn:
-        return
-    do_op = lambda destn, overwrite=False : ifce.PM.do_copy_file_to_top_patch(file_path, destn, overwrite=overwrite)
-    result = dooph.do_overwrite_or_rename(destn, do_op)
-    dialogue.report_any_problems(result)
-    return result
-
-def pm_rename_file(file_path):
-    destn = dooph.ask_destination([file_path])
-    if not destn:
-        return
-    do_op = lambda destn, force=False, overwrite=False : ifce.PM.do_rename_file_in_top_patch(file_path, destn, force=force, overwrite=overwrite)
-    refresh_op = lambda : ifce.PM.do_refresh_overlapped_files([file_path])
-    result = dooph.do_force_refresh_overwrite_or_rename(destn, do_op, refresh_op)
-    dialogue.report_any_problems(result)
-    return result
-
-def pm_do_refresh_top_patch():
-    dialogue.show_busy()
-    result = ifce.PM.do_refresh_patch()
-    dialogue.unshow_busy()
-    dialogue.report_any_problems(result)
-
-def pm_do_refresh_named_patch(patch_name):
-    dialogue.show_busy()
-    result = ifce.PM.do_refresh_patch(patch_name)
-    dialogue.unshow_busy()
-    dialogue.report_any_problems(result)
-
-def pm_do_pop():
-    refresh_tried = False
-    while True:
-        dialogue.show_busy()
-        result = ifce.PM.do_pop_top_patch()
-        dialogue.unshow_busy()
-        if not refresh_tried and result.suggests_refresh:
-            resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
-            if resp == gtk.RESPONSE_CANCEL:
-                return False
-            elif resp == dialogue.Response.REFRESH:
-                refresh_tried = True
-                dialogue.show_busy()
-                result = ifce.PM.do_refresh_patch()
-                dialogue.unshow_busy()
-                dialogue.report_any_problems(result)
-            continue
-        dialogue.report_any_problems(result)
-        break
-    return result.is_ok
-
-def pm_do_pop_all():
-    while ifce.PM.is_poppable:
-        if not pm_do_pop():
-            break
-
-def pm_do_pop_to(patch_name):
-    while ifce.PM.is_poppable and not ifce.PM.is_top_patch(patch_name):
-        if not pm_do_pop():
-            break
-
-def pm_do_push():
-    force = False
-    absorb = True
-    refresh_tried = False
-    while True:
-        dialogue.show_busy()
-        result = ifce.PM.do_push_next_patch(absorb=absorb, force=force)
-        dialogue.unshow_busy()
-        if refresh_tried:
-            result = result - result.SUGGEST_REFRESH
-        if not (absorb or force) and result.suggests(result.SUGGEST_FORCE_ABSORB_OR_REFRESH):
-            resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
-            if resp == gtk.RESPONSE_CANCEL:
-                return False
-            elif resp == dialogue.Response.FORCE:
-                force = True
-            elif resp == dialogue.Response.ABSORB:
-                absorb = True
-            elif resp == dialogue.Response.REFRESH:
-                refresh_tried = True
-                dialogue.show_busy()
-                file_list = ifce.PM.get_filepaths_in_next_patch()
-                result = ifce.PM.do_refresh_overlapped_files(file_list)
-                dialogue.unshow_busy()
-                dialogue.report_any_problems(result)
-            continue
-        dialogue.report_any_problems(result)
-        break
-    return result.is_ok
-
-def pm_do_push_all():
-    while ifce.PM.is_pushable:
-        if not pm_do_push():
-            break
-
-def pm_do_push_to(patch_name):
-    while ifce.PM.is_pushable and not ifce.PM.is_top_patch(patch_name):
-        if not pm_do_push():
-            break
-
-def pm_do_remove_patch(patch_name):
-    if dialogue.ask_ok_cancel(_("Confirm remove \"{0}\" patch?").format(patch_name)):
-        dialogue.show_busy()
-        result = ifce.PM.do_remove_patch(patch_name)
-        dialogue.unshow_busy()
-        dialogue.report_any_problems(result)
 
 def pm_do_duplicate_patch(patch_name):
     description = ifce.PM.get_patch_description(patch_name)
@@ -254,6 +137,60 @@ def pm_do_duplicate_patch(patch_name):
                 continue
         break
     dialog.destroy()
+
+def pm_do_edit_files(file_paths):
+    if len(file_paths) == 0:
+        return
+    if pm_add_files(file_paths).is_ok:
+        text_edit.edit_files_extern(file_paths)
+
+def pm_do_export_named_patch(patch_name, suggestion=None, busy_indicator=None):
+    if busy_indicator is None:
+        busy_indicator = dialogue.main_window
+    if not suggestion:
+        suggestion = os.path.basename(utils.convert_patchname_to_filename(patch_name))
+    if not os.path.dirname(suggestion):
+        suggestion = os.path.join(recollect.get("export", "last_directory"), suggestion)
+    PROMPT = _("Export as ...")
+    export_filename = dialogue.ask_file_name(PROMPT, suggestion=suggestion, existing=False)
+    if export_filename is None:
+        return
+    force = False
+    overwrite = False
+    refresh_tried = False
+    while True:
+        busy_indicator.show_busy()
+        result = ifce.PM.do_export_patch_as(patch_name, export_filename, force=force, overwrite=overwrite)
+        busy_indicator.unshow_busy()
+        if refresh_tried:
+            result = result - result.SUGGEST_REFRESH
+        if result.suggests(result.SUGGEST_FORCE_OR_REFRESH):
+            resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
+            if resp == gtk.RESPONSE_CANCEL:
+                return
+            elif resp == dialogue.Response.FORCE:
+                force = True
+            elif resp == dialogue.Response.REFRESH:
+                refresh_tried = True
+                dialogue.show_busy()
+                result = ifce.PM.do_refresh_patch()
+                dialogue.unshow_busy()
+                dialogue.report_any_problems(result)
+            continue
+        elif result.suggests_rename:
+            resp = dialogue.ask_rename_overwrite_or_cancel(result, clarification=None)
+            if resp == gtk.RESPONSE_CANCEL:
+                return
+            elif resp == dialogue.Response.OVERWRITE:
+                overwrite = True
+            elif resp == dialogue.Response.RENAME:
+                export_filename = dialogue.ask_file_name(PROMPT, suggestion=export_filename, existing=False)
+                if export_filename is None:
+                    return
+            continue
+        dialogue.report_any_problems(result)
+        recollect.set("export", "last_directory", os.path.dirname(export_filename))
+        break
 
 def pm_do_fold_patch(patch_name):
     refresh_tried = False
@@ -365,53 +302,22 @@ def pm_do_import_patch():
             break
     dlg.destroy()
 
-def pm_do_export_named_patch(patch_name, suggestion=None, busy_indicator=None):
-    if busy_indicator is None:
-        busy_indicator = dialogue.main_window
-    if not suggestion:
-        suggestion = os.path.basename(utils.convert_patchname_to_filename(patch_name))
-    if not os.path.dirname(suggestion):
-        suggestion = os.path.join(recollect.get("export", "last_directory"), suggestion)
-    PROMPT = _("Export as ...")
-    export_filename = dialogue.ask_file_name(PROMPT, suggestion=suggestion, existing=False)
-    if export_filename is None:
+def pm_initialize_curdir():
+    req_backend = ifce.choose_backend()
+    if not req_backend:
         return
-    force = False
-    overwrite = False
-    refresh_tried = False
-    while True:
-        busy_indicator.show_busy()
-        result = ifce.PM.do_export_patch_as(patch_name, export_filename, force=force, overwrite=overwrite)
-        busy_indicator.unshow_busy()
-        if refresh_tried:
-            result = result - result.SUGGEST_REFRESH
-        if result.suggests(result.SUGGEST_FORCE_OR_REFRESH):
-            resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
-            if resp == gtk.RESPONSE_CANCEL:
-                return
-            elif resp == dialogue.Response.FORCE:
-                force = True
-            elif resp == dialogue.Response.REFRESH:
-                refresh_tried = True
-                dialogue.show_busy()
-                result = ifce.PM.do_refresh_patch()
-                dialogue.unshow_busy()
-                dialogue.report_any_problems(result)
-            continue
-        elif result.suggests_rename:
-            resp = dialogue.ask_rename_overwrite_or_cancel(result, clarification=None)
-            if resp == gtk.RESPONSE_CANCEL:
-                return
-            elif resp == dialogue.Response.OVERWRITE:
-                overwrite = True
-            elif resp == dialogue.Response.RENAME:
-                export_filename = dialogue.ask_file_name(PROMPT, suggestion=export_filename, existing=False)
-                if export_filename is None:
-                    return
-            continue
-        dialogue.report_any_problems(result)
-        recollect.set("export", "last_directory", os.path.dirname(export_filename))
-        break
+    result = ifce.init_current_dir(req_backend)
+    dialogue.report_any_problems(result)
+
+def pm_move_files(file_paths):
+    destn = dooph.ask_destination(file_paths)
+    if not destn:
+        return
+    do_op = lambda destn, force=False, overwrite=False : ifce.PM.do_move_files(file_paths, destn, force=force, overwrite=overwrite)
+    refresh_op = lambda : ifce.PM.do_refresh_overlapped_files(file_paths)
+    result = dooph.do_force_refresh_overwrite_or_rename(destn, do_op, refresh_op)
+    dialogue.report_any_problems(result)
+    return result
 
 def pm_do_new_patch():
     dlg = NewPatchDialog(parent=dialogue.main_window)
@@ -423,6 +329,106 @@ def pm_do_new_patch():
         if not result.suggests_rename:
             break
     dlg.destroy()
+
+def pm_do_pop():
+    refresh_tried = False
+    while True:
+        dialogue.show_busy()
+        result = ifce.PM.do_pop_top_patch()
+        dialogue.unshow_busy()
+        if not refresh_tried and result.suggests_refresh:
+            resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
+            if resp == gtk.RESPONSE_CANCEL:
+                return False
+            elif resp == dialogue.Response.REFRESH:
+                refresh_tried = True
+                dialogue.show_busy()
+                result = ifce.PM.do_refresh_patch()
+                dialogue.unshow_busy()
+                dialogue.report_any_problems(result)
+            continue
+        dialogue.report_any_problems(result)
+        break
+    return result.is_ok
+
+def pm_do_pop_all():
+    while ifce.PM.is_poppable:
+        if not pm_do_pop():
+            break
+
+def pm_do_pop_to(patch_name):
+    while ifce.PM.is_poppable and not ifce.PM.is_top_patch(patch_name):
+        if not pm_do_pop():
+            break
+
+def pm_do_push():
+    force = False
+    absorb = True
+    refresh_tried = False
+    while True:
+        dialogue.show_busy()
+        result = ifce.PM.do_push_next_patch(absorb=absorb, force=force)
+        dialogue.unshow_busy()
+        if refresh_tried:
+            result = result - result.SUGGEST_REFRESH
+        if not (absorb or force) and result.suggests(result.SUGGEST_FORCE_ABSORB_OR_REFRESH):
+            resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
+            if resp == gtk.RESPONSE_CANCEL:
+                return False
+            elif resp == dialogue.Response.FORCE:
+                force = True
+            elif resp == dialogue.Response.ABSORB:
+                absorb = True
+            elif resp == dialogue.Response.REFRESH:
+                refresh_tried = True
+                dialogue.show_busy()
+                file_list = ifce.PM.get_filepaths_in_next_patch()
+                result = ifce.PM.do_refresh_overlapped_files(file_list)
+                dialogue.unshow_busy()
+                dialogue.report_any_problems(result)
+            continue
+        dialogue.report_any_problems(result)
+        break
+    return result.is_ok
+
+def pm_do_push_all():
+    while ifce.PM.is_pushable:
+        if not pm_do_push():
+            break
+
+def pm_do_push_to(patch_name):
+    while ifce.PM.is_pushable and not ifce.PM.is_top_patch(patch_name):
+        if not pm_do_push():
+            break
+
+def pm_do_refresh_top_patch():
+    dialogue.show_busy()
+    result = ifce.PM.do_refresh_patch()
+    dialogue.unshow_busy()
+    dialogue.report_any_problems(result)
+
+def pm_do_refresh_named_patch(patch_name):
+    dialogue.show_busy()
+    result = ifce.PM.do_refresh_patch(patch_name)
+    dialogue.unshow_busy()
+    dialogue.report_any_problems(result)
+
+def pm_do_remove_patch(patch_name):
+    if dialogue.ask_ok_cancel(_("Confirm remove \"{0}\" patch?").format(patch_name)):
+        dialogue.show_busy()
+        result = ifce.PM.do_remove_patch(patch_name)
+        dialogue.unshow_busy()
+        dialogue.report_any_problems(result)
+
+def pm_rename_file(file_path):
+    destn = dooph.ask_destination([file_path])
+    if not destn:
+        return
+    do_op = lambda destn, force=False, overwrite=False : ifce.PM.do_rename_file_in_top_patch(file_path, destn, force=force, overwrite=overwrite)
+    refresh_op = lambda : ifce.PM.do_refresh_overlapped_files([file_path])
+    result = dooph.do_force_refresh_overwrite_or_rename(destn, do_op, refresh_op)
+    dialogue.report_any_problems(result)
+    return result
 
 def pm_do_rename_patch(patch_name):
     dialog = dialogue.ReadTextDialog(_("Rename Patch: {0}").format(patch_name), _("New Name:"), patch_name)
@@ -484,12 +490,6 @@ def pm_do_set_guards_on_patch(patch_name):
         else:
             dialog.destroy()
         break
-
-def pm_add_new_file_to_top_patch():
-    filepath = dialogue.ask_file_name(_("Enter path for new file"), existing=False)
-    if not filepath:
-        return
-    pm_add_files([filepath])
 
 def scm_do_absorb_applied_patches():
     dialogue.show_busy()
