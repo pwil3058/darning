@@ -935,6 +935,14 @@ def prepend_subdir(filepaths):
         filepaths[findex] = rel_basedir(filepaths[findex])
     return filepaths
 
+def iter_prepending_subdir(file_paths):
+    if _SUB_DIR is None:
+        for file_path in file_paths:
+            yield file_path
+    else:
+        for file_path in file_paths:
+            yield rel_basedir(file_path)
+
 def find_base_dir(dir_path=None, remember_sub_dir=False):
     '''Find the nearest directory above that contains a database'''
     global _SUB_DIR
@@ -1485,6 +1493,23 @@ def get_file_diff(filepath, patchname, with_timestamps=False):
         assert filepath in patch.files
         return patch.files[filepath].get_diff_plus(with_timestamps=with_timestamps)
 
+def get_diff_pluses_for_files(file_paths, patch_name=None, with_timestamps=False):
+    with open_db(mutable=False) as _DB:
+        patch = _get_named_or_top_patch(patch_name, _DB)
+        if patch is None:
+            return False
+        if file_paths:
+            file_list = [patch.files[file_path] for file_path in iter_prepending_subdir(file_paths) if file_path in patch.files]
+            if len(file_list) != len(file_paths):
+                for file_path in iter_prepending_subdir(file_paths):
+                    if file_path not in patch.files:
+                        is_ok = False
+                        RCTX.stderr.write('{0}: file is not in patch "{1}".\n'.format(rel_subdir(file_path), patch.name))
+                return False
+        else:
+            file_list = [patch.files[file_path] for file_path in sorted(patch.files)]
+        return [file_data.get_diff_plus(with_timestamps=with_timestamps) for file_data in file_list]
+
 def get_diff_for_files(filepaths, patchname, with_timestamps=False):
     with open_db(mutable=False) as _DB:
         patch = _get_named_or_top_patch(patchname, _DB)
@@ -1561,7 +1586,7 @@ def get_combined_diff_for_files(filepaths, with_timestamps=False):
     with open_db(mutable=False) as _DB:
         if _DB.combined_patch is False:
             # Still using old DB
-            return get_combined_diff_for_files_old(_DB, filepaths, with_timestamps=with_timestamps)
+            return _get_combined_diff_for_files_old(_DB, filepaths, with_timestamps=with_timestamps)
         elif _DB.combined_patch is None:
             for filepath in filepaths:
                 RCTX.stderr.write('{0}: file is not in any applied patch.\n'.format(filepath))
@@ -1587,6 +1612,27 @@ def get_combined_diff_for_files(filepaths, with_timestamps=False):
                 continue
             diff += str(file_data.get_diff_plus(with_timestamps=with_timestamps))
         return diff
+
+def get_combined_diff_pluses_for_files(file_paths, with_timestamps=False):
+    with open_db(mutable=False) as _DB:
+        if _DB.combined_patch is False:
+            # Still using old DB
+            return _get_combined_diff_diff_pluses(_DB, file_paths, with_timestamps=with_timestamps)
+        elif _DB.combined_patch is None:
+            for filepath in file_paths:
+                RCTX.stderr.write('{0}: file is not in any applied patch.\n'.format(filepath))
+            return False
+        if file_paths:
+            file_list = [_DB.combined_patch.files[file_path] for file_path in iter_prepending_subdir(file_paths) if file_path in _DB.combined_patch.files]
+            if len(file_list) != len(file_paths):
+                for file_path in iter_prepending_subdir(file_paths):
+                    if file_path not in patch.files:
+                        is_ok = False
+                        RCTX.stderr.write('{0}: file is not in any applied patch.\n'.format(rel_subdir(file_path)))
+                return False
+        else:
+            file_list = [_DB.combined_patch.files[file_path] for file_path in sorted(_DB.combined_patch.files)]
+        return [file_data.get_diff_plus(with_timestamps=with_timestamps) for file_data in file_list if not file_data.was_ephemeral()]
 
 def _do_apply_next_patch(_DB, absorb=False, force=False):
     '''Apply the next patch in the series'''
@@ -1807,6 +1853,12 @@ def is_patch_pushable(patchname):
     with open_db(mutable=False) as _DB:
         return _DB.patch_fm_name(patchname).is_pushable()
 
+def is_patch_applied(patch_name):
+    '''Is the named patch applied?'''
+    with open_db(mutable=False) as _DB:
+        print patch_name, _DB.patch_fm_name(patch_name)
+        return _DB.patch_fm_name(patch_name).is_applied()
+
 def _do_unapply_top_patch(_DB):
     '''Unapply the top applied patch'''
     top_patch = _get_top_patch(_DB)
@@ -1855,6 +1907,18 @@ def get_filepaths_in_patch(patchname, filepaths=None):
         patch_index = _DB.series_index_for_patchname(patchname) if patchname else _DB.series_index_for_top()
         assert patch_index is not None
         return _DB.series[patch_index].get_filepaths(filepaths)
+
+def get_filepaths_not_in_patch(patch_name, file_paths):
+    '''
+    Return the names of the files in file_paths not in the named patch.
+    '''
+    if not file_paths:
+        return []
+    with open_db(mutable=False) as _DB:
+        patch_index = _DB.series_index_for_patchname(patch_name) if patch_name else _DB.series_index_for_top()
+        assert patch_index is not None
+        file_paths_set = _DB.series[patch_index].get_filepaths_set()
+        return [file_path for file_path in file_paths if file_path not in file_paths_set]
 
 def get_filepaths_in_next_patch(filepaths=None):
     '''

@@ -200,6 +200,9 @@ class Interface(pm_ifce.InterfaceMixin):
     def get_author_name_and_email():
         return None # let ifce handle this
     @staticmethod
+    def get_combined_patch_diff_pluses(file_paths=None):
+        return patch_db.get_combined_diff_pluses_for_files(file_paths)
+    @staticmethod
     def get_combined_patch_file_db():
         return fsdb_darning.CombinedPatchFileDb()
     @staticmethod
@@ -214,8 +217,14 @@ class Interface(pm_ifce.InterfaceMixin):
     def get_file_diff(file_path, patch_name):
         return patch_db.get_file_diff(file_path, patch_name)
     @staticmethod
+    def get_filepaths_not_in_patch(patch_name, file_paths):
+        return patch_db.get_filepaths_not_in_patch(patch_name, file_paths)
+    @staticmethod
     def get_kept_patch_names():
         return patch_db.get_kept_patch_names()
+    @staticmethod
+    def get_named_patch_diff_pluses(patch_name, file_paths=None, with_timestamps=False):
+        return patch_db.get_diff_pluses_for_files(file_paths=file_paths, patch_name=patch_name, with_timestamps=with_timestamps)
     @staticmethod
     def get_outstanding_changes_below_top():
         return patch_db.get_outstanding_changes_below_top()
@@ -264,6 +273,12 @@ class Interface(pm_ifce.InterfaceMixin):
     @staticmethod
     def get_textpatch(patch_name):
         return patch_db.get_textpatch(patch_name)
+    @staticmethod
+    def get_top_patch_diff_pluses(file_paths=None, with_timestamps=False):
+        return patch_db.get_diff_pluses_for_files(file_paths=file_paths, patch_name=None, with_timestamps=with_timestamps)
+    @staticmethod
+    def get_top_patch_file_db():
+        return fsdb_darning.TopPatchFileDb()
     @staticmethod
     def get_top_patch_for_file(file_path):
         return patch_db.get_top_patch_for_file(file_path)

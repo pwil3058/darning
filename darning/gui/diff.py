@@ -324,7 +324,7 @@ class DiffPlusNotebook(gtk.Notebook):
     def __init__(self, diff_pluses=None, digest=None, num_strip_levels=1):
         gtk.Notebook.__init__(self)
         self.diff_pluses = [] if diff_pluses is None else diff_pluses
-        self.digest = self.calc_diff_pluses_digest(diff_pluses) if digest is None and diff_pluses else digest
+        self.digest = self.calc_diff_pluses_digest(diff_pluses) if (digest is None and diff_pluses) else digest
         self.num_strip_levels = num_strip_levels
         self.tws_display = self.TWSDisplay()
         self.tws_display.set_value(0)
@@ -404,6 +404,84 @@ class DiffPlusNotebook(gtk.Notebook):
     def __str__(self):
         return "".join((str(diff_plus) for diff_plus in self.diff_pluses))
 
+class DiffPlusesWidget(DiffPlusNotebook, FileAndRefreshActions):
+    A_NAME_LIST = ["diff_save", "diff_save_as", "diff_refresh"]
+    def __init__(self, num_strip_levels=1, **kwargs):
+        DiffPlusNotebook.__init__(self, diff_pluses=self._get_diff_pluses(), num_strip_levels=num_strip_levels)
+        FileAndRefreshActions.__init__(self)
+        self.diff_buttons = gutils.ActionButtonList([self._action_group], self.A_NAME_LIST)
+    def _get_diff_pluses(self):
+        assert False, _("_get_diff_pluses() must be defined in children")
+    def _refresh_acb(self, _action):
+        self.update()
+    def update(self):
+        diff_pluses = self._get_diff_pluses()
+        digest = self.calc_diff_pluses_digest(diff_pluses)
+        if digest != self.digest:
+            self.diff_pluses = diff_pluses
+            self.digest = digest
+            self._update_pages()
+    def _get_text_to_save(self):
+        return str(self)
+    def window_title(self):
+        return ""
+
+class TopPatchDiffPlusesWidget(DiffPlusesWidget):
+    def __init__(self, file_paths=None, num_strip_levels=1):
+        self._file_paths = file_paths
+        DiffPlusesWidget.__init__(self)
+    def _get_diff_pluses(self):
+        return ifce.PM.get_top_patch_diff_pluses(self._file_paths)
+    @property
+    def window_title(self):
+        return _("Top Patch: diff: {0}").format(utils.cwd_rel_home())
+
+class CombinedPatchDiffPlusesWidget(TopPatchDiffPlusesWidget):
+    def _get_diff_pluses(self):
+        return ifce.PM.get_combined_patch_diff_pluses(self._file_paths)
+    @property
+    def window_title(self):
+        return _("Combined Patches diff: {0}").format(utils.cwd_rel_home())
+
+class NamedPatchDiffPlusesWidget(DiffPlusesWidget):
+    A_NAME_LIST = ["diff_save", "diff_save_as"]
+    def __init__(self, patch_name=None, file_paths=None, num_strip_levels=1):
+        self._patch_name = patch_name
+        self._file_paths = file_paths
+        DiffPlusesWidget.__init__(self)
+    def _get_diff_pluses(self):
+        return ifce.PM.get_named_patch_diff_pluses(self._patch_name, self._file_paths)
+    @property
+    def window_title(self):
+        return _("Patch \"{0}\" diff: {1}").format(self._patch_name, utils.cwd_rel_home())
+
+class _DiffDialog(dialogue.AmodalDialog):
+    DIFFS_WIDGET = None
+    def __init__(self, parent=None, **kwargs):
+        flags = gtk.DIALOG_DESTROY_WITH_PARENT
+        dialogue.AmodalDialog.__init__(self, None, parent if parent else dialogue.main_window, flags, ())
+        dtw = self.DIFFS_WIDGET(**kwargs)
+        self.set_title(dtw.window_title)
+        self.vbox.pack_start(dtw)
+        tws_display = dtw.tws_display
+        self.action_area.pack_end(tws_display, expand=False, fill=False)
+        for button in dtw.diff_buttons.list:
+            self.action_area.pack_start(button)
+        self.add_buttons(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
+        self.connect("response", self._close_cb)
+        self.show_all()
+    def _close_cb(self, dialog, response_id):
+        dialog.destroy()
+
+class TopPatchDiffPlusesDialog(_DiffDialog):
+    DIFFS_WIDGET = TopPatchDiffPlusesWidget
+
+class CombinedPatchDiffPlusesDialog(_DiffDialog):
+    DIFFS_WIDGET = CombinedPatchDiffPlusesWidget
+
+class NamedPatchDiffPlusesDialog(_DiffDialog):
+    DIFFS_WIDGET = NamedPatchDiffPlusesWidget
+
 class DiffTextWidget(DiffPlusNotebook, FileAndRefreshActions):
     A_NAME_LIST = ["diff_save", "diff_save_as", "diff_refresh"]
     def __init__(self, num_strip_levels=1, **kwargs):
@@ -429,25 +507,7 @@ class DiffTextWidget(DiffPlusNotebook, FileAndRefreshActions):
     def window_title(self):
         return ""
 
-class _DiffTextDialog(dialogue.AmodalDialog):
-    DIFF_TEXT_WIDGET = None
-    def __init__(self, parent=None, **kwargs):
-        flags = gtk.DIALOG_DESTROY_WITH_PARENT
-        dialogue.AmodalDialog.__init__(self, None, parent if parent else dialogue.main_window, flags, ())
-        dtw = self.DIFF_TEXT_WIDGET(**kwargs)
-        self.set_title(dtw.window_title)
-        self.vbox.pack_start(dtw)
-        tws_display = dtw.tws_display
-        self.action_area.pack_end(tws_display, expand=False, fill=False)
-        for button in dtw.diff_buttons.list:
-            self.action_area.pack_start(button)
-        self.add_buttons(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE)
-        self.connect("response", self._close_cb)
-        self.show_all()
-    def _close_cb(self, dialog, response_id):
-        dialog.destroy()
-
-class TopPatchDiffWidget(DiffTextWidget):
+class TopPatchDiffTextWidget(DiffTextWidget):
     def __init__(self, file_paths=None, num_strip_levels=1):
         self._file_paths = file_paths
         DiffTextWidget.__init__(self)
@@ -457,10 +517,10 @@ class TopPatchDiffWidget(DiffTextWidget):
     def window_title(self):
         return _("Top Patch: diff: {0}").format(utils.cwd_rel_home())
 
-class TopPatchDiffDialog(_DiffTextDialog):
-    DIFF_TEXT_WIDGET = TopPatchDiffWidget
+class TopPatchDiffTextDialog(_DiffDialog):
+    DIFFS_WIDGET = TopPatchDiffTextWidget
 
-class CombinedPatchDiffWidget(DiffTextWidget):
+class CombinedPatchDiffTextWidget(DiffTextWidget):
     def __init__(self, file_paths=None, num_strip_levels=1):
         self._file_paths = file_paths
         DiffTextWidget.__init__(self)
@@ -470,10 +530,10 @@ class CombinedPatchDiffWidget(DiffTextWidget):
     def window_title(self):
         return _("Combined Patches diff: {0}").format(utils.cwd_rel_home())
 
-class CombinedPatchDiffDialog(_DiffTextDialog):
-    DIFF_TEXT_WIDGET = CombinedPatchDiffWidget
+class CombinedPatchDiffTextDialog(_DiffDialog):
+    DIFFS_WIDGET = CombinedPatchDiffTextWidget
 
-class NamedPatchDiffWidget(DiffTextWidget):
+class NamedPatchDiffTextWidget(DiffTextWidget):
     A_NAME_LIST = ["diff_save", "diff_save_as"]
     def __init__(self, patch_name=None, file_paths=None, num_strip_levels=1):
         self._patch_name = patch_name
@@ -485,8 +545,8 @@ class NamedPatchDiffWidget(DiffTextWidget):
     def window_title(self):
         return _("Patch \"{0}\" diff: {1}").format(self._patch_name, utils.cwd_rel_home())
 
-class NamedPatchDiffDialog(_DiffTextDialog):
-    DIFF_TEXT_WIDGET = NamedPatchDiffWidget
+class NamedPatchDiffTextDialog(_DiffDialog):
+    DIFFS_WIDGET = NamedPatchDiffTextWidget
 
 def launch_external_diff(file_a, file_b):
     extdiff = options.get("diff", "extdiff")
@@ -618,17 +678,25 @@ from . import ws_actions
 
 actions.CLASS_INDEP_AGS[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC].add_actions(
     [
-        ("pm_top_patch_diff", icons.STOCK_DIFF, _("_Diff"), None,
+        ("pm_top_patch_diff_text", icons.STOCK_DIFF, _("_Diff"), None,
          _("Display the diff for all files in the top patch"),
-         lambda _action=None: TopPatchDiffDialog(parent=dialogue.main_window).show()
+         lambda _action=None: TopPatchDiffTextDialog(parent=dialogue.main_window).show()
+        ),
+        ("pm_top_patch_diff_pluses", icons.STOCK_DIFF, _("_Diff"), None,
+         _("Display the diff for all files in the top patch"),
+         lambda _action=None: TopPatchDiffPlusesDialog(parent=dialogue.main_window).show()
         ),
         ("pm_top_patch_extdiff", icons.STOCK_DIFF, _('E_xtdiff'), None,
          _('Launch extdiff for all files in patch'),
          lambda _action=None: ifce.PM.launch_extdiff_for_top_patch()
         ),
-        ("pm_combined_patch_diff", icons.STOCK_DIFF, _("Combined Diff"), "",
+        ("pm_combined_patch_diff_text", icons.STOCK_DIFF, _("Combined Diff"), "",
          _("View the combined diff for all files in all currently applied patches"),
-         lambda _action=None: CombinedPatchDiffDialog(parent=dialogue.main_window).show()
+         lambda _action=None: CombinedPatchDiffTextDialog(parent=dialogue.main_window).show()
+        ),
+        ("pm_combined_patch_diff_pluses", icons.STOCK_DIFF, _("Combined Diff"), "",
+         _("View the combined diff for all files in all currently applied patches"),
+         lambda _action=None: CombinedPatchDiffPlusesDialog(parent=dialogue.main_window).show()
         ),
     ]
 )
