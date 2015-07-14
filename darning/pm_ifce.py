@@ -184,6 +184,18 @@ class _NULL_BACKEND(object):
     def get_selected_guards():
         return []
     @staticmethod
+    def get_status_deco(status):
+        from . import fsdb
+        return fsdb.STATUS_DECO_MAP[status]
+    @staticmethod
+    def get_status_icon(status, is_dir):
+        import gtk
+        from .gui import icons
+        if is_dir:
+            return gtk.STOCK_DIRECTORY
+        else:
+            return gtk.STOCK_FILE
+    @staticmethod
     def get_top_patch():
         return None
     @staticmethod

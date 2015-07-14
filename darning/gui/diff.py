@@ -555,17 +555,7 @@ def launch_external_diff(file_a, file_b):
     try:
         runext.run_cmd_in_bgnd([extdiff, file_a, file_b])
     except OSError as edata:
-        return CmdResult.error(stderr=_("Error lanuching external viewer \"{0}\": {1}\n").format(extdiff, edata.strerror))
-    return CmdResult.ok()
-
-def launch_reconciliation_tool(file_a, file_b, file_c):
-    reconciler = options.get("reconcile", "tool")
-    if not reconciler:
-        return CmdResult.warning(_("No reconciliation tool is defined.\n"))
-    try:
-        runext.run_cmd_in_bgnd([reconciler, file_a, file_b, file_c])
-    except OSError as edata:
-        return CmdResult.error(stderr=_("Error lanuching reconciliation tool \"{0}\": {1}\n").format(reconciler, edata.strerror))
+        return CmdResult.error(stderr=_("Error launching external viewer \"{0}\": {1}\n").format(extdiff, edata.strerror))
     return CmdResult.ok()
 
 class WdDiffTextWidget(DiffTextWidget, FileAndRefreshActions):

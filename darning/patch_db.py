@@ -1856,7 +1856,6 @@ def is_patch_pushable(patchname):
 def is_patch_applied(patch_name):
     '''Is the named patch applied?'''
     with open_db(mutable=False) as _DB:
-        print patch_name, _DB.patch_fm_name(patch_name)
         return _DB.patch_fm_name(patch_name).is_applied()
 
 def _do_unapply_top_patch(_DB):

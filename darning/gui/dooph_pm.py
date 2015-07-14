@@ -56,58 +56,79 @@ def _update_class_indep_absorbable_cb(**kwargs):
 
 ws_event.add_notification_cb(ifce.E_CHANGE_WD|scm_ifce.E_FILE_CHANGES|pm_ifce.E_FILE_CHANGES|pm_ifce.E_PATCH_LIST_CHANGES, _update_class_indep_absorbable_cb)
 
-def pm_add_files(file_paths):
+def pm_do_add_files(file_paths):
     do_op = lambda absorb=False, force=False : ifce.PM.do_add_files_to_top_patch(file_paths, absorb=absorb, force=force)
     refresh_op = lambda : ifce.PM.do_refresh_overlapped_files(file_paths)
-    result = dooph.do_force_refresh_or_absorb(do_op, refresh_op)
+    return dooph.do_force_refresh_or_absorb(do_op, refresh_op)
+
+def pm_do_add_new_file(open_for_edit=False):
+    from .. import os_utils
+    new_file_path = dialogue.ask_file_name(_("Enter path for new file"), existing=False)
+    if not new_file_path:
+        return
+    dialogue.show_busy()
+    result = os_utils.os_create_file(new_file_path)
+    dialogue.unshow_busy()
     dialogue.report_any_problems(result)
+    if not result.is_ok:
+        return result
+    result = pm_do_add_files([new_file_path])
+    if result.is_ok and open_for_edit:
+        from . import text_edit
+        text_edit.edit_files_extern([new_file_path])
     return result
 
-def pm_add_new_file_to_top_patch():
-    filepath = dialogue.ask_file_name(_("Enter path for new file"), existing=False)
-    if not filepath:
-        return
-    pm_add_files([filepath])
-
-def pm_copy_file(file_path):
+def pm_do_copy_file(file_path):
     destn = dooph.ask_destination([file_path])
     if not destn:
         return
     do_op = lambda destn, overwrite=False : ifce.PM.do_copy_file_to_top_patch(file_path, destn, overwrite=overwrite)
-    result = dooph.do_overwrite_or_rename(destn, do_op)
-    dialogue.report_any_problems(result)
-    return result
+    return dooph.do_overwrite_or_rename(destn, do_op)
 
-def pm_copy_files(file_paths):
+def pm_do_copy_files(file_paths):
     destn = dooph.ask_destination(file_paths)
     if not destn:
         return
     do_op = lambda destn, overwrite=False : ifce.PM.do_copy_files(file_paths, destn, overwrite=overwrite)
-    result = dooph.do_overwrite_or_rename(destn, do_op)
-    dialogue.report_any_problems(result)
-    return result
+    return dooph.do_overwrite_or_rename(destn, do_op)
 
 def pm_do_create_new_pgnd():
     req_backend = ifce.choose_backend()
     if not req_backend:
-        return
+        return CmdResult.ok()
     new_pgnd_path = dialogue.ask_dir_name(_("Select/create playground .."))
     if new_pgnd_path is not None:
         result = ifce.create_new_playground(new_pgnd_path, req_backend)
         dialogue.report_any_problems(result)
         if not result.is_ok:
-            return
+            return result
         result = ifce.chdir(new_pgnd_path)
         dialogue.report_any_problems(result)
+        return result
+    return CmdResult.ok()
 
-def pm_delete_files(file_paths):
+def pm_do_delete_files(file_paths):
     if len(file_paths) == 0:
+        return
+    emsg = '\n'.join(file_paths + ["", _('Confirm delete selected file(s) in top patch?')])
+    if not dialogue.ask_ok_cancel(emsg):
         return
     dialogue.show_busy()
     result = ifce.PM.do_delete_files_in_top_patch(file_paths)
     dialogue.unshow_busy()
     dialogue.report_any_problems(result)
     return result
+
+def pm_do_drop_files(file_paths):
+    if len(file_paths) == 0:
+        return
+    emsg = '\n'.join(file_paths + ["", _('Confirm drop selected file(s) from patch?')])
+    if not dialogue.ask_ok_cancel(emsg):
+        return
+    dialogue.show_busy()
+    result = ifce.PM.do_drop_files_from_patch(file_paths, patch_name=None)
+    dialogue.unshow_busy()
+    dialogue.report_any_problems(result)
 
 def pm_do_duplicate_patch(patch_name):
     description = ifce.PM.get_patch_description(patch_name)
@@ -141,7 +162,7 @@ def pm_do_duplicate_patch(patch_name):
 def pm_do_edit_files(file_paths):
     if len(file_paths) == 0:
         return
-    if pm_add_files(file_paths).is_ok:
+    if pm_do_add_files(ifce.PM.get_filepaths_not_in_patch(None, file_paths)).is_ok:
         text_edit.edit_files_extern(file_paths)
 
 def pm_do_export_named_patch(patch_name, suggestion=None, busy_indicator=None):
@@ -172,9 +193,9 @@ def pm_do_export_named_patch(patch_name, suggestion=None, busy_indicator=None):
                 force = True
             elif resp == dialogue.Response.REFRESH:
                 refresh_tried = True
-                dialogue.show_busy()
+                busy_indicator.show_busy()
                 result = ifce.PM.do_refresh_patch()
-                dialogue.unshow_busy()
+                busy_indicator.unshow_busy()
                 dialogue.report_any_problems(result)
             continue
         elif result.suggests_rename:
@@ -191,6 +212,10 @@ def pm_do_export_named_patch(patch_name, suggestion=None, busy_indicator=None):
         dialogue.report_any_problems(result)
         recollect.set("export", "last_directory", os.path.dirname(export_filename))
         break
+
+def pm_do_extdiff_for_file(file_path, patch_name=None):
+    files = ifce.PM.get_extdiff_files_for(file_path=file_path, patch_name=patch_name)
+    dialogue.report_any_problems(diff.launch_external_diff(files.original_version, files.patched_version))
 
 def pm_do_fold_patch(patch_name):
     refresh_tried = False
@@ -215,23 +240,37 @@ def pm_do_fold_patch(patch_name):
                 dialogue.show_busy()
                 patch_file_list = ifce.PM.get_filepaths_in_named_patch(patch_name)
                 top_patch_file_list = ifce.PM.get_filepaths_in_top_patch(patch_file_list)
-                file_list = [filepath for filepath in patch_file_list if filepath not in top_patch_file_list]
-                result = ifce.PM.do_refresh_overlapped_files(file_list)
+                file_paths = [file_path for file_path in patch_file_list if file_path not in top_patch_file_list]
+                result = ifce.PM.do_refresh_overlapped_files(file_paths)
                 dialogue.unshow_busy()
                 dialogue.report_any_problems(result)
             continue
         dialogue.report_any_problems(result)
         break
 
+def pm_do_fold_to_patch(patch_name):
+    while True:
+        next_patch = ifce.PM.get_next_patch()
+        if not next_patch:
+            return
+        dialogue.show_busy()
+        result = ifce.PM.do_fold_named_patch(next_patch)
+        dialogue.unshow_busy()
+        if not result.is_ok:
+            dialogue.report_any_problems(result)
+            return
+        if patch_name == next_patch:
+            return
+
 def pm_do_fold_external_patch():
     from .. import patchlib
-    patch_file = dialogue.ask_file_name(_("Select patch file to be folded"))
-    if patch_file is None:
+    patch_file_path = dialogue.ask_file_name(_("Select patch file to be folded"))
+    if patch_file_path is None:
         return
     try:
-        epatch = patchlib.Patch.parse_text_file(patch_file)
+        epatch = patchlib.Patch.parse_text_file(patch_file_path)
     except patchlib.ParseError as edata:
-        result = CmdResult.error(stderr="{0}: {1}: {2}\n".format(patch_file, edata.lineno, edata.message))
+        result = CmdResult.error(stderr="{0}: {1}: {2}\n".format(patch_file_path, edata.lineno, edata.message))
         dialogue.report_any_problems(result)
         return
     force = False
@@ -258,8 +297,8 @@ def pm_do_fold_external_patch():
                 refresh_tried = True
                 dialogue.show_busy()
                 top_patch_file_list = ifce.PM.get_filepaths_in_top_patch()
-                file_list = [filepath for filepath in epatch.get_file_paths(epatch.num_strip_levels) if filepath not in top_patch_file_list]
-                result = ifce.PM.do_refresh_overlapped_files(file_list)
+                file_paths = [file_path for file_path in epatch.get_file_paths(epatch.num_strip_levels) if file_path not in top_patch_file_list]
+                result = ifce.PM.do_refresh_overlapped_files(file_paths)
                 dialogue.unshow_busy()
                 dialogue.report_any_problems(result)
             continue
@@ -267,15 +306,17 @@ def pm_do_fold_external_patch():
         break
     dlg.destroy()
 
-def pm_do_import_patch():
+def pm_do_import_external_patch():
+    from . import recollect
+    suggestion = recollect.get("import", "last_directory")
     from .. import patchlib
-    patch_file = dialogue.ask_file_name(_("Select patch file to be imported"))
-    if patch_file is None:
+    patch_file_path = dialogue.ask_file_name(_("Select patch file to be imported"))
+    if patch_file_path is None:
         return
     try:
-        epatch = patchlib.Patch.parse_text_file(patch_file)
+        epatch = patchlib.Patch.parse_text_file(patch_file_path)
     except patchlib.ParseError as edata:
-        result = CmdResult.error(stderr="{0}: {1}: {2}\n".format(patch_file, edata.lineno, edata.message))
+        result = CmdResult.error(stderr="{0}: {1}: {2}\n".format(patch_file_path, edata.lineno, edata.message))
         dialogue.report_any_problems(result)
         return
     overwrite = False
@@ -302,14 +343,14 @@ def pm_do_import_patch():
             break
     dlg.destroy()
 
-def pm_initialize_curdir():
+def pm_do_initialize_curdir():
     req_backend = ifce.choose_backend()
     if not req_backend:
         return
     result = ifce.init_current_dir(req_backend)
     dialogue.report_any_problems(result)
 
-def pm_move_files(file_paths):
+def pm_do_move_files(file_paths):
     destn = dooph.ask_destination(file_paths)
     if not destn:
         return
@@ -382,8 +423,8 @@ def pm_do_push():
             elif resp == dialogue.Response.REFRESH:
                 refresh_tried = True
                 dialogue.show_busy()
-                file_list = ifce.PM.get_filepaths_in_next_patch()
-                result = ifce.PM.do_refresh_overlapped_files(file_list)
+                file_paths = ifce.PM.get_filepaths_in_next_patch()
+                result = ifce.PM.do_refresh_overlapped_files(file_paths)
                 dialogue.unshow_busy()
                 dialogue.report_any_problems(result)
             continue
@@ -400,6 +441,21 @@ def pm_do_push_to(patch_name):
     while ifce.PM.is_pushable and not ifce.PM.is_top_patch(patch_name):
         if not pm_do_push():
             break
+
+def _launch_reconciliation_tool(file_a, file_b, file_c):
+    from .. import options
+    reconciler = options.get("reconcile", "tool")
+    if not reconciler:
+        return CmdResult.warning(_("No reconciliation tool is defined.\n"))
+    try:
+        runext.run_cmd_in_bgnd([reconciler, file_a, file_b, file_c])
+    except OSError as edata:
+        return CmdResult.error(stderr=_("Error lanuching reconciliation tool \"{0}\": {1}\n").format(reconciler, edata.strerror))
+    return CmdResult.ok()
+
+def pm_do_reconcile_file(file_path):
+    file_paths = ifce.PM.get_reconciliation_paths(file_path=file_path)
+    dialogue.report_any_problems(_launch_reconciliation_tool(file_paths.original_version, file_paths.patched_version, file_paths.stashed_version))
 
 def pm_do_refresh_top_patch():
     dialogue.show_busy()
@@ -420,7 +476,7 @@ def pm_do_remove_patch(patch_name):
         dialogue.unshow_busy()
         dialogue.report_any_problems(result)
 
-def pm_rename_file(file_path):
+def pm_do_rename_file(file_path):
     destn = dooph.ask_destination([file_path])
     if not destn:
         return
@@ -511,7 +567,7 @@ actions.CLASS_INDEP_AGS[ws_actions.AC_NOT_IN_PM_PGND].add_actions(
     [
         ("pm_init_cwd", icons.STOCK_INIT, _("_Initialize"), "",
          _("Create a patch series in the current directory"),
-         lambda _action=None: pm_initialize_curdir()
+         lambda _action=None: pm_do_initialize_curdir()
         ),
     ]
 )
@@ -520,7 +576,7 @@ actions.CLASS_INDEP_AGS[ws_actions.AC_PMIC | ws_actions.AC_IN_PM_PGND].add_actio
     [
         ("pm_add_new_file", gtk.STOCK_NEW, _("New"), None,
          _("Add a new file to the top applied patch"),
-         lambda _action=None: pm_add_new_file_to_top_patch()
+         lambda _action=None: pm_do_add_new_file()
         ),
         ("pm_refresh_top_patch", icons.STOCK_REFRESH_PATCH, None, None,
          _("Refresh the top patch"),
@@ -571,7 +627,7 @@ actions.CLASS_INDEP_AGS[ws_actions.AC_IN_PM_PGND].add_actions(
         ),
         ("pm_import_patch", icons.STOCK_IMPORT_PATCH, None, None,
          _("Import an external patch behind the top applied patch"),
-         lambda _action=None: pm_do_import_patch()
+         lambda _action=None: pm_do_import_external_patch()
         ),
         ("pm_select_guards", icons.STOCK_PATCH_GUARD_SELECT, None, None,
          _("Select which guards are in force"),

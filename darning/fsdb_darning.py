@@ -15,6 +15,8 @@
 
 import pango
 
+from itertools import ifilter
+
 from . import fsdb
 from . import patch_db
 
@@ -25,41 +27,58 @@ STATUS_DECO_MAP = {
     patch_db.FileData.Presence.EXTANT: fsdb.Deco(pango.STYLE_NORMAL, "black"),
 }
 
-class PatchFileDb(fsdb.GenericChangeFileDb):
-    class FileDir(fsdb.GenericChangeFileDb.FileDir):
-        def _calculate_status(self):
-            if not self._status_set:
-                validity = patch_db.FileData.Validity.REFRESHED
-            else:
-                validity = max([s.validity for s in list(self._status_set)])
-            return patch_db.FileData.Status(None, validity)
-        def dirs_and_files(self, hide_clean=False, **kwargs):
-            if hide_clean:
-                dirs = ifilter((lambda x: x.status.validity), self._subdirs_data)
-                files = ifilter((lambda x: x.status.validity), self._files_data)
-            else:
-                dirs = iter(self._subdirs_data)
-                files = iter(self._files_data)
-            return (dirs, files)
-    def __init__(self, patch_name=None):
-        self._patch_name = patch_name
-        fsdb.GenericChangeFileDb.__init__(self)
+class _PatchFileDir(fsdb.GenericChangeFileDb.FileDir):
+    def _calculate_status(self):
+        if not self._status_set:
+            validity = patch_db.FileData.Validity.REFRESHED
+        else:
+            validity = max([s.validity for s in list(self._status_set)])
+        return patch_db.FileData.Status(None, validity)
+    def dirs_and_files(self, hide_clean=False, **kwargs):
+        if hide_clean:
+            dirs = ifilter((lambda x: x.status.validity), self._subdirs_data)
+            files = ifilter((lambda x: x.status.validity), self._files_data)
+        else:
+            dirs = iter(self._subdirs_data)
+            files = iter(self._files_data)
+        return (dirs, files)
+
+class TopPatchFileDb(fsdb.GenericTopPatchFileDb):
+    FileDir = _PatchFileDir
+    @staticmethod
+    def _get_applied_patch_count():
+        return patch_db.get_applied_patch_count()
+    @staticmethod
+    def _get_patch_data_text(h):
+        patch_status_text = patch_db.get_patch_file_table()
+        h.update(str(patch_status_text))
+        return patch_status_text
+    @staticmethod
+    def _iterate_file_data(pdt):
+        for item in pdt:
+            yield item
+
+class CombinedPatchFileDb(TopPatchFileDb):
+    def _get_patch_data_text(self, h):
+        patch_status_text = patch_db.get_combined_patch_file_table()
+        h.update(str(patch_status_text))
+        return patch_status_text
+
+class PatchFileDb(fsdb.GenericPatchFileDb):
+    FileDir = _PatchFileDir
     @property
     def is_current(self):
         import hashlib
         h = hashlib.sha1()
         self._get_patch_data_text(h)
         return h.digest() == self._db_hash_digest
+    @staticmethod
+    def _get_is_applied(patch_name):
+        return patch_db.is_patch_applied(patch_name)
     def _get_patch_data_text(self, h):
-        patch_status_text = patch_db.get_patch_file_table(self._patch_name)
+        patch_status_text = patch_db.get_patch_file_table(self.patch_name)
         h.update(str(patch_status_text))
         return patch_status_text
     def _iterate_file_data(self, pdt):
         for item in pdt:
             yield item
-
-class CombinedPatchFileDb(PatchFileDb):
-    def _get_patch_data_text(self, h):
-        patch_status_text = patch_db.get_combined_patch_file_table()
-        h.update(str(patch_status_text))
-        return patch_status_text

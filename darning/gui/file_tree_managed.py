@@ -97,7 +97,7 @@ class WSTreeView(file_tree.FileTreeView):
             [
                 ('pm_add_files_to_top_patch', gtk.STOCK_ADD, _('_Add'), None,
                  _('Add the selected files to the top patch'),
-                 lambda _action=None: dooph_pm.pm_add_files(self.get_selected_filepaths())
+                 lambda _action=None: dooph_pm.pm_do_add_files(self.get_selected_filepaths())
                 ),
                 ('pm_edit_files_in_top_patch', gtk.STOCK_EDIT, _('_Edit'), None,
                  _('Open the selected files for editing after adding them to the top patch'),
@@ -105,18 +105,18 @@ class WSTreeView(file_tree.FileTreeView):
                 ),
                 ('pm_delete_files_in_top_patch', gtk.STOCK_DELETE, _('_Delete'), None,
                  _('Add the selected files to the top patch and then delete them'),
-                 lambda _action=None: dooph_pm.pm_delete_files(self.get_selected_filepaths())
+                 lambda _action=None: dooph_pm.pm_do_delete_files(self.get_selected_filepaths())
                 ),
             ])
         self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
             [
                 ('pm_copy_file_to_top_patch', gtk.STOCK_COPY, _('_Copy'), None,
                  _('Add a copy of the selected file to the top patch'),
-                 lambda _action=None: dooph_pm.pm_copy_file(self.get_selected_filepath())
+                 lambda _action=None: dooph_pm.pm_do_copy_file(self.get_selected_filepath())
                 ),
                 ('pm_rename_file_in_top_patch', icons.STOCK_RENAME, _('_Rename'), None,
                  _('Rename the selected file within the top patch'),
-                 lambda _action=None: dooph_pm.pm_rename_file(self.get_selected_filepath())
+                 lambda _action=None: dooph_pm.pm_do_rename_file(self.get_selected_filepath())
                 ),
             ])
         self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC].add_actions(

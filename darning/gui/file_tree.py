@@ -204,20 +204,22 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
     def search_equal_func(model, column, key, model_iter, _data=None):
         text = model.fs_path(model_iter)
         return text.find(key) == -1
-    _FILE_ICON = {True : gtk.STOCK_DIRECTORY, False : gtk.STOCK_FILE}
-    @classmethod
-    def _get_status_deco(cls, status=None):
+    @staticmethod
+    def _get_status_deco(status=None):
         try:
             return fsdb.STATUS_DECO_MAP[status]
         except KeyError:
             return fsdb.STATUS_DECO_MAP[None]
+    @staticmethod
+    def _get_status_icon(status, is_dir):
+        return gtk.STOCK_DIRECTORY if is_dir else gtk.STOCK_FILE
     @classmethod
     def _generate_row_tuple(cls, data, isdir):
         deco = cls._get_status_deco(data.status)
         row = cls.Model.Row(
             name=data.name,
             is_dir=isdir,
-            icon=cls._FILE_ICON[isdir],
+            icon=cls._get_status_icon(data.status, isdir),
             status=data.status,
             related_file_data=data.related_file_data,
             style=deco.style,

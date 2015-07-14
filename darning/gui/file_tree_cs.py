@@ -31,212 +31,212 @@ from . import diff
 from . import file_tree
 from . import dooph_pm
 
-# TODO: fix file_tree_cs
-
 class PatchFileTreeView(file_tree.FileTreeView):
     REPOPULATE_EVENTS = pm_ifce.E_POP|pm_ifce.E_PUSH|pm_ifce.E_PATCH_STACK_CHANGES
     UPDATE_EVENTS = pm_ifce.E_PATCH_REFRESH|pm_ifce.E_FILE_CHANGES
     AUTO_EXPAND = True
-    @staticmethod
-    def _generate_row_tuple(data, isdir):
-        deco = ifce.PM.get_status_deco(data.status)
-        row = PatchFileTreeView.Model.Row(
-            name=data.name,
-            is_dir=isdir,
-            icon=ifce.PM.get_status_icon(data.status, isdir),
-            status='',
-            related_file_data=data.related_file_data,
-            style=deco.style,
-            foreground=deco.foreground
-        )
-        return row
-    def __init__(self, patch=None, **kwargs):
-        self._patch = patch
+    UI_DESCR = \
+    '''
+    <ui>
+      <menubar name="files_menubar">
+      </menubar>
+      <popup name="files_popup">
+        <separator/>
+          <menuitem action="pm_patch_diff_selected_files"/>
+          <menuitem action="pm_patch_extdiff_selected_file"/>
+        <separator/>
+          <menuitem action="pm_patch_diff"/>
+        <separator/>
+      </popup>
+    </ui>
+    '''
+    def __init__(self, busy_indicator=None, patch_name=None):
+        self._patch_name = patch_name
         file_tree.FileTreeView.__init__(self, show_hidden=True, hide_clean=False)
+    @staticmethod
+    def _get_status_deco(status=None):
+        return ifce.PM.get_status_deco(status)
+    @staticmethod
+    def _get_status_icon(status, is_dir):
+        return ifce.PM.get_status_icon(status, is_dir)
     @property
-    def patch(self):
-        return self._patch
-    @patch.setter
-    def patch(self, new_patch):
-        self._patch = new_patch
+    def patch_name(self):
+        return self._patch_name
+    @patch_name.setter
+    def patch_name(self, new_patch_name):
+        self._patch_name = new_patch_name
         self.repopulate()
     def _get_file_db(self):
-        return ifce.PM.get_patch_file_db(self._patch)
+        return ifce.PM.get_patch_file_db(self._patch_name)
     def populate_action_groups(self):
         file_tree.FileTreeView.populate_action_groups(self)
         self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
             [
-                ('patch_edit_files', gtk.STOCK_EDIT, _('_Edit'), None,
-                 _('Edit the selected file(s)'),
-                 lambda _action=None: self.pm_edit_selected_files()
+                ('pm_patch_diff_selected_files', icons.STOCK_DIFF, _('_Diff'), None,
+                 _('Display the diff for selected files'),
+                 lambda _action=None: diff.NamedPatchDiffPlusesDialog(patch_name=self._patch_name, file_paths=self.get_selected_filepaths()).show()
                 ),
             ])
         self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
             [
-                ('patch_diff_selected_file', icons.STOCK_DIFF, _('_Diff'), None,
-                 _('Display the diff for selected file'),
-                 lambda _action=None: self.pm_diff_selected_file()
-                ),
-            ])
-        self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
-            [
-                ('patch_extdiff_selected_file', icons.STOCK_DIFF, _('E_xtDiff'), None,
+                ('pm_patch_extdiff_selected_file', icons.STOCK_DIFF, _('E_xtDiff'), None,
                  _('Launch external diff viewer for selected file'),
-                 lambda _action=None: self.pm_extdiff_selected_file()
-                ),
-                ('patch_copy_file', gtk.STOCK_COPY, _('_Copy'), None,
-                 _('Add a copy of the selected file to the top patch'),
-                 lambda _action=None: self.pm_copy_selected_file()
-                ),
-                ('patch_rename_file', icons.STOCK_RENAME, _('_Rename'), None,
-                 _('Rename the selected file within the top patch'),
-                 lambda _action=None: self.pm_rename_selected_file()
+                 lambda _action=None: dooph_pm.pm_do_extdiff_for_file(self.get_selected_filepath(), patch_name=self._patch_name)
                 ),
             ])
-    def pm_delete_selected_files(self):
-        return dooph_pm.pm_delete_files(self.get_selected_filepaths())
-    def pm_copy_selected_file(self):
-        file_paths = self.get_selected_filepaths()
-        assert len(file_paths) == 1
-        return dooph_pm.pm_copy_file(file_paths[0])
-    def pm_rename_selected_file(self):
-        file_paths = self.get_selected_filepaths()
-        assert len(file_paths) == 1
-        return dooph_pm.pm_rename_file(file_paths[0])
-    def pm_edit_selected_files(self):
-        file_paths = self.get_selected_filepaths()
-        if len(file_paths) == 0:
-            return
-        text_edit.edit_files_extern(file_paths)
-    def pm_diff_selected_file(self):
-        filepaths = self.get_selected_filepaths()
-        assert len(filepaths) == 1
-        dialog = diff.ForFileDialog(filepath=filepaths[0], patchname=self.patch)
-        dialog.show()
-    def pm_extdiff_selected_file(self):
-        filepaths = self.get_selected_filepaths()
-        assert len(filepaths) == 1
-        files = ifce.PM.get_extdiff_files_for(file_path=filepaths[0], patch_name=self.patch)
-        dialogue.report_any_problems(diff.launch_external_diff(files.original_version, files.patched_version))
+        self.action_groups[ws_actions.AC_IN_PM_PGND].add_actions(
+            [
+                ("menu_files", None, _('_Files')),
+            ])
+    def auto_update(self, _events_so_far, _args):
+        if not self._file_db.is_current:
+            self.update(fsdb_reset_only=[self])
+        # NB Don't trigger any events as nobody else cares
+        return 0
 
-class PatchFileTreeWidget(file_tree.FileTreeWidget):
-    MENUBAR = None
-    BUTTON_BAR_ACTIONS = ["hide_clean_files"]
-    TREE_VIEW = PatchFileTreeView
-    SIZE = (240, 320)
-    def __init__(self, patch=None, **kwargs):
-        file_tree.FileTreeWidget.__init__(self, patch=patch, **kwargs)
+class PatchFilesDialog(dialogue.AmodalDialog, ws_event.Listener):
+    def __init__(self, patch_name):
+        dialogue.AmodalDialog.__init__(self, None, None,
+                                       gtk.DIALOG_DESTROY_WITH_PARENT,
+                                       (gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE))
+        ws_event.Listener.__init__(self)
+        self.set_title(_('patch: %s files: %s') % (patch_name, utils.cwd_rel_home()))
+        self.add_notification_cb(ifce.E_CHANGE_WD, self._chwd_cb)
+        # file tree view wrapped in scrolled window
+        self.file_tree = PatchFileTreeView(busy_indicator=self, patch_name=patch_name)
+        self.file_tree.get_selection().set_mode(gtk.SELECTION_MULTIPLE)
+        self.file_tree.set_headers_visible(False)
+        self.file_tree.set_size_request(240, 320)
+        self.vbox.pack_start(gutils.wrap_in_scrolled_window(self.file_tree))
+        self.connect("response", self._close_cb)
+        self.show_all()
+    def _close_cb(self, dialog, response_id):
+        self.destroy()
+    def _chwd_cb(self, **kwargs):
+        self.destroy()
 
-class TopPatchFileTreeView(PatchFileTreeView):
+class TopPatchFileTreeView(file_tree.FileTreeView):
     REPOPULATE_EVENTS = ifce.E_CHANGE_WD|ifce.E_NEW_PM|pm_ifce.E_PATCH_STACK_CHANGES|pm_ifce.E_PUSH|pm_ifce.E_POP|pm_ifce.E_NEW_PATCH
     UPDATE_EVENTS = pm_ifce.E_FILE_CHANGES|pm_ifce.E_PATCH_REFRESH
     AUTO_EXPAND = True
-    UI_DESCR = '''
+    UI_DESCR = \
+    '''
     <ui>
       <popup name="files_popup">
         <separator/>
-          <menuitem action='patch_edit_files'/>
-          <menuitem action='top_patch_drop_selected_files'/>
-          <menuitem action='top_patch_delete_selected_files'/>
+          <menuitem action="pm_edit_files"/>
+          <menuitem action="pm_drop_selected_files"/>
+          <menuitem action="pm_delete_selected_files"/>
         <separator/>
-          <menuitem action='patch_copy_file'/>
-          <menuitem action='patch_rename_file'/>
-          <menuitem action='top_patch_reconcile_selected_file'/>
+          <menuitem action="pm_copy_file"/>
+          <menuitem action="pm_rename_file"/>
+          <menuitem action="pm_reconcile_selected_file"/>
         <separator/>
-          <menuitem action='patch_diff_selected_file'/>
-          <menuitem action='patch_extdiff_selected_file'/>
+          <menuitem action="pm_diff_selected_files"/>
+          <menuitem action="pm_extdiff_selected_file"/>
         <separator/>
       </popup>
     </ui>
     '''
-    def __init__(self, patch=None, **kwargs):
-        assert patch is None
-        PatchFileTreeView.__init__(self, patch=None, **kwargs)
+    def __init__(self, **kwargs):
+        file_tree.FileTreeView.__init__(self, **kwargs)
+    @staticmethod
+    def _get_status_deco(status=None):
+        return ifce.PM.get_status_deco(status)
+    @staticmethod
+    def _get_status_icon(status, is_dir):
+        return ifce.PM.get_status_icon(status, is_dir)
+    @staticmethod
+    def _get_file_db():
+        return ifce.PM.get_top_patch_file_db()
+    def auto_update(self, events_so_far, args):
+        if (events_so_far & (self.REPOPULATE_EVENTS|self.UPDATE_EVENTS)) or self._file_db.is_current:
+            return 0
+        if self._file_db.applied_patch_count_change < 0:
+            return pm_ifce.E_POP
+        elif self._file_db.applied_patch_count_change > 0:
+            return pm_ifce.E_PUSH
+        else:
+            try:
+                args["fsdb_reset_only"].append(self)
+            except KeyError:
+                args["fsdb_reset_only"] = [self]
+        return pm_ifce.E_FILE_CHANGES
     def populate_action_groups(self):
-        PatchFileTreeView.populate_action_groups(self)
+        file_tree.FileTreeView.populate_action_groups(self)
         self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
             [
-                ('top_patch_drop_selected_files', gtk.STOCK_REMOVE, _('_Drop'), None,
-                 _('Drop/remove the selected files from the top patch'),
-                 lambda _action=None: self.pm_drop_selection()
+                ('pm_edit_files', gtk.STOCK_EDIT, _('_Edit'), None,
+                 _('Edit the selected file(s)'),
+                 lambda _action=None: dooph_pm.pm_do_edit_files(self.get_selected_filepaths())
                 ),
-                ('top_patch_delete_selected_files', gtk.STOCK_DELETE, _('_Delete'), None,
+                ('pm_diff_selected_files', icons.STOCK_DIFF, _('_Diff'), None,
+                 _('Display the diff for selected files'),
+                 lambda _action=None: diff.TopPatchDiffPlusesDialog(file_paths=self.get_selected_filepaths()).show()
+                ),
+                ('pm_drop_selected_files', gtk.STOCK_REMOVE, _('_Drop'), None,
+                 _('Drop/remove the selected files from the top patch'),
+                 lambda _action=None: dooph_pm.pm_do_drop_files(self.get_selected_filepaths())
+                ),
+                ('pm_delete_selected_files', gtk.STOCK_DELETE, _('_Delete'), None,
                  _('Delete the selected files'),
-                 lambda _action=None: self.pm_delete_selection()
+                 lambda _action=None: dooph_pm.pm_do_delete_files(self.get_selected_filepaths())
                 ),
             ])
         self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
             [
-                ('top_patch_reconcile_selected_file', icons.STOCK_MERGE, _('_Reconcile'), None,
+                ('pm_reconcile_selected_file', icons.STOCK_MERGE, _('_Reconcile'), None,
                  _('Launch reconciliation tool for the selected file'),
-                 lambda _action=None: self.pm_reconcile_selected_file()
+                 lambda _action=None: dooph_pm.pm_do_reconcile_file(self.get_selected_filepath())
+                ),
+                ('pm_copy_file', gtk.STOCK_COPY, _('_Copy'), None,
+                 _('Add a copy of the selected file to the top patch'),
+                 lambda _action=None: dooph_pm.pm_do_copy_file(self.get_selected_filepath())
+                ),
+                ('pm_rename_file', icons.STOCK_RENAME, _('_Rename'), None,
+                 _('Rename the selected file within the top patch'),
+                 lambda _action=None: dooph_pm.pm_do_rename_file(self.get_selected_filepath())
+                ),
+                ('pm_extdiff_selected_file', icons.STOCK_DIFF, _('E_xtDiff'), None,
+                 _('Launch external diff viewer for selected file'),
+                 lambda _action=None: dooph_pm.pm_do_extdiff_for_file(self.get_selected_filepath(), patch_name=None)
                 ),
             ])
-    def pm_drop_selection(self):
-        file_list = self.get_selected_filepaths()
-        if len(file_list) == 0:
-            return
-        emsg = '\n'.join(file_list + ["", _('Confirm drop selected file(s) from patch?')])
-        if not dialogue.ask_ok_cancel(emsg):
-            return
-        dialogue.show_busy()
-        result = ifce.PM.do_drop_files_from_patch(file_list, self.patch)
-        dialogue.unshow_busy()
-        dialogue.report_any_problems(result)
-    def pm_delete_selection(self):
-        file_paths = self.get_selected_filepaths()
-        if len(file_paths) == 0:
-            return
-        emsg = '\n'.join(file_paths + ["", _('Confirm delete selected file(s)?')])
-        if not dialogue.ask_ok_cancel(emsg):
-            return
-        dialogue.show_busy()
-        result = ifce.PM.do_delete_files_in_top_patch(file_paths)
-        dialogue.unshow_busy()
-        dialogue.report_any_problems(result)
-    def pm_reconcile_selected_file(self):
-        filepaths = self.get_selected_filepaths()
-        assert len(filepaths) == 1
-        files = ifce.PM.get_reconciliation_paths(file_path=filepaths[0])
-        dialogue.report_any_problems(diff.launch_reconciliation_tool(files.original_version, files.patched_version, files.stashed_version))
 
-class TopPatchFileTreeWidget(PatchFileTreeWidget):
+class TopPatchFileTreeWidget(file_tree.FileTreeWidget):
+    MENUBAR = None
+    BUTTON_BAR_ACTIONS = ["hide_clean_files"]
     TREE_VIEW = TopPatchFileTreeView
-    def __init__(self, patch=None):
-        assert patch is None
-        PatchFileTreeWidget.__init__(self, patch=None)
+    SIZE = (240, 320)
+    @staticmethod
+    def get_menu_prefix():
+        return ifce.PM.name
 
 class CombinedPatchFileTreeView(TopPatchFileTreeView):
-    UI_DESCR = '''
+    UI_DESCR = \
+    '''
     <ui>
       <popup name="files_popup">
         <separator/>
-          <menuitem action='patch_edit_files'/>
+          <menuitem action='pm_edit_files'/>
         <separator/>
-          <menuitem action='combined_patch_diff_selected_file'/>
+          <menuitem action='combined_patch_diff_selected_files'/>
         <separator/>
       </popup>
     </ui>
     '''
-    def _get_file_db(self):
-        return ifce.PM.get_combined_patch_file_db()
-    def __init__(self, patch=None, **kwargs):
-        assert patch is None
-        PatchFileTreeView.__init__(self, patch=None, **kwargs)
     def populate_action_groups(self):
-        PatchFileTreeView.populate_action_groups(self)
-        self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
+        TopPatchFileTreeView.populate_action_groups(self)
+        self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
             [
-                ('combined_patch_diff_selected_file', icons.STOCK_DIFF, _('_Diff'), None,
+                ('combined_patch_diff_selected_files', icons.STOCK_DIFF, _('_Diff'), None,
                  _('Display the combined diff for selected file'),
-                 lambda _action=None: self.pm_combined_diff_selected_file()
+                 lambda _action=None: diff.CombinedPatchDiffPlusesDialog(file_paths=self.get_selected_filepaths()).show()
                 ),
             ])
-    def pm_combined_diff_selected_file(self):
-        filepaths = self.get_selected_filepaths()
-        assert len(filepaths) == 1
-        dialog = diff.CombinedForFileDialog(filepath=filepaths[0])
-        dialog.show()
+    @staticmethod
+    def _get_file_db():
+        return ifce.PM.get_combined_patch_file_db()
 
-class CombinedPatchFileTreeWidget(PatchFileTreeWidget):
+class CombinedPatchFileTreeWidget(TopPatchFileTreeWidget):
     TREE_VIEW = CombinedPatchFileTreeView
