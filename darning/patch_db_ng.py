@@ -1,0 +1,282 @@
+### Copyright (C) 2015 Peter Williams <peter_ono@users.sourceforge.net>
+###
+### This program is free software; you can redistribute it and/or modify
+### it under the terms of the GNU General Public License as published by
+### the Free Software Foundation; version 2 of the License only.
+###
+### This program is distributed in the hope that it will be useful,
+### but WITHOUT ANY WARRANTY; without even the implied warranty of
+### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+### GNU General Public License for more details.
+###
+### You should have received a copy of the GNU General Public License
+### along with this program; if not, write to the Free Software
+### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+'''
+Implement a patch stack management database
+'''
+
+import os
+import stat
+import cPickle
+
+from contextlib import contextmanager
+
+from .cmd_result import CmdResult
+
+from . import rctx as RCTX
+
+from .patch_db import _O_IP_PAIR, _O_IP_S_TRIPLET, Failure, _tidy_text
+
+_DIR_PATH = '.darning.dbd'
+_BLOBS_DIR_PATH = os.path.join(_DIR_PATH, 'blobs')
+_DATABASE_FILE_PATH = os.path.join(_DIR_PATH, 'database')
+_LOCK_FILE_PATH = os.path.join(_DIR_PATH, 'lock_db_ng')
+
+_SUB_DIR = None
+
+def rel_subdir(file_path):
+    return file_path if _SUB_DIR is None else os.path.relpath(file_path, _SUB_DIR)
+
+def rel_basedir(file_path):
+    if os.path.isabs(file_path):
+        file_path = os.path.relpath(file_path)
+    elif _SUB_DIR is not None:
+        file_path = os.path.join(_SUB_DIR, file_path)
+    return file_path
+
+# Probably don't need this but hold on to it for the time being
+#def prepend_subdir(file_paths):
+    #for findex in range(len(file_paths)):
+        #file_paths[findex] = rel_basedir(file_paths[findex])
+    #return file_paths
+
+def iter_prepending_subdir(file_paths):
+    if _SUB_DIR is None:
+        for file_path in file_paths:
+            yield file_path
+    else:
+        for file_path in file_paths:
+            yield rel_basedir(file_path)
+
+def find_base_dir(dir_path=None, remember_sub_dir=False):
+    '''Find the nearest directory above that contains a database'''
+    global _SUB_DIR
+    dir_path = os.getcwd() if dir_path is None else os.path.abspath(os.path.expanduser(dir_path))
+    subdir_parts = []
+    while True:
+        # NB: we look for the lock file to distinguish from legacy playgrounds
+        if os.path.isfile(os.path.join(dir_path, _LOCK_FILE_PATH)):
+            _SUB_DIR = None if not subdir_parts else os.path.join(*subdir_parts)
+            return dir_path
+        else:
+            dir_path, basename = os.path.split(dir_path)
+            if not basename:
+                break
+            if remember_sub_dir:
+                subdir_parts.insert(0, basename)
+    return None
+
+class PickleExtensibleObject(object):
+    '''A base class for pickleable objects that can cope with modifications'''
+    RENAMES = dict()
+    NEW_FIELDS = dict()
+    def __setstate__(self, state):
+        self.__dict__ = state
+        for old_field in self.RENAMES:
+            if old_field in self.__dict__:
+                self.__dict__[self.RENAMES[old_field]] = self.__dict__.pop(old_field)
+    def __getstate__(self):
+        return self.__dict__
+    def __getattr__(self, attr):
+        if attr in self.NEW_FIELDS:
+            return self.NEW_FIELDS[attr]
+        raise AttributeError
+
+class _DataBaseData(PickleExtensibleObject):
+    def __init__(self, description):
+        self.description = _tidy_text(description) if description else ''
+        self.selected_guards = set()
+        self.patch_series_data = list()
+        self.applied_patches_data = list()
+        self.combined_patch = None
+        self.blobs_reference_counter = dict()
+        self.kept_patches = dict()
+
+class _PatchData(PickleExtensibleObject):
+    def __init__(self, name, description=None):
+        self.name = name
+        self.description = _tidy_text(description) if description else ''
+        self.files_data = dict()
+        self.pos_guards = set()
+        self.neg_guards = set()
+
+class DarnIt(Exception): pass
+class DarnItPatchError(Exception): pass
+class DarnItPatchExists(DarnItPatchError): pass
+class DarnItPatchIsApplied(DarnItPatchError): pass
+
+def _find_named_patch_in_list(patch_list, patch_name):
+    for index, patch in enumerate(patch_list):
+        if patch.name == patch_name:
+            return (index, patch)
+    return (None, None)
+
+def _named_patch_is_in_list(patch_list, patch_name):
+    for patch in patch_list:
+        if patch.name == patch_name:
+            return True
+    return False
+
+def _guards_block_patch(guards, patch):
+    if guards:
+        if patch.pos_guards and not patch.pos_guards & guards:
+            return True
+        elif patch.neg_guards & guards:
+            return True
+    return False
+
+class Patch(object):
+    def __init__(self, patch_data, data_base):
+        self._patch_data = patch_data
+        self._data_base = data_base
+    def __getattr__(self, attr_name):
+        return getattr(self._patch_data, attr_name)
+    @property
+    def is_applied(self):
+        return self._patch_data in self._data_base.applied_patches_data
+    @property
+    def is_top_patch(self):
+        return self._patch_data is self._data_base.top_patch
+    def iterate_overlying_patches(self):
+        applied_index = self._data_base.applied_patches_data.index(self._patch_data)
+        return self._data_base.iterate_applied_patches(start=applied_index + 1)
+
+class DataBase(object):
+    def __init__(self, data_base_data):
+        self._DBD = data_base_data
+    def __getattr__(self, attr_name):
+        return getattr(self._DBD, attr_name)
+    @property
+    def top_patch(self):
+        return None if not self._DBD.applied_patches_data else Patch(self._DBD.applied_patches_data[-1], self)
+    @property
+    def top_patch_name(self):
+        return None if not self._DBD.applied_patches_data else self._DBD.applied_patches_data[-1].name
+    @property
+    def base_patch(self):
+        return None if not self._DBD.applied_patches_data else Patch(self._DBD.applied_patches_data[0], self)
+    @property
+    def base_patch_name(self):
+        return None if not self._DBD.applied_patches_data else self._DBD.applied_patches_data[0].name
+    @property
+    def prev_patch(self):
+        return None if len(self._DBD.applied_patches_data) < 2 else PathcMgr(self._DBD.applied_patches_data[-2], self)
+    @property
+    def prev_patch_name(self):
+        return None if len(self._DBD.applied_patches_data) < 2 else self._DBD.applied_patches_data[-2].name
+    def _next_patch_data(self):
+        if self._DBD.applied_patches_data:
+            top_patch_index = self._DBD.patch_series_data.index(self._DBD.applied_patches_data[-1])
+            for patch in self._DBD.patch_series_data[top_patch_index + 1:]:
+                if not _guards_block_patch(self._DBD.guards, patch):
+                    return patch
+        else:
+            for patch in self._DBD.patch_series_data:
+                if not _guards_block_patch(self._DBD.guards, patch):
+                    return patch
+        return None
+    @property
+    def next_patch(self):
+        next_patch_data = self._next_patch_data()
+        return Patch(next_patch_data, self) if next_patch_data else None
+    @property
+    def next_patch_name(self):
+        next_patch_data = self._next_patch_data()
+        return next_patch_data.name if next_patch_data else None
+    def create_new_patch(self, patch_name, description):
+        if _named_patch_is_in_list(self._DBD.patch_series_data, patch_name):
+            raise DarnItPatchExists(patch_name)
+        new_patch = _PatchData(patch_name, description)
+        if self._DBD.applied_patches_data:
+            top_patch_index = self._DBD.patch_series_data.index(self._DBD.applied_patches_data[-1])
+            self._DBD.patch_series_data.insert(top_patch_index + 1, new_patch)
+        else:
+            self._DBD.patch_series_data.insert(0, new_patch)
+        return Patch(new_patch, self)
+    def remove_patch(self, patch):
+        if patch._patch_data in self._DBD.applied_patches_data:
+            raise DarnItPatchIsApplied(patch._patch_data.name)
+        self._DBD.patch_series_data.remove(patch._patch_data)
+    def get_named_patch(self, patch_name):
+        _index, patch = _find_named_patch_in_list(self._DBD.patch_series_data, patch_name)
+        if not patch:
+            raise DarnItUnknownPatch(patch_name)
+        return Patch(patch, self)
+    def iterate_applied_patches(self, start=0):
+        return (Patch(patch_data, self) for patch_data in self.applied_patches_data[start:])
+
+def do_create_db(dir_path=None, description=None):
+    '''Create a patch database in the current directory?'''
+    def rollback():
+        '''Undo steps that were completed before failure occured'''
+        for filnm in [database_file_path, database_lock_file_path]:
+            if os.path.exists(filnm):
+                os.remove(filnm)
+        for dirnm in [database_blobs_dir_path, database_dir_path]:
+            if os.path.exists(dirnm):
+                os.rmdir(dirnm)
+    if not dir_path:
+        dir_path = os.getcwd()
+    root = find_base_dir(dir_path=dir_path, remember_sub_dir=False)
+    if root is not None:
+        RCTX.stderr.write(_('Inside existing playground: "{0}".\n').format(os.path.relpath(root)))
+        return CmdResult.ERROR
+    database_dir_path = os.path.join(dir_path, _DIR_PATH)
+    database_blobs_dir_path = os.path.join(dir_path, _BLOBS_DIR_PATH)
+    database_file_path = os.path.join(dir_path, _DATABASE_FILE_PATH)
+    if os.path.exists(database_dir_path):
+        if os.path.exists(database_blobs_dir_path) and os.path.exists(database_file_path):
+            RCTX.stderr.write(_('Database already exists.\n'))
+        else:
+            RCTX.stderr.write(_('Database directory exists.\n'))
+        return CmdResult.ERROR
+    database_lock_file_path = os.path.join(dir_path, _LOCK_FILE_PATH)
+    try:
+        dir_mode = stat.S_IRWXU|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH
+        os.mkdir(database_dir_path, dir_mode)
+        os.mkdir(database_blobs_dir_path, dir_mode)
+        open(database_lock_file_path, "w").write("0")
+        db_obj = _DataBaseData(description)
+        fobj = open(database_file_path, 'wb', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
+        try:
+            cPickle.dump(db_obj, fobj)
+        finally:
+            fobj.close()
+    except OSError as edata:
+        rollback()
+        RCTX.stderr.write(edata.strerror)
+        return CmdResult.ERROR
+    except Exception:
+        rollback()
+        raise
+    return CmdResult.OK
+
+# Make a context manager for locking/opening/closing database
+@contextmanager
+def open_db(mutable=False):
+    import fcntl
+    fd = os.open(_LOCK_FILE_PATH, os.O_RDWR if mutable else os.O_RDONLY)
+    fcntl.lockf(fd, fcntl.LOCK_EX if mutable else fcntl.LOCK_SH)
+    db = cPickle.load(open(_DATABASE_FILE_PATH, 'rb'))
+    try:
+        yield DataBase(db)
+    finally:
+        if mutable:
+            count = os.read(fd, 255)
+            os.ftruncate(fd, 0)
+            os.write(fd, str(count + 1))
+            cPickle.dump(db, open(_DATABASE_FILE_PATH, 'wb'))
+        fcntl.lockf(fd, fcntl.LOCK_UN)
+        os.close(fd)

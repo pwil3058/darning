@@ -11,6 +11,8 @@ RPMSRC:=$(RPMBDIR)/SOURCES/$(SRCDIST)
 CLI_SRCS=darn $(wildcard darning/*.py) $(wildcard darning/cli/*.py)
 CLI_TEST_SCRIPTS=$(wildcard test-cli/*.test)
 CLI_TESTS=$(patsubst test-cli/%.test,test-cli/.%.ok, $(CLI_TEST_SCRIPTS))
+CLI_TEST_SCRIPTS_NG=$(wildcard test-cli-ng/*.test)
+CLI_TESTS_NG=$(patsubst test-cli-ng/%.test,test-cli-ng/.%.ok, $(CLI_TEST_SCRIPTS_NG))
 
 help:
 	@echo "Choices are:"
@@ -59,7 +61,16 @@ test-cli/.%.ok: test-cli/%.test $(CLI_SRCS)
 	./run.py $(<F)
 	@touch $@
 
+check-ng: $(CLI_TESTS_NG)
+
+test-cli-ng/.%.ok: test-cli-ng/%.test $(CLI_SRCS)
+	@LANG=C; LC_ALL=C; PATH="$(PWD):$(PATH)";	\
+	export LANG LC_ALL PATH;					\
+	cd $(@D);									\
+	../test-cli/run.py $(<F)
+	@touch $@
+
 clean:
 	-rm *.rpm *.spec *.exe *.tar.gz MANIFEST
 	-rm -r build
-	-rm $(CLI_TESTS)
+	-rm $(CLI_TESTS) $(CLI_TESTS_NG)

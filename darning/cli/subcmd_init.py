@@ -16,6 +16,7 @@
 '''Create a darning patch management system (persistent) database'''
 
 from .. import patch_db
+from .. import patch_db_ng
 
 from . import cli_args
 from . import db_utils
@@ -27,9 +28,29 @@ PARSER = cli_args.SUB_CMD_PARSER.add_parser(
 
 cli_args.add_descr_option(PARSER, helptext=_('a message to describe the purpose of the patches to be managed.'))
 
+GROUP = PARSER.add_mutually_exclusive_group()
+GROUP.add_argument(
+        "--ng",
+        help="use the next generation patch data base.",
+        dest="opt_ng",
+        action="store_true",
+    )
+GROUP.add_argument(
+        "--legacy",
+        help="use the old legacy patch data base.",
+        dest="opt_legacy",
+        action="store_true",
+    )
+
 def run_init(args):
     '''Execute the "init" sub command using the supplied args'''
     db_utils.set_report_context(verbose=True)
-    return patch_db.do_create_db(description=args.opt_description)
+    if args.opt_legacy:
+        return patch_db.do_create_db(description=args.opt_description)
+    elif args.opt_ng:
+        return patch_db_ng.do_create_db(description=args.opt_description)
+    else:
+        # for the time being leave "legacy" as the default
+        return patch_db.do_create_db(description=args.opt_description)
 
 PARSER.set_defaults(run_cmd=run_init)

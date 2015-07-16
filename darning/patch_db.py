@@ -949,7 +949,7 @@ def find_base_dir(dir_path=None, remember_sub_dir=False):
     dir_path = os.getcwd() if dir_path is None else os.path.abspath(os.path.expanduser(dir_path))
     subdir_parts = []
     while True:
-        if os.path.isdir(os.path.join(dir_path, DataBase._DIR)):
+        if os.path.isfile(os.path.join(dir_path, DataBase._LOCK_FILE)):
             _SUB_DIR = None if not subdir_parts else os.path.join(*subdir_parts)
             return dir_path
         else:
