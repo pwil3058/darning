@@ -20,19 +20,22 @@ Implement a patch stack management database
 import os
 import stat
 import cPickle
+import collections
 
 from contextlib import contextmanager
 
 from .cmd_result import CmdResult
 
 from . import rctx as RCTX
+from . import utils
 
+from .pm_ifce import PatchState
 from .patch_db import _O_IP_PAIR, _O_IP_S_TRIPLET, Failure, _tidy_text
 
-_DIR_PATH = '.darning.dbd'
-_BLOBS_DIR_PATH = os.path.join(_DIR_PATH, 'blobs')
-_DATABASE_FILE_PATH = os.path.join(_DIR_PATH, 'database')
-_LOCK_FILE_PATH = os.path.join(_DIR_PATH, 'lock_db_ng')
+_DIR_PATH = ".darning.dbd"
+_BLOBS_DIR_PATH = os.path.join(_DIR_PATH, "blobs")
+_DATABASE_FILE_PATH = os.path.join(_DIR_PATH, "database")
+_LOCK_FILE_PATH = os.path.join(_DIR_PATH, "lock_db_ng")
 
 _SUB_DIR = None
 
@@ -92,11 +95,11 @@ class PickleExtensibleObject(object):
     def __getattr__(self, attr):
         if attr in self.NEW_FIELDS:
             return self.NEW_FIELDS[attr]
-        raise AttributeError
+        raise AttributeError(attr)
 
 class _DataBaseData(PickleExtensibleObject):
     def __init__(self, description):
-        self.description = _tidy_text(description) if description else ''
+        self.description = _tidy_text(description) if description else ""
         self.selected_guards = set()
         self.patch_series_data = list()
         self.applied_patches_data = list()
@@ -107,7 +110,7 @@ class _DataBaseData(PickleExtensibleObject):
 class _PatchData(PickleExtensibleObject):
     def __init__(self, name, description=None):
         self.name = name
-        self.description = _tidy_text(description) if description else ''
+        self.description = _tidy_text(description) if description else ""
         self.files_data = dict()
         self.pos_guards = set()
         self.neg_guards = set()
@@ -137,6 +140,15 @@ def _guards_block_patch(guards, patch):
             return True
     return False
 
+_PTR = collections.namedtuple("_PTR", ["name", "state", "pos_guards", "neg_guards"])
+
+class File(object):
+    needs_refresh = True
+    def __init__(self, file_data):
+        self._file_data = file_data
+    def __getattr__(self, attr_name):
+        return getattr(self._patch_data, attr_name)
+
 class Patch(object):
     def __init__(self, patch_data, data_base):
         self._patch_data = patch_data
@@ -149,9 +161,28 @@ class Patch(object):
     @property
     def is_top_patch(self):
         return self._patch_data is self._data_base.top_patch
+    @property
+    def needs_refresh(self):
+        for pfile in self.iterate_files():
+            if pfile.needs_refresh:
+                return True
+        return False
+    @property
+    def state(self):
+        if not self.is_applied:
+            return PatchState.NOT_APPLIED
+        elif self.needs_refresh:
+            return PatchState.APPLIED_NEEDS_REFRESH
+            #PatchState.APPLIED_UNREFRESHABLE self.has_unresolved_merges else
+        else:
+            return PatchState.APPLIED_REFRESHED
+    def iterate_files(self):
+        return []
     def iterate_overlying_patches(self):
         applied_index = self._data_base.applied_patches_data.index(self._patch_data)
         return self._data_base.iterate_applied_patches(start=applied_index + 1)
+    def get_table_row(self):
+        return _PTR(self.name, self.state, self.pos_guards, self.neg_guards)
 
 class DataBase(object):
     def __init__(self, data_base_data):
@@ -204,6 +235,7 @@ class DataBase(object):
             self._DBD.patch_series_data.insert(top_patch_index + 1, new_patch)
         else:
             self._DBD.patch_series_data.insert(0, new_patch)
+        self._DBD.applied_patches_data.append(new_patch)
         return Patch(new_patch, self)
     def remove_patch(self, patch):
         if patch._patch_data in self._DBD.applied_patches_data:
@@ -216,6 +248,8 @@ class DataBase(object):
         return Patch(patch, self)
     def iterate_applied_patches(self, start=0):
         return (Patch(patch_data, self) for patch_data in self.applied_patches_data[start:])
+    def iterate_series(self, start=0):
+        return (Patch(patch_data, self) for patch_data in self.patch_series_data[start:])
 
 def do_create_db(dir_path=None, description=None):
     '''Create a patch database in the current directory?'''
@@ -231,25 +265,25 @@ def do_create_db(dir_path=None, description=None):
         dir_path = os.getcwd()
     root = find_base_dir(dir_path=dir_path, remember_sub_dir=False)
     if root is not None:
-        RCTX.stderr.write(_('Inside existing playground: "{0}".\n').format(os.path.relpath(root)))
+        RCTX.stderr.write(_("Inside existing playground: \"{0}\".\n").format(os.path.relpath(root)))
         return CmdResult.ERROR
     database_dir_path = os.path.join(dir_path, _DIR_PATH)
     database_blobs_dir_path = os.path.join(dir_path, _BLOBS_DIR_PATH)
     database_file_path = os.path.join(dir_path, _DATABASE_FILE_PATH)
     if os.path.exists(database_dir_path):
         if os.path.exists(database_blobs_dir_path) and os.path.exists(database_file_path):
-            RCTX.stderr.write(_('Database already exists.\n'))
+            RCTX.stderr.write(_("Database already exists.\n"))
         else:
-            RCTX.stderr.write(_('Database directory exists.\n'))
+            RCTX.stderr.write(_("Database directory exists.\n"))
         return CmdResult.ERROR
     database_lock_file_path = os.path.join(dir_path, _LOCK_FILE_PATH)
     try:
         dir_mode = stat.S_IRWXU|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH
         os.mkdir(database_dir_path, dir_mode)
         os.mkdir(database_blobs_dir_path, dir_mode)
-        open(database_lock_file_path, "w").write("0")
+        open(database_lock_file_path, "wb").write("0")
         db_obj = _DataBaseData(description)
-        fobj = open(database_file_path, 'wb', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
+        fobj = open(database_file_path, "wb", stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
         try:
             cPickle.dump(db_obj, fobj)
         finally:
@@ -269,14 +303,50 @@ def open_db(mutable=False):
     import fcntl
     fd = os.open(_LOCK_FILE_PATH, os.O_RDWR if mutable else os.O_RDONLY)
     fcntl.lockf(fd, fcntl.LOCK_EX if mutable else fcntl.LOCK_SH)
-    db = cPickle.load(open(_DATABASE_FILE_PATH, 'rb'))
+    db = cPickle.load(open(_DATABASE_FILE_PATH, "rb"))
     try:
         yield DataBase(db)
     finally:
         if mutable:
-            count = os.read(fd, 255)
-            os.ftruncate(fd, 0)
-            os.write(fd, str(count + 1))
-            cPickle.dump(db, open(_DATABASE_FILE_PATH, 'wb'))
+            scount = os.read(fd, 255)
+            os.lseek(fd, 0, 0)
+            os.write(fd, str(int(scount) + 1))
+            cPickle.dump(db, open(_DATABASE_FILE_PATH, "wb"))
         fcntl.lockf(fd, fcntl.LOCK_UN)
         os.close(fd)
+
+### Helper commands
+
+### Main interface commands start here
+
+### DOs
+
+def do_create_new_patch(patch_name, description):
+    '''Create a new patch with the given name and description (after the top patch)'''
+    with open_db(mutable=True) as DB:
+        old_top = DB.top_patch
+        try:
+            patch = DB.create_new_patch(patch_name, description)
+        except DarnItPatchExists:
+            RCTX.stderr.write(_("patch \"{0}\" already exists.\n").format(patch_name))
+            return CmdResult.ERROR|CmdResult.SUGGEST_RENAME
+        if old_top and old_top.needs_refresh:
+            RCTX.stderr.write(_("Previous top patch (\"{0}\") needs refreshing.\n").format(old_top.name))
+            return CmdResult.WARNING
+        return CmdResult.OK
+
+def do_unapply_top_patch():
+    # TODO: implement non dummy version do_unapply_top_patch()
+    with open_db(mutable=True) as DB:
+        DB.applied_patches_data.pop()
+        if DB.top_patch_name is None:
+            RCTX.stdout.write(_("There are now no patches applied.\n"))
+        else:
+             RCTX.stdout.write(_("Patch \"{0}\" is now on top.\n").format(DB.top_patch_name))
+        return CmdResult.OK
+
+### GETs
+
+def get_patch_table_data():
+    with open_db(mutable=False) as DB:
+        return [patch.get_table_row() for patch in DB.iterate_series()]
