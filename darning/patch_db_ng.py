@@ -36,6 +36,7 @@ from .patch_db import _O_IP_PAIR, _O_IP_S_TRIPLET, Failure, _tidy_text
 _DIR_PATH = ".darning.dbd"
 _BLOBS_DIR_PATH = os.path.join(_DIR_PATH, "blobs")
 _DATABASE_FILE_PATH = os.path.join(_DIR_PATH, "database")
+_DESCRIPTION_FILE_PATH = os.path.join(_DIR_PATH, "description")
 _LOCK_FILE_PATH = os.path.join(_DIR_PATH, "lock_db_ng")
 
 _SUB_DIR = None
@@ -99,9 +100,8 @@ class PickleExtensibleObject(object):
         raise AttributeError(attr)
 
 class _DataBaseData(mixins.PedanticSlotPickleMixin):
-    __slots__ = ("description", "selected_guards", "patch_series_data", "applied_patches_data", "combined_patch_stack", "blobs_reference_counter", "kept_patches")
+    __slots__ = ("selected_guards", "patch_series_data", "applied_patches_data", "combined_patch_stack", "blobs_reference_counter", "kept_patches")
     def __init__(self, description):
-        self.description = _tidy_text(description) if description else ""
         self.selected_guards = set()
         self.patch_series_data = list()
         self.applied_patches_data = list()
@@ -281,7 +281,7 @@ def do_create_db(dir_path=None, description=None):
     '''Create a patch database in the current directory?'''
     def rollback():
         '''Undo steps that were completed before failure occured'''
-        for filnm in [database_file_path, database_lock_file_path]:
+        for filnm in [database_file_path, database_lock_file_path, description_file_path]:
             if os.path.exists(filnm):
                 os.remove(filnm)
         for dirnm in [database_blobs_dir_path, database_dir_path]:
@@ -296,6 +296,7 @@ def do_create_db(dir_path=None, description=None):
     database_dir_path = os.path.join(dir_path, _DIR_PATH)
     database_blobs_dir_path = os.path.join(dir_path, _BLOBS_DIR_PATH)
     database_file_path = os.path.join(dir_path, _DATABASE_FILE_PATH)
+    description_file_path = os.path.join(dir_path, _DESCRIPTION_FILE_PATH)
     if os.path.exists(database_dir_path):
         if os.path.exists(database_blobs_dir_path) and os.path.exists(database_file_path):
             RCTX.stderr.write(_("Database already exists.\n"))
@@ -308,6 +309,7 @@ def do_create_db(dir_path=None, description=None):
         os.mkdir(database_dir_path, dir_mode)
         os.mkdir(database_blobs_dir_path, dir_mode)
         open(database_lock_file_path, "wb").write("0")
+        open(description_file_path, "w").write(_tidy_text(description) if description else "")
         db_obj = _DataBaseData(description)
         fobj = open(database_file_path, "wb", stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
         try:
