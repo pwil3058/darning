@@ -28,7 +28,9 @@ $ ls .darning.dbd
 > database
 > description
 > lock_db_ng
+> retained_patches
 $ ls .darning.dbd/blobs/
+$ ls .darning.dbd/retained_patches/
 $ ls .darning.dbd/database
 > .darning.dbd/database
 $ ls .darning.dbd/database/

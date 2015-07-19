@@ -35,6 +35,7 @@ from .patch_db import _O_IP_PAIR, _O_IP_S_TRIPLET, Failure, _tidy_text
 
 _DIR_PATH = ".darning.dbd"
 _BLOBS_DIR_PATH = os.path.join(_DIR_PATH, "blobs")
+_RETAINED_PATCHES_DIR_PATH = os.path.join(_DIR_PATH, "retained_patches")
 _DATABASE_FILE_PATH = os.path.join(_DIR_PATH, "database")
 _DESCRIPTION_FILE_PATH = os.path.join(_DIR_PATH, "description")
 _LOCK_FILE_PATH = os.path.join(_DIR_PATH, "lock_db_ng")
@@ -100,14 +101,13 @@ class PickleExtensibleObject(object):
         raise AttributeError(attr)
 
 class _DataBaseData(mixins.PedanticSlotPickleMixin):
-    __slots__ = ("selected_guards", "patch_series_data", "applied_patches_data", "combined_patch_stack", "blobs_reference_counter", "kept_patches")
+    __slots__ = ("selected_guards", "patch_series_data", "applied_patches_data", "combined_patch_stack", "blobs_reference_counter")
     def __init__(self, description):
         self.selected_guards = set()
         self.patch_series_data = list()
         self.applied_patches_data = list()
         self.combined_patch_stack = list()
         self.blobs_reference_counter = dict()
-        self.kept_patches = dict()
 
 class _PatchData(mixins.PedanticSlotPickleMixin):
     __slots__ = ("name", "description", "files_data", "pos_guards", "neg_guards")
@@ -284,7 +284,7 @@ def do_create_db(dir_path=None, description=None):
         for filnm in [database_file_path, database_lock_file_path, description_file_path]:
             if os.path.exists(filnm):
                 os.remove(filnm)
-        for dirnm in [database_blobs_dir_path, database_dir_path]:
+        for dirnm in [database_blobs_dir_path, retained_patches_dir_path, database_dir_path]:
             if os.path.exists(dirnm):
                 os.rmdir(dirnm)
     if not dir_path:
@@ -295,6 +295,7 @@ def do_create_db(dir_path=None, description=None):
         return CmdResult.ERROR
     database_dir_path = os.path.join(dir_path, _DIR_PATH)
     database_blobs_dir_path = os.path.join(dir_path, _BLOBS_DIR_PATH)
+    retained_patches_dir_path = os.path.join(dir_path, _RETAINED_PATCHES_DIR_PATH)
     database_file_path = os.path.join(dir_path, _DATABASE_FILE_PATH)
     description_file_path = os.path.join(dir_path, _DESCRIPTION_FILE_PATH)
     if os.path.exists(database_dir_path):
@@ -308,6 +309,7 @@ def do_create_db(dir_path=None, description=None):
         dir_mode = stat.S_IRWXU|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH
         os.mkdir(database_dir_path, dir_mode)
         os.mkdir(database_blobs_dir_path, dir_mode)
+        os.mkdir(retained_patches_dir_path, dir_mode)
         open(database_lock_file_path, "wb").write("0")
         open(description_file_path, "w").write(_tidy_text(description) if description else "")
         db_obj = _DataBaseData(description)
