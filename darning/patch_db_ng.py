@@ -36,7 +36,8 @@ from .patch_db import _O_IP_PAIR, _O_IP_S_TRIPLET, Failure, _tidy_text
 _DIR_PATH = ".darning.dbd"
 _BLOBS_DIR_PATH = os.path.join(_DIR_PATH, "blobs")
 _RETAINED_PATCHES_DIR_PATH = os.path.join(_DIR_PATH, "retained_patches")
-_DATABASE_FILE_PATH = os.path.join(_DIR_PATH, "database")
+_PATCHES_DATA_FILE_PATH = os.path.join(_DIR_PATH, "patches_data")
+_BLOB_REF_COUNT_FILE_PATH = os.path.join(_DIR_PATH, "blob_ref_counts")
 _DESCRIPTION_FILE_PATH = os.path.join(_DIR_PATH, "description")
 _LOCK_FILE_PATH = os.path.join(_DIR_PATH, "lock_db_ng")
 
@@ -101,13 +102,12 @@ class PickleExtensibleObject(object):
         raise AttributeError(attr)
 
 class _DataBaseData(mixins.PedanticSlotPickleMixin):
-    __slots__ = ("selected_guards", "patch_series_data", "applied_patches_data", "combined_patch_stack", "blobs_reference_counter")
+    __slots__ = ("selected_guards", "patch_series_data", "applied_patches_data", "combined_patch_stack")
     def __init__(self, description):
         self.selected_guards = set()
         self.patch_series_data = list()
         self.applied_patches_data = list()
         self.combined_patch_stack = list()
-        self.blobs_reference_counter = dict()
 
 class _PatchData(mixins.PedanticSlotPickleMixin):
     __slots__ = ("name", "description", "files_data", "pos_guards", "neg_guards")
@@ -204,36 +204,38 @@ class Patch(mixins.WrapperMixin):
 
 class DataBase(mixins.WrapperMixin):
     WRAPPED_ATTRIBUTES = _DataBaseData.__slots__
-    WRAPPED_OBJECT_NAME = "_DBD"
-    def __init__(self, data_base_data):
-        self._DBD = data_base_data
+    WRAPPED_OBJECT_NAME = "_PPD"
+    def __init__(self, patches_persistent_data, blob_ref_counts, is_writable):
+        self._PPD = patches_persistent_data
+        self.blob_ref_counts = blob_ref_counts
+        self.is_writable = is_writable
     @property
     def top_patch(self):
-        return None if not self._DBD.applied_patches_data else Patch(self._DBD.applied_patches_data[-1], self)
+        return None if not self._PPD.applied_patches_data else Patch(self._PPD.applied_patches_data[-1], self)
     @property
     def top_patch_name(self):
-        return None if not self._DBD.applied_patches_data else self._DBD.applied_patches_data[-1].name
+        return None if not self._PPD.applied_patches_data else self._PPD.applied_patches_data[-1].name
     @property
     def base_patch(self):
-        return None if not self._DBD.applied_patches_data else Patch(self._DBD.applied_patches_data[0], self)
+        return None if not self._PPD.applied_patches_data else Patch(self._PPD.applied_patches_data[0], self)
     @property
     def base_patch_name(self):
-        return None if not self._DBD.applied_patches_data else self._DBD.applied_patches_data[0].name
+        return None if not self._PPD.applied_patches_data else self._PPD.applied_patches_data[0].name
     @property
     def prev_patch(self):
-        return None if len(self._DBD.applied_patches_data) < 2 else PathcMgr(self._DBD.applied_patches_data[-2], self)
+        return None if len(self._PPD.applied_patches_data) < 2 else PathcMgr(self._PPD.applied_patches_data[-2], self)
     @property
     def prev_patch_name(self):
-        return None if len(self._DBD.applied_patches_data) < 2 else self._DBD.applied_patches_data[-2].name
+        return None if len(self._PPD.applied_patches_data) < 2 else self._PPD.applied_patches_data[-2].name
     def _next_patch_data(self):
-        if self._DBD.applied_patches_data:
-            top_patch_index = self._DBD.patch_series_data.index(self._DBD.applied_patches_data[-1])
-            for patch in self._DBD.patch_series_data[top_patch_index + 1:]:
-                if not _guards_block_patch(self._DBD.guards, patch):
+        if self._PPD.applied_patches_data:
+            top_patch_index = self._PPD.patch_series_data.index(self._PPD.applied_patches_data[-1])
+            for patch in self._PPD.patch_series_data[top_patch_index + 1:]:
+                if not _guards_block_patch(self._PPD.guards, patch):
                     return patch
         else:
-            for patch in self._DBD.patch_series_data:
-                if not _guards_block_patch(self._DBD.guards, patch):
+            for patch in self._PPD.patch_series_data:
+                if not _guards_block_patch(self._PPD.guards, patch):
                     return patch
         return None
     @property
@@ -245,22 +247,24 @@ class DataBase(mixins.WrapperMixin):
         next_patch_data = self._next_patch_data()
         return next_patch_data.name if next_patch_data else None
     def create_new_patch(self, patch_name, description):
-        if _named_patch_is_in_list(self._DBD.patch_series_data, patch_name):
+        assert self.is_writable
+        if _named_patch_is_in_list(self._PPD.patch_series_data, patch_name):
             raise DarnItPatchExists(patch_name)
         new_patch = _PatchData(patch_name, description)
-        if self._DBD.applied_patches_data:
-            top_patch_index = self._DBD.patch_series_data.index(self._DBD.applied_patches_data[-1])
-            self._DBD.patch_series_data.insert(top_patch_index + 1, new_patch)
+        if self._PPD.applied_patches_data:
+            top_patch_index = self._PPD.patch_series_data.index(self._PPD.applied_patches_data[-1])
+            self._PPD.patch_series_data.insert(top_patch_index + 1, new_patch)
         else:
-            self._DBD.patch_series_data.insert(0, new_patch)
-        self._DBD.applied_patches_data.append(new_patch)
+            self._PPD.patch_series_data.insert(0, new_patch)
+        self._PPD.applied_patches_data.append(new_patch)
         return Patch(new_patch, self)
     def remove_patch(self, patch):
-        if patch._patch_data in self._DBD.applied_patches_data:
+        assert self.is_writable
+        if patch._patch_data in self._PPD.applied_patches_data:
             raise DarnItPatchIsApplied(patch._patch_data.name)
-        self._DBD.patch_series_data.remove(patch._patch_data)
+        self._PPD.patch_series_data.remove(patch._patch_data)
     def get_named_patch(self, patch_name):
-        _index, patch = _find_named_patch_in_list(self._DBD.patch_series_data, patch_name)
+        _index, patch = _find_named_patch_in_list(self._PPD.patch_series_data, patch_name)
         if not patch:
             raise DarnItUnknownPatch(patch_name)
         return Patch(patch, self)
@@ -269,6 +273,7 @@ class DataBase(mixins.WrapperMixin):
     def iterate_series(self, start=0):
         return (Patch(patch_data, self) for patch_data in self.patch_series_data[start:])
     def pop_top_patch(self, force=False):
+        assert self.is_writable
         if not self.applied_patches_data:
             raise DarnItNoPatchesApplied()
         if not force and self.top_patch.needs_refresh:
@@ -281,7 +286,7 @@ def do_create_db(dir_path=None, description=None):
     '''Create a patch database in the current directory?'''
     def rollback():
         '''Undo steps that were completed before failure occured'''
-        for filnm in [database_file_path, database_lock_file_path, description_file_path]:
+        for filnm in [patches_data_file_path, database_lock_file_path, blob_ref_count_file_path, description_file_path]:
             if os.path.exists(filnm):
                 os.remove(filnm)
         for dirnm in [database_blobs_dir_path, retained_patches_dir_path, database_dir_path]:
@@ -296,10 +301,11 @@ def do_create_db(dir_path=None, description=None):
     database_dir_path = os.path.join(dir_path, _DIR_PATH)
     database_blobs_dir_path = os.path.join(dir_path, _BLOBS_DIR_PATH)
     retained_patches_dir_path = os.path.join(dir_path, _RETAINED_PATCHES_DIR_PATH)
-    database_file_path = os.path.join(dir_path, _DATABASE_FILE_PATH)
+    patches_data_file_path = os.path.join(dir_path, _PATCHES_DATA_FILE_PATH)
+    blob_ref_count_file_path = os.path.join(dir_path, _BLOB_REF_COUNT_FILE_PATH)
     description_file_path = os.path.join(dir_path, _DESCRIPTION_FILE_PATH)
     if os.path.exists(database_dir_path):
-        if os.path.exists(database_blobs_dir_path) and os.path.exists(database_file_path):
+        if os.path.exists(database_blobs_dir_path) and os.path.exists(patches_data_file_path):
             RCTX.stderr.write(_("Database already exists.\n"))
         else:
             RCTX.stderr.write(_("Database directory exists.\n"))
@@ -313,9 +319,14 @@ def do_create_db(dir_path=None, description=None):
         open(database_lock_file_path, "wb").write("0")
         open(description_file_path, "w").write(_tidy_text(description) if description else "")
         db_obj = _DataBaseData(description)
-        fobj = open(database_file_path, "wb", stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
+        fobj = open(patches_data_file_path, "wb", stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
         try:
             cPickle.dump(db_obj, fobj)
+        finally:
+            fobj.close()
+        fobj = open(blob_ref_count_file_path, "wb", stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
+        try:
+            cPickle.dump(dict(), fobj)
         finally:
             fobj.close()
     except OSError as edata:
@@ -333,15 +344,17 @@ def open_db(mutable=False):
     import fcntl
     fd = os.open(_LOCK_FILE_PATH, os.O_RDWR if mutable else os.O_RDONLY)
     fcntl.lockf(fd, fcntl.LOCK_EX if mutable else fcntl.LOCK_SH)
-    db = cPickle.load(open(_DATABASE_FILE_PATH, "rb"))
+    patches_data = cPickle.load(open(_PATCHES_DATA_FILE_PATH, "rb"))
+    blob_ref_counts = cPickle.load(open(_BLOB_REF_COUNT_FILE_PATH, "rb"))
     try:
-        yield DataBase(db)
+        yield DataBase(patches_data, blob_ref_counts, mutable)
     finally:
         if mutable:
             scount = os.read(fd, 255)
             os.lseek(fd, 0, 0)
             os.write(fd, str(int(scount) + 1))
-            cPickle.dump(db, open(_DATABASE_FILE_PATH, "wb"))
+            cPickle.dump(patches_data, open(_PATCHES_DATA_FILE_PATH, "wb"))
+            cPickle.dump(blob_ref_counts, open(_BLOB_REF_COUNT_FILE_PATH, "wb"))
         fcntl.lockf(fd, fcntl.LOCK_UN)
         os.close(fd)
 
