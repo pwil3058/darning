@@ -28,6 +28,7 @@ from .cmd_result import CmdResult
 
 from . import rctx as RCTX
 from . import utils
+from . import mixins
 
 from .pm_ifce import PatchState
 from .patch_db import _O_IP_PAIR, _O_IP_S_TRIPLET, Failure, _tidy_text
@@ -97,17 +98,19 @@ class PickleExtensibleObject(object):
             return self.NEW_FIELDS[attr]
         raise AttributeError(attr)
 
-class _DataBaseData(PickleExtensibleObject):
+class _DataBaseData(mixins.PedanticSlotPickleMixin):
+    __slots__ = ("description", "selected_guards", "patch_series_data", "applied_patches_data", "combined_patch_stack", "blobs_reference_counter", "kept_patches")
     def __init__(self, description):
         self.description = _tidy_text(description) if description else ""
         self.selected_guards = set()
         self.patch_series_data = list()
         self.applied_patches_data = list()
-        self.combined_patch = None
+        self.combined_patch_stack = list()
         self.blobs_reference_counter = dict()
         self.kept_patches = dict()
 
-class _PatchData(PickleExtensibleObject):
+class _PatchData(mixins.PedanticSlotPickleMixin):
+    __slots__ = ("name", "description", "files_data", "pos_guards", "neg_guards")
     def __init__(self, name, description=None):
         self.name = name
         self.description = _tidy_text(description) if description else ""
@@ -119,6 +122,8 @@ class DarnIt(Exception): pass
 class DarnItPatchError(Exception): pass
 class DarnItPatchExists(DarnItPatchError): pass
 class DarnItPatchIsApplied(DarnItPatchError): pass
+class DarnItNoPatchesApplied(DarnItPatchError): pass
+class DarnItPatchNeedsRefresh(DarnItPatchError): pass
 
 def _find_named_patch_in_list(patch_list, patch_name):
     for index, patch in enumerate(patch_list):
@@ -142,19 +147,19 @@ def _guards_block_patch(guards, patch):
 
 _PTR = collections.namedtuple("_PTR", ["name", "state", "pos_guards", "neg_guards"])
 
-class File(object):
+class File(mixins.WrapperMixin):
+    WRAPPED_ATTRIBUTES = []
+    WRAPPED_OBJECT_NAME = "_file_data"
     needs_refresh = True
     def __init__(self, file_data):
         self._file_data = file_data
-    def __getattr__(self, attr_name):
-        return getattr(self._patch_data, attr_name)
 
-class Patch(object):
+class Patch(mixins.WrapperMixin):
+    WRAPPED_ATTRIBUTES = _PatchData.__slots__
+    WRAPPED_OBJECT_NAME = "_patch_data"
     def __init__(self, patch_data, data_base):
         self._patch_data = patch_data
         self._data_base = data_base
-    def __getattr__(self, attr_name):
-        return getattr(self._patch_data, attr_name)
     @property
     def is_applied(self):
         return self._patch_data in self._data_base.applied_patches_data
@@ -183,12 +188,25 @@ class Patch(object):
         return self._data_base.iterate_applied_patches(start=applied_index + 1)
     def get_table_row(self):
         return _PTR(self.name, self.state, self.pos_guards, self.neg_guards)
+    def undo_apply(self):
+        for file_path, file_data in self.files_data.iteritems():
+            if file_data.orig is None:
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+                continue
+            dir_path = os.path.dirpath(file_path)
+            if not os.path.exists(dir_path):
+                os.makedirs(dir_path)
+            # TODO: add special handling for restoring deleted soft links on pop
+            orig_content = self._data_base.get_content_for_hash(file_data.orig.git_hash)
+            open(file_path, "w").write(orig_content)
+            os.chmod(file_path, file_data.orig.mode)
 
-class DataBase(object):
+class DataBase(mixins.WrapperMixin):
+    WRAPPED_ATTRIBUTES = _DataBaseData.__slots__
+    WRAPPED_OBJECT_NAME = "_DBD"
     def __init__(self, data_base_data):
         self._DBD = data_base_data
-    def __getattr__(self, attr_name):
-        return getattr(self._DBD, attr_name)
     @property
     def top_patch(self):
         return None if not self._DBD.applied_patches_data else Patch(self._DBD.applied_patches_data[-1], self)
@@ -250,6 +268,14 @@ class DataBase(object):
         return (Patch(patch_data, self) for patch_data in self.applied_patches_data[start:])
     def iterate_series(self, start=0):
         return (Patch(patch_data, self) for patch_data in self.patch_series_data[start:])
+    def pop_top_patch(self, force=False):
+        if not self.applied_patches_data:
+            raise DarnItNoPatchesApplied()
+        if not force and self.top_patch.needs_refresh:
+            raise DarnItPatchNeedsRefresh(self.top_patch_name)
+        self.top_patch.undo_apply()
+        self.applied_patches_data.pop()
+        return self.top_patch
 
 def do_create_db(dir_path=None, description=None):
     '''Create a patch database in the current directory?'''
@@ -335,15 +361,25 @@ def do_create_new_patch(patch_name, description):
             return CmdResult.WARNING
         return CmdResult.OK
 
-def do_unapply_top_patch():
+def do_pop_top_patch(force=False):
     # TODO: implement non dummy version do_unapply_top_patch()
     with open_db(mutable=True) as DB:
-        DB.applied_patches_data.pop()
-        if DB.top_patch_name is None:
+        try:
+            new_top_patch = DB.pop_top_patch(force=force)
+        except DarnItNoPatchesApplied:
+            RTX.stderr.write(_("There are no applied patches to pop."))
+            return CmdResult.ERROR
+        except DarnItPatchNeedsRefresh:
+            RCTX.stderr.write(_('Top patch ("{0}") needs to be refreshed.\n').format(DB.top_patch_name))
+            return CmdResult.ERROR_SUGGEST_FORCE_OR_REFRESH
+        if new_top_patch is None:
             RCTX.stdout.write(_("There are now no patches applied.\n"))
         else:
-             RCTX.stdout.write(_("Patch \"{0}\" is now on top.\n").format(DB.top_patch_name))
+             RCTX.stdout.write(_("Patch \"{0}\" is now on top.\n").format(new_top_patch.name))
         return CmdResult.OK
+
+def do_unapply_top_patch(force=False):
+    return do_pop_top_patch(force=force)
 
 ### GETs
 
