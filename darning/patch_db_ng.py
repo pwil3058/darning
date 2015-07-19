@@ -85,29 +85,13 @@ def find_base_dir(dir_path=None, remember_sub_dir=False):
                 subdir_parts.insert(0, basename)
     return None
 
-class PickleExtensibleObject(object):
-    '''A base class for pickleable objects that can cope with modifications'''
-    RENAMES = dict()
-    NEW_FIELDS = dict()
-    def __setstate__(self, state):
-        self.__dict__ = state
-        for old_field in self.RENAMES:
-            if old_field in self.__dict__:
-                self.__dict__[self.RENAMES[old_field]] = self.__dict__.pop(old_field)
-    def __getstate__(self):
-        return self.__dict__
-    def __getattr__(self, attr):
-        if attr in self.NEW_FIELDS:
-            return self.NEW_FIELDS[attr]
-        raise AttributeError(attr)
-
 class _DataBaseData(mixins.PedanticSlotPickleMixin):
-    __slots__ = ("selected_guards", "patch_series_data", "applied_patches_data", "combined_patch_stack")
+    __slots__ = ("selected_guards", "patch_series_data", "applied_patches_data", "combined_patch_data")
     def __init__(self, description):
         self.selected_guards = set()
         self.patch_series_data = list()
         self.applied_patches_data = list()
-        self.combined_patch_stack = list()
+        self.combined_patch_data = None
 
 class _PatchData(mixins.PedanticSlotPickleMixin):
     __slots__ = ("name", "description", "files_data", "pos_guards", "neg_guards")
@@ -117,6 +101,12 @@ class _PatchData(mixins.PedanticSlotPickleMixin):
         self.files_data = dict()
         self.pos_guards = set()
         self.neg_guards = set()
+
+class _CombinedPatchData(mixins.PedanticSlotPickleMixin):
+    __slots__ = ("files_data", "prev")
+    def __init__(self, prev):
+        self.files_data = dict() if not prev else {file_path : copy.copy(files_data) for file_path, files_data in prev.files_data.iteritems()}
+        self.prev = prev
 
 class DarnIt(Exception): pass
 class DarnItPatchError(Exception): pass
@@ -257,6 +247,7 @@ class DataBase(mixins.WrapperMixin):
         else:
             self._PPD.patch_series_data.insert(0, new_patch)
         self._PPD.applied_patches_data.append(new_patch)
+        self._PPD.combined_patch_data = _CombinedPatchData(self._PPD.combined_patch_data)
         return Patch(new_patch, self)
     def remove_patch(self, patch):
         assert self.is_writable
@@ -280,6 +271,7 @@ class DataBase(mixins.WrapperMixin):
             raise DarnItPatchNeedsRefresh(self.top_patch_name)
         self.top_patch.undo_apply()
         self.applied_patches_data.pop()
+        self._PPD.combined_patch_data = self._PPD.combined_patch_data.prev
         return self.top_patch
 
 def do_create_db(dir_path=None, description=None):
