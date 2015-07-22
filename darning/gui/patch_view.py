@@ -115,11 +115,11 @@ class Widget(gtk.VBox):
     @staticmethod
     def _make_file_label(filepath, validity):
         hbox = gtk.HBox()
-        if validity == ifce.PM.FileData.Validity.REFRESHED:
+        if validity == ifce.PM.Validity.REFRESHED:
             icon = icons.STOCK_FILE_REFRESHED
-        elif validity == ifce.PM.FileData.Validity.NEEDS_REFRESH:
+        elif validity == ifce.PM.Validity.NEEDS_REFRESH:
             icon = icons.STOCK_FILE_NEEDS_REFRESH
-        elif validity == ifce.PM.FileData.Validity.UNREFRESHABLE:
+        elif validity == ifce.PM.Validity.UNREFRESHABLE:
             icon = icons.STOCK_FILE_UNREFRESHABLE
         else:
             icon = gtk.STOCK_FILE

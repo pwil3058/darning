@@ -22,18 +22,18 @@ from . import patch_db
 
 STATUS_DECO_MAP = {
     None: fsdb.Deco(pango.STYLE_NORMAL, "black"),
-    patch_db.FileData.Presence.ADDED: fsdb.Deco(pango.STYLE_NORMAL, "darkgreen"),
-    patch_db.FileData.Presence.REMOVED: fsdb.Deco(pango.STYLE_NORMAL, "red"),
-    patch_db.FileData.Presence.EXTANT: fsdb.Deco(pango.STYLE_NORMAL, "black"),
+    patch_db.Presence.ADDED: fsdb.Deco(pango.STYLE_NORMAL, "darkgreen"),
+    patch_db.Presence.REMOVED: fsdb.Deco(pango.STYLE_NORMAL, "red"),
+    patch_db.Presence.EXTANT: fsdb.Deco(pango.STYLE_NORMAL, "black"),
 }
 
 class _PatchFileDir(fsdb.GenericChangeFileDb.FileDir):
     def _calculate_status(self):
         if not self._status_set:
-            validity = patch_db.FileData.Validity.REFRESHED
+            validity = patch_db.Validity.REFRESHED
         else:
             validity = max([s.validity for s in list(self._status_set)])
-        return patch_db.FileData.Status(None, validity)
+        return patch_db.FileStatus(None, validity)
     def dirs_and_files(self, hide_clean=False, **kwargs):
         if hide_clean:
             dirs = ifilter((lambda x: x.status.validity), self._subdirs_data)

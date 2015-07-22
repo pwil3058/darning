@@ -16,6 +16,8 @@
 import os
 import collections
 import hashlib
+import re
+import time
 
 from .cmd_result import CmdResult
 
@@ -27,6 +29,47 @@ E_PATCH_LIST_CHANGES = E_PATCH_STACK_CHANGES|E_PATCH_QUEUE_CHANGES
 
 E_FILE_ADDED, E_FILE_DELETED, E_PATCH_REFRESH, E_FILE_CHANGES = ws_event.new_event_flags_and_mask(3)
 E_FILE_MOVED = E_FILE_ADDED|E_FILE_DELETED
+
+class Presence(object):
+    from . import patchlib
+    ADDED = patchlib.FilePathPlus.ADDED
+    REMOVED = patchlib.FilePathPlus.DELETED
+    EXTANT = patchlib.FilePathPlus.EXTANT
+
+class Validity(object):
+    REFRESHED, NEEDS_REFRESH, UNREFRESHABLE = range(3)
+
+class FileStatus(collections.namedtuple("FileStatus", ["presence", "validity"])):
+    def __str__(self):
+        return self.presence
+
+class PatchState(object):
+    NOT_APPLIED = " "
+    APPLIED_REFRESHED = "+"
+    APPLIED_NEEDS_REFRESH = "?"
+    APPLIED_UNREFRESHABLE = "!"
+
+PatchTableRow = collections.namedtuple("PatchTableRow", ["name", "state", "pos_guards", "neg_guards"])
+
+def patch_timestamp_tz_str(tz_seconds=None):
+    '''Return the timezone as a string suitable for use in patch header'''
+    if tz_seconds is None:
+        tz_seconds = -time.timezone
+    if tz_seconds > 0:
+        hrs = tz_seconds / 3600
+    else:
+        hrs = -(-tz_seconds / 3600)
+    mins = (abs(tz_seconds) % 3600) / 60
+    return '{0:0=+3}{1:02}'.format(hrs, mins)
+
+_PTS_TEMPL = '%Y-%m-%d %H:%M:%S.{0:09} ' + patch_timestamp_tz_str()
+
+def patch_timestamp_str(secs=None):
+    '''Return the "in patch" timestamp string for "secs" seconds'''
+    ts_str = time.strftime(_PTS_TEMPL, time.localtime(secs))
+    return ts_str.format(int((secs % 1) * 1000000000))
+
+MERGE_CRE = re.compile("^(<<<<<<<|>>>>>>>).*$")
 
 _BACKEND = {}
 _MISSING_BACKEND = {}
@@ -232,14 +275,6 @@ class _NULL_BACKEND(object):
     @staticmethod
     def launch_extdiff_for_top_patch(file_path_list=None):
         return
-
-PatchData = collections.namedtuple('PatchData', ['name', 'state', 'guards'])
-
-class PatchState(object):
-    NOT_APPLIED = ' '
-    APPLIED_REFRESHED = '+'
-    APPLIED_NEEDS_REFRESH = '?'
-    APPLIED_UNREFRESHABLE = '!'
 
 def generic_delete_files(file_paths):
     from . import os_utils

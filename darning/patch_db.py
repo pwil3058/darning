@@ -36,6 +36,8 @@ from contextlib import contextmanager
 
 from .cmd_result import CmdResult
 
+from .pm_ifce import Presence, Validity, PatchState, FileStatus, MERGE_CRE, PatchTableRow
+
 from . import rctx as RCTX
 from . import i18n
 from . import scm_ifce
@@ -166,11 +168,11 @@ class OverlapData(object):
 class GenericFileData(PickeExtensibleObject):
     def get_presence(self):
         if self.orig_mode is None:
-            return FileData.Presence.ADDED
+            return Presence.ADDED
         elif self.after_mode is None:
-            return FileData.Presence.REMOVED
+            return Presence.REMOVED
         else:
-            return FileData.Presence.EXTANT
+            return Presence.EXTANT
     def _generate_diff_preamble(self, after_mode, after_hash, old_combined=False):
         if self.came_from_path:
             lines = ['diff --git {0} {1}\n'.format(os.path.join('a', self.came_from_path), os.path.join('b', self.path)), ]
@@ -244,15 +246,6 @@ class GenericFileData(PickeExtensibleObject):
 class FileData(GenericFileData):
     '''Change data for a single file'''
     RENAMES = { 'before_sha1' : 'before_hash', 'after_sha1' : 'after_hash', }
-    class Presence(object):
-        ADDED = patchlib.FilePathPlus.ADDED
-        REMOVED = patchlib.FilePathPlus.DELETED
-        EXTANT = patchlib.FilePathPlus.EXTANT
-    class Validity(object):
-        REFRESHED, NEEDS_REFRESH, UNREFRESHABLE = range(3)
-    class Status(collections.namedtuple('Status', ['presence', 'validity'])):
-        def __str__(self): return ""
-    MERGE_CRE = re.compile('^(<<<<<<<|>>>>>>>).*$')
     def __init__(self, filepath, patch, overlaps=OverlapData(), came_from_path=None, as_rename=False):
         self.path = filepath
         self.patch = patch
@@ -428,7 +421,7 @@ class FileData(GenericFileData):
         def _file_has_unresolved_merges(filepath):
             if os.path.exists(filepath):
                 for line in open(filepath).readlines():
-                    if FileData.MERGE_CRE.match(line):
+                    if MERGE_CRE.match(line):
                         return True
             return False
         if overlapping_patch is not None:
@@ -443,20 +436,20 @@ class FileData(GenericFileData):
         return self._has_unresolved_merges(overlapping_patch=self.get_overlapping_patch())
     def get_presence(self):
         if self.orig_mode is None:
-            return FileData.Presence.ADDED
+            return Presence.ADDED
         elif self.after_mode is None:
-            return FileData.Presence.REMOVED
+            return Presence.REMOVED
         else:
-            return FileData.Presence.EXTANT
+            return Presence.EXTANT
     def get_applied_validity(self):
         assert self.patch.is_applied()
         if self.needs_refresh():
             if self._has_unresolved_merges(self.get_overlapping_patch()):
-                return FileData.Validity.UNREFRESHABLE
+                return Validity.UNREFRESHABLE
             else:
-                return FileData.Validity.NEEDS_REFRESH
+                return Validity.NEEDS_REFRESH
         else:
-            return FileData.Validity.REFRESHED
+            return Validity.REFRESHED
     def get_validity(self):
         if not self.patch.is_applied():
             return None
@@ -628,11 +621,6 @@ def _pts_for_path(path):
     '''Return the "in patch" timestamp string for "secs" seconds'''
     return _pts_str(os.path.getmtime(path))
 
-from .pm_ifce import PatchState
-
-class PatchTable(object):
-    Row = collections.namedtuple('Row', ['name', 'state', 'pos_guards', 'neg_guards'])
-
 class PatchData(PickeExtensibleObject):
     '''Store data for changes to a number of files as a single patch'''
     NEW_FIELDS = { "_db" : None }
@@ -745,9 +733,9 @@ class PatchData(PickeExtensibleObject):
     def get_files_table(self):
         is_applied = self.is_applied()
         if is_applied:
-            table = [fsdb.Data(fde.path, FileData.Status(fde.get_presence(), fde.get_applied_validity()), fde.related_file_data) for fde in self.files.values()]
+            table = [fsdb.Data(fde.path, FileStatus(fde.get_presence(), fde.get_applied_validity()), fde.related_file_data) for fde in self.files.values()]
         else:
-            table = [fsdb.Data(fde.path, FileData.Status(fde.get_presence(), None), fde.related_file_data) for fde in self.files.values()]
+            table = [fsdb.Data(fde.path, FileStatus(fde.get_presence(), None), fde.related_file_data) for fde in self.files.values()]
         return table
     def get_table_row(self):
         if not self.is_applied():
@@ -759,7 +747,7 @@ class PatchData(PickeExtensibleObject):
                 state = PatchState.APPLIED_NEEDS_REFRESH
         else:
             state = PatchState.APPLIED_REFRESHED
-        return PatchTable.Row(name=self.name, state=state, pos_guards=self.pos_guards, neg_guards=self.neg_guards)
+        return PatchTableRow(name=self.name, state=state, pos_guards=self.pos_guards, neg_guards=self.neg_guards)
     def is_applied(self):
         '''Is this patch applied?'''
         return self in self._db.applied_patches
@@ -819,7 +807,7 @@ class CombinedPatchData(PickeExtensibleObject):
         for file_data in self.files.values():
             if file_data.was_ephemeral():
                 continue
-            status = FileData.Status(file_data.get_presence(), file_data.get_applied_validity())
+            status = FileStatus(file_data.get_presence(), file_data.get_applied_validity())
             table.append(fsdb.Data(file_data.path, status, None))
         return table
     def get_files_digest(self):
@@ -1118,11 +1106,11 @@ def _get_combined_patch_file_table_old(_DB):
         for fde in patch.files.values():
             if fde.needs_refresh():
                 if fde.has_unresolved_merges():
-                    validity = FileData.Validity.UNREFRESHABLE
+                    validity = Validity.UNREFRESHABLE
                 else:
-                    validity = FileData.Validity.NEEDS_REFRESH
+                    validity = Validity.NEEDS_REFRESH
             else:
-                validity = FileData.Validity.REFRESHED
+                validity = Validity.REFRESHED
             if fde.path in file_map:
                 file_map[fde.path].validity = validity
             else:
@@ -1130,7 +1118,7 @@ def _get_combined_patch_file_table_old(_DB):
     table = []
     for filepath in sorted(file_map):
         data = file_map[filepath]
-        table.append(fsdb.Data(filepath, FileData.Status(data.presence, data.validity), data.related_file_data))
+        table.append(fsdb.Data(filepath, FileStatus(data.presence, data.validity), data.related_file_data))
     return table
 
 def get_combined_patch_file_table():
@@ -2362,9 +2350,9 @@ class TextPatch(patchlib.Patch):
             self.diff_pluses.append(edp)
             if self.state == PatchState.NOT_APPLIED:
                 continue
-            if self.state == PatchState.APPLIED_REFRESHED and edp.validity != FileData.Validity.REFRESHED:
-                self.state = PatchState.APPLIED_NEEDS_REFRESH if edp.validity == FileData.Validity.NEEDS_REFRESH else PatchState.APPLIED_UNREFRESHABLE
-            elif self.state == PatchState.APPLIED_NEEDS_REFRESH and edp.validity == FileData.Validity.UNREFRESHABLE:
+            if self.state == PatchState.APPLIED_REFRESHED and edp.validity != Validity.REFRESHED:
+                self.state = PatchState.APPLIED_NEEDS_REFRESH if edp.validity == Validity.NEEDS_REFRESH else PatchState.APPLIED_UNREFRESHABLE
+            elif self.state == PatchState.APPLIED_NEEDS_REFRESH and edp.validity == Validity.UNREFRESHABLE:
                 self.state = PatchState.APPLIED_UNREFRESHABLE
         if with_stats:
             self.set_header_diffstat(strip_level=self.num_strip_levels)

@@ -262,11 +262,11 @@ class Interface(pm_ifce.InterfaceMixin):
         from .gui import icons
         if is_dir:
             return gtk.STOCK_DIRECTORY
-        elif status.validity == patch_db.FileData.Validity.REFRESHED:
+        elif status.validity == patch_db.Validity.REFRESHED:
             return icons.STOCK_FILE_REFRESHED
-        elif status.validity == patch_db.FileData.Validity.NEEDS_REFRESH:
+        elif status.validity == patch_db.Validity.NEEDS_REFRESH:
             return icons.STOCK_FILE_NEEDS_REFRESH
-        elif status.validity == patch_db.FileData.Validity.UNREFRESHABLE:
+        elif status.validity == patch_db.Validity.UNREFRESHABLE:
             return icons.STOCK_FILE_UNREFRESHABLE
         else:
             return gtk.STOCK_FILE

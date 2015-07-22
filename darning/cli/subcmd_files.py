@@ -46,9 +46,9 @@ GROUP.add_argument(
 def format_file_data(PM, file_data):
     VAL_MAP = {
         None: ' ',
-        PM.FileData.Validity.REFRESHED: '+',
-        PM.FileData.Validity.NEEDS_REFRESH: '?',
-        PM.FileData.Validity.UNREFRESHABLE: '!',
+        PM.Validity.REFRESHED: '+',
+        PM.Validity.NEEDS_REFRESH: '?',
+        PM.Validity.UNREFRESHABLE: '!',
     }
     def status_to_str(status):
         return '{0}:{1}'.format(status.presence, VAL_MAP[status.validity])

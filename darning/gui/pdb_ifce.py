@@ -146,9 +146,9 @@ def get_series_description():
 
 status_deco_map = {
     None: fsdb.Deco(pango.STYLE_NORMAL, "black"),
-    patch_db.FileData.Presence.ADDED: fsdb.Deco(pango.STYLE_NORMAL, "darkgreen"),
-    patch_db.FileData.Presence.REMOVED: fsdb.Deco(pango.STYLE_NORMAL, "red"),
-    patch_db.FileData.Presence.EXTANT: fsdb.Deco(pango.STYLE_NORMAL, "black"),
+    patch_db.Presence.ADDED: fsdb.Deco(pango.STYLE_NORMAL, "darkgreen"),
+    patch_db.Presence.REMOVED: fsdb.Deco(pango.STYLE_NORMAL, "red"),
+    patch_db.Presence.EXTANT: fsdb.Deco(pango.STYLE_NORMAL, "black"),
 }
 
 def get_status_deco(status):
@@ -159,11 +159,11 @@ def get_status_icon(status, is_dir):
     from . import icons
     if is_dir:
         return gtk.STOCK_DIRECTORY
-    elif status.validity == patch_db.FileData.Validity.REFRESHED:
+    elif status.validity == patch_db.Validity.REFRESHED:
         return icons.STOCK_FILE_REFRESHED
-    elif status.validity == patch_db.FileData.Validity.NEEDS_REFRESH:
+    elif status.validity == patch_db.Validity.NEEDS_REFRESH:
         return icons.STOCK_FILE_NEEDS_REFRESH
-    elif status.validity == patch_db.FileData.Validity.UNREFRESHABLE:
+    elif status.validity == patch_db.Validity.UNREFRESHABLE:
         return icons.STOCK_FILE_UNREFRESHABLE
     else:
         return gtk.STOCK_FILE
@@ -172,10 +172,10 @@ class PatchFileDb(fsdb.GenericChangeFileDb):
     class FileDir(fsdb.GenericChangeFileDb.FileDir):
         def _calculate_status(self):
             if not self._status_set:
-                validity = patch_db.FileData.Validity.REFRESHED
+                validity = patch_db.Validity.REFRESHED
             else:
                 validity = max([s.validity for s in list(self._status_set)])
-            return patch_db.FileData.Status(None, validity)
+            return patch_db.Status(None, validity)
         def dirs_and_files(self, hide_clean=False, **kwargs):
             if hide_clean:
                 dirs = ifilter((lambda x: x.status.validity), self._subdirs_data)
