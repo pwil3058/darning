@@ -1,0 +1,167 @@
+### Copyright (C) 2011 Peter Williams <peter_ono@users.sourceforge.net>
+###
+### This program is free software; you can redistribute it and/or modify
+### it under the terms of the GNU General Public License as published by
+### the Free Software Foundation; version 2 of the License only.
+###
+### This program is distributed in the hope that it will be useful,
+### but WITHOUT ANY WARRANTY; without even the implied warranty of
+### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+### GNU General Public License for more details.
+###
+### You should have received a copy of the GNU General Public License
+### along with this program; if not, write to the Free Software
+### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Test the 'darn add' command.
+
+Create some test files.
+$ darn_test_tree create
+
+Test adding a file when not in a playground.
+$ darn add file1 file2 nonexistent
+? 1
+! Valid database NOT found.
+
+Initialise a playground and try again without creating a patch
+$ darn init --ng
+$ darn add file1 file2 nonexistent
+? 2
+! No patches applied.
+$ darn files
+? 2
+! No patches applied.
+
+Create a patch and add files including a nonexistent one
+$ darn new first --descr "First patch created."
+$ darn add file1 file2 nonexistent
+> file1: file added to patch "first".
+> file2: file added to patch "first".
+> nonexistent: file added to patch "first".
+$ darn files
+>  :+: file1
+>  :+: file2
+> +:+: nonexistent
+$ ls .darning.dbd/blobs
+> 9d
+> cd
+
+Create a second patch and add the same files
+$ darn new second --descr "Second patch created."
+$ darn add file1 file2 nonexistent
+> file1: file added to patch "second".
+> file2: file added to patch "second".
+> nonexistent: file added to patch "second".
+$ darn files
+>  :+: file1
+>  :+: file2
+> +:+: nonexistent
+$ darn series
+> +: first
+> +: second
+$ ls .darning.dbd/blobs
+> 9d
+> cd
+
+Modify some of the files then create a third patch and add the same files
+$ darn_test_tree modify file2
+$ darn series
+> +: first
+> ?: second
+$ darn files
+>  :+: file1
+>  :?: file2
+> +:+: nonexistent
+$ darn new third --descr "Third patch created."
+? 1
+! Previous top patch ("second") needs refreshing.
+$ darn series
+> +: first
+> ?: second
+> +: third
+$ darn add file1 file2 nonexistent
+? 142
+! file2: file has unrefreshed changes in (applied) patch "second".
+! Aborted.
+$ darn series
+> +: first
+> ?: second
+> +: third
+$ darn files
+$ ls .darning.dbd/blobs
+> 9d
+> cd
+
+Do it again and absorb the unrefreshed changes into the third patch.
+$ darn add --absorb file1 file2 nonexistent
+> file1: file added to patch "third".
+> file2: file added to patch "third".
+! file2: Unrefeshed changes in patch "second" incorporated in patch "third".
+> nonexistent: file added to patch "third".
+$ darn series
+> +: first
+> +: second
+> ?: third
+$ darn files
+>  :+: file1
+>  :?: file2
+> +:+: nonexistent
+$ ls .darning.dbd/blobs
+> 9d
+> cd
+
+Confirm that the change has been absorbed into "third" patch.
+$ darn diff -P second file2
+> diff --git a/file2 b/file2
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..cd1c1e8e36a212ba7723de693b194e58acab54ae 0000664
+$ darn diff -P third file2
+> diff --git a/file2 b/file2
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..00c55dd55bb971b92c078bee4b75df30999295fc 0000664
+> --- a/file2
+> +++ b/file2
+> @@ -1 +1,2 @@
+>  file2: is a text file.
+> +Patch: "second"; Path: "file2"
+$ darn files second
+>  :+: file1
+>  :+: file2
+> +:+: nonexistent
+
+Do it again into a fourth patch using --force.
+$ darn new fourth --descr "Fourth patch created."
+? 1
+! Previous top patch ("third") needs refreshing.
+$ darn_test_tree modify file1
+$ darn add --force file1 file2 nonexistent
+> file1: file added to patch "fourth".
+> file2: file added to patch "fourth".
+> nonexistent: file added to patch "fourth".
+$ darn series
+> +: first
+> +: second
+> ?: third
+> +: fourth
+$ darn files
+>  :+: file1
+>  :+: file2
+> +:+: nonexistent
+Confirm that the change has not been absorbed into "fourth" patch.
+$ darn diff -P third file2
+> diff --git a/file2 b/file2
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..00c55dd55bb971b92c078bee4b75df30999295fc 0000664
+> --- a/file2
+> +++ b/file2
+> @@ -1 +1,2 @@
+>  file2: is a text file.
+> +Patch: "second"; Path: "file2"
+$ darn diff -P fourth file2
+> diff --git a/file2 b/file2
+> index 00c55dd55bb971b92c078bee4b75df30999295fc..00c55dd55bb971b92c078bee4b75df30999295fc 0000664
+$ darn files third
+>  :?: file1
+>  :?: file2
+> +:+: nonexistent
+$ darn files fourth
+>  :+: file1
+>  :+: file2
+> +:+: nonexistent

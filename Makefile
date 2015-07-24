@@ -11,7 +11,7 @@ RPMSRC:=$(RPMBDIR)/SOURCES/$(SRCDIST)
 CLI_SRCS=darn $(wildcard darning/*.py) $(wildcard darning/cli/*.py)
 CLI_TEST_SCRIPTS=$(wildcard test-cli/*.test)
 CLI_TESTS=$(patsubst test-cli/%.test,test-cli/.%.ok, $(CLI_TEST_SCRIPTS))
-CLI_TEST_SCRIPTS_NG=$(wildcard test-cli-ng/*.test)
+CLI_TEST_SCRIPTS_NG=$(sort $(wildcard test-cli-ng/*.test))
 CLI_TESTS_NG=$(patsubst test-cli-ng/%.test,test-cli-ng/.%.ok, $(CLI_TEST_SCRIPTS_NG))
 
 help:

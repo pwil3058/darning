@@ -298,9 +298,14 @@ def get_digest_for_file_list(file_list):
             h.update(open(filepath).read())
     return h.digest()
 
+def get_git_hash_for_content(content):
+    h = hashlib.sha1('blob {0}\000'.format(len(content)))
+    h.update(content)
+    return h.hexdigest()
+
 def get_git_hash_for_file(filepath):
     if os.path.isfile(filepath):
-        hash = hashlib.sha1('blob {0}\000'.format(os.path.getsize(filepath)))
-        hash.update(open(filepath).read())
-        return hash.hexdigest()
+        h = hashlib.sha1('blob {0}\000'.format(os.path.getsize(filepath)))
+        h.update(open(filepath).read())
+        return h.hexdigest()
     return None
