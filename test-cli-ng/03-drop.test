@@ -1,0 +1,265 @@
+### Copyright (C) 2011 Peter Williams <peter_ono@users.sourceforge.net>
+###
+### This program is free software; you can redistribute it and/or modify
+### it under the terms of the GNU General Public License as published by
+### the Free Software Foundation; version 2 of the License only.
+###
+### This program is distributed in the hope that it will be useful,
+### but WITHOUT ANY WARRANTY; without even the implied warranty of
+### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+### GNU General Public License for more details.
+###
+### You should have received a copy of the GNU General Public License
+### along with this program; if not, write to the Free Software
+### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Test the 'darn add' command.
+
+Create some test files.
+$ darn_test_tree create
+
+Initialiaze a playground, create some patches and add the files to the patches
+$ darn init --ng
+$ darn new first
+$ darn add file1 file2 file3 nonexistent > /dev/null
+$ darn_test_tree modify file1 file2 file3
+$ darn refresh
+$ darn new second
+$ darn add file1 file2 file3 file4 nonexistent > /dev/null
+$ darn_test_tree modify file1 file2 file3 file4
+$ darn refresh
+$ darn diff
+> diff --git a/file1 b/file1
+> index ad6359c197c230703a629bb53a12ec31a192ec50..18adc7f8fecff85df26687476be5b245607d7094 0000664
+> --- a/file1
+> +++ b/file1
+> @@ -1,2 +1,3 @@
+>  file1: is a text file.
+>  Patch: "first"; Path: "file1"
+> +Patch: "second"; Path: "file1"
+> diff --git a/file2 b/file2
+> index b30b9de443b547f30526cb164297f653aff20c42..66b5b3ebb7afeb7e7a6a70910c6a72b26b5eb816 0000664
+> --- a/file2
+> +++ b/file2
+> @@ -1,2 +1,3 @@
+>  file2: is a text file.
+>  Patch: "first"; Path: "file2"
+> +Patch: "second"; Path: "file2"
+> diff --git a/file3 b/file3
+> index 9c960409c7a6b216ebfa5016214e6d3ffb0bd312..0ae519f118af6581f45e56ffb62c21941c824f80 0000664
+> --- a/file3
+> +++ b/file3
+> @@ -1,2 +1,3 @@
+>  file3: is a text file.
+>  Patch: "first"; Path: "file3"
+> +Patch: "second"; Path: "file3"
+> diff --git a/file4 b/file4
+> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..23a9c356f085efe175e404c6fd4867e3146033f6 0000664
+> --- a/file4
+> +++ b/file4
+> @@ -1 +1,2 @@
+>  file4: is a text file.
+> +Patch: "second"; Path: "file4"
+> diff --git a/nonexistent b/nonexistent
+$ darn new third
+$ darn add file1 file2 file3 nonexistent > /dev/null
+$ darn_test_tree modify file1 file2 file3
+$ darn refresh
+$ darn series
+> +: first
+> +: second
+> +: third
+
+Now test dropping files from an applied but non top patches
+$ darn drop -P second file2 file3 file4
+? 2
+! Patch "second" is a NON-top applied patch. Aborted.
+$ darn files second
+>  :+: file1
+>  :+: file2
+>  :+: file3
+>  :+: file4
+> +:+: nonexistent
+$ darn series
+> +: first
+> +: second
+> +: third
+$ darn diff -P second
+> diff --git a/file1 b/file1
+> index ad6359c197c230703a629bb53a12ec31a192ec50..18adc7f8fecff85df26687476be5b245607d7094 0000664
+> --- a/file1
+> +++ b/file1
+> @@ -1,2 +1,3 @@
+>  file1: is a text file.
+>  Patch: "first"; Path: "file1"
+> +Patch: "second"; Path: "file1"
+> diff --git a/file2 b/file2
+> index b30b9de443b547f30526cb164297f653aff20c42..66b5b3ebb7afeb7e7a6a70910c6a72b26b5eb816 0000664
+> --- a/file2
+> +++ b/file2
+> @@ -1,2 +1,3 @@
+>  file2: is a text file.
+>  Patch: "first"; Path: "file2"
+> +Patch: "second"; Path: "file2"
+> diff --git a/file3 b/file3
+> index 9c960409c7a6b216ebfa5016214e6d3ffb0bd312..0ae519f118af6581f45e56ffb62c21941c824f80 0000664
+> --- a/file3
+> +++ b/file3
+> @@ -1,2 +1,3 @@
+>  file3: is a text file.
+>  Patch: "first"; Path: "file3"
+> +Patch: "second"; Path: "file3"
+> diff --git a/file4 b/file4
+> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..23a9c356f085efe175e404c6fd4867e3146033f6 0000664
+> --- a/file4
+> +++ b/file4
+> @@ -1 +1,2 @@
+>  file4: is a text file.
+> +Patch: "second"; Path: "file4"
+> diff --git a/nonexistent b/nonexistent
+$ darn diff
+> diff --git a/file1 b/file1
+>index 18adc7f8fecff85df26687476be5b245607d7094..205a12c873c3d1a2ef6c92cbb3fdec537bf6a9f0 0000664
+> --- a/file1
+> +++ b/file1
+> @@ -1,3 +1,4 @@
+>  file1: is a text file.
+>  Patch: "first"; Path: "file1"
+>  Patch: "second"; Path: "file1"
+> +Patch: "third"; Path: "file1"
+> diff --git a/file2 b/file2
+> index 66b5b3ebb7afeb7e7a6a70910c6a72b26b5eb816..380d6350f7b98b2b8742f52cd0c4d6260298175d 0000664
+> --- a/file2
+> +++ b/file2
+> @@ -1,3 +1,4 @@
+>  file2: is a text file.
+>  Patch: "first"; Path: "file2"
+>  Patch: "second"; Path: "file2"
+> +Patch: "third"; Path: "file2"
+> diff --git a/file3 b/file3
+> index 0ae519f118af6581f45e56ffb62c21941c824f80..44657a426759fa081880beaaaab83b44e0e03622 0000664
+> --- a/file3
+> +++ b/file3
+> @@ -1,3 +1,4 @@
+>  file3: is a text file.
+>  Patch: "first"; Path: "file3"
+>  Patch: "second"; Path: "file3"
+> +Patch: "third"; Path: "file3"
+> diff --git a/nonexistent b/nonexistent
+
+Now test dropping nonexistent overlapped file
+$ darn drop -P second nonexistent
+? 2
+! Patch "second" is a NON-top applied patch. Aborted.
+$ darn files second
+>  :+: file1
+>  :+: file2
+>  :+: file3
+>  :+: file4
+> +:+: nonexistent
+$ darn series
+> +: first
+> +: second
+> +: third
+
+Now test dropping a file from an unapplied patch
+$ darn refresh
+$ darn pop
+> Patch "second" is now on top.
+$ darn series
+> +: first
+> +: second
+>  : third
+$ darn drop -P third file1 nonexistent
+> file1: file dropped from patch "third".
+> nonexistent: file dropped from patch "third".
+$ darn series
+> +: first
+> +: second
+>  : third
+
+Now test dropping nonexistent non overlapped file
+$ darn drop -P second nonexistent
+> nonexistent: file dropped from patch "second".
+$ darn files second
+>  :+: file1
+>  :+: file2
+>  :+: file3
+>  :+: file4
+
+Now test dropping files from the top patch.
+$ darn drop -P second file4
+> file4: file dropped from patch "second".
+$ darn diff -P second
+> diff --git a/file1 b/file1
+> index ad6359c197c230703a629bb53a12ec31a192ec50..18adc7f8fecff85df26687476be5b245607d7094 0000664
+> --- a/file1
+> +++ b/file1
+> @@ -1,2 +1,3 @@
+>  file1: is a text file.
+>  Patch: "first"; Path: "file1"
+> +Patch: "second"; Path: "file1"
+> diff --git a/file2 b/file2
+> index b30b9de443b547f30526cb164297f653aff20c42..66b5b3ebb7afeb7e7a6a70910c6a72b26b5eb816 0000664
+> --- a/file2
+> +++ b/file2
+> @@ -1,2 +1,3 @@
+>  file2: is a text file.
+>  Patch: "first"; Path: "file2"
+> +Patch: "second"; Path: "file2"
+> diff --git a/file3 b/file3
+> index 9c960409c7a6b216ebfa5016214e6d3ffb0bd312..0ae519f118af6581f45e56ffb62c21941c824f80 0000664
+> --- a/file3
+> +++ b/file3
+> @@ -1,2 +1,3 @@
+>  file3: is a text file.
+>  Patch: "first"; Path: "file3"
+> +Patch: "second"; Path: "file3"
+$ darn drop file3
+> file3: file dropped from patch "second".
+$ darn diff
+> diff --git a/file1 b/file1
+> index ad6359c197c230703a629bb53a12ec31a192ec50..18adc7f8fecff85df26687476be5b245607d7094 0000664
+> --- a/file1
+> +++ b/file1
+> @@ -1,2 +1,3 @@
+>  file1: is a text file.
+>  Patch: "first"; Path: "file1"
+> +Patch: "second"; Path: "file1"
+> diff --git a/file2 b/file2
+> index b30b9de443b547f30526cb164297f653aff20c42..66b5b3ebb7afeb7e7a6a70910c6a72b26b5eb816 0000664
+> --- a/file2
+> +++ b/file2
+> @@ -1,2 +1,3 @@
+>  file2: is a text file.
+>  Patch: "first"; Path: "file2"
+> +Patch: "second"; Path: "file2"
+$ darn diff -P first
+> diff --git a/file1 b/file1
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..ad6359c197c230703a629bb53a12ec31a192ec50 0000664
+> --- a/file1
+> +++ b/file1
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1"
+> diff --git a/file2 b/file2
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..b30b9de443b547f30526cb164297f653aff20c42 0000664
+> --- a/file2
+> +++ b/file2
+> @@ -1 +1,2 @@
+>  file2: is a text file.
+> +Patch: "first"; Path: "file2"
+> diff --git a/file3 b/file3
+> index da7f3c7d1fb148fdfadc254b6fdb3b8f41628fbd..9c960409c7a6b216ebfa5016214e6d3ffb0bd312 0000664
+> --- a/file3
+> +++ b/file3
+> @@ -1 +1,2 @@
+>  file3: is a text file.
+> +Patch: "first"; Path: "file3"
+> diff --git a/nonexistent b/nonexistent
+
+Now drop files that aren't in the patch
+$ darn drop file3 file4
+? 1
+! file3: file not in patch "second": ignored.
+! file4: file not in patch "second": ignored.
