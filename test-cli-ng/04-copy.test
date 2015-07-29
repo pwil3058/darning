@@ -1,0 +1,506 @@
+### Copyright (C) 2011 Peter Williams <peter_ono@users.sourceforge.net>
+###
+### This program is free software; you can redistribute it and/or modify
+### it under the terms of the GNU General Public License as published by
+### the Free Software Foundation; version 2 of the License only.
+###
+### This program is distributed in the hope that it will be useful,
+### but WITHOUT ANY WARRANTY; without even the implied warranty of
+### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+### GNU General Public License for more details.
+###
+### You should have received a copy of the GNU General Public License
+### along with this program; if not, write to the Free Software
+### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Test the 'darn copy' command.
+
+Create test file tree.
+$ darn_test_tree create
+
+Make a playground and patch
+$ darn init --ng
+$ darn new first
+$ darn add file4 > /dev/null
+$ darn_test_tree modify file4
+
+Copy nonexistent file
+$ darn copy nonexistent nonexistent.copy
+? 2
+! nonexistent: file does not exist.
+$ darn copy nonexistent file1
+? 2
+! nonexistent: file does not exist.
+$ darn copy nonexistent file4
+? 2
+! nonexistent: file does not exist.
+
+Make a simple copy
+$ darn copy file1 file1.copy
+> file1: file copied to "file1.copy" in patch "first".
+$ darn files
+> +:+: file1.copy <<- file1
+>  :?: file4
+$ darn diff
+> diff --git a/file1 b/file1.copy
+> copy from file1
+> copy to file1.copy
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..9d588eff9808b6c1b73445cb3526e1e62bf01bb7 0000664
+> diff --git a/file4 b/file4
+> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..4dbc121c5e1079c153a88799e39bd3b920d66834 0000664
+> --- a/file4
+> +++ b/file4
+> @@ -1 +1,2 @@
+>  file4: is a text file.
+> +Patch: "first"; Path: "file4"
+$ darn_test_tree modify file1.copy
+$ darn diff
+> diff --git a/file1 b/file1.copy
+> copy from file1
+> copy to file1.copy
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0000664
+> --- a/file1
+> +++ b/file1.copy
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.copy"
+> diff --git a/file4 b/file4
+> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..4dbc121c5e1079c153a88799e39bd3b920d66834 0000664
+> --- a/file4
+> +++ b/file4
+> @@ -1 +1,2 @@
+>  file4: is a text file.
+> +Patch: "first"; Path: "file4"
+$ darn files
+> +:?: file1.copy <<- file1
+>  :?: file4
+
+Copy a copy
+$ darn copy file1.copy file1.copy.copy
+> file1.copy: file copied to "file1.copy.copy" in patch "first".
+$ darn files
+> +:?: file1.copy <<- file1
+> +:?: file1.copy.copy <<- file1
+>  :?: file4
+$ darn diff
+> diff --git a/file1 b/file1.copy
+> copy from file1
+> copy to file1.copy
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0000664
+> --- a/file1
+> +++ b/file1.copy
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.copy"
+> diff --git a/file1 b/file1.copy.copy
+> copy from file1
+> copy to file1.copy.copy
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0000664
+> --- a/file1
+> +++ b/file1.copy.copy
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.copy"
+> diff --git a/file4 b/file4
+> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..4dbc121c5e1079c153a88799e39bd3b920d66834 0000664
+> --- a/file4
+> +++ b/file4
+> @@ -1 +1,2 @@
+>  file4: is a text file.
+> +Patch: "first"; Path: "file4"
+
+Simple overwrite
+$ darn copy file2 file3
+? 34
+! file3: file already exists.
+$  darn copy --overwrite file2 file3
+> file2: file copied to "file3" in patch "first".
+$ darn files
+> +:?: file1.copy <<- file1
+> +:?: file1.copy.copy <<- file1
+>  :+: file3 <<- file2
+>  :?: file4
+$ darn_test_tree modify file3
+$ darn files
+> +:?: file1.copy <<- file1
+> +:?: file1.copy.copy <<- file1
+>  :?: file3 <<- file2
+>  :?: file4
+$ darn diff
+> diff --git a/file1 b/file1.copy
+> copy from file1
+> copy to file1.copy
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0000664
+> --- a/file1
+> +++ b/file1.copy
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.copy"
+> diff --git a/file1 b/file1.copy.copy
+> copy from file1
+> copy to file1.copy.copy
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0000664
+> --- a/file1
+> +++ b/file1.copy.copy
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.copy"
+> diff --git a/file2 b/file3
+> copy from file2
+> copy to file3
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..8c6471675c2abb357a74d2501c0fdc28aa6ed717 0000664
+> --- a/file2
+> +++ b/file3
+> @@ -1 +1,2 @@
+>  file2: is a text file.
+> +Patch: "first"; Path: "file3"
+> diff --git a/file4 b/file4
+> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..4dbc121c5e1079c153a88799e39bd3b920d66834 0000664
+> --- a/file4
+> +++ b/file4
+> @@ -1 +1,2 @@
+>  file4: is a text file.
+> +Patch: "first"; Path: "file4"
+
+Overwrite a tracked file
+$ darn copy file2 file4
+? 34
+! file4: file already in patch.
+$ darn copy --overwrite file2 file4
+> file2: file copied to "file4" in patch "first".
+$ darn diff
+> diff --git a/file1 b/file1.copy
+> copy from file1
+> copy to file1.copy
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0000664
+> --- a/file1
+> +++ b/file1.copy
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.copy"
+> diff --git a/file1 b/file1.copy.copy
+> copy from file1
+> copy to file1.copy.copy
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0000664
+> --- a/file1
+> +++ b/file1.copy.copy
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.copy"
+> diff --git a/file2 b/file3
+> copy from file2
+> copy to file3
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..8c6471675c2abb357a74d2501c0fdc28aa6ed717 0000664
+> --- a/file2
+> +++ b/file3
+> @@ -1 +1,2 @@
+>  file2: is a text file.
+> +Patch: "first"; Path: "file3"
+> diff --git a/file2 b/file4
+> copy from file2
+> copy to file4
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..cd1c1e8e36a212ba7723de693b194e58acab54ae 0000664
+$ cat file4
+> file2: is a text file.
+
+Refresh, pop and push
+$ darn refresh
+$ ls --ignore=dir* --ignore=binary*
+> file1
+> file1.copy
+> file1.copy.copy
+> file2
+> file3
+> file4
+> file5
+$ darn pop
+> There are now no patches applied.
+$ darn files first
+> +: : file1.copy <<- file1
+> +: : file1.copy.copy <<- file1
+>  : : file3 <<- file2
+>  : : file4 <<- file2
+$ cat file3
+> file3: is a text file.
+$ cat file4
+> file4: is a text file.
+$ ls --ignore=dir* --ignore=binary*
+> file1
+> file2
+> file3
+> file4
+> file5
+$ darn push > /dev/null
+$ darn files
+> +:+: file1.copy <<- file1
+> +:+: file1.copy.copy <<- file1
+>  :+: file3 <<- file2
+>  :+: file4 <<- file2
+$ darn diff
+> diff --git a/file1 b/file1.copy
+> copy from file1
+> copy to file1.copy
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0000664
+> --- a/file1
+> +++ b/file1.copy
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.copy"
+> diff --git a/file1 b/file1.copy.copy
+> copy from file1
+> copy to file1.copy.copy
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0000664
+> --- a/file1
+> +++ b/file1.copy.copy
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.copy"
+> diff --git a/file2 b/file3
+> copy from file2
+> copy to file3
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..8c6471675c2abb357a74d2501c0fdc28aa6ed717 0000664
+> --- a/file2
+> +++ b/file3
+> @@ -1 +1,2 @@
+>  file2: is a text file.
+> +Patch: "first"; Path: "file3"
+> diff --git a/file2 b/file4
+> copy from file2
+> copy to file4
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..cd1c1e8e36a212ba7723de693b194e58acab54ae 0000664
+$ ls --ignore=dir* --ignore=binary*
+> file1
+> file1.copy
+> file1.copy.copy
+> file2
+> file3
+> file4
+> file5
+
+Drop the overwritten "tracked" file
+$ darn drop file4 > /dev/null
+$ darn files
+> +:+: file1.copy <<- file1
+> +:+: file1.copy.copy <<- file1
+>  :+: file3 <<- file2
+$ cat file4
+> file4: is a text file.
+$ darn diff
+> diff --git a/file1 b/file1.copy
+> copy from file1
+> copy to file1.copy
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0000664
+> --- a/file1
+> +++ b/file1.copy
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.copy"
+> diff --git a/file1 b/file1.copy.copy
+> copy from file1
+> copy to file1.copy.copy
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0000664
+> --- a/file1
+> +++ b/file1.copy.copy
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.copy"
+> diff --git a/file2 b/file3
+> copy from file2
+> copy to file3
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..8c6471675c2abb357a74d2501c0fdc28aa6ed717 0000664
+> --- a/file2
+> +++ b/file3
+> @@ -1 +1,2 @@
+>  file2: is a text file.
+> +Patch: "first"; Path: "file3"
+
+Drop the overwritten "untracked" file
+$ darn drop file3 > /dev/null
+$ darn files
+> +:+: file1.copy <<- file1
+> +:+: file1.copy.copy <<- file1
+$ cat file3
+> file3: is a text file.
+$ darn diff
+> diff --git a/file1 b/file1.copy
+> copy from file1
+> copy to file1.copy
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0000664
+> --- a/file1
+> +++ b/file1.copy
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.copy"
+> diff --git a/file1 b/file1.copy.copy
+> copy from file1
+> copy to file1.copy.copy
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0000664
+> --- a/file1
+> +++ b/file1.copy.copy
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.copy"
+
+Drop a simple copy
+$ darn drop file1.copy
+> file1.copy: file dropped from patch "first".
+$ ls --ignore=dir* --ignore=binary*
+> file1
+> file1.copy.copy
+> file2
+> file3
+> file4
+> file5
+$ darn files
+> +:+: file1.copy.copy <<- file1
+$ cat file1
+> file1: is a text file.
+$ darn diff
+> diff --git a/file1 b/file1.copy.copy
+> copy from file1
+> copy to file1.copy.copy
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0000664
+> --- a/file1
+> +++ b/file1.copy.copy
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.copy"
+
+Pop and we should be back to the start
+$ darn files
+> +:+: file1.copy.copy <<- file1
+$ darn pop
+> There are now no patches applied.
+$ cat file1
+> file1: is a text file.
+$ cat file2
+> file2: is a text file.
+$ cat file3
+> file3: is a text file.
+$ cat file4
+> file4: is a text file.
+$ ls --ignore=dir* --ignore=binary*
+> file1
+> file2
+> file3
+> file4
+> file5
+
+Now test copying a tracked file
+$ darn new second
+$ darn add file1 > /dev/null
+$ darn_test_tree modify file1
+$ darn refresh
+$ darn diff
+> diff --git a/file1 b/file1
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0000664
+> --- a/file1
+> +++ b/file1
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "second"; Path: "file1"
+$ darn copy file1 file1.copy
+> file1: file copied to "file1.copy" in patch "second".
+$ darn diff
+> diff --git a/file1 b/file1
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0000664
+> --- a/file1
+> +++ b/file1
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "second"; Path: "file1"
+> diff --git a/file1 b/file1.copy
+> copy from file1
+> copy to file1.copy
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0000664
+> --- a/file1
+> +++ b/file1.copy
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "second"; Path: "file1"
+$ darn refresh
+$ darn pop > /dev/null
+$ darn push > /dev/null
+$ darn diff
+> diff --git a/file1 b/file1
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0000664
+> --- a/file1
+> +++ b/file1
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "second"; Path: "file1"
+> diff --git a/file1 b/file1.copy
+> copy from file1
+> copy to file1.copy
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0000664
+> --- a/file1
+> +++ b/file1.copy
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "second"; Path: "file1"
+$ darn files
+>  :+: file1
+> +:+: file1.copy <<- file1
+$ darn drop file1 > /dev/null
+$ darn files
+> +:+: file1.copy <<- file1
+$ darn diff
+> diff --git a/file1 b/file1.copy
+> copy from file1
+> copy to file1.copy
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0000664
+> --- a/file1
+> +++ b/file1.copy
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "second"; Path: "file1"
+$ cat file1
+> file1: is a text file.
+$ darn pop > /dev/null
+$ darn push > /dev/null
+$ darn diff
+> diff --git a/file1 b/file1.copy
+> copy from file1
+> copy to file1.copy
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0000664
+> --- a/file1
+> +++ b/file1.copy
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "second"; Path: "file1"
+$ darn files
+> +:+: file1.copy <<- file1
+
+Bug #3465707
+Test copying an untracked file and then adding the original
+$ darn refresh
+$ darn new third
+$ darn copy dir5/file1 dir5/file1.copy
+> dir5/file1: file copied to "dir5/file1.copy" in patch "third".
+$ darn_test_tree modify dir5/file1.copy
+$ darn add dir5/file1
+> dir5/file1: file added to patch "third".
+$ darn_test_tree modify dir5/file1
+$ darn refresh
+$ darn diff
+> diff --git a/dir5/file1 b/dir5/file1
+> index 143e4e5f017e729dc01ee61c45b90d774a489ce5..4495c02f33efe6999de64b4caf56bb21bc4681a4 0000664
+> --- a/dir5/file1
+> +++ b/dir5/file1
+> @@ -1 +1,2 @@
+>  dir5/file1: is a text file.
+> +Patch: "third"; Path: "dir5/file1"
+> diff --git a/dir5/file1 b/dir5/file1.copy
+> copy from dir5/file1
+> copy to dir5/file1.copy
+> index 143e4e5f017e729dc01ee61c45b90d774a489ce5..88d5d90e793ec6577adb522c42146f62b5ac3cff 0000664
+> --- a/dir5/file1
+> +++ b/dir5/file1.copy
+> @@ -1 +1,2 @@
+>  dir5/file1: is a text file.
+> +Patch: "third"; Path: "dir5/file1.copy"
+$ darn pop > /dev/null
+$ darn push
+> Patching file "dir5/file1.copy".
+> Patching file "dir5/file1".
+> Patch "third" is now on top.
