@@ -36,3 +36,4 @@ from . import subcmd_copy
 from . import subcmd_move
 from . import subcmd_fold
 from . import subcmd_absorb
+from . import subcmd_rename

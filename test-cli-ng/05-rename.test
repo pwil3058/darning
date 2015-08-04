@@ -13,7 +13,7 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-Test the 'darn move' command.
+Test the 'darn rename' command.
 
 Create some test files.
 $ darn_test_tree create
@@ -25,30 +25,30 @@ $ darn add file4
 > file4: file added to patch "first".
 $ darn_test_tree modify file4
 
-Try to move a nonexistent file
-$ darn move nonexistent nonexistent.moved
+Try to rename a nonexistent file
+$ darn rename nonexistent nonexistent.renamed
 ? 2
 ! nonexistent: file does not exist.
-$ darn move nonexistent file1
+$ darn rename nonexistent file1
 ? 2
 ! nonexistent: file does not exist.
-$ darn move nonexistent file4
+$ darn rename nonexistent file4
 ? 2
 ! nonexistent: file does not exist.
 
-Make a simple move/rename
-$ darn move file1 file1.moved
-> file1: file renamed to "file1.moved" in patch "first".
+Make a simple rename
+$ darn rename file1 file1.renamed
+> file1: file renamed to "file1.renamed" in patch "first".
 $ darn files
-> -:+: file1 -> file1.moved
-> +:+: file1.moved <- file1
+> -:+: file1 -> file1.renamed
+> +:+: file1.renamed <- file1
 >  :?: file4
 $ darn diff
 > diff --git a/file1 b/file1
-> # Renamed to: file1.moved
-> diff --git a/file1 b/file1.moved
+> # Renamed to: file1.renamed
+> diff --git a/file1 b/file1.renamed
 > rename from file1
-> rename to file1.moved
+> rename to file1.renamed
 > index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..9d588eff9808b6c1b73445cb3526e1e62bf01bb7 0000664
 > diff --git a/file4 b/file4
 > index 0ae60b457dee21f4f4c4af93722f993185aff3f0..4dbc121c5e1079c153a88799e39bd3b920d66834 0000664
@@ -57,19 +57,19 @@ $ darn diff
 > @@ -1 +1,2 @@
 >  file4: is a text file.
 > +Patch: "first"; Path: "file4"
-$ darn_test_tree modify file1.moved
+$ darn_test_tree modify file1.renamed
 $ darn diff
 > diff --git a/file1 b/file1
-> # Renamed to: file1.moved
-> diff --git a/file1 b/file1.moved
+> # Renamed to: file1.renamed
+> diff --git a/file1 b/file1.renamed
 > rename from file1
-> rename to file1.moved
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..675b573eb2e73e49abcdfd3a46097401c1e807c5 0000664
+> rename to file1.renamed
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..0adc018e1d1d063c4e3926da5271fecdbbb0a67d 0000664
 > --- a/file1
-> +++ b/file1.moved
+> +++ b/file1.renamed
 > @@ -1 +1,2 @@
 >  file1: is a text file.
-> +Patch: "first"; Path: "file1.moved"
+> +Patch: "first"; Path: "file1.renamed"
 > diff --git a/file4 b/file4
 > index 0ae60b457dee21f4f4c4af93722f993185aff3f0..4dbc121c5e1079c153a88799e39bd3b920d66834 0000664
 > --- a/file4
@@ -78,29 +78,29 @@ $ darn diff
 >  file4: is a text file.
 > +Patch: "first"; Path: "file4"
 $ darn files
-> -:+: file1 -> file1.moved
-> +:?: file1.moved <- file1
+> -:+: file1 -> file1.renamed
+> +:?: file1.renamed <- file1
 >  :?: file4
 
-Move a moved file
-$ darn move file1.moved file1.moved.moved
-> file1.moved: file renamed to "file1.moved.moved" in patch "first".
+Rename a renamed file
+$ darn rename file1.renamed file1.renamed.renamed
+> file1.renamed: file renamed to "file1.renamed.renamed" in patch "first".
 $ darn files
-> -:+: file1 -> file1.moved.moved
-> +:?: file1.moved.moved <- file1
+> -:+: file1 -> file1.renamed.renamed
+> +:?: file1.renamed.renamed <- file1
 >  :?: file4
 $ darn diff
 > diff --git a/file1 b/file1
-> # Renamed to: file1.moved.moved
-> diff --git a/file1 b/file1.moved.moved
+> # Renamed to: file1.renamed.renamed
+> diff --git a/file1 b/file1.renamed.renamed
 > rename from file1
-> rename to file1.moved.moved
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..675b573eb2e73e49abcdfd3a46097401c1e807c5 0000664
+> rename to file1.renamed.renamed
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..0adc018e1d1d063c4e3926da5271fecdbbb0a67d 0000664
 > --- a/file1
-> +++ b/file1.moved.moved
+> +++ b/file1.renamed.renamed
 > @@ -1 +1,2 @@
 >  file1: is a text file.
-> +Patch: "first"; Path: "file1.moved"
+> +Patch: "first"; Path: "file1.renamed"
 > diff --git a/file4 b/file4
 > index 0ae60b457dee21f4f4c4af93722f993185aff3f0..4dbc121c5e1079c153a88799e39bd3b920d66834 0000664
 > --- a/file4
@@ -110,33 +110,33 @@ $ darn diff
 > +Patch: "first"; Path: "file4"
 
 Simple overwrite
-$ darn move --overwrite file2 file3
+$ darn rename --overwrite file2 file3
 > file2: file renamed to "file3" in patch "first".
 $ darn files
-> -:+: file1 -> file1.moved.moved
-> +:?: file1.moved.moved <- file1
+> -:+: file1 -> file1.renamed.renamed
+> +:?: file1.renamed.renamed <- file1
 > -:+: file2 -> file3
 >  :+: file3 <- file2
 >  :?: file4
 $ darn_test_tree modify file3
 $ darn files
-> -:+: file1 -> file1.moved.moved
-> +:?: file1.moved.moved <- file1
+> -:+: file1 -> file1.renamed.renamed
+> +:?: file1.renamed.renamed <- file1
 > -:+: file2 -> file3
 >  :?: file3 <- file2
 >  :?: file4
 $ darn diff
 > diff --git a/file1 b/file1
-> # Renamed to: file1.moved.moved
-> diff --git a/file1 b/file1.moved.moved
+> # Renamed to: file1.renamed.renamed
+> diff --git a/file1 b/file1.renamed.renamed
 > rename from file1
-> rename to file1.moved.moved
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..675b573eb2e73e49abcdfd3a46097401c1e807c5 0000664
+> rename to file1.renamed.renamed
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..0adc018e1d1d063c4e3926da5271fecdbbb0a67d 0000664
 > --- a/file1
-> +++ b/file1.moved.moved
+> +++ b/file1.renamed.renamed
 > @@ -1 +1,2 @@
 >  file1: is a text file.
-> +Patch: "first"; Path: "file1.moved"
+> +Patch: "first"; Path: "file1.renamed"
 > diff --git a/file2 b/file2
 > # Renamed to: file3
 > diff --git a/file2 b/file3
@@ -157,23 +157,23 @@ $ darn diff
 > +Patch: "first"; Path: "file4"
 
 Overwrite a tracked file
-$ darn move file5 file4
+$ darn rename file5 file4
 ? 34
 ! file4: file already in patch.
-$ darn move --overwrite file5 file4
+$ darn rename --overwrite file5 file4
 > file5: file renamed to "file4" in patch "first".
 $ darn diff
 > diff --git a/file1 b/file1
-> # Renamed to: file1.moved.moved
-> diff --git a/file1 b/file1.moved.moved
+> # Renamed to: file1.renamed.renamed
+> diff --git a/file1 b/file1.renamed.renamed
 > rename from file1
-> rename to file1.moved.moved
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..675b573eb2e73e49abcdfd3a46097401c1e807c5 0000664
+> rename to file1.renamed.renamed
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..0adc018e1d1d063c4e3926da5271fecdbbb0a67d 0000664
 > --- a/file1
-> +++ b/file1.moved.moved
+> +++ b/file1.renamed.renamed
 > @@ -1 +1,2 @@
 >  file1: is a text file.
-> +Patch: "first"; Path: "file1.moved"
+> +Patch: "first"; Path: "file1.renamed"
 > diff --git a/file2 b/file2
 > # Renamed to: file3
 > diff --git a/file2 b/file3
@@ -197,21 +197,21 @@ $ cat file4
 Refresh, pop and push
 $ darn refresh
 $ darn files
-> -:+: file1 -> file1.moved.moved
-> +:+: file1.moved.moved <- file1
+> -:+: file1 -> file1.renamed.renamed
+> +:+: file1.renamed.renamed <- file1
 > -:+: file2 -> file3
 >  :+: file3 <- file2
 >  :+: file4 <- file5
 > -:+: file5 -> file4
 $ ls --ignore=dir* --ignore=binary*
-> file1.moved.moved
+> file1.renamed.renamed
 > file3
 > file4
 $ darn pop
 > There are now no patches applied.
 $ darn files first
-> -: : file1 -> file1.moved.moved
-> +: : file1.moved.moved <- file1
+> -: : file1 -> file1.renamed.renamed
+> +: : file1.renamed.renamed <- file1
 > -: : file2 -> file3
 >  : : file3 <- file2
 >  : : file4 <- file5
@@ -233,32 +233,32 @@ $ ls --ignore=dir* --ignore=binary*
 > file4
 > file5
 $ darn push
-> "file1": renamed as "file1.moved.moved".
+> "file1": renamed as "file1.renamed.renamed".
 > "file2": renamed as "file3".
 > "file5": renamed as "file4".
-> "file1.moved.moved": renamed from "file1" and modified.
+> "file1.renamed.renamed": renamed from "file1" and modified.
 > "file3": renamed from "file2" and modified.
 > "file4": renamed from "file5".
 > Patch "first" is now on top.
 $ darn files
-> -:+: file1 -> file1.moved.moved
-> +:+: file1.moved.moved <- file1
+> -:+: file1 -> file1.renamed.renamed
+> +:+: file1.renamed.renamed <- file1
 > -:+: file2 -> file3
 >  :+: file3 <- file2
 >  :+: file4 <- file5
 > -:+: file5 -> file4
 $ darn diff
 > diff --git a/file1 b/file1
-> # Renamed to: file1.moved.moved
-> diff --git a/file1 b/file1.moved.moved
+> # Renamed to: file1.renamed.renamed
+> diff --git a/file1 b/file1.renamed.renamed
 > rename from file1
-> rename to file1.moved.moved
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..675b573eb2e73e49abcdfd3a46097401c1e807c5 0000664
+> rename to file1.renamed.renamed
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..0adc018e1d1d063c4e3926da5271fecdbbb0a67d 0000664
 > --- a/file1
-> +++ b/file1.moved.moved
+> +++ b/file1.renamed.renamed
 > @@ -1 +1,2 @@
 >  file1: is a text file.
-> +Patch: "first"; Path: "file1.moved"
+> +Patch: "first"; Path: "file1.renamed"
 > diff --git a/file2 b/file2
 > # Renamed to: file3
 > diff --git a/file2 b/file3
@@ -277,14 +277,14 @@ $ darn diff
 > diff --git a/file5 b/file5
 > # Renamed to: file4
 $ ls --ignore=dir* --ignore=binary*
-> file1.moved.moved
+> file1.renamed.renamed
 > file3
 > file4
 
 Drop the overwritten "tracked" file
 $ darn files
-> -:+: file1 -> file1.moved.moved
-> +:+: file1.moved.moved <- file1
+> -:+: file1 -> file1.renamed.renamed
+> +:+: file1.renamed.renamed <- file1
 > -:+: file2 -> file3
 >  :+: file3 <- file2
 >  :+: file4 <- file5
@@ -292,8 +292,8 @@ $ darn files
 $ darn drop file4
 > file4: file dropped from patch "first".
 $ darn files
-> -:+: file1 -> file1.moved.moved
-> +:+: file1.moved.moved <- file1
+> -:+: file1 -> file1.renamed.renamed
+> +:+: file1.renamed.renamed <- file1
 > -:+: file2 -> file3
 >  :+: file3 <- file2
 > -:?: file5
@@ -301,16 +301,16 @@ $ cat file4
 > file4: is a text file.
 $ darn diff
 > diff --git a/file1 b/file1
-> # Renamed to: file1.moved.moved
-> diff --git a/file1 b/file1.moved.moved
+> # Renamed to: file1.renamed.renamed
+> diff --git a/file1 b/file1.renamed.renamed
 > rename from file1
-> rename to file1.moved.moved
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..675b573eb2e73e49abcdfd3a46097401c1e807c5 0000664
+> rename to file1.renamed.renamed
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..0adc018e1d1d063c4e3926da5271fecdbbb0a67d 0000664
 > --- a/file1
-> +++ b/file1.moved.moved
+> +++ b/file1.renamed.renamed
 > @@ -1 +1,2 @@
 >  file1: is a text file.
-> +Patch: "first"; Path: "file1.moved"
+> +Patch: "first"; Path: "file1.renamed"
 > diff --git a/file2 b/file2
 > # Renamed to: file3
 > diff --git a/file2 b/file3
@@ -334,24 +334,24 @@ Drop the overwritten "untracked" file
 $ darn drop file3
 > file3: file dropped from patch "first".
 $ darn files
-> -:+: file1 -> file1.moved.moved
-> +:+: file1.moved.moved <- file1
+> -:+: file1 -> file1.renamed.renamed
+> +:+: file1.renamed.renamed <- file1
 > -:?: file2
 > -:?: file5
 $ cat file3
 > file3: is a text file.
 $ darn diff
 > diff --git a/file1 b/file1
-> # Renamed to: file1.moved.moved
-> diff --git a/file1 b/file1.moved.moved
+> # Renamed to: file1.renamed.renamed
+> diff --git a/file1 b/file1.renamed.renamed
 > rename from file1
-> rename to file1.moved.moved
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..675b573eb2e73e49abcdfd3a46097401c1e807c5 0000664
+> rename to file1.renamed.renamed
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..0adc018e1d1d063c4e3926da5271fecdbbb0a67d 0000664
 > --- a/file1
-> +++ b/file1.moved.moved
+> +++ b/file1.renamed.renamed
 > @@ -1 +1,2 @@
 >  file1: is a text file.
-> +Patch: "first"; Path: "file1.moved"
+> +Patch: "first"; Path: "file1.renamed"
 > diff --git a/file2 b/file2
 > deleted file mode 0000664
 > index cd1c1e8e36a212ba7723de693b194e58acab54ae..000000000000000000000000000000000000000000000000
@@ -367,9 +367,9 @@ $ darn diff
 > @@ -1 +0,0 @@
 > -file5: is a text file.
 
-Drop a simple move
-$ darn drop file1.moved.moved
-> file1.moved.moved: file dropped from patch "first".
+Drop a simple rename
+$ darn drop file1.renamed.renamed
+> file1.renamed.renamed: file dropped from patch "first".
 $ darn files
 > -:?: file1
 > -:?: file2
@@ -442,17 +442,17 @@ $ darn diff
 > @@ -1 +1,2 @@
 >  file1: is a text file.
 > +Patch: "second"; Path: "file1"
-$ darn move file1 file1.moved
-> file1: file renamed to "file1.moved" in patch "second".
+$ darn rename file1 file1.renamed
+> file1: file renamed to "file1.renamed" in patch "second".
 $ darn diff
 > diff --git a/file1 b/file1
-> # Renamed to: file1.moved
-> diff --git a/file1 b/file1.moved
+> # Renamed to: file1.renamed
+> diff --git a/file1 b/file1.renamed
 > rename from file1
-> rename to file1.moved
+> rename to file1.renamed
 > index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0000664
 > --- a/file1
-> +++ b/file1.moved
+> +++ b/file1.renamed
 > @@ -1 +1,2 @@
 >  file1: is a text file.
 > +Patch: "second"; Path: "file1"
@@ -460,35 +460,35 @@ $ darn refresh
 $ darn pop
 > There are now no patches applied.
 $ darn push
-> "file1": renamed as "file1.moved".
-> "file1.moved": renamed from "file1" and modified.
+> "file1": renamed as "file1.renamed".
+> "file1.renamed": renamed from "file1" and modified.
 > Patch "second" is now on top.
 $ darn diff
 > diff --git a/file1 b/file1
-> # Renamed to: file1.moved
-> diff --git a/file1 b/file1.moved
+> # Renamed to: file1.renamed
+> diff --git a/file1 b/file1.renamed
 > rename from file1
-> rename to file1.moved
+> rename to file1.renamed
 > index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0000664
 > --- a/file1
-> +++ b/file1.moved
+> +++ b/file1.renamed
 > @@ -1 +1,2 @@
 >  file1: is a text file.
 > +Patch: "second"; Path: "file1"
 $ darn files
-> -:+: file1 -> file1.moved
-> +:+: file1.moved <- file1
+> -:+: file1 -> file1.renamed
+> +:+: file1.renamed <- file1
 $ darn drop file1
 > file1: file dropped from patch "second".
 $ darn files
-> +:+: file1.moved <<- file1
+> +:+: file1.renamed <<- file1
 $ darn diff
-> diff --git a/file1 b/file1.moved
+> diff --git a/file1 b/file1.renamed
 > copy from file1
-> copy to file1.moved
+> copy to file1.renamed
 > index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0000664
 > --- a/file1
-> +++ b/file1.moved
+> +++ b/file1.renamed
 > @@ -1 +1,2 @@
 >  file1: is a text file.
 > +Patch: "second"; Path: "file1"
@@ -497,22 +497,22 @@ $ cat file1
 $ darn pop
 > There are now no patches applied.
 $ darn push
-> "file1.moved": copied from "file1" and modified.
+> "file1.renamed": copied from "file1" and modified.
 > Patch "second" is now on top.
 $ darn diff
-> diff --git a/file1 b/file1.moved
+> diff --git a/file1 b/file1.renamed
 > copy from file1
-> copy to file1.moved
+> copy to file1.renamed
 > index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0000664
 > --- a/file1
-> +++ b/file1.moved
+> +++ b/file1.renamed
 > @@ -1 +1,2 @@
 >  file1: is a text file.
 > +Patch: "second"; Path: "file1"
 $ darn files
-> +:+: file1.moved <<- file1
+> +:+: file1.renamed <<- file1
 
-Move a file that was newly created in the patch
+Rename a file that was newly created in the patch
 $ darn pop > /dev/null
 $ darn new third
 $ darn add nonexistent
@@ -529,20 +529,20 @@ $ darn diff
 > +++ b/nonexistent
 > @@ -0,0 +1 @@
 > +content
-$ darn move nonexistent nonexistent.moved
-> nonexistent: file renamed to "nonexistent.moved" in patch "third".
+$ darn rename nonexistent nonexistent.renamed
+> nonexistent: file renamed to "nonexistent.renamed" in patch "third".
 $ darn files
-> +:?: nonexistent.moved
+> +:?: nonexistent.renamed
 $ darn diff
-> diff --git a/nonexistent.moved b/nonexistent.moved
+> diff --git a/nonexistent.renamed b/nonexistent.renamed
 > new file mode 0000664
 > index 000000000000000000000000000000000000000000000000..d95f3ad14dee633a758d2e331151e950dd13e4ed
 > --- /dev/null
-> +++ b/nonexistent.moved
+> +++ b/nonexistent.renamed
 > @@ -0,0 +1 @@
 > +content
 
-Move a file that was newly copied in the patch
+Rename a file that was newly copied in the patch
 $ darn refresh
 $ darn pop > /dev/null
 $ darn new fourth
@@ -555,7 +555,7 @@ $ darn diff
 > copy from file1
 > copy to file1.copy
 > index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..9d588eff9808b6c1b73445cb3526e1e62bf01bb7 0000664
-$ darn move file1.copy file1.copy.renamed
+$ darn rename file1.copy file1.copy.renamed
 > file1.copy: file renamed to "file1.copy.renamed" in patch "fourth".
 $ darn files
 > +:+: file1.copy.renamed <<- file1
@@ -569,9 +569,9 @@ Swap the name of two files
 $ darn refresh
 $ darn pop > /dev/null
 $ darn new swap
-$ darn move file1 file1.temp
+$ darn rename file1 file1.temp
 > file1: file renamed to "file1.temp" in patch "swap".
-$ darn move file2 file1
+$ darn rename file2 file1
 ? 34
 ! file1: file already in patch.
 $ darn files
@@ -584,7 +584,7 @@ $ darn diff file1 file1.temp
 > rename from file1
 > rename to file1.temp
 > index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..9d588eff9808b6c1b73445cb3526e1e62bf01bb7 0000664
-$ darn move --overwrite file2 file1
+$ darn rename --overwrite file2 file1
 > file2: file renamed to "file1" in patch "swap".
 $ darn files
 >  :+: file1 <- file2
@@ -601,10 +601,10 @@ $ darn diff file1 file2 file1.temp
 > rename from file1
 > rename to file1.temp
 > index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..9d588eff9808b6c1b73445cb3526e1e62bf01bb7 0000664
-$ darn move file1.temp file2
+$ darn rename file1.temp file2
 ? 34
 ! file2: file already in patch.
-$ darn move --overwrite file1.temp file2
+$ darn rename --overwrite file1.temp file2
 > file1.temp: file renamed to "file2" in patch "swap".
 $ darn files
 >  :+: file1 <- file2
