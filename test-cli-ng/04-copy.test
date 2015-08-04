@@ -501,6 +501,6 @@ $ darn diff
 > +Patch: "third"; Path: "dir5/file1.copy"
 $ darn pop > /dev/null
 $ darn push
-> Patching file "dir5/file1.copy".
-> Patching file "dir5/file1".
+> "dir5/file1.copy": copied from "dir5/file1" and modified.
+> "dir5/file1": modified.
 > Patch "third" is now on top.

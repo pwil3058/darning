@@ -276,6 +276,10 @@ class FileData(mixins.WrapperMixin):
         self.patch = patch
     def __eq__(self, other):
         self.persistent_file_data is other.persistent_file_data
+    def __lt__(self, other):
+        self.path < other.path
+    def __gt__(self, other):
+        self.path > other.path
     @classmethod
     def new(cls, file_path, patch, overlaps=OverlapData()):
         # NB: presence of overlaps implies absorb
@@ -286,7 +290,7 @@ class FileData(mixins.WrapperMixin):
     def new_as_copy(cls, file_path, patch, came_from_path):
         # NB: absence of overlaps implies force
         orig = patch.database.store_file_content(file_path)
-        came_from = patch.create_came_from_data(came_from_path, False)
+        came_from = patch.create_came_from_for_copy(came_from_path)
         try:
             shutil.copy2(came_from_path, file_path)
         except OSError:
@@ -302,7 +306,7 @@ class FileData(mixins.WrapperMixin):
             diff_wrt = orig
         return cls(file_path, _FileData(orig=orig, darned=darned, diff_wrt=diff_wrt, came_from=came_from), patch)
     def copy_contents_from(self, copy_from_path):
-        new_came_from = self.patch.create_came_from_data(copy_from_path, False)
+        new_came_from = self.patch.create_came_from_for_copy(copy_from_path)
         try:
             shutil.copy2(copy_from_path, self.path)
         except OSError:
@@ -317,6 +321,89 @@ class FileData(mixins.WrapperMixin):
             self.darned = self.patch.database.clone_stored_content_data(self.came_from.orig)
             self.diff_wrt = self.came_from.orig
             self.diff = None
+    @classmethod
+    def new_as_move(cls, file_path, patch, fm_file_data):
+        # NB: absence of overlaps implies force
+        orig = patch.database.store_file_content(file_path)
+        try:
+            os.rename(fm_file_data.path, file_path)
+        except OSError:
+            patch.database.release_stored_content(orig)
+            raise
+        diff = None
+        if fm_file_data.came_from:
+            came_from = fm_file_data.came_from
+            diff_wrt = came_from.orig
+            darned = patch.database.clone_stored_content_data(came_from.orig)
+            if came_from.as_rename:
+                assert came_from.file_path != file_path
+                patch.get_file(came_from.file_path).renamed_as = file_path
+            fm_file_data.came_from = None
+        elif fm_file_data.orig is None:
+            # this a rename of a file created in this patch
+            came_from = None
+            darned = patch.database.clone_stored_content_data(fm_file_data.darned)
+            diff_wrt = fm_file_data.diff_wrt
+            diff = fm_file_data.diff
+        else:
+            came_from = _CameFromData(fm_file_data.path, True, patch.database.clone_stored_content_data(fm_file_data.orig))
+            fm_file_data.renamed_as = file_path
+            darned = patch.database.clone_stored_content_data(came_from.orig)
+            diff_wrt = came_from.orig
+        fm_file_data.diff_wrt = None
+        fm_file_data.diff = None
+        fm_file_data.darned = patch.database.release_stored_content(fm_file_data.darned)
+        return cls(file_path, _FileData(orig=orig, darned=darned, diff=diff, diff_wrt=diff_wrt, came_from=came_from), patch)
+    def move_contents_from(self, fm_file_data):
+        # NB: move the contents first and let exceptions go uncaught
+        # so that there is nothing to undo in that event
+        os.rename(fm_file_data.path, self.path)
+        # shouldn't get here if the rename fails
+        if self.came_from:
+            self.patch.database.release_stored_content(self.came_from.orig)
+            if self.came_from.as_rename:
+                self.patch.files_data[self.came_from.file_path].renamed_as = False
+            self.came_from = None
+        if fm_file_data.came_from:
+            if fm_file_data.came_from.as_rename:
+                # rename of a rename
+                if fm_file_data.came_from.file_path == self.path:
+                    # Boomerang
+                    assert self.renamed_as == fm_file_data.path
+                    self.patch.database.release_stored_content(fm_file_data.orig)
+                    fm_file_data.came_from = None
+                    self.renamed_as = None
+                else:
+                    self.came_from = fm_file_data.came_from
+                    fm_file_data.came_from = None
+                    self.patch.get_file(self.came_from.file_path).renamed_as = self.path
+                    self.patch.database.release_stored_content(self.darned)
+                    self.darned = self.patch.database.clone_stored_content_data(self.came_from.orig)
+                    self.diff_wrt = self.came_from.orig
+                    self.diff = None
+            else:
+                # this a rename of a copy
+                self.came_from = fm_file_data.came_from
+                fm_file_data.came_from = None
+        elif fm_file_data.orig is None:
+            # this a rename of a file created in this patch
+            self.patch.database.release_stored_content(self.darned)
+            self.darned = self.patch.database.clone_stored_content_data(fm_file_data.darned)
+            self.diff_wrt = fm_file_data.diff_wrt
+            self.diff = fm_file_data.diff
+        else:
+            efd = self.patch.database.clone_stored_content_data(fm_file_data.orig)
+            self.came_from = _CameFromData(fm_file_data.path, True, efd)
+            fm_file_data.renamed_as = self.path
+            self.patch.database.release_stored_content(self.darned)
+            self.darned = self.patch.database.clone_stored_content_data(self.came_from.orig)
+            self.diff_wrt = self.came_from.orig
+            self.diff = None
+        fm_file_data.diff_wrt = None
+        fm_file_data.diff = None
+        fm_file_data.darned = self.patch.database.release_stored_content(fm_file_data.darned)
+        if self.needs_refresh:
+            print "NEEDS REFRESH (2):", self.path
     def release_contents(self):
         self.patch.database.release_stored_content(self.orig)
         self.patch.database.release_stored_content(self.darned)
@@ -332,6 +419,10 @@ class FileData(mixins.WrapperMixin):
     def presence(self):
         if self.orig is None:
             return Presence.ADDED
+        if self.patch.is_applied:
+            if not os.path.exists(self.path):
+                return Presence.REMOVED
+            return Presence.EXTANT
         elif self.darned is None:
             return Presence.REMOVED
         return Presence.EXTANT
@@ -358,6 +449,9 @@ class FileData(mixins.WrapperMixin):
             return True
         if self.came_from:
             if self.came_from.orig != self.diff_wrt:
+                return True
+        elif self.renamed_as:
+            if self.diff_wrt:
                 return True
         elif self.orig != self.diff_wrt:
             return True
@@ -415,6 +509,9 @@ class FileData(mixins.WrapperMixin):
         if self.came_from:
             efd = self.came_from.orig
             label = os.path.join("a", self.came_from.file_path)
+        elif self.renamed_as:
+            efd = None
+            label = "/dev/null"
         else:
             efd = self.orig
             label = os.path.join("a", self.path) if efd else "/dev/null"
@@ -451,7 +548,7 @@ class FileData(mixins.WrapperMixin):
         else:
             diff = generate_unified_diff(before, after)
         diff_plus = patchlib.DiffPlus([preamble], diff)
-        if self.renamed_as and self.after is None:
+        if self.renamed_as and self.after.efd is None:
             diff_plus.trailing_junk.append(_("# Renamed to: {0}\n").format(self.renamed_as))
         return diff_plus
     def get_diff_text(self, as_refreshed=False, with_timestamps=False):
@@ -464,7 +561,7 @@ class FileData(mixins.WrapperMixin):
             diff = str(BinaryDiff(before.content, after.content))
         else:
             diff = "".join(generate_unified_diff_lines(before, after))
-        trailing_junk = _("# Renamed to: {0}\n").format(self.renamed_as) if self.renamed_as and self.after is None else ""
+        trailing_junk = _("# Renamed to: {0}\n").format(self.renamed_as) if self.renamed_as and after.efd is None else ""
         return preamble + (diff if diff else "") + trailing_junk
     def get_refresh_after_data(self, overlapping_file, with_timestamps=False):
         if overlapping_file is not None:
@@ -503,18 +600,37 @@ class FileData(mixins.WrapperMixin):
         # we assume that "orig" data is correct
         current_efd = self.came_from.orig if self.came_from else self.orig
         retval = CmdResult.OK
+        already_exists = os.path.exists(self.path)
         if isinstance(self.diff, BinaryDiff):
-            RCTX.stdout.write(_("Processing binary file \"{0}\".\n").format(rel_subdir(self.path)))
-            if git_hashes_differ(current_efd, self.diff_wrt):
-                retval = CmdResult.WARNING
-                RCTX.stderr.write(_("\"{0}\": binary file original has changed.\n").format(rel_subdir(self.path)))
             if self.darned is not None:
                 open(self.path, "wb").write(self.diff.contents.raw_data)
-            elif os.path.exists(self.path):
+                if already_exists:
+                    RCTX.stdout.write(_("\"{0}\": binary file replaced.\n").format(rel_subdir(self.path)))
+                else:
+                    RCTX.stdout.write(_("\"{0}\": binary file created.\n").format(rel_subdir(self.path)))
+            elif already_exists:
                 os.remove(self.path)
+                RCTX.stdout.write(_("\"{0}\": binary file deleted.\n").format(rel_subdir(self.path)))
+            if git_hashes_differ(current_efd, self.diff_wrt):
+                retval = CmdResult.WARNING
+                RCTX.stderr.write(_("Warning: \"{0}\": binary file's original has changed.\n").format(rel_subdir(self.path)))
         elif self.diff:
             from .patch_db import _do_apply_diff_to_file
-            RCTX.stdout.write(_("Patching file \"{0}\".\n").format(rel_subdir(self.path)))
+            result = _do_apply_diff_to_file(self.path, self.diff, delete_empty=self.darned is None)
+            if os.path.exists(self.path):
+                if self.came_from:
+                    if self.came_from.as_rename:
+                        RCTX.stdout.write(_("\"{0}\": renamed from \"{1}\" and modified.\n").format(rel_subdir(self.path), rel_subdir(self.came_from.file_path)))
+                    else:
+                        RCTX.stdout.write(_("\"{0}\": copied from \"{1}\" and modified.\n").format(rel_subdir(self.path), rel_subdir(self.came_from.file_path)))
+                    pass
+                elif already_exists:
+                    RCTX.stdout.write(_("\"{0}\": modified.\n").format(rel_subdir(self.path)))
+                else:
+                    RCTX.stdout.write(_("\"{0}\": created.\n").format(rel_subdir(self.path)))
+            else:
+                assert already_exists
+                RCTX.stdout.write(_("\"{0}\": deleted.\n").format(rel_subdir(self.path)))
             if drop_atws:
                 atws_lines = self.diff.fix_trailing_whitespace()
                 if atws_lines:
@@ -523,16 +639,22 @@ class FileData(mixins.WrapperMixin):
                 atws_lines = self.diff.report_trailing_whitespace()
                 if atws_lines:
                     retval = CmdResult.WARNING
-                    RCTX.stderr.write(_("\"{0}\": added trailing white space to \"{1}\" at line(s) {{{2}}}.\n").format(next_patch.name, rel_subdir(self.path), ", ".join([str(line) for line in atws_lines])))
-            result = _do_apply_diff_to_file(self.path, self.diff, delete_empty=self.darned is None)
+                    RCTX.stderr.write(_("Warning: \"{0}\": added trailing white space to \"{1}\" at line(s) {{{2}}}.\n").format(next_patch.name, rel_subdir(self.path), ", ".join([str(line) for line in atws_lines])))
             if result.ecode != 0:
                 RCTX.stderr.write(result.stdout)
             else:
                 RCTX.stdout.write(result.stdout)
             RCTX.stderr.write(result.stderr)
             retval = result.ecode
+        elif self.came_from:
+            if self.came_from.as_rename:
+                RCTX.stdout.write(_("\"{0}\": renamed from \"{1}\".\n").format(rel_subdir(self.path), rel_subdir(self.came_from.file_path)))
+            else:
+                RCTX.stdout.write(_("\"{0}\": copied from \"{1}\".\n").format(rel_subdir(self.path), rel_subdir(self.came_from.file_path)))
+        elif self.renamed_as:
+            RCTX.stdout.write(_("\"{0}\": renamed as \"{1}\".\n").format(rel_subdir(self.path), rel_subdir(self.renamed_as)))
         else:
-            RCTX.stdout.write(_("Processing file \"{0}\".\n").format(rel_subdir(self.path)))
+            RCTX.stdout.write(_("\"{0}\": unchanged.\n").format(rel_subdir(self.path)))
         if self.darned:
             if os.path.exists(self.path):
                 os.chmod(self.path, self.darned.mode)
@@ -590,6 +712,8 @@ class Patch(mixins.WrapperMixin):
         return self.database.iterate_applied_patches(start=applied_index + 1)
     def get_file(self, file_path):
         return FileData(file_path, self.files_data[file_path], self)
+    def has_file_with_path(self, file_path):
+        return file_path in self.files_data
     def get_file_paths_set(self, file_paths=None):
         if file_paths is None:
             return set(self.files_data.iterkeys())
@@ -599,7 +723,7 @@ class Patch(mixins.WrapperMixin):
         return [patch_file.get_table_row() for patch_file in self.iterate_files()]
     def get_table_row(self):
         return PatchTableRow(self.name, self.state, self.pos_guards, self.neg_guards)
-    def create_came_from_data(self, came_from_path, as_rename=False):
+    def create_came_from_for_copy(self, came_from_path):
         try:
             came_from_file = self.get_file(came_from_path)
             if came_from_file.came_from:
@@ -609,7 +733,7 @@ class Patch(mixins.WrapperMixin):
                 efd = self.database.clone_stored_content_data(came_from_file.orig)
         except KeyError:
             efd = self.database.store_file_content(came_from_path)
-        return _CameFromData(came_from_path, as_rename, efd) if efd else None
+        return _CameFromData(came_from_path, False, efd) if efd else None
     def do_apply(self, overlaps=OverlapData()):
         # NB: presence of overlaps implies absorb
         if len(self.files_data) == 0:
@@ -617,10 +741,11 @@ class Patch(mixins.WrapperMixin):
         drop_atws = options.get('push', 'drop_added_tws')
         copies = []
         renames = []
+        rename_fms = []
         creates = []
         others = []
         # Do the caching of existing files first to obviate copy/rename problems
-        for file_data in self.iterate_files():
+        for file_data in self.iterate_files_sorted():
             file_data.orig = self.database.update_stored_content_data(file_data.path, file_data.orig, overlaps)
             if file_data.came_from:
                 file_data.came_from.orig = self.database.update_stored_content_data(file_data.came_from.file_path, file_data.came_from.orig)
@@ -628,6 +753,8 @@ class Patch(mixins.WrapperMixin):
                     renames.append(file_data)
                 else:
                     copies.append(file_data)
+            elif file_data.renamed_as:
+                rename_fms.append(file_data)
             elif not os.path.exists(file_data.path):
                 creates.append(file_data)
             else:
@@ -650,17 +777,22 @@ class Patch(mixins.WrapperMixin):
                     RCTX.stderr.write(edata)
         # and renaming
         for file_data in renames:
-            if not os.path.exists(file_data.came_from.file_path):
+            # NB if there's more than one rename then there is a possibility of
+            # complex interactions that make using os.rename problematic
+            # so we just move content and mode using stored original data
+            fm_file_data = self.get_file(file_data.came_from.file_path)
+            try:
+                open(file_data.path, "w").write(self.database.get_content_for(fm_file_data.orig))
+                os.chmod(file_data.path, fm_file_data.orig.mode)
+            except (OSError, IOError) as edata:
                 biggest_ecode = CmdResult.ERROR
-                RCTX.stderr.write(_('{0}: failed to rename {1} (not found).\n').format(rel_subdir(file_data.path), rel_subdir(file_data.came_from_path)))
-            else:
-                try:
-                    os.rename(file_data.came_from.file_path, file_data.path)
-                except OSError as edata:
-                    biggest_ecode = CmdResult.ERROR
-                    RCTX.stderr.write(edata)
+                RCTX.stderr.write(edata)
+        # finish the renaming by removing the originals if necessary
+        for file_data in rename_fms:
+            if file_data.darned is None:
+                os.remove(file_data.path)
         # and finally apply any patches
-        for file_data in sorted(others + renames + copies):
+        for file_data in rename_fms + renames + copies + others:
             biggest_ecode = max(biggest_ecode, file_data.apply_diff(drop_atws))
         return biggest_ecode
     def undo_apply(self):
@@ -692,13 +824,43 @@ class Patch(mixins.WrapperMixin):
                 os.chmod(file_data.path, file_data.orig.mode)
             elif os.path.exists(file_data.path):
                 os.remove(file_data.path)
+        # if this file was the result of a rename then we make the original a normal file
+        if file_data.came_from and file_data.came_from.as_rename:
+            self.files_data[file_data.came_from.file_path].renamed_as = None
         del self.files_data[file_data.path]
+        # if this file had been renamed then the renamed version becomes a copy
         if file_data.renamed_as:
             self.files_data[file_data.renamed_as].came_from.as_rename = False
             file_data.renamed_as = None
         file_data.release_contents()
     def drop_named_file(self, file_path):
         self.drop_file(self.get_file(file_path))
+    def do_rename_file(self, file_path, new_file_path):
+        assert os.path.exists(file_path)
+        assert self.is_top_patch
+        try:
+            file_data = self.get_file(file_path)
+            already_in_patch = True
+        except KeyError:
+            file_data = FileData.new(file_path, self)
+            self.add_file(file_data)
+            already_in_patch = False
+        try:
+            if new_file_path in self.files_data:
+                self.get_file(new_file_path).move_contents_from(file_data)
+            else:
+                self.add_file(FileData.new_as_move(new_file_path, self, file_data))
+        except OSError:
+            if already_in_patch:
+                file_data.renamed_as = None
+            else:
+                self.drop_file(file_data)
+            raise
+        # if we got here everything is OK so we can finish cleaning up
+        if file_data.orig is None:
+            # No longer needed as it was created in this patch and now has no content or histroy
+            self.drop_file(file_data)
+
 
 class CombinedPatch(mixins.WrapperMixin):
     WRAPPED_ATTRIBUTES = _CombinedPatchData.__slots__
@@ -1045,7 +1207,7 @@ def do_apply_next_patch(absorb=False, force=False):
                 RCTX.stderr.write(_('No pushable patches. "{0}" is on top.\n').format(DB.top_patch_name))
             else:
                 RCTX.stderr.write(_('No pushable patches.\n'))
-                return CmdResult.ERROR
+            return CmdResult.ERROR
         if ecode & CmdResult.ERROR:
             RCTX.stderr.write(_('A refresh is required after issues are resolved.\n'))
         elif DB.top_patch.needs_refresh:
@@ -1158,6 +1320,37 @@ def do_refresh_patch(patch_name=None):
             RCTX.stdout.write(_("Patch \"{0}\" refreshed.\n").format(patch.name))
         return eflag
 
+def do_rename_file_in_top_patch(file_path, new_file_path, force=False, overwrite=False):
+    with open_db(mutable=True) as DB:
+        top_patch = _get_top_patch(DB)
+        if top_patch is None:
+            return CmdResult.ERROR
+        file_path = rel_basedir(file_path)
+        new_file_path = rel_basedir(new_file_path)
+        if file_path == new_file_path:
+            return CmdResult.OK
+        if not os.path.exists(file_path):
+            RCTX.stderr.write(_('{0}: file does not exist.\n').format(rel_subdir(file_path)))
+            return CmdResult.ERROR
+        if not overwrite:
+            if new_file_path in top_patch.files_data:
+                RCTX.stderr.write(_('{0}: file already in patch.\n').format(rel_subdir(new_file_path)))
+                return CmdResult.ERROR | CmdResult.SUGGEST_RENAME | CmdResult.SUGGEST_OVERWRITE
+            if os.path.exists(new_file_path):
+                RCTX.stderr.write(_('{0}: file already exists.\n').format(rel_subdir(new_file_path)))
+                return CmdResult.ERROR | CmdResult.SUGGEST_RENAME | CmdResult.SUGGEST_OVERWRITE
+        if not force:
+            overlaps = DB.get_overlap_data(iter_prepending_subdir([file_path]), top_patch)
+            if len(overlaps) > 0:
+                return overlaps.report_and_abort()
+        try:
+            top_patch.do_rename_file(file_path, new_file_path)
+        except OSError as edata:
+            RCTX.stderr.write(edata)
+            return CmdResult.ERROR
+        RCTX.stdout.write(_('{0}: file renamed to "{1}" in patch "{2}".\n').format(rel_subdir(file_path), rel_subdir(new_file_path), top_patch.name))
+        return CmdResult.OK
+
 def do_unapply_top_patch(force=False):
     return do_pop_top_patch(force=force)
 
@@ -1173,10 +1366,10 @@ def get_diff_for_files(file_paths, patch_name, with_timestamps=False):
             file_paths_set = patch.get_file_paths_set(base_file_paths)
             if len(base_file_paths) != len(file_paths_set):
                 for file_path, base_file_path in zip(file_paths, base_file_paths):
-                    if base_file_path not in file_path_set:
+                    if base_file_path not in file_paths_set:
                         RCTX.stderr.write("{0}: file is not in patch \"{1}\".\n".format(file_path, patch.name))
                 return False
-            file_iter = patch.iterate_files(file_paths_set)
+            file_iter = (patch.get_file(file_path) for file_path in base_file_paths)
         else:
             file_iter = patch.iterate_files_sorted()
         diffs = (file_data.get_diff_text(with_timestamps=with_timestamps) for file_data in file_iter)

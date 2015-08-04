@@ -98,6 +98,7 @@ $ ls .darning.dbd/orig/third
 $ ls .darning.dbd/stash/third
 
 Do it again and absorb the unrefreshed changes into the third patch.
+# TODO: This test is broken from here down and so is legacy!!!
 $ darn add --absorb file1 file2 nonexistent
 > file1: file added to patch "third".
 > file2: file added to patch "third".
