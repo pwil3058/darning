@@ -2026,6 +2026,95 @@ def do_copy_file_to_top_patch(filepath, as_filepath, overwrite=False):
         RCTX.stdout.write(_('{0}: file copied to "{1}" in patch "{2}".\n').format(rel_subdir(filepath), rel_subdir(as_filepath), top_patch.name))
         return CmdResult.OK
 
+def do_move_files_in_top_patch(file_paths, target_path, force=False, overwrite=False, make_dir=False):
+    if len(file_paths) == 1:
+        if os.path.isdir(rel_basedir(target_path)):
+            new_file_path = os.path.join(target_path, os.path.basename(file_paths[0]))
+            return do_rename_file_in_top_patch(file_paths[0], new_file_path, force=force, overwrite=overwrite)
+        else:
+            return do_rename_file_in_top_patch(file_paths[0], target_path, force=force, overwrite=overwrite)
+    with open_db(mutable=True) as _DB:
+        top_patch = _get_top_patch(_DB)
+        if top_patch is None:
+            return CmdResult.ERROR
+        target_path = rel_basedir(target_path)
+        if os.path.exists(target_path) and not os.path.isdir(target_path):
+            RCTX.stderr.write(_('{0}: target must be a directory for multiple file move operation.\n').format(rel_subdir(target_path)))
+            return CmdResult.ERROR
+        file_paths = list(iter_prepending_subdir(file_paths))
+        nonexistent_file_paths = [file_path for file_path in file_paths if not os.path.exists(file_path)]
+        if nonexistent_file_paths:
+            for file_path in nonexistent_file_paths:
+                RCTX.stderr.write(_('{0}: file does not exist.\n').format(rel_subdir(file_path)))
+            return CmdResult.ERROR
+        target_file_paths = [os.path.join(target_path, os.path.basename(file_path)) for file_path in file_paths]
+        if not overwrite:
+            tfps_in_patch = [tfp for tfp in target_file_paths if tfp in top_patch.files]
+            tfps_exist = [tfp for tfp in target_file_paths if tfp not in top_patch.files and os.path.exists(tfp)]
+            if tfps_in_patch or tfps_exist:
+                for target_file_path in tfps_in_patch:
+                    RCTX.stderr.write(_('{0}: file already in patch.\n').format(rel_subdir(target_file_path)))
+                for target_file_path in tfps_exist:
+                    RCTX.stderr.write(_('{0}: file already exists.\n').format(rel_subdir(target_file_path)))
+                return CmdResult.ERROR | CmdResult.SUGGEST_RENAME | CmdResult.SUGGEST_OVERWRITE
+        if not force:
+            overlaps = _get_overlap_data(_DB, file_paths, top_patch)
+            if len(overlaps) > 0:
+                return overlaps.report_and_abort()
+        if not os.path.isdir(target_path):
+            if not make_dir:
+                RCTX.stderr.write(_('{0}: does not exist. Use --mkdir to create it.\n').format(rel_subdir(target_path)))
+                return CmdResult.ERROR
+            else:
+                try:
+                    os.makedirs(target_path)
+                except OSError as edata:
+                    RCTX.stderr.write(str(edata))
+                    return CmdResult.ERROR
+        for file_path, target_file_path in zip(file_paths, target_file_paths):
+            needs_refresh = False
+            as_rename = True
+            came_from_path = file_path
+            is_boomerang = False
+            if not file_path in top_patch.files:
+                result = _do_add_files_to_top_patch(_DB, [rel_subdir(file_path)], absorb=False, force=force)
+                result &= ~CmdResult.SUGGEST_ABSORB
+                if result != CmdResult.OK:
+                    return result
+            elif top_patch.files[file_path].came_from_path:
+                if top_patch.files[file_path].came_from_path == target_file_path:
+                    came_from_path = None
+                    as_rename = False
+                    is_boomerang = target_file_path in top_patch.files and top_patch.files[target_file_path].came_as_rename
+                else:
+                    came_from_path = top_patch.files[file_path].came_from_path
+                    as_rename = top_patch.files[file_path].came_as_rename
+                if as_rename:
+                    top_patch.files[came_from_path].renamed_to = target_file_path
+                if not os.path.exists(top_patch.files[file_path].cached_orig_path):
+                    _delete_original()
+            elif not os.path.exists(top_patch.files[file_path].cached_orig_path):
+                as_rename = False
+                came_from_path = None
+                _delete_original()
+            if target_file_path in top_patch.files:
+                needs_refresh = True
+            else:
+                top_patch.add_file(FileData(target_file_path, top_patch, came_from_path=came_from_path, as_rename=as_rename))
+            try:
+                os.rename(file_path, target_file_path)
+            except OSError as edata:
+                RCTX.stderr.write(edata)
+                return CmdResult.ERROR
+            if came_from_path and as_rename:
+                top_patch.files[came_from_path].reset_renamed_to(target_file_path)
+            if needs_refresh:
+                if is_boomerang:
+                    top_patch.files[target_file_path].renamed_to = None
+                top_patch.files[target_file_path].reset_came_from(came_from_path, as_rename)
+            RCTX.stdout.write(_('{0}: file renamed to "{1}" in patch "{2}".\n').format(rel_subdir(file_path), rel_subdir(target_file_path), top_patch.name))
+        return CmdResult.OK
+
 def do_rename_file_in_top_patch(filepath, new_filepath, force=False, overwrite=False):
     with open_db(mutable=True) as _DB:
         def _delete_original():

@@ -1,0 +1,582 @@
+### Copyright (C) 2011 Peter Williams <peter_ono@users.sourceforge.net>
+###
+### This program is free software; you can redistribute it and/or modify
+### it under the terms of the GNU General Public License as published by
+### the Free Software Foundation; version 2 of the License only.
+###
+### This program is distributed in the hope that it will be useful,
+### but WITHOUT ANY WARRANTY; without even the implied warranty of
+### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+### GNU General Public License for more details.
+###
+### You should have received a copy of the GNU General Public License
+### along with this program; if not, write to the Free Software
+### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Test the 'darn rename' command.
+
+Create some test files.
+$ darn_test_tree create
+
+Make a playground and patch
+$ darn init
+$ darn new first
+$ darn add file4
+> file4: file added to patch "first".
+$ darn_test_tree modify file4
+
+Try to rename a nonexistent file
+$ darn rename nonexistent nonexistent.renamed
+? 2
+! nonexistent: file does not exist.
+$ darn rename nonexistent file1
+? 2
+! nonexistent: file does not exist.
+$ darn rename nonexistent file4
+? 2
+! nonexistent: file does not exist.
+
+Make a simple rename
+$ darn rename file1 file1.renamed
+> file1: file added to patch "first".
+> file1: file renamed to "file1.renamed" in patch "first".
+$ darn files
+> -:+: file1 -> file1.renamed
+> +:+: file1.renamed <- file1
+>  :?: file4
+$ darn diff
+> diff --git a/file1 b/file1
+> # Renamed to: file1.renamed
+> diff --git a/file1 b/file1.renamed
+> rename from file1
+> rename to file1.renamed
+> diff --git a/file4 b/file4
+> --- a/file4
+> +++ b/file4
+> @@ -1 +1,2 @@
+>  file4: is a text file.
+> +Patch: "first"; Path: "file4"
+$ darn_test_tree modify file1.renamed
+$ darn diff
+> diff --git a/file1 b/file1
+> # Renamed to: file1.renamed
+> diff --git a/file1 b/file1.renamed
+> rename from file1
+> rename to file1.renamed
+> --- a/file1
+> +++ b/file1.renamed
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.renamed"
+> diff --git a/file4 b/file4
+> --- a/file4
+> +++ b/file4
+> @@ -1 +1,2 @@
+>  file4: is a text file.
+> +Patch: "first"; Path: "file4"
+$ darn files
+> -:+: file1 -> file1.renamed
+> +:?: file1.renamed <- file1
+>  :?: file4
+
+Rename a renamed file
+$ darn rename file1.renamed file1.renamed.renamed
+> file1.renamed: file renamed to "file1.renamed.renamed" in patch "first".
+$ darn files
+> -:+: file1 -> file1.renamed.renamed
+> +:?: file1.renamed.renamed <- file1
+>  :?: file4
+$ darn diff
+> diff --git a/file1 b/file1
+> # Renamed to: file1.renamed.renamed
+> diff --git a/file1 b/file1.renamed.renamed
+> rename from file1
+> rename to file1.renamed.renamed
+> --- a/file1
+> +++ b/file1.renamed.renamed
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.renamed"
+> diff --git a/file4 b/file4
+> --- a/file4
+> +++ b/file4
+> @@ -1 +1,2 @@
+>  file4: is a text file.
+> +Patch: "first"; Path: "file4"
+
+Simple overwrite
+$ darn rename --overwrite file2 file3
+> file2: file added to patch "first".
+> file2: file renamed to "file3" in patch "first".
+$ darn files
+> -:+: file1 -> file1.renamed.renamed
+> +:?: file1.renamed.renamed <- file1
+> -:+: file2 -> file3
+>  :+: file3 <- file2
+>  :?: file4
+$ darn_test_tree modify file3
+$ darn files
+> -:+: file1 -> file1.renamed.renamed
+> +:?: file1.renamed.renamed <- file1
+> -:+: file2 -> file3
+>  :?: file3 <- file2
+>  :?: file4
+$ darn diff
+> diff --git a/file1 b/file1
+> # Renamed to: file1.renamed.renamed
+> diff --git a/file1 b/file1.renamed.renamed
+> rename from file1
+> rename to file1.renamed.renamed
+> --- a/file1
+> +++ b/file1.renamed.renamed
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.renamed"
+> diff --git a/file2 b/file2
+> # Renamed to: file3
+> diff --git a/file2 b/file3
+> rename from file2
+> rename to file3
+> --- a/file2
+> +++ b/file3
+> @@ -1 +1,2 @@
+>  file2: is a text file.
+> +Patch: "first"; Path: "file3"
+> diff --git a/file4 b/file4
+> --- a/file4
+> +++ b/file4
+> @@ -1 +1,2 @@
+>  file4: is a text file.
+> +Patch: "first"; Path: "file4"
+
+Overwrite a tracked file
+$ darn rename file5 file4
+? 34
+! file4: file already in patch.
+$ darn rename --overwrite file5 file4
+> file5: file added to patch "first".
+> file5: file renamed to "file4" in patch "first".
+$ darn diff
+> diff --git a/file1 b/file1
+> # Renamed to: file1.renamed.renamed
+> diff --git a/file1 b/file1.renamed.renamed
+> rename from file1
+> rename to file1.renamed.renamed
+> --- a/file1
+> +++ b/file1.renamed.renamed
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.renamed"
+> diff --git a/file2 b/file2
+> # Renamed to: file3
+> diff --git a/file2 b/file3
+> rename from file2
+> rename to file3
+> --- a/file2
+> +++ b/file3
+> @@ -1 +1,2 @@
+>  file2: is a text file.
+> +Patch: "first"; Path: "file3"
+> diff --git a/file5 b/file4
+> rename from file5
+> rename to file4
+> diff --git a/file5 b/file5
+> # Renamed to: file4
+$ cat file4
+> file5: is a text file.
+
+Refresh, pop and push
+$ darn refresh
+$ ls --ignore=dir* --ignore=binary*
+> file1.renamed.renamed
+> file3
+> file4
+$ darn pop
+> There are now no patches applied.
+$ darn files first
+> -: : file1 -> file1.renamed.renamed
+> +: : file1.renamed.renamed <- file1
+> -: : file2 -> file3
+>  : : file3 <- file2
+>  : : file4 <- file5
+> -: : file5 -> file4
+$ cat file1
+> file1: is a text file.
+$ cat file2
+> file2: is a text file.
+$ cat file3
+> file3: is a text file.
+$ cat file4
+> file4: is a text file.
+$ cat file5
+> file5: is a text file.
+$ ls --ignore=dir* --ignore=binary*
+> file1
+> file2
+> file3
+> file4
+> file5
+$ darn push
+> Processing file "file2".
+> Processing file "file1".
+> Processing file "file5".
+> Patching file "file3".
+> Processing file "file4".
+> Patching file "file1.renamed.renamed".
+> Patch "first" is now on top.
+$ darn files
+> -:+: file1 -> file1.renamed.renamed
+> +:+: file1.renamed.renamed <- file1
+> -:+: file2 -> file3
+>  :+: file3 <- file2
+>  :+: file4 <- file5
+> -:+: file5 -> file4
+$ darn diff
+> diff --git a/file1 b/file1
+> # Renamed to: file1.renamed.renamed
+> diff --git a/file1 b/file1.renamed.renamed
+> rename from file1
+> rename to file1.renamed.renamed
+> --- a/file1
+> +++ b/file1.renamed.renamed
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.renamed"
+> diff --git a/file2 b/file2
+> # Renamed to: file3
+> diff --git a/file2 b/file3
+> rename from file2
+> rename to file3
+> --- a/file2
+> +++ b/file3
+> @@ -1 +1,2 @@
+>  file2: is a text file.
+> +Patch: "first"; Path: "file3"
+> diff --git a/file5 b/file4
+> rename from file5
+> rename to file4
+> diff --git a/file5 b/file5
+> # Renamed to: file4
+$ ls --ignore=dir* --ignore=binary*
+> file1.renamed.renamed
+> file3
+> file4
+
+Drop the overwritten "tracked" file
+$ darn drop file4
+> file4: file dropped from patch "first".
+$ darn files
+> -:+: file1 -> file1.renamed.renamed
+> +:+: file1.renamed.renamed <- file1
+> -:+: file2 -> file3
+>  :+: file3 <- file2
+> -:+: file5
+$ cat file4
+> file4: is a text file.
+$ darn diff
+> diff --git a/file1 b/file1
+> # Renamed to: file1.renamed.renamed
+> diff --git a/file1 b/file1.renamed.renamed
+> rename from file1
+> rename to file1.renamed.renamed
+> --- a/file1
+> +++ b/file1.renamed.renamed
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.renamed"
+> diff --git a/file2 b/file2
+> # Renamed to: file3
+> diff --git a/file2 b/file3
+> rename from file2
+> rename to file3
+> --- a/file2
+> +++ b/file3
+> @@ -1 +1,2 @@
+>  file2: is a text file.
+> +Patch: "first"; Path: "file3"
+> diff --git a/file5 b/file5
+> deleted file mode 0100664
+> --- a/file5
+> +++ /dev/null
+> @@ -1 +0,0 @@
+> -file5: is a text file.
+
+Drop the overwritten "untracked" file
+$ darn drop file3
+> file3: file dropped from patch "first".
+$ darn files
+> -:+: file1 -> file1.renamed.renamed
+> +:+: file1.renamed.renamed <- file1
+> -:+: file2
+> -:+: file5
+$ cat file3
+> file3: is a text file.
+$ darn diff
+> diff --git a/file1 b/file1
+> # Renamed to: file1.renamed.renamed
+> diff --git a/file1 b/file1.renamed.renamed
+> rename from file1
+> rename to file1.renamed.renamed
+> --- a/file1
+> +++ b/file1.renamed.renamed
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1.renamed"
+> diff --git a/file2 b/file2
+> deleted file mode 0100664
+> --- a/file2
+> +++ /dev/null
+> @@ -1 +0,0 @@
+> -file2: is a text file.
+> diff --git a/file5 b/file5
+> deleted file mode 0100664
+> --- a/file5
+> +++ /dev/null
+> @@ -1 +0,0 @@
+> -file5: is a text file.
+
+Drop a simple rename
+$ darn drop file1.renamed.renamed
+> file1.renamed.renamed: file dropped from patch "first".
+$ darn files
+> -:+: file1
+> -:+: file2
+> -:+: file5
+$ ls --ignore=dir* --ignore=binary*
+> file3
+> file4
+$ darn diff
+> diff --git a/file1 b/file1
+> deleted file mode 0100664
+> --- a/file1
+> +++ /dev/null
+> @@ -1 +0,0 @@
+> -file1: is a text file.
+> diff --git a/file2 b/file2
+> deleted file mode 0100664
+> --- a/file2
+> +++ /dev/null
+> @@ -1 +0,0 @@
+> -file2: is a text file.
+> diff --git a/file5 b/file5
+> deleted file mode 0100664
+> --- a/file5
+> +++ /dev/null
+> @@ -1 +0,0 @@
+> -file5: is a text file.
+
+Pop and we should be back to the start
+$ darn pop
+> There are now no patches applied.
+$ cat file1
+> file1: is a text file.
+$ cat file2
+> file2: is a text file.
+$ cat file3
+> file3: is a text file.
+$ cat file4
+> file4: is a text file.
+$ cat file5
+> file5: is a text file.
+$ ls --ignore=dir* --ignore=binary*
+> file1
+> file2
+> file3
+> file4
+> file5
+
+Now test moving a tracked file
+$ darn new second
+$ darn add file1
+> file1: file added to patch "second".
+$ darn_test_tree modify file1
+$ darn refresh
+$ darn diff
+> diff --git a/file1 b/file1
+> --- a/file1
+> +++ b/file1
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "second"; Path: "file1"
+$ darn rename file1 file1.renamed
+> file1: file renamed to "file1.renamed" in patch "second".
+$ darn diff
+> diff --git a/file1 b/file1
+> # Renamed to: file1.renamed
+> diff --git a/file1 b/file1.renamed
+> rename from file1
+> rename to file1.renamed
+> --- a/file1
+> +++ b/file1.renamed
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "second"; Path: "file1"
+$ darn refresh
+$ darn pop
+> There are now no patches applied.
+$ darn push
+> Processing file "file1".
+> Patching file "file1.renamed".
+> Patch "second" is now on top.
+$ darn diff
+> diff --git a/file1 b/file1
+> # Renamed to: file1.renamed
+> diff --git a/file1 b/file1.renamed
+> rename from file1
+> rename to file1.renamed
+> --- a/file1
+> +++ b/file1.renamed
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "second"; Path: "file1"
+$ darn files
+> -:+: file1 -> file1.renamed
+> +:+: file1.renamed <- file1
+$ darn drop file1
+> file1: file dropped from patch "second".
+$ darn files
+> +:+: file1.renamed <<- file1
+$ darn diff
+> diff --git a/file1 b/file1.renamed
+> copy from file1
+> copy to file1.renamed
+> --- a/file1
+> +++ b/file1.renamed
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "second"; Path: "file1"
+$ cat file1
+> file1: is a text file.
+$ darn pop
+> There are now no patches applied.
+$ darn push
+> Patching file "file1.renamed".
+> Patch "second" is now on top.
+$ darn diff
+> diff --git a/file1 b/file1.renamed
+> copy from file1
+> copy to file1.renamed
+> --- a/file1
+> +++ b/file1.renamed
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "second"; Path: "file1"
+$ darn files
+> +:+: file1.renamed <<- file1
+
+Rename a file that was newly created in the patch
+$ darn pop > /dev/null
+$ darn new third
+$ darn add nonexistent
+> nonexistent: file added to patch "third".
+$ mkfile nonexistent
+< content
+$ darn files
+> +:?: nonexistent
+$ darn diff
+> diff --git a/nonexistent b/nonexistent
+> new file mode 0100664
+> --- /dev/null
+> +++ b/nonexistent
+> @@ -0,0 +1 @@
+> +content
+$ darn rename nonexistent nonexistent.renamed
+> nonexistent: file renamed to "nonexistent.renamed" in patch "third".
+$ darn files
+> +:?: nonexistent.renamed
+$ darn diff
+> diff --git a/nonexistent.renamed b/nonexistent.renamed
+> new file mode 0100664
+> --- /dev/null
+> +++ b/nonexistent.renamed
+> @@ -0,0 +1 @@
+> +content
+
+Rename a file that was newly copied in the patch
+$ darn refresh
+$ darn pop > /dev/null
+$ darn new fourth
+$ darn copy file1 file1.copy
+> file1: file copied to "file1.copy" in patch "fourth".
+$ darn files
+> +:+: file1.copy <<- file1
+$ darn diff
+> diff --git a/file1 b/file1.copy
+> copy from file1
+> copy to file1.copy
+$ darn rename file1.copy file1.copy.renamed
+> file1.copy: file renamed to "file1.copy.renamed" in patch "fourth".
+$ darn files
+> +:+: file1.copy.renamed <<- file1
+$ darn diff
+> diff --git a/file1 b/file1.copy.renamed
+> copy from file1
+> copy to file1.copy.renamed
+
+Swap the name of two files
+$ darn refresh
+$ darn pop > /dev/null
+$ darn new swap
+$ darn rename file1 file1.temp
+> file1: file added to patch "swap".
+> file1: file renamed to "file1.temp" in patch "swap".
+$ darn rename file2 file1
+? 34
+! file1: file already in patch.
+$ darn diff file1 file1.temp
+> diff --git a/file1 b/file1
+> # Renamed to: file1.temp
+> diff --git a/file1 b/file1.temp
+> rename from file1
+> rename to file1.temp
+$ darn rename --overwrite file2 file1
+> file2: file added to patch "swap".
+> file2: file renamed to "file1" in patch "swap".
+$ darn diff file1 file2 file1.temp
+> diff --git a/file2 b/file1
+> rename from file2
+> rename to file1
+> diff --git a/file2 b/file2
+> # Renamed to: file1
+> diff --git a/file1 b/file1.temp
+> rename from file1
+> rename to file1.temp
+$ darn rename file1.temp file2
+? 34
+! file2: file already in patch.
+$ darn rename --overwrite file1.temp file2
+> file1.temp: file renamed to "file2" in patch "swap".
+$ darn files
+>  :+: file1 <- file2
+>  :+: file2 <- file1
+$ darn diff
+> diff --git a/file2 b/file1
+> rename from file2
+> rename to file1
+> diff --git a/file1 b/file2
+> rename from file1
+> rename to file2
+$ cat file1
+> file2: is a text file.
+$ cat file2
+> file1: is a text file.
+$ darn pop
+> There are now no patches applied.
+$ darn push
+> Processing file "file2".
+> Processing file "file1".
+> Patch "swap" is now on top.
+$ darn files
+>  :+: file1 <- file2
+>  :+: file2 <- file1
+$ darn diff
+> diff --git a/file2 b/file1
+> rename from file2
+> rename to file1
+> diff --git a/file1 b/file2
+> rename from file1
+> rename to file2
+$ cat file1
+> file2: is a text file.
+$ cat file2
+> file1: is a text file.
