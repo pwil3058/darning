@@ -13,9 +13,9 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-'''
+"""
 Implement a patch stack management database
-'''
+"""
 
 import os
 import stat
@@ -85,7 +85,7 @@ def iter_with_subdir(file_paths):
             yield (rel_basedir(file_path), file_path)
 
 def find_base_dir(dir_path=None, remember_sub_dir=False):
-    '''Find the nearest directory above that contains a database'''
+    """Find the nearest directory above that contains a database"""
     global _SUB_DIR
     dir_path = os.getcwd() if dir_path is None else os.path.abspath(os.path.expanduser(dir_path))
     subdir_parts = []
@@ -267,7 +267,73 @@ def git_hashes_differ(efd1, efd2):
     else:
         return efd1.git_hash != efd2.git_hash
 
-class FileData(mixins.WrapperMixin):
+class FileDiffMixin(object):
+    def get_diff_before_data(self, as_refreshed=False, with_timestamps=False):
+        if self.came_from:
+            efd = self.came_from.orig
+            label = os.path.join("a", self.came_from.file_path)
+        elif self.renamed_as:
+            efd = None
+            label = "/dev/null"
+        else:
+            efd = self.orig
+            label = os.path.join("a", self.path) if efd else "/dev/null"
+        timestamp = efd.timestamp if (with_timestamps and efd) else None
+        content = None if as_refreshed else self.patch.database.get_content_for(efd)
+        return _DiffData(label, efd, content, timestamp)
+    def get_diff_after_data(self, as_refreshed=False, with_timestamps=False):
+        if as_refreshed or not self.patch.is_applied:
+            efd = self.darned
+            label = os.path.join("b", self.path) if efd else "/dev/null"
+            content = None
+        else:
+            overlapping_file = self.get_overlapping_file()
+            if overlapping_file is not None:
+                efd = overlapping_file.orig
+                content = self.patch.database.get_content_for(efd)
+            elif os.path.exists(self.path):
+                content = open(self.path, "r").read()
+                efd = _EssentialFileData(utils.get_git_hash_for_content(content), os.lstat(self.path))
+            else:
+                efd = None
+                content = ""
+            label = os.path.join("b", self.path) if efd else "/dev/null"
+        timestamp = efd.timestamp if (with_timestamps and efd) else None
+        return _DiffData(label, efd, content, timestamp)
+    def get_diff_plus(self, as_refreshed=False, with_timestamps=False):
+        assert as_refreshed is False or not isinstance(self, CombinedFileData)
+        before = self.get_diff_before_data(as_refreshed=as_refreshed, with_timestamps=with_timestamps)
+        after = self.get_diff_after_data(as_refreshed=as_refreshed, with_timestamps=with_timestamps)
+        preamble = generate_diff_preamble(self.path, before.efd, after.efd, self.came_from)
+        if not as_refreshed and not isinstance(self, CombinedFileData):
+            as_refreshed = after.efd and self.darned and after.efd.git_hash == self.darned.git_hash
+        if as_refreshed:
+            diff = copy.deepcopy(self.diff)
+        elif before.content.find("\000") != -1 or before.content.find("\000") != -1:
+            diff = BinaryDiff(before_content, after_content)
+        else:
+            diff = generate_unified_diff(before, after)
+        diff_plus = patchlib.DiffPlus([preamble], diff)
+        if self.renamed_as and self.after.efd is None:
+            diff_plus.trailing_junk.append(_("# Renamed to: {0}\n").format(self.renamed_as))
+        return diff_plus
+    def get_diff_text(self, as_refreshed=False, with_timestamps=False):
+        assert as_refreshed is False or not isinstance(self, CombinedFileData)
+        before = self.get_diff_before_data(as_refreshed=as_refreshed, with_timestamps=with_timestamps)
+        after = self.get_diff_after_data(as_refreshed=as_refreshed, with_timestamps=with_timestamps)
+        preamble = "".join(generate_diff_preamble_lines(self.path, before.efd, after.efd, self.came_from))
+        if not as_refreshed and not isinstance(self, CombinedFileData):
+            as_refreshed = after.efd and self.darned and after.efd.git_hash == self.darned.git_hash
+        if as_refreshed:
+            diff = "" if self.diff is None else str(copy.deepcopy(self.diff))
+        elif before.content.find("\000") != -1 or before.content.find("\000") != -1:
+            diff = str(BinaryDiff(before.content, after.content))
+        else:
+            diff = "".join(generate_unified_diff_lines(before, after))
+        trailing_junk = _("# Renamed to: {0}\n").format(self.renamed_as) if self.renamed_as and after.efd is None else ""
+        return preamble + (diff if diff else "") + trailing_junk
+
+class FileData(mixins.WrapperMixin, FileDiffMixin):
     WRAPPED_ATTRIBUTES = _FileData.__slots__
     WRAPPED_OBJECT_NAME = "persistent_file_data"
     def __init__(self, file_path, persistent_file_data, patch):
@@ -505,64 +571,6 @@ class FileData(mixins.WrapperMixin):
         return None
     def get_table_row(self):
         return fsdb.Data(self.path, FileStatus(self.presence, self.validity), self.related_file_data)
-    def get_diff_before_data(self, as_refreshed=False, with_timestamps=False):
-        if self.came_from:
-            efd = self.came_from.orig
-            label = os.path.join("a", self.came_from.file_path)
-        elif self.renamed_as:
-            efd = None
-            label = "/dev/null"
-        else:
-            efd = self.orig
-            label = os.path.join("a", self.path) if efd else "/dev/null"
-        timestamp = efd.timestamp if (with_timestamps and efd) else None
-        content = None if as_refreshed else self.patch.database.get_content_for(efd)
-        return _DiffData(label, efd, content, timestamp)
-    def get_diff_after_data(self, as_refreshed=False, with_timestamps=False):
-        if as_refreshed or not self.patch.is_applied:
-            efd = self.darned
-            label = os.path.join("b", self.path) if efd else "/dev/null"
-            content = None
-        else:
-            overlapping_file = self.get_overlapping_file()
-            if overlapping_file is not None:
-                efd = overlapping_file.orig
-                content = self.patch.database.get_content_for(efd)
-            elif os.path.exists(self.path):
-                content = open(self.path, "r").read()
-                efd = _EssentialFileData(utils.get_git_hash_for_content(content), os.lstat(self.path))
-            else:
-                efd = None
-                content = ""
-            label = os.path.join("b", self.path) if efd else "/dev/null"
-        timestamp = efd.timestamp if (with_timestamps and efd) else None
-        return _DiffData(label, efd, content, timestamp)
-    def get_diff_plus(self, as_refreshed=False, with_timestamps=False):
-        before = self.get_diff_before_data(as_refreshed=as_refreshed, with_timestamps=with_timestamps)
-        after = self.get_diff_after_data(as_refreshed=as_refreshed, with_timestamps=with_timestamps)
-        preamble = generate_diff_preamble(self.path, before.efd, after.efd, self.came_from)
-        if as_refreshed or (after.efd and self.darned and after.efd.git_hash == self.darned.git_hash):
-            diff = copy.deepcopy(self.diff)
-        elif before.content.find("\000") != -1 or before.content.find("\000") != -1:
-            diff = BinaryDiff(before_content, after_content)
-        else:
-            diff = generate_unified_diff(before, after)
-        diff_plus = patchlib.DiffPlus([preamble], diff)
-        if self.renamed_as and self.after.efd is None:
-            diff_plus.trailing_junk.append(_("# Renamed to: {0}\n").format(self.renamed_as))
-        return diff_plus
-    def get_diff_text(self, as_refreshed=False, with_timestamps=False):
-        before = self.get_diff_before_data(as_refreshed=as_refreshed, with_timestamps=with_timestamps)
-        after = self.get_diff_after_data(as_refreshed=as_refreshed, with_timestamps=with_timestamps)
-        preamble = "".join(generate_diff_preamble_lines(self.path, before.efd, after.efd, self.came_from))
-        if as_refreshed or (after.efd and self.darned and after.efd.git_hash == self.darned.git_hash):
-            diff = "" if self.diff is None else str(copy.deepcopy(self.diff))
-        elif before.content.find("\000") != -1 or before.content.find("\000") != -1:
-            diff = str(BinaryDiff(before.content, after.content))
-        else:
-            diff = "".join(generate_unified_diff_lines(before, after))
-        trailing_junk = _("# Renamed to: {0}\n").format(self.renamed_as) if self.renamed_as and after.efd is None else ""
-        return preamble + (diff if diff else "") + trailing_junk
     def get_refresh_after_data(self, overlapping_file, with_timestamps=False):
         if overlapping_file is not None:
             efd = self.patch.database.clone_stored_content_data(overlapping_file.orig)
@@ -663,6 +671,74 @@ class FileData(mixins.WrapperMixin):
                 RCTX.stderr.write(_("Expected file not found.\n"))
         return retval
 
+class CombinedFileData(mixins.WrapperMixin, FileDiffMixin):
+    WRAPPED_ATTRIBUTES = _CombinedFileData.__slots__
+    WRAPPED_OBJECT_NAME = "persistent_data"
+    def __init__(self, file_path, persistent_data, combined_patch):
+        self.path = file_path
+        self.persistent_data = persistent_data
+        self.patch = combined_patch
+    def __getattr__(self, attr_name):
+        # NB: for the time being we ignore copy/rename data
+        if attr_name == "came_from": return None
+        if attr_name == "renamed_as": return None
+        if attr_name == "orig": return self.bottom.orig
+        if attr_name == "darned": return self.top.darned
+        if attr_name == "diff": return None
+        return mixins.WrapperMixin.__getattr__(self, attr_name)
+    def get_overlapping_file(self):
+        return None
+    @property
+    def presence(self):
+        if self.bottom.orig is None:
+            return Presence.ADDED
+        if not os.path.exists(self.path):
+            return Presence.REMOVED
+        return Presence.EXTANT
+    @property
+    def validity(self):
+        if self._needs_refresh():
+            if _file_has_unresolved_merges(self.path):
+                return Validity.UNREFRESHABLE
+            else:
+                return Validity.NEEDS_REFRESH
+        else:
+            return Validity.REFRESHED
+    @property
+    def was_ephemeral(self):
+        return self.bottom.orig is None and not os.path.exists(self.path)
+    def _needs_refresh(self):
+        if self.top.diff_wrt is False: # NB: False has a special meaning do not abbreviate this test
+            return True
+        if self.top.came_from:
+            if self.top.came_from.orig != self.top.diff_wrt:
+                return True
+        elif self.top.renamed_as:
+            if self.top.diff_wrt:
+                return True
+        elif self.top.orig != self.top.diff_wrt:
+            return True
+        if self.top.darned:
+            try:
+                lstats = os.lstat(self.path)
+            except OSError:
+                return True
+            if self.top.darned.lstats.st_mode != lstats.st_mode:
+                return True
+            elif self.top.darned.lstats.st_size != lstats.st_size:
+                return True
+            elif self.top.darned.lstats.st_mtime != lstats.st_mtime:
+                # NB: using modify time and size instead of comparing hash values
+                # but since change modification times doesn't mean contents changed
+                # we will check (this is expensive but good for the UIX)
+                return self.top.darned.git_hash != utils.get_git_hash_for_file(self.path)
+            else:
+                return False
+        else:
+            return os.path.exists(self.path)
+    def get_table_row(self):
+        return fsdb.Data(self.path, FileStatus(self.presence, self.validity), None)
+
 class Patch(mixins.WrapperMixin):
     WRAPPED_ATTRIBUTES = _PatchData.__slots__
     WRAPPED_OBJECT_NAME = "persistent_patch_data"
@@ -738,7 +814,7 @@ class Patch(mixins.WrapperMixin):
         # NB: presence of overlaps implies absorb
         if len(self.files_data) == 0:
             return CmdResult.OK
-        drop_atws = options.get('push', 'drop_added_tws')
+        drop_atws = options.get("push", "drop_added_tws")
         copies = []
         renames = []
         rename_fms = []
@@ -768,7 +844,7 @@ class Patch(mixins.WrapperMixin):
         for file_data in copies:
             if not os.path.exists(file_data.came_from.file_path):
                 biggest_ecode = CmdResult.ERROR
-                RCTX.stderr.write(_('{0}: failed to copy {1}.\n').format(rel_subdir(file_data.path), rel_subdir(file_data.came_from.file_path)))
+                RCTX.stderr.write(_("{0}: failed to copy {1}.\n").format(rel_subdir(file_data.path), rel_subdir(file_data.came_from.file_path)))
             else:
                 try:
                     shutil.copy2(file_data.came_from.file_path, file_data.path)
@@ -861,12 +937,13 @@ class Patch(mixins.WrapperMixin):
             # No longer needed as it was created in this patch and now has no content or histroy
             self.drop_file(file_data)
 
-
 class CombinedPatch(mixins.WrapperMixin):
     WRAPPED_ATTRIBUTES = _CombinedPatchData.__slots__
     WRAPPED_OBJECT_NAME = "persistent_data"
-    def __init__(self, persistent_data):
+    is_applied = True
+    def __init__(self, persistent_data, database):
         self.persistent_data = persistent_data
+        self.database = database
     def add_file(self, file_data):
         if self.prev:
             prev_file_data = self.prev.files_data.get(file_data.path, None)
@@ -881,6 +958,31 @@ class CombinedPatch(mixins.WrapperMixin):
             self.files_data[file_data.path] = copy.copy(prev_file_data)
         else:
             del self.files_data[file_data.path]
+    def iterate_files_sorted(self, file_paths=None):
+        if file_paths is None:
+            return (CombinedFileData(file_path, pfd, self) for file_path, pfd in sorted(self.files_data.iteritems()))
+        else:
+            return (CombinedFileData(file_path, pfd, self) for file_path, pfd in sorted(self.files_data.iteritems()) if file_path in file_paths)
+    def get_files_table(self):
+        return [file_data.get_table_row() for file_data in self.iterate_files_sorted() if not file_data.was_ephemeral]
+    def get_file(self, file_path):
+        return CombinedFileData(file_path, self.files_data[file_path], self)
+    def has_file_with_path(self, file_path):
+        try:
+            return not self.get_file(file_path).was_ephemeral
+        except KeyError:
+            return False
+    def get_text_diff(self, file_paths=None):
+        text = ""
+        if file_paths:
+            for file_path in file_paths:
+                text += self.get_file(file_path).get_diff_text()
+        else:
+            for file_data in self.iterate_files_sorted():
+                if file_data.was_ephemeral:
+                    continue
+                text += file_data.get_diff_text()
+        return text
 
 class DataBase(mixins.WrapperMixin):
     WRAPPED_ATTRIBUTES = _DataBaseData.__slots__
@@ -930,7 +1032,7 @@ class DataBase(mixins.WrapperMixin):
         return next_patch_data.name if next_patch_data else None
     @property
     def combined_patch(self):
-        return CombinedPatch(self.combined_patch_data)
+        return CombinedPatch(self.combined_patch_data, self) if self.combined_patch_data else None
     def create_new_patch(self, patch_name, description):
         assert self.is_writable
         if _named_patch_is_in_list(self._PPD.patch_series_data, patch_name):
@@ -989,11 +1091,11 @@ class DataBase(mixins.WrapperMixin):
         self._PPD.combined_patch_data = _CombinedPatchData(self._PPD.combined_patch_data)
         return patch.do_apply(overlaps)
     def get_overlap_data(self, file_paths, patch=None):
-        '''
+        """
         Get the data detailing unrefreshed/uncommitted files that will be
         overlapped by the files in filelist if they are added to the named
         (or next, if patch_name is None) patch.
-        '''
+        """
         if not file_paths:
             return OverlapData()
         # NB: let this blow up if index fails
@@ -1061,9 +1163,9 @@ class DataBase(mixins.WrapperMixin):
         return "" if obj is None else open(os.path.join(_BLOBS_DIR_PATH, obj.git_hash[:2], obj.git_hash[2:]), "r").read()
 
 def do_create_db(dir_path=None, description=None):
-    '''Create a patch database in the current directory?'''
+    """Create a patch database in the current directory?"""
     def rollback():
-        '''Undo steps that were completed before failure occured'''
+        """Undo steps that were completed before failure occured"""
         for filnm in [patches_data_file_path, database_lock_file_path, blob_ref_count_file_path, description_file_path]:
             if os.path.exists(filnm):
                 os.remove(filnm)
@@ -1142,24 +1244,24 @@ def open_db(mutable=False):
 # should only be used where that is a requirement.  Use DataBase
 # methods otherwise.
 def _get_patch(patch_name, db):
-    '''Return the named patch'''
+    """Return the named patch"""
     try:
         return db.get_named_patch(patch_name)
     except DarnItUnknownPatch:
-        RCTX.stderr.write(_('{0}: patch is NOT known.\n').format(patch_name))
+        RCTX.stderr.write(_("{0}: patch is NOT known.\n").format(patch_name))
         return None
 
 def _get_top_patch(db):
     if db.top_patch is None:
-        RCTX.stderr.write(_('No patches applied.\n'))
+        RCTX.stderr.write(_("No patches applied.\n"))
     return db.top_patch
 
 def _get_named_or_top_patch(patch_name, db):
-    '''Return the named or top applied patch'''
+    """Return the named or top applied patch"""
     return _get_patch(patch_name, db) if patch_name is not None else _get_top_patch(db)
 
 def _add_files_to_top_patch(DB, file_paths, absorb=False, force=False):
-    '''Add the named files to the named patch'''
+    """Add the named files to the named patch"""
     assert not (absorb and force)
     top_patch = _get_top_patch(DB)
     if top_patch is None:
@@ -1174,20 +1276,20 @@ def _add_files_to_top_patch(DB, file_paths, absorb=False, force=False):
     issued_warning = False
     for file_path, file_path_rel_subdir in iter_with_subdir(file_paths):
         if file_path in top_patch_file_paths_set:
-            RCTX.stderr.write(_('{0}: file already in patch "{1}". Ignored.\n').format(file_path_rel_subdir, top_patch.name))
+            RCTX.stderr.write(_("{0}: file already in patch \"{1}\". Ignored.\n").format(file_path_rel_subdir, top_patch.name))
             issued_warning = True
             continue
         elif os.path.isdir(file_path):
-            RCTX.stderr.write(_('{0}: is a directory. Ignored.\n').format(file_path_rel_subdir))
+            RCTX.stderr.write(_("{0}: is a directory. Ignored.\n").format(file_path_rel_subdir))
             issued_warning = True
             continue
         top_patch_file_paths_set.add(file_path)
         top_patch.add_file(FileData.new(file_path, top_patch, overlaps=overlaps))
-        RCTX.stdout.write(_('{0}: file added to patch "{1}".\n').format(file_path_rel_subdir, top_patch.name))
+        RCTX.stdout.write(_("{0}: file added to patch \"{1}\".\n").format(file_path_rel_subdir, top_patch.name))
         if file_path in overlaps.uncommitted:
-            RCTX.stderr.write(_('{0}: Uncommited SCM changes have been incorporated in patch "{1}".\n').format(file_path_rel_subdir, top_patch.name))
+            RCTX.stderr.write(_("{0}: Uncommited SCM changes have been incorporated in patch \"{1}\".\n").format(file_path_rel_subdir, top_patch.name))
         elif file_path in overlaps.unrefreshed:
-            RCTX.stderr.write(_('{0}: Unrefeshed changes in patch "{2}" incorporated in patch "{1}".\n').format(file_path_rel_subdir, top_patch.name, overlaps.unrefreshed[file_path].name))
+            RCTX.stderr.write(_("{0}: Unrefeshed changes in patch \"{2}\" incorporated in patch \"{1}\".\n").format(file_path_rel_subdir, top_patch.name, overlaps.unrefreshed[file_path].name))
     return CmdResult.WARNING if issued_warning else CmdResult.OK
 
 ### Main interface commands start here
@@ -1204,15 +1306,15 @@ def do_apply_next_patch(absorb=False, force=False):
             ecode = DB.push_next_patch(absorb=absorb, force=force)
         except DarnItNoPushablePatches:
             if DB.top_patch_name:
-                RCTX.stderr.write(_('No pushable patches. "{0}" is on top.\n').format(DB.top_patch_name))
+                RCTX.stderr.write(_("No pushable patches. \"{0}\" is on top.\n").format(DB.top_patch_name))
             else:
-                RCTX.stderr.write(_('No pushable patches.\n'))
+                RCTX.stderr.write(_("No pushable patches.\n"))
             return CmdResult.ERROR
         if ecode & CmdResult.ERROR:
-            RCTX.stderr.write(_('A refresh is required after issues are resolved.\n'))
+            RCTX.stderr.write(_("A refresh is required after issues are resolved.\n"))
         elif DB.top_patch.needs_refresh:
-            RCTX.stderr.write(_('A refresh is required.\n'))
-        RCTX.stdout.write(_('Patch "{0}" is now on top.\n').format(DB.top_patch.name))
+            RCTX.stderr.write(_("A refresh is required.\n"))
+        RCTX.stdout.write(_("Patch \"{0}\" is now on top.\n").format(DB.top_patch.name))
         return CmdResult.ERROR if ecode > 1 else CmdResult.OK
 
 def do_copy_file_to_top_patch(file_path, as_file_path, overwrite=False):
@@ -1225,14 +1327,14 @@ def do_copy_file_to_top_patch(file_path, as_file_path, overwrite=False):
         if file_path == as_file_path:
             return CmdResult.OK
         if not os.path.exists(file_path):
-            RCTX.stderr.write(_('{0}: file does not exist.\n').format(rel_subdir(file_path)))
+            RCTX.stderr.write(_("{0}: file does not exist.\n").format(rel_subdir(file_path)))
             return CmdResult.ERROR
         if not overwrite:
             if as_file_path in top_patch.files_data:
-                RCTX.stderr.write(_('{0}: file already in patch.\n').format(rel_subdir(as_file_path)))
+                RCTX.stderr.write(_("{0}: file already in patch.\n").format(rel_subdir(as_file_path)))
                 return CmdResult.ERROR | CmdResult.SUGGEST_RENAME | CmdResult.SUGGEST_OVERWRITE
             if os.path.exists(as_file_path):
-                RCTX.stderr.write(_('{0}: file already exists.\n').format(rel_subdir(as_file_path)))
+                RCTX.stderr.write(_("{0}: file already exists.\n").format(rel_subdir(as_file_path)))
                 return CmdResult.ERROR | CmdResult.SUGGEST_RENAME | CmdResult.SUGGEST_OVERWRITE
         try:
             try:
@@ -1242,11 +1344,11 @@ def do_copy_file_to_top_patch(file_path, as_file_path, overwrite=False):
         except OSError as edata:
             RCTX.stderr.write(edata)
             return CmdResult.ERROR
-        RCTX.stdout.write(_('{0}: file copied to "{1}" in patch "{2}".\n').format(rel_subdir(file_path), rel_subdir(as_file_path), top_patch.name))
+        RCTX.stdout.write(_("{0}: file copied to \"{1}\" in patch \"{2}\".\n").format(rel_subdir(file_path), rel_subdir(as_file_path), top_patch.name))
         return CmdResult.OK
 
 def do_create_new_patch(patch_name, description):
-    '''Create a new patch with the given name and description (after the top patch)'''
+    """Create a new patch with the given name and description (after the top patch)"""
     with open_db(mutable=True) as DB:
         old_top = DB.top_patch
         try:
@@ -1260,24 +1362,24 @@ def do_create_new_patch(patch_name, description):
         return CmdResult.OK
 
 def do_drop_files_fm_patch(patch_name, file_paths):
-    '''Drop the named file from the named patch'''
+    """Drop the named file from the named patch"""
     with open_db(mutable=True) as DB:
         patch = _get_named_or_top_patch(patch_name, DB)
         if patch is None:
             return CmdResult.ERROR
         elif patch.is_applied and not patch.is_top_patch:
-            RCTX.stderr.write('Patch "{0}" is a NON-top applied patch. Aborted.'.format(patch.name))
+            RCTX.stderr.write("Patch \"{0}\" is a NON-top applied patch. Aborted.".format(patch.name))
             return CmdResult.ERROR
         issued_warning = False
         for file_path, file_path_rel_subdir in iter_with_subdir(file_paths):
             if file_path in patch.files_data:
                 patch.drop_named_file(file_path)
-                RCTX.stdout.write(_('{0}: file dropped from patch "{1}".\n').format(file_path_rel_subdir, patch.name))
+                RCTX.stdout.write(_("{0}: file dropped from patch \"{1}\".\n").format(file_path_rel_subdir, patch.name))
             elif os.path.isdir(file_path):
-                RCTX.stderr.write(_('{0}: is a directory: ignored.\n').format(file_path_rel_subdir))
+                RCTX.stderr.write(_("{0}: is a directory: ignored.\n").format(file_path_rel_subdir))
                 issued_warning = True
             else:
-                RCTX.stderr.write(_('{0}: file not in patch "{1}": ignored.\n').format(file_path_rel_subdir, patch.name))
+                RCTX.stderr.write(_("{0}: file not in patch \"{1}\": ignored.\n").format(file_path_rel_subdir, patch.name))
                 issued_warning = True
         return CmdResult.WARNING if issued_warning else CmdResult.OK
 
@@ -1294,13 +1396,13 @@ def do_move_files_in_top_patch(file_paths, target_path, force=False, overwrite=F
             return CmdResult.ERROR
         target_path = rel_basedir(target_path)
         if os.path.exists(target_path) and not os.path.isdir(target_path):
-            RCTX.stderr.write(_('{0}: target must be a directory for multiple file move operation.\n').format(rel_subdir(target_path)))
+            RCTX.stderr.write(_("{0}: target must be a directory for multiple file move operation.\n").format(rel_subdir(target_path)))
             return CmdResult.ERROR
         file_paths = list(iter_prepending_subdir(file_paths))
         nonexistent_file_paths = [file_path for file_path in file_paths if not os.path.exists(file_path)]
         if nonexistent_file_paths:
             for file_path in nonexistent_file_paths:
-                RCTX.stderr.write(_('{0}: file does not exist.\n').format(rel_subdir(file_path)))
+                RCTX.stderr.write(_("{0}: file does not exist.\n").format(rel_subdir(file_path)))
             return CmdResult.ERROR
         target_file_paths = [os.path.join(target_path, os.path.basename(file_path)) for file_path in file_paths]
         if not overwrite:
@@ -1308,9 +1410,9 @@ def do_move_files_in_top_patch(file_paths, target_path, force=False, overwrite=F
             tfps_exist = [tfp for tfp in target_file_paths if tfp not in top_patch.files_data and os.path.exists(tfp)]
             if tfps_in_patch or tfps_exist:
                 for target_file_path in tfps_in_patch:
-                    RCTX.stderr.write(_('{0}: file already in patch.\n').format(rel_subdir(target_file_path)))
+                    RCTX.stderr.write(_("{0}: file already in patch.\n").format(rel_subdir(target_file_path)))
                 for target_file_path in tfps_exist:
-                    RCTX.stderr.write(_('{0}: file already exists.\n').format(rel_subdir(target_file_path)))
+                    RCTX.stderr.write(_("{0}: file already exists.\n").format(rel_subdir(target_file_path)))
                 return CmdResult.ERROR | CmdResult.SUGGEST_RENAME | CmdResult.SUGGEST_OVERWRITE
         if not force:
             overlaps = DB.get_overlap_data(file_paths, top_patch)
@@ -1318,7 +1420,7 @@ def do_move_files_in_top_patch(file_paths, target_path, force=False, overwrite=F
                 return overlaps.report_and_abort()
         if not os.path.isdir(target_path):
             if not make_dir:
-                RCTX.stderr.write(_('{0}: does not exist. Use --mkdir to create it.\n').format(rel_subdir(target_path)))
+                RCTX.stderr.write(_("{0}: does not exist. Use --mkdir to create it.\n").format(rel_subdir(target_path)))
                 return CmdResult.ERROR
             else:
                 try:
@@ -1334,7 +1436,7 @@ def do_move_files_in_top_patch(file_paths, target_path, force=False, overwrite=F
             except OSError as edata:
                 RCTX.stderr.write(str(edata))
                 return CmdResult.ERROR
-            RCTX.stdout.write(_('{0}: file renamed to "{1}" in patch "{2}".\n').format(rel_subdir(file_path), rel_subdir(target_file_path), top_patch.name))
+            RCTX.stdout.write(_("{0}: file renamed to \"{1}\" in patch \"{2}\".\n").format(rel_subdir(file_path), rel_subdir(target_file_path), top_patch.name))
         return CmdResult.OK
 
 def do_pop_top_patch(force=False):
@@ -1343,10 +1445,10 @@ def do_pop_top_patch(force=False):
         try:
             new_top_patch = DB.pop_top_patch(force=force)
         except DarnItNoPatchesApplied:
-            RTX.stderr.write(_("There are no applied patches to pop."))
+            RCTX.stderr.write(_("There are no applied patches to pop."))
             return CmdResult.ERROR
         except DarnItPatchNeedsRefresh:
-            RCTX.stderr.write(_('Top patch ("{0}") needs to be refreshed.\n').format(DB.top_patch_name))
+            RCTX.stderr.write(_("Top patch (\"{0}\") needs to be refreshed.\n").format(DB.top_patch_name))
             return CmdResult.ERROR_SUGGEST_FORCE_OR_REFRESH
         if new_top_patch is None:
             RCTX.stdout.write(_("There are now no patches applied.\n"))
@@ -1355,7 +1457,7 @@ def do_pop_top_patch(force=False):
         return CmdResult.OK
 
 def do_refresh_patch(patch_name=None):
-    '''Refresh the named (or top applied) patch'''
+    """Refresh the named (or top applied) patch"""
     with open_db(mutable=True) as DB:
         patch = _get_named_or_top_patch(patch_name, DB)
         if patch is None:
@@ -1386,14 +1488,14 @@ def do_rename_file_in_top_patch(file_path, new_file_path, force=False, overwrite
         if file_path == new_file_path:
             return CmdResult.OK
         if not os.path.exists(file_path):
-            RCTX.stderr.write(_('{0}: file does not exist.\n').format(rel_subdir(file_path)))
+            RCTX.stderr.write(_("{0}: file does not exist.\n").format(rel_subdir(file_path)))
             return CmdResult.ERROR
         if not overwrite:
             if new_file_path in top_patch.files_data:
-                RCTX.stderr.write(_('{0}: file already in patch.\n').format(rel_subdir(new_file_path)))
+                RCTX.stderr.write(_("{0}: file already in patch.\n").format(rel_subdir(new_file_path)))
                 return CmdResult.ERROR | CmdResult.SUGGEST_RENAME | CmdResult.SUGGEST_OVERWRITE
             if os.path.exists(new_file_path):
-                RCTX.stderr.write(_('{0}: file already exists.\n').format(rel_subdir(new_file_path)))
+                RCTX.stderr.write(_("{0}: file already exists.\n").format(rel_subdir(new_file_path)))
                 return CmdResult.ERROR | CmdResult.SUGGEST_RENAME | CmdResult.SUGGEST_OVERWRITE
         if not force:
             overlaps = DB.get_overlap_data([file_path], top_patch)
@@ -1404,13 +1506,34 @@ def do_rename_file_in_top_patch(file_path, new_file_path, force=False, overwrite
         except OSError as edata:
             RCTX.stderr.write(edata)
             return CmdResult.ERROR
-        RCTX.stdout.write(_('{0}: file renamed to "{1}" in patch "{2}".\n').format(rel_subdir(file_path), rel_subdir(new_file_path), top_patch.name))
+        RCTX.stdout.write(_("{0}: file renamed to \"{1}\" in patch \"{2}\".\n").format(rel_subdir(file_path), rel_subdir(new_file_path), top_patch.name))
         return CmdResult.OK
 
 def do_unapply_top_patch(force=False):
     return do_pop_top_patch(force=force)
 
 ### GETs
+
+def get_combined_diff_for_files(file_paths, with_timestamps=False):
+    with open_db(mutable=False) as DB:
+        if DB.combined_patch is None:
+            RCTX.stderr.write("No patches applied.\n")
+            return ""
+        file_paths = list(iter_prepending_subdir(file_paths))
+        unknown_file_paths = [file_path for file_path in file_paths if not DB.combined_patch.has_file_with_path(file_path)]
+        if unknown_file_paths:
+            for file_path in unknown_file_paths:
+                RCTX.stderr.write("{0}: file is not in any applied patch.\n".format(rel_subdir(file_path)))
+            return ""
+        return DB.combined_patch.get_text_diff(file_paths)
+
+def get_combined_patch_file_table():
+    """Get a table of file data for all applied patches"""
+    with open_db(mutable=False) as DB:
+        if DB.combined_patch is None:
+            assert len(DB.applied_patches) == 0
+            return []
+        return DB.combined_patch.get_files_table()
 
 def get_diff_for_files(file_paths, patch_name, with_timestamps=False):
     with open_db(mutable=False) as DB:
@@ -1432,7 +1555,7 @@ def get_diff_for_files(file_paths, patch_name, with_timestamps=False):
         return "".join(diffs)
 
 def get_named_or_top_patch_name(patch_name):
-    '''Return the name of the named or top patch if patch_name is None or None if patch_name is not a valid patch_name'''
+    """Return the name of the named or top patch if patch_name is None or None if patch_name is not a valid patch_name"""
     with open_db(mutable=False) as DB:
         patch = _get_named_or_top_patch(patch_name, DB)
         return None if patch is None else patch.name
