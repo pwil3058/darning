@@ -64,42 +64,42 @@ $ darn files --combined
 > +:+: file3.ren1
 $ darn diff --combined
 > diff --git a/dir1/file1 b/dir1/file1
-> index 35ecb4cc6b0ee93fe528ef6e59d81756c1613eec..78d3b410c46283067e16f8090a3f85b503ead12a 0000664
+> index 35ecb4cc6b0ee93fe528ef6e59d81756c1613eec..78d3b410c46283067e16f8090a3f85b503ead12a 0100664
 > --- a/dir1/file1
 > +++ b/dir1/file1
 > @@ -1 +1,2 @@
 >  dir1/file1: is a text file.
 > +Patch: "first"; Path: "dir1/file1"
 > diff --git a/dir2/file1 b/dir2/file1
-> index c4978769edbcf37f7523422d8a9a4dc121f358d3..36e891598e42dfccd61f5da57c187e328ed9d19f 0000664
+> index c4978769edbcf37f7523422d8a9a4dc121f358d3..36e891598e42dfccd61f5da57c187e328ed9d19f 0100664
 > --- a/dir2/file1
 > +++ b/dir2/file1
 > @@ -1 +1,2 @@
 >  dir2/file1: is a text file.
 > +Patch: "first"; Path: "dir2/file1"
 > diff --git a/dir2/subdir1/file1 b/dir2/subdir1/file1
-> index b1fe1bd6942035913d1566db4c43bfcfe5499807..fc6ac5883788aa2a3723d1093810ef57ce223dc3 0000664
+> index b1fe1bd6942035913d1566db4c43bfcfe5499807..fc6ac5883788aa2a3723d1093810ef57ce223dc3 0100664
 > --- a/dir2/subdir1/file1
 > +++ b/dir2/subdir1/file1
 > @@ -1 +1,2 @@
 >  dir2/subdir1/file1: is a text file.
 > +Patch: "first"; Path: "dir2/subdir1/file1"
 > diff --git a/file1 b/file1
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..ad6359c197c230703a629bb53a12ec31a192ec50 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..ad6359c197c230703a629bb53a12ec31a192ec50 0100664
 > --- a/file1
 > +++ b/file1
 > @@ -1 +1,2 @@
 >  file1: is a text file.
 > +Patch: "first"; Path: "file1"
 > diff --git a/file1.copy b/file1.copy
-> new file mode 0000664
+> new file mode 0100664
 > index 000000000000000000000000000000000000000000000000..9d588eff9808b6c1b73445cb3526e1e62bf01bb7
 > --- /dev/null
 > +++ b/file1.copy
 > @@ -0,0 +1 @@
 > +file1: is a text file.
 > diff --git a/file2.copy b/file2.copy
-> new file mode 0000664
+> new file mode 0100664
 > index 000000000000000000000000000000000000000000000000..7fae9c0e44746ded07e0ead0008d0a984f21da55
 > --- /dev/null
 > +++ b/file2.copy
@@ -107,14 +107,14 @@ $ darn diff --combined
 > +file2: is a text file.
 > +Patch: "first"; Path: "file2.copy"
 > diff --git a/file3 b/file3
-> deleted file mode 0000664
+> deleted file mode 0100664
 > index da7f3c7d1fb148fdfadc254b6fdb3b8f41628fbd..000000000000000000000000000000000000000000000000
 > --- a/file3
 > +++ /dev/null
 > @@ -1 +0,0 @@
 > -file3: is a text file.
 > diff --git a/file3.ren1 b/file3.ren1
-> new file mode 0000664
+> new file mode 0100664
 > index 000000000000000000000000000000000000000000000000..19b0d76465447ef27066c7ac759e50948a2f9778
 > --- /dev/null
 > +++ b/file3.ren1
@@ -186,7 +186,7 @@ $ darn files --combined
 > +:+: file3.ren2
 $ darn diff --combined
 > diff --git a/dir1/file1 b/dir1/file1
-> index 35ecb4cc6b0ee93fe528ef6e59d81756c1613eec..1db13fde9e286f49e91edf46217fb9113e5ba79d 0000664
+> index 35ecb4cc6b0ee93fe528ef6e59d81756c1613eec..1db13fde9e286f49e91edf46217fb9113e5ba79d 0100664
 > --- a/dir1/file1
 > +++ b/dir1/file1
 > @@ -1 +1,3 @@
@@ -194,14 +194,14 @@ $ darn diff --combined
 > +Patch: "first"; Path: "dir1/file1"
 > +Patch: "second"; Path: "dir1/file1"
 > diff --git a/dir1/file2 b/dir1/file2
-> index 355abe4cfad1788acbc320d6898fed9795da7304..dfe1c7bd82b5ddf3083f165d49bcc6da5c84c772 0000664
+> index 355abe4cfad1788acbc320d6898fed9795da7304..dfe1c7bd82b5ddf3083f165d49bcc6da5c84c772 0100664
 > --- a/dir1/file2
 > +++ b/dir1/file2
 > @@ -1 +1,2 @@
 >  dir1/file2: is a text file.
 > +Patch: "second"; Path: "dir1/file2"
 > diff --git a/dir2/file1 b/dir2/file1
-> index c4978769edbcf37f7523422d8a9a4dc121f358d3..90623f1a34e21d746de22ebace8807d2fc67fd18 0000664
+> index c4978769edbcf37f7523422d8a9a4dc121f358d3..90623f1a34e21d746de22ebace8807d2fc67fd18 0100664
 > --- a/dir2/file1
 > +++ b/dir2/file1
 > @@ -1 +1,3 @@
@@ -209,14 +209,14 @@ $ darn diff --combined
 > +Patch: "first"; Path: "dir2/file1"
 > +Patch: "second"; Path: "dir2/file1"
 > diff --git a/dir2/file2 b/dir2/file2
-> index 782417b5454abed49926d384f4d5cfd3d446eab2..8d970e6eea7b4f84f6fbb9e5206cfc937f83cca5 0000664
+> index 782417b5454abed49926d384f4d5cfd3d446eab2..8d970e6eea7b4f84f6fbb9e5206cfc937f83cca5 0100664
 > --- a/dir2/file2
 > +++ b/dir2/file2
 > @@ -1 +1,2 @@
 >  dir2/file2: is a text file.
 > +Patch: "second"; Path: "dir2/file2"
 > diff --git a/dir2/subdir1/file1 b/dir2/subdir1/file1
-> index b1fe1bd6942035913d1566db4c43bfcfe5499807..a00763558d39e1c1f50984e0a4a312b3fa957dc8 0000664
+> index b1fe1bd6942035913d1566db4c43bfcfe5499807..a00763558d39e1c1f50984e0a4a312b3fa957dc8 0100664
 > --- a/dir2/subdir1/file1
 > +++ b/dir2/subdir1/file1
 > @@ -1 +1,3 @@
@@ -224,7 +224,7 @@ $ darn diff --combined
 > +Patch: "first"; Path: "dir2/subdir1/file1"
 > +Patch: "second"; Path: "dir2/subdir1/file1"
 > diff --git a/file1 b/file1
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..18adc7f8fecff85df26687476be5b245607d7094 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..18adc7f8fecff85df26687476be5b245607d7094 0100664
 > --- a/file1
 > +++ b/file1
 > @@ -1 +1,3 @@
@@ -232,21 +232,21 @@ $ darn diff --combined
 > +Patch: "first"; Path: "file1"
 > +Patch: "second"; Path: "file1"
 > diff --git a/file1.copy b/file1.copy
-> new file mode 0000664
+> new file mode 0100664
 > index 000000000000000000000000000000000000000000000000..9d588eff9808b6c1b73445cb3526e1e62bf01bb7
 > --- /dev/null
 > +++ b/file1.copy
 > @@ -0,0 +1 @@
 > +file1: is a text file.
 > diff --git a/file1.copy.copy b/file1.copy.copy
-> new file mode 0000664
+> new file mode 0100664
 > index 000000000000000000000000000000000000000000000000..9d588eff9808b6c1b73445cb3526e1e62bf01bb7
 > --- /dev/null
 > +++ b/file1.copy.copy
 > @@ -0,0 +1 @@
 > +file1: is a text file.
 > diff --git a/file2.copy b/file2.copy
-> new file mode 0000664
+> new file mode 0100664
 > index 000000000000000000000000000000000000000000000000..0bd2390c075341c9a413e8c349f8724e55c5d82b
 > --- /dev/null
 > +++ b/file2.copy
@@ -255,7 +255,7 @@ $ darn diff --combined
 > +Patch: "first"; Path: "file2.copy"
 > +Patch: "second"; Path: "file2.copy"
 > diff --git a/file2.copy.copy b/file2.copy.copy
-> new file mode 0000664
+> new file mode 0100664
 > index 000000000000000000000000000000000000000000000000..7fae9c0e44746ded07e0ead0008d0a984f21da55
 > --- /dev/null
 > +++ b/file2.copy.copy
@@ -263,14 +263,14 @@ $ darn diff --combined
 > +file2: is a text file.
 > +Patch: "first"; Path: "file2.copy"
 > diff --git a/file3 b/file3
-> deleted file mode 0000664
+> deleted file mode 0100664
 > index da7f3c7d1fb148fdfadc254b6fdb3b8f41628fbd..000000000000000000000000000000000000000000000000
 > --- a/file3
 > +++ /dev/null
 > @@ -1 +0,0 @@
 > -file3: is a text file.
 > diff --git a/file3.ren2 b/file3.ren2
-> new file mode 0000664
+> new file mode 0100664
 > index 000000000000000000000000000000000000000000000000..3d5b5184dbe865e466614eb3adc934bf06e5b434
 > --- /dev/null
 > +++ b/file3.ren2
@@ -339,7 +339,7 @@ $ darn files --combined
 >  :+: file3
 $ darn diff --combined
 > diff --git a/dir1/file1 b/dir1/file1
-> index 35ecb4cc6b0ee93fe528ef6e59d81756c1613eec..1db13fde9e286f49e91edf46217fb9113e5ba79d 0000664
+> index 35ecb4cc6b0ee93fe528ef6e59d81756c1613eec..1db13fde9e286f49e91edf46217fb9113e5ba79d 0100664
 > --- a/dir1/file1
 > +++ b/dir1/file1
 > @@ -1 +1,3 @@
@@ -347,7 +347,7 @@ $ darn diff --combined
 > +Patch: "first"; Path: "dir1/file1"
 > +Patch: "second"; Path: "dir1/file1"
 > diff --git a/dir1/file2 b/dir1/file2
-> index 355abe4cfad1788acbc320d6898fed9795da7304..adc0bf4783349835b5b2a7b9f55ada980b04e6bf 0000664
+> index 355abe4cfad1788acbc320d6898fed9795da7304..adc0bf4783349835b5b2a7b9f55ada980b04e6bf 0100664
 > --- a/dir1/file2
 > +++ b/dir1/file2
 > @@ -1 +1,3 @@
@@ -355,14 +355,14 @@ $ darn diff --combined
 > +Patch: "second"; Path: "dir1/file2"
 > +Patch: "third"; Path: "dir1/file2"
 > diff --git a/dir1/file3 b/dir1/file3
-> index cf6f2dcb5e6a3d5c18c97fac927f453960a78bca..5f8c707e7cd70d4bceb5e037a702896770630dee 0000664
+> index cf6f2dcb5e6a3d5c18c97fac927f453960a78bca..5f8c707e7cd70d4bceb5e037a702896770630dee 0100664
 > --- a/dir1/file3
 > +++ b/dir1/file3
 > @@ -1 +1,2 @@
 >  dir1/file3: is a text file.
 > +Patch: "third"; Path: "dir1/file3"
 > diff --git a/dir2/file1 b/dir2/file1
-> index c4978769edbcf37f7523422d8a9a4dc121f358d3..ac7bfa76707733cbbb049f793a26f0f343b30910 0000664
+> index c4978769edbcf37f7523422d8a9a4dc121f358d3..ac7bfa76707733cbbb049f793a26f0f343b30910 0100664
 > --- a/dir2/file1
 > +++ b/dir2/file1
 > @@ -1 +1,4 @@
@@ -371,21 +371,21 @@ $ darn diff --combined
 > +Patch: "second"; Path: "dir2/file1"
 > +Patch: "third"; Path: "dir2/file1"
 > diff --git a/dir2/file2 b/dir2/file2
-> index 782417b5454abed49926d384f4d5cfd3d446eab2..8d970e6eea7b4f84f6fbb9e5206cfc937f83cca5 0000664
+> index 782417b5454abed49926d384f4d5cfd3d446eab2..8d970e6eea7b4f84f6fbb9e5206cfc937f83cca5 0100664
 > --- a/dir2/file2
 > +++ b/dir2/file2
 > @@ -1 +1,2 @@
 >  dir2/file2: is a text file.
 > +Patch: "second"; Path: "dir2/file2"
 > diff --git a/dir2/file3 b/dir2/file3
-> index 6eaed191e14b62f5fbb1d35464034ad31aec76a4..9397ef1dacec9acb60804866c58af47237e337e6 0000664
+> index 6eaed191e14b62f5fbb1d35464034ad31aec76a4..9397ef1dacec9acb60804866c58af47237e337e6 0100664
 > --- a/dir2/file3
 > +++ b/dir2/file3
 > @@ -1 +1,2 @@
 >  dir2/file3: is a text file.
 > +Patch: "third"; Path: "dir2/file3"
 > diff --git a/dir2/subdir1/file1 b/dir2/subdir1/file1
-> index b1fe1bd6942035913d1566db4c43bfcfe5499807..299615ca493c8f0189aef269fa28a25cac5b3446 0000664
+> index b1fe1bd6942035913d1566db4c43bfcfe5499807..299615ca493c8f0189aef269fa28a25cac5b3446 0100664
 > --- a/dir2/subdir1/file1
 > +++ b/dir2/subdir1/file1
 > @@ -1 +1,4 @@
@@ -394,7 +394,7 @@ $ darn diff --combined
 > +Patch: "second"; Path: "dir2/subdir1/file1"
 > +Patch: "third"; Path: "dir2/subdir1/file1"
 > diff --git a/file1 b/file1
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..18adc7f8fecff85df26687476be5b245607d7094 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..18adc7f8fecff85df26687476be5b245607d7094 0100664
 > --- a/file1
 > +++ b/file1
 > @@ -1 +1,3 @@
@@ -402,28 +402,28 @@ $ darn diff --combined
 > +Patch: "first"; Path: "file1"
 > +Patch: "second"; Path: "file1"
 > diff --git a/file1.copy b/file1.copy
-> new file mode 0000664
+> new file mode 0100664
 > index 000000000000000000000000000000000000000000000000..9d588eff9808b6c1b73445cb3526e1e62bf01bb7
 > --- /dev/null
 > +++ b/file1.copy
 > @@ -0,0 +1 @@
 > +file1: is a text file.
 > diff --git a/file1.copy.copy b/file1.copy.copy
-> new file mode 0000664
+> new file mode 0100664
 > index 000000000000000000000000000000000000000000000000..9d588eff9808b6c1b73445cb3526e1e62bf01bb7
 > --- /dev/null
 > +++ b/file1.copy.copy
 > @@ -0,0 +1 @@
 > +file1: is a text file.
 > diff --git a/file1.copy.copy.copy b/file1.copy.copy.copy
-> new file mode 0000664
+> new file mode 0100664
 > index 000000000000000000000000000000000000000000000000..9d588eff9808b6c1b73445cb3526e1e62bf01bb7
 > --- /dev/null
 > +++ b/file1.copy.copy.copy
 > @@ -0,0 +1 @@
 > +file1: is a text file.
 > diff --git a/file2.copy b/file2.copy
-> new file mode 0000664
+> new file mode 0100664
 > index 000000000000000000000000000000000000000000000000..0bd2390c075341c9a413e8c349f8724e55c5d82b
 > --- /dev/null
 > +++ b/file2.copy
@@ -432,7 +432,7 @@ $ darn diff --combined
 > +Patch: "first"; Path: "file2.copy"
 > +Patch: "second"; Path: "file2.copy"
 > diff --git a/file2.copy.copy b/file2.copy.copy
-> new file mode 0000664
+> new file mode 0100664
 > index 000000000000000000000000000000000000000000000000..7fae9c0e44746ded07e0ead0008d0a984f21da55
 > --- /dev/null
 > +++ b/file2.copy.copy
@@ -440,7 +440,7 @@ $ darn diff --combined
 > +file2: is a text file.
 > +Patch: "first"; Path: "file2.copy"
 > diff --git a/file2.copy.copy.copy b/file2.copy.copy.copy
-> new file mode 0000664
+> new file mode 0100664
 > index 000000000000000000000000000000000000000000000000..7fae9c0e44746ded07e0ead0008d0a984f21da55
 > --- /dev/null
 > +++ b/file2.copy.copy.copy
@@ -448,7 +448,7 @@ $ darn diff --combined
 > +file2: is a text file.
 > +Patch: "first"; Path: "file2.copy"
 > diff --git a/file3 b/file3
-> index da7f3c7d1fb148fdfadc254b6fdb3b8f41628fbd..50b9a3033d9bece79dd34e6c2f33e98a3b1fd249 0000664
+> index da7f3c7d1fb148fdfadc254b6fdb3b8f41628fbd..50b9a3033d9bece79dd34e6c2f33e98a3b1fd249 0100664
 > --- a/file3
 > +++ b/file3
 > @@ -1 +1,4 @@
@@ -500,7 +500,7 @@ $ darn files --combined
 >  :+: file3
 $ darn diff --combined
 > diff --git a/dir1/file1 b/dir1/file1
-> index 35ecb4cc6b0ee93fe528ef6e59d81756c1613eec..1db13fde9e286f49e91edf46217fb9113e5ba79d 0000664
+> index 35ecb4cc6b0ee93fe528ef6e59d81756c1613eec..1db13fde9e286f49e91edf46217fb9113e5ba79d 0100664
 > --- a/dir1/file1
 > +++ b/dir1/file1
 > @@ -1 +1,3 @@
@@ -508,7 +508,7 @@ $ darn diff --combined
 > +Patch: "first"; Path: "dir1/file1"
 > +Patch: "second"; Path: "dir1/file1"
 > diff --git a/dir1/file2 b/dir1/file2
-> index 355abe4cfad1788acbc320d6898fed9795da7304..adc0bf4783349835b5b2a7b9f55ada980b04e6bf 0000664
+> index 355abe4cfad1788acbc320d6898fed9795da7304..adc0bf4783349835b5b2a7b9f55ada980b04e6bf 0100664
 > --- a/dir1/file2
 > +++ b/dir1/file2
 > @@ -1 +1,3 @@
@@ -516,14 +516,14 @@ $ darn diff --combined
 > +Patch: "second"; Path: "dir1/file2"
 > +Patch: "third"; Path: "dir1/file2"
 > diff --git a/dir1/file3 b/dir1/file3
-> index cf6f2dcb5e6a3d5c18c97fac927f453960a78bca..5f8c707e7cd70d4bceb5e037a702896770630dee 0000664
+> index cf6f2dcb5e6a3d5c18c97fac927f453960a78bca..5f8c707e7cd70d4bceb5e037a702896770630dee 0100664
 > --- a/dir1/file3
 > +++ b/dir1/file3
 > @@ -1 +1,2 @@
 >  dir1/file3: is a text file.
 > +Patch: "third"; Path: "dir1/file3"
 > diff --git a/dir2/file1 b/dir2/file1
-> index c4978769edbcf37f7523422d8a9a4dc121f358d3..ac7bfa76707733cbbb049f793a26f0f343b30910 0000664
+> index c4978769edbcf37f7523422d8a9a4dc121f358d3..ac7bfa76707733cbbb049f793a26f0f343b30910 0100664
 > --- a/dir2/file1
 > +++ b/dir2/file1
 > @@ -1 +1,4 @@
@@ -532,21 +532,21 @@ $ darn diff --combined
 > +Patch: "second"; Path: "dir2/file1"
 > +Patch: "third"; Path: "dir2/file1"
 > diff --git a/dir2/file2 b/dir2/file2
-> index 782417b5454abed49926d384f4d5cfd3d446eab2..8d970e6eea7b4f84f6fbb9e5206cfc937f83cca5 0000664
+> index 782417b5454abed49926d384f4d5cfd3d446eab2..8d970e6eea7b4f84f6fbb9e5206cfc937f83cca5 0100664
 > --- a/dir2/file2
 > +++ b/dir2/file2
 > @@ -1 +1,2 @@
 >  dir2/file2: is a text file.
 > +Patch: "second"; Path: "dir2/file2"
 > diff --git a/dir2/file3 b/dir2/file3
-> index 6eaed191e14b62f5fbb1d35464034ad31aec76a4..9397ef1dacec9acb60804866c58af47237e337e6 0000664
+> index 6eaed191e14b62f5fbb1d35464034ad31aec76a4..9397ef1dacec9acb60804866c58af47237e337e6 0100664
 > --- a/dir2/file3
 > +++ b/dir2/file3
 > @@ -1 +1,2 @@
 >  dir2/file3: is a text file.
 > +Patch: "third"; Path: "dir2/file3"
 > diff --git a/dir2/subdir1/file1 b/dir2/subdir1/file1
-> index b1fe1bd6942035913d1566db4c43bfcfe5499807..299615ca493c8f0189aef269fa28a25cac5b3446 0000664
+> index b1fe1bd6942035913d1566db4c43bfcfe5499807..299615ca493c8f0189aef269fa28a25cac5b3446 0100664
 > --- a/dir2/subdir1/file1
 > +++ b/dir2/subdir1/file1
 > @@ -1 +1,4 @@
@@ -555,7 +555,7 @@ $ darn diff --combined
 > +Patch: "second"; Path: "dir2/subdir1/file1"
 > +Patch: "third"; Path: "dir2/subdir1/file1"
 > diff --git a/file1 b/file1
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..18adc7f8fecff85df26687476be5b245607d7094 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..18adc7f8fecff85df26687476be5b245607d7094 0100664
 > --- a/file1
 > +++ b/file1
 > @@ -1 +1,3 @@
@@ -563,28 +563,28 @@ $ darn diff --combined
 > +Patch: "first"; Path: "file1"
 > +Patch: "second"; Path: "file1"
 > diff --git a/file1.copy b/file1.copy
-> new file mode 0000664
+> new file mode 0100664
 > index 000000000000000000000000000000000000000000000000..9d588eff9808b6c1b73445cb3526e1e62bf01bb7
 > --- /dev/null
 > +++ b/file1.copy
 > @@ -0,0 +1 @@
 > +file1: is a text file.
 > diff --git a/file1.copy.copy b/file1.copy.copy
-> new file mode 0000664
+> new file mode 0100664
 > index 000000000000000000000000000000000000000000000000..9d588eff9808b6c1b73445cb3526e1e62bf01bb7
 > --- /dev/null
 > +++ b/file1.copy.copy
 > @@ -0,0 +1 @@
 > +file1: is a text file.
 > diff --git a/file1.copy.copy.copy b/file1.copy.copy.copy
-> new file mode 0000664
+> new file mode 0100664
 > index 000000000000000000000000000000000000000000000000..9d588eff9808b6c1b73445cb3526e1e62bf01bb7
 > --- /dev/null
 > +++ b/file1.copy.copy.copy
 > @@ -0,0 +1 @@
 > +file1: is a text file.
 > diff --git a/file2.copy b/file2.copy
-> new file mode 0000664
+> new file mode 0100664
 > index 000000000000000000000000000000000000000000000000..0bd2390c075341c9a413e8c349f8724e55c5d82b
 > --- /dev/null
 > +++ b/file2.copy
@@ -593,7 +593,7 @@ $ darn diff --combined
 > +Patch: "first"; Path: "file2.copy"
 > +Patch: "second"; Path: "file2.copy"
 > diff --git a/file2.copy.copy b/file2.copy.copy
-> new file mode 0000664
+> new file mode 0100664
 > index 000000000000000000000000000000000000000000000000..7fae9c0e44746ded07e0ead0008d0a984f21da55
 > --- /dev/null
 > +++ b/file2.copy.copy
@@ -601,7 +601,7 @@ $ darn diff --combined
 > +file2: is a text file.
 > +Patch: "first"; Path: "file2.copy"
 > diff --git a/file2.copy.copy.copy b/file2.copy.copy.copy
-> new file mode 0000664
+> new file mode 0100664
 > index 000000000000000000000000000000000000000000000000..7fae9c0e44746ded07e0ead0008d0a984f21da55
 > --- /dev/null
 > +++ b/file2.copy.copy.copy
@@ -609,7 +609,7 @@ $ darn diff --combined
 > +file2: is a text file.
 > +Patch: "first"; Path: "file2.copy"
 > diff --git a/file3 b/file3
-> index da7f3c7d1fb148fdfadc254b6fdb3b8f41628fbd..50b9a3033d9bece79dd34e6c2f33e98a3b1fd249 0000664
+> index da7f3c7d1fb148fdfadc254b6fdb3b8f41628fbd..50b9a3033d9bece79dd34e6c2f33e98a3b1fd249 0100664
 > --- a/file3
 > +++ b/file3
 > @@ -1 +1,4 @@
@@ -621,7 +621,7 @@ $ darn diff file3
 > diff --git a/file3.ren2 b/file3
 > rename from file3.ren2
 > rename to file3
-> index 3d5b5184dbe865e466614eb3adc934bf06e5b434..50b9a3033d9bece79dd34e6c2f33e98a3b1fd249 0000664
+> index 3d5b5184dbe865e466614eb3adc934bf06e5b434..50b9a3033d9bece79dd34e6c2f33e98a3b1fd249 0100664
 > --- a/file3.ren2
 > +++ b/file3
 > @@ -1,3 +1,4 @@

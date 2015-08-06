@@ -147,8 +147,11 @@ class _EssentialFileData(mixins.PedanticSlotPickleMixin):
         self.git_hash = git_hash
         self.lstats = lstats
     @property
-    def mode(self):
+    def permissions(self):
         return stat.S_IMODE(self.lstats.st_mode)
+    @property
+    def st_mode(self):
+        return self.lstats.st_mode
     @property
     def timestamp(self):
         return patch_timestamp_str(self.lstats.st_mtime)
@@ -220,13 +223,13 @@ def generate_diff_preamble_lines(file_path, before, after, came_from=None):
         lines = ["diff --git {0} {1}\n".format(os.path.join("a", file_path), os.path.join("b", file_path)), ]
     if before is None:
         if after is not None:
-            lines.append("new file mode {0:07o}\n".format(after.mode))
+            lines.append("new file mode {0:07o}\n".format(after.st_mode))
     elif after is None:
-        lines.append("deleted file mode {0:07o}\n".format(before.mode))
+        lines.append("deleted file mode {0:07o}\n".format(before.st_mode))
     else:
-        if before.mode != after.mode:
-            lines.append("old mode {0:07o}\n".format(before.mode))
-            lines.append("new mode {0:07o}\n".format(after.mode))
+        if before.st_mode != after.st_mode:
+            lines.append("old mode {0:07o}\n".format(before.st_mode))
+            lines.append("new mode {0:07o}\n".format(after.st_mode))
     if came_from:
         if came_from.as_rename:
             lines.append("rename from {0}\n".format(came_from.file_path))
@@ -237,7 +240,7 @@ def generate_diff_preamble_lines(file_path, before, after, came_from=None):
     if before or after:
         hash_line = "index {0}".format(before.git_hash if before else "0" *48)
         hash_line += "..{0}".format(after.git_hash if after else "0" *48)
-        hash_line += " {0:07o}\n".format(after.mode) if after and before and before.mode == after.mode else "\n"
+        hash_line += " {0:07o}\n".format(after.st_mode) if after and before and before.st_mode == after.st_mode else "\n"
         lines.append(hash_line)
     return lines
 
@@ -602,8 +605,8 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
         if stdout:
             if not after.efd:
                 stdout.write(_("\"{0}\": file does not exist\n").format(rel_subdir(self.path)))
-            elif before.efd and after.efd and after.efd.mode != before.efd.mode:
-                stdout.write(_("\"{0}\": mode {1:07o} -> {2:07o}.\n").format(rel_subdir(self.path), before.efd.mode, after.efd.mode))
+            elif before.efd and after.efd and after.efd.st_mode != before.efd.st_mode:
+                stdout.write(_("\"{0}\": mode {1:07o} -> {2:07o}.\n").format(rel_subdir(self.path), before.efd.st_mode, after.efd.st_mode))
     def apply_diff(self, drop_atws=True):
         # we assume that "orig" data is correct
         current_efd = self.came_from.orig if self.came_from else self.orig
@@ -665,7 +668,7 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
             RCTX.stdout.write(_("\"{0}\": unchanged.\n").format(rel_subdir(self.path)))
         if self.darned:
             if os.path.exists(self.path):
-                os.chmod(self.path, self.darned.mode)
+                os.chmod(self.path, self.darned.permissions)
             else:
                 retval = max(retval, CmdResult.WARNING)
                 RCTX.stderr.write(_("Expected file not found.\n"))
@@ -859,7 +862,7 @@ class Patch(mixins.WrapperMixin):
             fm_file_data = self.get_file(file_data.came_from.file_path)
             try:
                 open(file_data.path, "w").write(self.database.get_content_for(fm_file_data.orig))
-                os.chmod(file_data.path, fm_file_data.orig.mode)
+                os.chmod(file_data.path, fm_file_data.orig.permissions)
             except (OSError, IOError) as edata:
                 biggest_ecode = CmdResult.ERROR
                 RCTX.stderr.write(edata)
@@ -884,7 +887,7 @@ class Patch(mixins.WrapperMixin):
             # TODO: use move to put back renamed files
             orig_content = self.database.get_content_for(file_data.orig)
             open(file_path, "w").write(orig_content)
-            os.chmod(file_path, file_data.orig.mode)
+            os.chmod(file_path, file_data.orig.permissions)
     def add_file(self, file_data):
         assert not self.is_applied or self.is_top_patch
         assert file_data.path not in self.files_data
@@ -897,7 +900,7 @@ class Patch(mixins.WrapperMixin):
             self.database.combined_patch.drop_file(file_data)
             if file_data.orig:
                 open(file_data.path, "w").write(self.database.get_content_for(file_data.orig))
-                os.chmod(file_data.path, file_data.orig.mode)
+                os.chmod(file_data.path, file_data.orig.permissions)
             elif os.path.exists(file_data.path):
                 os.remove(file_data.path)
         # if this file was the result of a rename then we make the original a normal file

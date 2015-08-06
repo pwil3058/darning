@@ -49,9 +49,9 @@ $ darn diff
 > diff --git a/file1 b/file1.renamed
 > rename from file1
 > rename to file1.renamed
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..9d588eff9808b6c1b73445cb3526e1e62bf01bb7 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..9d588eff9808b6c1b73445cb3526e1e62bf01bb7 0100664
 > diff --git a/file4 b/file4
-> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..4dbc121c5e1079c153a88799e39bd3b920d66834 0000664
+> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..4dbc121c5e1079c153a88799e39bd3b920d66834 0100664
 > --- a/file4
 > +++ b/file4
 > @@ -1 +1,2 @@
@@ -64,14 +64,14 @@ $ darn diff
 > diff --git a/file1 b/file1.renamed
 > rename from file1
 > rename to file1.renamed
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..0adc018e1d1d063c4e3926da5271fecdbbb0a67d 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..0adc018e1d1d063c4e3926da5271fecdbbb0a67d 0100664
 > --- a/file1
 > +++ b/file1.renamed
 > @@ -1 +1,2 @@
 >  file1: is a text file.
 > +Patch: "first"; Path: "file1.renamed"
 > diff --git a/file4 b/file4
-> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..4dbc121c5e1079c153a88799e39bd3b920d66834 0000664
+> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..4dbc121c5e1079c153a88799e39bd3b920d66834 0100664
 > --- a/file4
 > +++ b/file4
 > @@ -1 +1,2 @@
@@ -95,14 +95,14 @@ $ darn diff
 > diff --git a/file1 b/file1.renamed.renamed
 > rename from file1
 > rename to file1.renamed.renamed
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..0adc018e1d1d063c4e3926da5271fecdbbb0a67d 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..0adc018e1d1d063c4e3926da5271fecdbbb0a67d 0100664
 > --- a/file1
 > +++ b/file1.renamed.renamed
 > @@ -1 +1,2 @@
 >  file1: is a text file.
 > +Patch: "first"; Path: "file1.renamed"
 > diff --git a/file4 b/file4
-> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..4dbc121c5e1079c153a88799e39bd3b920d66834 0000664
+> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..4dbc121c5e1079c153a88799e39bd3b920d66834 0100664
 > --- a/file4
 > +++ b/file4
 > @@ -1 +1,2 @@
@@ -131,7 +131,7 @@ $ darn diff
 > diff --git a/file1 b/file1.renamed.renamed
 > rename from file1
 > rename to file1.renamed.renamed
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..0adc018e1d1d063c4e3926da5271fecdbbb0a67d 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..0adc018e1d1d063c4e3926da5271fecdbbb0a67d 0100664
 > --- a/file1
 > +++ b/file1.renamed.renamed
 > @@ -1 +1,2 @@
@@ -142,14 +142,14 @@ $ darn diff
 > diff --git a/file2 b/file3
 > rename from file2
 > rename to file3
-> index cd1c1e8e36a212ba7723de693b194e58acab54ae..8c6471675c2abb357a74d2501c0fdc28aa6ed717 0000664
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..8c6471675c2abb357a74d2501c0fdc28aa6ed717 0100664
 > --- a/file2
 > +++ b/file3
 > @@ -1 +1,2 @@
 >  file2: is a text file.
 > +Patch: "first"; Path: "file3"
 > diff --git a/file4 b/file4
-> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..4dbc121c5e1079c153a88799e39bd3b920d66834 0000664
+> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..4dbc121c5e1079c153a88799e39bd3b920d66834 0100664
 > --- a/file4
 > +++ b/file4
 > @@ -1 +1,2 @@
@@ -168,7 +168,7 @@ $ darn diff
 > diff --git a/file1 b/file1.renamed.renamed
 > rename from file1
 > rename to file1.renamed.renamed
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..0adc018e1d1d063c4e3926da5271fecdbbb0a67d 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..0adc018e1d1d063c4e3926da5271fecdbbb0a67d 0100664
 > --- a/file1
 > +++ b/file1.renamed.renamed
 > @@ -1 +1,2 @@
@@ -179,7 +179,7 @@ $ darn diff
 > diff --git a/file2 b/file3
 > rename from file2
 > rename to file3
-> index cd1c1e8e36a212ba7723de693b194e58acab54ae..8c6471675c2abb357a74d2501c0fdc28aa6ed717 0000664
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..8c6471675c2abb357a74d2501c0fdc28aa6ed717 0100664
 > --- a/file2
 > +++ b/file3
 > @@ -1 +1,2 @@
@@ -188,7 +188,7 @@ $ darn diff
 > diff --git a/file5 b/file4
 > rename from file5
 > rename to file4
-> index aac29970b8c49d0c9414043c72b15cbcc0732f04..aac29970b8c49d0c9414043c72b15cbcc0732f04 0000664
+> index aac29970b8c49d0c9414043c72b15cbcc0732f04..aac29970b8c49d0c9414043c72b15cbcc0732f04 0100664
 > diff --git a/file5 b/file5
 > # Renamed to: file4
 $ cat file4
@@ -253,7 +253,7 @@ $ darn diff
 > diff --git a/file1 b/file1.renamed.renamed
 > rename from file1
 > rename to file1.renamed.renamed
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..0adc018e1d1d063c4e3926da5271fecdbbb0a67d 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..0adc018e1d1d063c4e3926da5271fecdbbb0a67d 0100664
 > --- a/file1
 > +++ b/file1.renamed.renamed
 > @@ -1 +1,2 @@
@@ -264,7 +264,7 @@ $ darn diff
 > diff --git a/file2 b/file3
 > rename from file2
 > rename to file3
-> index cd1c1e8e36a212ba7723de693b194e58acab54ae..8c6471675c2abb357a74d2501c0fdc28aa6ed717 0000664
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..8c6471675c2abb357a74d2501c0fdc28aa6ed717 0100664
 > --- a/file2
 > +++ b/file3
 > @@ -1 +1,2 @@
@@ -273,7 +273,7 @@ $ darn diff
 > diff --git a/file5 b/file4
 > rename from file5
 > rename to file4
-> index aac29970b8c49d0c9414043c72b15cbcc0732f04..aac29970b8c49d0c9414043c72b15cbcc0732f04 0000664
+> index aac29970b8c49d0c9414043c72b15cbcc0732f04..aac29970b8c49d0c9414043c72b15cbcc0732f04 0100664
 > diff --git a/file5 b/file5
 > # Renamed to: file4
 $ ls --ignore=dir* --ignore=binary*
@@ -305,7 +305,7 @@ $ darn diff
 > diff --git a/file1 b/file1.renamed.renamed
 > rename from file1
 > rename to file1.renamed.renamed
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..0adc018e1d1d063c4e3926da5271fecdbbb0a67d 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..0adc018e1d1d063c4e3926da5271fecdbbb0a67d 0100664
 > --- a/file1
 > +++ b/file1.renamed.renamed
 > @@ -1 +1,2 @@
@@ -316,14 +316,14 @@ $ darn diff
 > diff --git a/file2 b/file3
 > rename from file2
 > rename to file3
-> index cd1c1e8e36a212ba7723de693b194e58acab54ae..8c6471675c2abb357a74d2501c0fdc28aa6ed717 0000664
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..8c6471675c2abb357a74d2501c0fdc28aa6ed717 0100664
 > --- a/file2
 > +++ b/file3
 > @@ -1 +1,2 @@
 >  file2: is a text file.
 > +Patch: "first"; Path: "file3"
 > diff --git a/file5 b/file5
-> deleted file mode 0000664
+> deleted file mode 0100664
 > index aac29970b8c49d0c9414043c72b15cbcc0732f04..000000000000000000000000000000000000000000000000
 > --- a/file5
 > +++ /dev/null
@@ -346,21 +346,21 @@ $ darn diff
 > diff --git a/file1 b/file1.renamed.renamed
 > rename from file1
 > rename to file1.renamed.renamed
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..0adc018e1d1d063c4e3926da5271fecdbbb0a67d 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..0adc018e1d1d063c4e3926da5271fecdbbb0a67d 0100664
 > --- a/file1
 > +++ b/file1.renamed.renamed
 > @@ -1 +1,2 @@
 >  file1: is a text file.
 > +Patch: "first"; Path: "file1.renamed"
 > diff --git a/file2 b/file2
-> deleted file mode 0000664
+> deleted file mode 0100664
 > index cd1c1e8e36a212ba7723de693b194e58acab54ae..000000000000000000000000000000000000000000000000
 > --- a/file2
 > +++ /dev/null
 > @@ -1 +0,0 @@
 > -file2: is a text file.
 > diff --git a/file5 b/file5
-> deleted file mode 0000664
+> deleted file mode 0100664
 > index aac29970b8c49d0c9414043c72b15cbcc0732f04..000000000000000000000000000000000000000000000000
 > --- a/file5
 > +++ /dev/null
@@ -379,21 +379,21 @@ $ ls --ignore=dir* --ignore=binary*
 > file4
 $ darn diff
 > diff --git a/file1 b/file1
-> deleted file mode 0000664
+> deleted file mode 0100664
 > index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..000000000000000000000000000000000000000000000000
 > --- a/file1
 > +++ /dev/null
 > @@ -1 +0,0 @@
 > -file1: is a text file.
 > diff --git a/file2 b/file2
-> deleted file mode 0000664
+> deleted file mode 0100664
 > index cd1c1e8e36a212ba7723de693b194e58acab54ae..000000000000000000000000000000000000000000000000
 > --- a/file2
 > +++ /dev/null
 > @@ -1 +0,0 @@
 > -file2: is a text file.
 > diff --git a/file5 b/file5
-> deleted file mode 0000664
+> deleted file mode 0100664
 > index aac29970b8c49d0c9414043c72b15cbcc0732f04..000000000000000000000000000000000000000000000000
 > --- a/file5
 > +++ /dev/null
@@ -436,7 +436,7 @@ $ darn_test_tree modify file1
 $ darn refresh
 $ darn diff
 > diff --git a/file1 b/file1
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0100664
 > --- a/file1
 > +++ b/file1
 > @@ -1 +1,2 @@
@@ -450,7 +450,7 @@ $ darn diff
 > diff --git a/file1 b/file1.renamed
 > rename from file1
 > rename to file1.renamed
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0100664
 > --- a/file1
 > +++ b/file1.renamed
 > @@ -1 +1,2 @@
@@ -469,7 +469,7 @@ $ darn diff
 > diff --git a/file1 b/file1.renamed
 > rename from file1
 > rename to file1.renamed
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0100664
 > --- a/file1
 > +++ b/file1.renamed
 > @@ -1 +1,2 @@
@@ -486,7 +486,7 @@ $ darn diff
 > diff --git a/file1 b/file1.renamed
 > copy from file1
 > copy to file1.renamed
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0100664
 > --- a/file1
 > +++ b/file1.renamed
 > @@ -1 +1,2 @@
@@ -503,7 +503,7 @@ $ darn diff
 > diff --git a/file1 b/file1.renamed
 > copy from file1
 > copy to file1.renamed
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0100664
 > --- a/file1
 > +++ b/file1.renamed
 > @@ -1 +1,2 @@
@@ -523,7 +523,7 @@ $ darn files
 > +:?: nonexistent
 $ darn diff
 > diff --git a/nonexistent b/nonexistent
-> new file mode 0000664
+> new file mode 0100664
 > index 000000000000000000000000000000000000000000000000..d95f3ad14dee633a758d2e331151e950dd13e4ed
 > --- /dev/null
 > +++ b/nonexistent
@@ -535,7 +535,7 @@ $ darn files
 > +:?: nonexistent.renamed
 $ darn diff
 > diff --git a/nonexistent.renamed b/nonexistent.renamed
-> new file mode 0000664
+> new file mode 0100664
 > index 000000000000000000000000000000000000000000000000..d95f3ad14dee633a758d2e331151e950dd13e4ed
 > --- /dev/null
 > +++ b/nonexistent.renamed
@@ -554,7 +554,7 @@ $ darn diff
 > diff --git a/file1 b/file1.copy
 > copy from file1
 > copy to file1.copy
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..9d588eff9808b6c1b73445cb3526e1e62bf01bb7 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..9d588eff9808b6c1b73445cb3526e1e62bf01bb7 0100664
 $ darn rename file1.copy file1.copy.renamed
 > file1.copy: file renamed to "file1.copy.renamed" in patch "fourth".
 $ darn files
@@ -563,7 +563,7 @@ $ darn diff
 > diff --git a/file1 b/file1.copy.renamed
 > copy from file1
 > copy to file1.copy.renamed
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..9d588eff9808b6c1b73445cb3526e1e62bf01bb7 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..9d588eff9808b6c1b73445cb3526e1e62bf01bb7 0100664
 
 Swap the name of two files
 $ darn refresh
@@ -583,7 +583,7 @@ $ darn diff file1 file1.temp
 > diff --git a/file1 b/file1.temp
 > rename from file1
 > rename to file1.temp
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..9d588eff9808b6c1b73445cb3526e1e62bf01bb7 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..9d588eff9808b6c1b73445cb3526e1e62bf01bb7 0100664
 $ darn rename --overwrite file2 file1
 > file2: file renamed to "file1" in patch "swap".
 $ darn files
@@ -594,13 +594,13 @@ $ darn diff file1 file2 file1.temp
 > diff --git a/file2 b/file1
 > rename from file2
 > rename to file1
-> index cd1c1e8e36a212ba7723de693b194e58acab54ae..cd1c1e8e36a212ba7723de693b194e58acab54ae 0000664
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..cd1c1e8e36a212ba7723de693b194e58acab54ae 0100664
 > diff --git a/file2 b/file2
 > # Renamed to: file1
 > diff --git a/file1 b/file1.temp
 > rename from file1
 > rename to file1.temp
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..9d588eff9808b6c1b73445cb3526e1e62bf01bb7 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..9d588eff9808b6c1b73445cb3526e1e62bf01bb7 0100664
 $ darn rename file1.temp file2
 ? 34
 ! file2: file already in patch.
@@ -613,11 +613,11 @@ $ darn diff
 > diff --git a/file2 b/file1
 > rename from file2
 > rename to file1
-> index cd1c1e8e36a212ba7723de693b194e58acab54ae..cd1c1e8e36a212ba7723de693b194e58acab54ae 0000664
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..cd1c1e8e36a212ba7723de693b194e58acab54ae 0100664
 > diff --git a/file1 b/file2
 > rename from file1
 > rename to file2
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..9d588eff9808b6c1b73445cb3526e1e62bf01bb7 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..9d588eff9808b6c1b73445cb3526e1e62bf01bb7 0100664
 $ cat file1
 > file2: is a text file.
 $ cat file2
@@ -635,11 +635,11 @@ $ darn diff
 > diff --git a/file2 b/file1
 > rename from file2
 > rename to file1
-> index cd1c1e8e36a212ba7723de693b194e58acab54ae..cd1c1e8e36a212ba7723de693b194e58acab54ae 0000664
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..cd1c1e8e36a212ba7723de693b194e58acab54ae 0100664
 > diff --git a/file1 b/file2
 > rename from file1
 > rename to file2
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..9d588eff9808b6c1b73445cb3526e1e62bf01bb7 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..9d588eff9808b6c1b73445cb3526e1e62bf01bb7 0100664
 $ cat file1
 > file2: is a text file.
 $ cat file2

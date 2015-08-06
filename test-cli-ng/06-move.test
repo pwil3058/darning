@@ -68,7 +68,7 @@ $ darn diff
 > diff --git a/file2 b/file2
 > # Renamed to: newdir/file2
 > diff --git a/file4 b/file4
-> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..4dbc121c5e1079c153a88799e39bd3b920d66834 0000664
+> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..4dbc121c5e1079c153a88799e39bd3b920d66834 0100664
 > --- a/file4
 > +++ b/file4
 > @@ -1 +1,2 @@
@@ -77,11 +77,11 @@ $ darn diff
 > diff --git a/file1 b/newdir/file1
 > rename from file1
 > rename to newdir/file1
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..9d588eff9808b6c1b73445cb3526e1e62bf01bb7 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..9d588eff9808b6c1b73445cb3526e1e62bf01bb7 0100664
 > diff --git a/file2 b/newdir/file2
 > rename from file2
 > rename to newdir/file2
-> index cd1c1e8e36a212ba7723de693b194e58acab54ae..cd1c1e8e36a212ba7723de693b194e58acab54ae 0000664
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..cd1c1e8e36a212ba7723de693b194e58acab54ae 0100664
 
 Try move two files to an existing directory with --overwrite
 $ darn move --overwrite file3 file4 dir1
@@ -100,11 +100,11 @@ $ darn diff
 > diff --git a/file3 b/dir1/file3
 > rename from file3
 > rename to dir1/file3
-> index da7f3c7d1fb148fdfadc254b6fdb3b8f41628fbd..da7f3c7d1fb148fdfadc254b6fdb3b8f41628fbd 0000664
+> index da7f3c7d1fb148fdfadc254b6fdb3b8f41628fbd..da7f3c7d1fb148fdfadc254b6fdb3b8f41628fbd 0100664
 > diff --git a/file4 b/dir1/file4
 > rename from file4
 > rename to dir1/file4
-> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..4dbc121c5e1079c153a88799e39bd3b920d66834 0000664
+> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..4dbc121c5e1079c153a88799e39bd3b920d66834 0100664
 > --- a/file4
 > +++ b/dir1/file4
 > @@ -1 +1,2 @@
@@ -121,11 +121,11 @@ $ darn diff
 > diff --git a/file1 b/newdir/file1
 > rename from file1
 > rename to newdir/file1
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..9d588eff9808b6c1b73445cb3526e1e62bf01bb7 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..9d588eff9808b6c1b73445cb3526e1e62bf01bb7 0100664
 > diff --git a/file2 b/newdir/file2
 > rename from file2
 > rename to newdir/file2
-> index cd1c1e8e36a212ba7723de693b194e58acab54ae..cd1c1e8e36a212ba7723de693b194e58acab54ae 0000664
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..cd1c1e8e36a212ba7723de693b194e58acab54ae 0100664
 
 Pop back to start and check everything returned properly
 $ darn refresh
@@ -169,11 +169,11 @@ $ darn diff
 > diff --git a/file3 b/dir1/file3
 > rename from file3
 > rename to dir1/file3
-> index da7f3c7d1fb148fdfadc254b6fdb3b8f41628fbd..da7f3c7d1fb148fdfadc254b6fdb3b8f41628fbd 0000664
+> index da7f3c7d1fb148fdfadc254b6fdb3b8f41628fbd..da7f3c7d1fb148fdfadc254b6fdb3b8f41628fbd 0100664
 > diff --git a/file4 b/dir1/file4
 > rename from file4
 > rename to dir1/file4
-> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..4dbc121c5e1079c153a88799e39bd3b920d66834 0000664
+> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..4dbc121c5e1079c153a88799e39bd3b920d66834 0100664
 > --- a/file4
 > +++ b/dir1/file4
 > @@ -1 +1,2 @@
@@ -190,8 +190,8 @@ $ darn diff
 > diff --git a/file1 b/newdir/file1
 > rename from file1
 > rename to newdir/file1
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..9d588eff9808b6c1b73445cb3526e1e62bf01bb7 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..9d588eff9808b6c1b73445cb3526e1e62bf01bb7 0100664
 > diff --git a/file2 b/newdir/file2
 > rename from file2
 > rename to newdir/file2
-> index cd1c1e8e36a212ba7723de693b194e58acab54ae..cd1c1e8e36a212ba7723de693b194e58acab54ae 0000664
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..cd1c1e8e36a212ba7723de693b194e58acab54ae 0100664

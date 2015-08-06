@@ -113,10 +113,10 @@ $ ls .darning.dbd/blobs
 Confirm that the change has been absorbed into "third" patch.
 $ darn diff -P second file2
 > diff --git a/file2 b/file2
-> index cd1c1e8e36a212ba7723de693b194e58acab54ae..cd1c1e8e36a212ba7723de693b194e58acab54ae 0000664
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..cd1c1e8e36a212ba7723de693b194e58acab54ae 0100664
 $ darn diff -P third file2
 > diff --git a/file2 b/file2
-> index cd1c1e8e36a212ba7723de693b194e58acab54ae..00c55dd55bb971b92c078bee4b75df30999295fc 0000664
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..00c55dd55bb971b92c078bee4b75df30999295fc 0100664
 > --- a/file2
 > +++ b/file2
 > @@ -1 +1,2 @@
@@ -148,7 +148,7 @@ $ darn files
 Confirm that the change has not been absorbed into "fourth" patch.
 $ darn diff -P third file2
 > diff --git a/file2 b/file2
-> index cd1c1e8e36a212ba7723de693b194e58acab54ae..00c55dd55bb971b92c078bee4b75df30999295fc 0000664
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..00c55dd55bb971b92c078bee4b75df30999295fc 0100664
 > --- a/file2
 > +++ b/file2
 > @@ -1 +1,2 @@
@@ -156,7 +156,7 @@ $ darn diff -P third file2
 > +Patch: "second"; Path: "file2"
 $ darn diff -P fourth file2
 > diff --git a/file2 b/file2
-> index 00c55dd55bb971b92c078bee4b75df30999295fc..00c55dd55bb971b92c078bee4b75df30999295fc 0000664
+> index 00c55dd55bb971b92c078bee4b75df30999295fc..00c55dd55bb971b92c078bee4b75df30999295fc 0100664
 $ darn files third
 >  :?: file1
 >  :?: file2

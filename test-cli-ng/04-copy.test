@@ -45,9 +45,9 @@ $ darn diff
 > diff --git a/file1 b/file1.copy
 > copy from file1
 > copy to file1.copy
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..9d588eff9808b6c1b73445cb3526e1e62bf01bb7 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..9d588eff9808b6c1b73445cb3526e1e62bf01bb7 0100664
 > diff --git a/file4 b/file4
-> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..4dbc121c5e1079c153a88799e39bd3b920d66834 0000664
+> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..4dbc121c5e1079c153a88799e39bd3b920d66834 0100664
 > --- a/file4
 > +++ b/file4
 > @@ -1 +1,2 @@
@@ -58,14 +58,14 @@ $ darn diff
 > diff --git a/file1 b/file1.copy
 > copy from file1
 > copy to file1.copy
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0100664
 > --- a/file1
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
 >  file1: is a text file.
 > +Patch: "first"; Path: "file1.copy"
 > diff --git a/file4 b/file4
-> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..4dbc121c5e1079c153a88799e39bd3b920d66834 0000664
+> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..4dbc121c5e1079c153a88799e39bd3b920d66834 0100664
 > --- a/file4
 > +++ b/file4
 > @@ -1 +1,2 @@
@@ -86,7 +86,7 @@ $ darn diff
 > diff --git a/file1 b/file1.copy
 > copy from file1
 > copy to file1.copy
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0100664
 > --- a/file1
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
@@ -95,14 +95,14 @@ $ darn diff
 > diff --git a/file1 b/file1.copy.copy
 > copy from file1
 > copy to file1.copy.copy
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0100664
 > --- a/file1
 > +++ b/file1.copy.copy
 > @@ -1 +1,2 @@
 >  file1: is a text file.
 > +Patch: "first"; Path: "file1.copy"
 > diff --git a/file4 b/file4
-> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..4dbc121c5e1079c153a88799e39bd3b920d66834 0000664
+> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..4dbc121c5e1079c153a88799e39bd3b920d66834 0100664
 > --- a/file4
 > +++ b/file4
 > @@ -1 +1,2 @@
@@ -130,7 +130,7 @@ $ darn diff
 > diff --git a/file1 b/file1.copy
 > copy from file1
 > copy to file1.copy
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0100664
 > --- a/file1
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
@@ -139,7 +139,7 @@ $ darn diff
 > diff --git a/file1 b/file1.copy.copy
 > copy from file1
 > copy to file1.copy.copy
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0100664
 > --- a/file1
 > +++ b/file1.copy.copy
 > @@ -1 +1,2 @@
@@ -148,14 +148,14 @@ $ darn diff
 > diff --git a/file2 b/file3
 > copy from file2
 > copy to file3
-> index cd1c1e8e36a212ba7723de693b194e58acab54ae..8c6471675c2abb357a74d2501c0fdc28aa6ed717 0000664
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..8c6471675c2abb357a74d2501c0fdc28aa6ed717 0100664
 > --- a/file2
 > +++ b/file3
 > @@ -1 +1,2 @@
 >  file2: is a text file.
 > +Patch: "first"; Path: "file3"
 > diff --git a/file4 b/file4
-> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..4dbc121c5e1079c153a88799e39bd3b920d66834 0000664
+> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..4dbc121c5e1079c153a88799e39bd3b920d66834 0100664
 > --- a/file4
 > +++ b/file4
 > @@ -1 +1,2 @@
@@ -172,7 +172,7 @@ $ darn diff
 > diff --git a/file1 b/file1.copy
 > copy from file1
 > copy to file1.copy
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0100664
 > --- a/file1
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
@@ -181,7 +181,7 @@ $ darn diff
 > diff --git a/file1 b/file1.copy.copy
 > copy from file1
 > copy to file1.copy.copy
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0100664
 > --- a/file1
 > +++ b/file1.copy.copy
 > @@ -1 +1,2 @@
@@ -190,7 +190,7 @@ $ darn diff
 > diff --git a/file2 b/file3
 > copy from file2
 > copy to file3
-> index cd1c1e8e36a212ba7723de693b194e58acab54ae..8c6471675c2abb357a74d2501c0fdc28aa6ed717 0000664
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..8c6471675c2abb357a74d2501c0fdc28aa6ed717 0100664
 > --- a/file2
 > +++ b/file3
 > @@ -1 +1,2 @@
@@ -199,7 +199,7 @@ $ darn diff
 > diff --git a/file2 b/file4
 > copy from file2
 > copy to file4
-> index cd1c1e8e36a212ba7723de693b194e58acab54ae..cd1c1e8e36a212ba7723de693b194e58acab54ae 0000664
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..cd1c1e8e36a212ba7723de693b194e58acab54ae 0100664
 $ cat file4
 > file2: is a text file.
 
@@ -240,7 +240,7 @@ $ darn diff
 > diff --git a/file1 b/file1.copy
 > copy from file1
 > copy to file1.copy
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0100664
 > --- a/file1
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
@@ -249,7 +249,7 @@ $ darn diff
 > diff --git a/file1 b/file1.copy.copy
 > copy from file1
 > copy to file1.copy.copy
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0100664
 > --- a/file1
 > +++ b/file1.copy.copy
 > @@ -1 +1,2 @@
@@ -258,7 +258,7 @@ $ darn diff
 > diff --git a/file2 b/file3
 > copy from file2
 > copy to file3
-> index cd1c1e8e36a212ba7723de693b194e58acab54ae..8c6471675c2abb357a74d2501c0fdc28aa6ed717 0000664
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..8c6471675c2abb357a74d2501c0fdc28aa6ed717 0100664
 > --- a/file2
 > +++ b/file3
 > @@ -1 +1,2 @@
@@ -267,7 +267,7 @@ $ darn diff
 > diff --git a/file2 b/file4
 > copy from file2
 > copy to file4
-> index cd1c1e8e36a212ba7723de693b194e58acab54ae..cd1c1e8e36a212ba7723de693b194e58acab54ae 0000664
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..cd1c1e8e36a212ba7723de693b194e58acab54ae 0100664
 $ ls --ignore=dir* --ignore=binary*
 > file1
 > file1.copy
@@ -289,7 +289,7 @@ $ darn diff
 > diff --git a/file1 b/file1.copy
 > copy from file1
 > copy to file1.copy
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0100664
 > --- a/file1
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
@@ -298,7 +298,7 @@ $ darn diff
 > diff --git a/file1 b/file1.copy.copy
 > copy from file1
 > copy to file1.copy.copy
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0100664
 > --- a/file1
 > +++ b/file1.copy.copy
 > @@ -1 +1,2 @@
@@ -307,7 +307,7 @@ $ darn diff
 > diff --git a/file2 b/file3
 > copy from file2
 > copy to file3
-> index cd1c1e8e36a212ba7723de693b194e58acab54ae..8c6471675c2abb357a74d2501c0fdc28aa6ed717 0000664
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..8c6471675c2abb357a74d2501c0fdc28aa6ed717 0100664
 > --- a/file2
 > +++ b/file3
 > @@ -1 +1,2 @@
@@ -325,7 +325,7 @@ $ darn diff
 > diff --git a/file1 b/file1.copy
 > copy from file1
 > copy to file1.copy
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0100664
 > --- a/file1
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
@@ -334,7 +334,7 @@ $ darn diff
 > diff --git a/file1 b/file1.copy.copy
 > copy from file1
 > copy to file1.copy.copy
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0100664
 > --- a/file1
 > +++ b/file1.copy.copy
 > @@ -1 +1,2 @@
@@ -359,7 +359,7 @@ $ darn diff
 > diff --git a/file1 b/file1.copy.copy
 > copy from file1
 > copy to file1.copy.copy
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..2f9ed38aa3d60942cb7c894769b66ce13c80a5e8 0100664
 > --- a/file1
 > +++ b/file1.copy.copy
 > @@ -1 +1,2 @@
@@ -393,7 +393,7 @@ $ darn_test_tree modify file1
 $ darn refresh
 $ darn diff
 > diff --git a/file1 b/file1
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0100664
 > --- a/file1
 > +++ b/file1
 > @@ -1 +1,2 @@
@@ -403,7 +403,7 @@ $ darn copy file1 file1.copy
 > file1: file copied to "file1.copy" in patch "second".
 $ darn diff
 > diff --git a/file1 b/file1
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0100664
 > --- a/file1
 > +++ b/file1
 > @@ -1 +1,2 @@
@@ -412,7 +412,7 @@ $ darn diff
 > diff --git a/file1 b/file1.copy
 > copy from file1
 > copy to file1.copy
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0100664
 > --- a/file1
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
@@ -423,7 +423,7 @@ $ darn pop > /dev/null
 $ darn push > /dev/null
 $ darn diff
 > diff --git a/file1 b/file1
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0100664
 > --- a/file1
 > +++ b/file1
 > @@ -1 +1,2 @@
@@ -432,7 +432,7 @@ $ darn diff
 > diff --git a/file1 b/file1.copy
 > copy from file1
 > copy to file1.copy
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0100664
 > --- a/file1
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
@@ -448,7 +448,7 @@ $ darn diff
 > diff --git a/file1 b/file1.copy
 > copy from file1
 > copy to file1.copy
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0100664
 > --- a/file1
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
@@ -462,7 +462,7 @@ $ darn diff
 > diff --git a/file1 b/file1.copy
 > copy from file1
 > copy to file1.copy
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0100664
 > --- a/file1
 > +++ b/file1.copy
 > @@ -1 +1,2 @@
@@ -484,7 +484,7 @@ $ darn_test_tree modify dir5/file1
 $ darn refresh
 $ darn diff
 > diff --git a/dir5/file1 b/dir5/file1
-> index 143e4e5f017e729dc01ee61c45b90d774a489ce5..4495c02f33efe6999de64b4caf56bb21bc4681a4 0000664
+> index 143e4e5f017e729dc01ee61c45b90d774a489ce5..4495c02f33efe6999de64b4caf56bb21bc4681a4 0100664
 > --- a/dir5/file1
 > +++ b/dir5/file1
 > @@ -1 +1,2 @@
@@ -493,7 +493,7 @@ $ darn diff
 > diff --git a/dir5/file1 b/dir5/file1.copy
 > copy from dir5/file1
 > copy to dir5/file1.copy
-> index 143e4e5f017e729dc01ee61c45b90d774a489ce5..88d5d90e793ec6577adb522c42146f62b5ac3cff 0000664
+> index 143e4e5f017e729dc01ee61c45b90d774a489ce5..88d5d90e793ec6577adb522c42146f62b5ac3cff 0100664
 > --- a/dir5/file1
 > +++ b/dir5/file1.copy
 > @@ -1 +1,2 @@

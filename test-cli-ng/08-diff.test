@@ -45,28 +45,28 @@ $ darn files --combined
 >  :+: file1
 $ darn diff
 > diff --git a/dir1/file1 b/dir1/file1
-> index 35ecb4cc6b0ee93fe528ef6e59d81756c1613eec..78d3b410c46283067e16f8090a3f85b503ead12a 0000664
+> index 35ecb4cc6b0ee93fe528ef6e59d81756c1613eec..78d3b410c46283067e16f8090a3f85b503ead12a 0100664
 > --- a/dir1/file1
 > +++ b/dir1/file1
 > @@ -1 +1,2 @@
 >  dir1/file1: is a text file.
 > +Patch: "first"; Path: "dir1/file1"
 > diff --git a/dir2/file1 b/dir2/file1
-> index c4978769edbcf37f7523422d8a9a4dc121f358d3..36e891598e42dfccd61f5da57c187e328ed9d19f 0000664
+> index c4978769edbcf37f7523422d8a9a4dc121f358d3..36e891598e42dfccd61f5da57c187e328ed9d19f 0100664
 > --- a/dir2/file1
 > +++ b/dir2/file1
 > @@ -1 +1,2 @@
 >  dir2/file1: is a text file.
 > +Patch: "first"; Path: "dir2/file1"
 > diff --git a/dir2/subdir1/file1 b/dir2/subdir1/file1
-> index b1fe1bd6942035913d1566db4c43bfcfe5499807..fc6ac5883788aa2a3723d1093810ef57ce223dc3 0000664
+> index b1fe1bd6942035913d1566db4c43bfcfe5499807..fc6ac5883788aa2a3723d1093810ef57ce223dc3 0100664
 > --- a/dir2/subdir1/file1
 > +++ b/dir2/subdir1/file1
 > @@ -1 +1,2 @@
 >  dir2/subdir1/file1: is a text file.
 > +Patch: "first"; Path: "dir2/subdir1/file1"
 > diff --git a/file1 b/file1
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..ad6359c197c230703a629bb53a12ec31a192ec50 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..ad6359c197c230703a629bb53a12ec31a192ec50 0100664
 > --- a/file1
 > +++ b/file1
 > @@ -1 +1,2 @@
@@ -89,7 +89,7 @@ $ darn diff -P first > first.diff-2
 $ diff first.diff first.diff-2
 $ darn diff
 > diff --git a/dir1/file1 b/dir1/file1
-> index 78d3b410c46283067e16f8090a3f85b503ead12a..1db13fde9e286f49e91edf46217fb9113e5ba79d 0000664
+> index 78d3b410c46283067e16f8090a3f85b503ead12a..1db13fde9e286f49e91edf46217fb9113e5ba79d 0100664
 > --- a/dir1/file1
 > +++ b/dir1/file1
 > @@ -1,2 +1,3 @@
@@ -97,7 +97,7 @@ $ darn diff
 >  Patch: "first"; Path: "dir1/file1"
 > +Patch: "second"; Path: "dir1/file1"
 > diff --git a/dir2/file1 b/dir2/file1
-> index 36e891598e42dfccd61f5da57c187e328ed9d19f..90623f1a34e21d746de22ebace8807d2fc67fd18 0000664
+> index 36e891598e42dfccd61f5da57c187e328ed9d19f..90623f1a34e21d746de22ebace8807d2fc67fd18 0100664
 > --- a/dir2/file1
 > +++ b/dir2/file1
 > @@ -1,2 +1,3 @@
@@ -105,7 +105,7 @@ $ darn diff
 >  Patch: "first"; Path: "dir2/file1"
 > +Patch: "second"; Path: "dir2/file1"
 > diff --git a/dir2/subdir1/file1 b/dir2/subdir1/file1
-> index fc6ac5883788aa2a3723d1093810ef57ce223dc3..a00763558d39e1c1f50984e0a4a312b3fa957dc8 0000664
+> index fc6ac5883788aa2a3723d1093810ef57ce223dc3..a00763558d39e1c1f50984e0a4a312b3fa957dc8 0100664
 > --- a/dir2/subdir1/file1
 > +++ b/dir2/subdir1/file1
 > @@ -1,2 +1,3 @@
@@ -113,7 +113,7 @@ $ darn diff
 >  Patch: "first"; Path: "dir2/subdir1/file1"
 > +Patch: "second"; Path: "dir2/subdir1/file1"
 > diff --git a/file1 b/file1
-> index ad6359c197c230703a629bb53a12ec31a192ec50..18adc7f8fecff85df26687476be5b245607d7094 0000664
+> index ad6359c197c230703a629bb53a12ec31a192ec50..18adc7f8fecff85df26687476be5b245607d7094 0100664
 > --- a/file1
 > +++ b/file1
 > @@ -1,2 +1,3 @@
@@ -123,7 +123,7 @@ $ darn diff
 $ darn diff > second.diff
 $ darn diff --combined
 > diff --git a/dir1/file1 b/dir1/file1
-> index 35ecb4cc6b0ee93fe528ef6e59d81756c1613eec..1db13fde9e286f49e91edf46217fb9113e5ba79d 0000664
+> index 35ecb4cc6b0ee93fe528ef6e59d81756c1613eec..1db13fde9e286f49e91edf46217fb9113e5ba79d 0100664
 > --- a/dir1/file1
 > +++ b/dir1/file1
 > @@ -1 +1,3 @@
@@ -131,7 +131,7 @@ $ darn diff --combined
 > +Patch: "first"; Path: "dir1/file1"
 > +Patch: "second"; Path: "dir1/file1"
 > diff --git a/dir2/file1 b/dir2/file1
-> index c4978769edbcf37f7523422d8a9a4dc121f358d3..90623f1a34e21d746de22ebace8807d2fc67fd18 0000664
+> index c4978769edbcf37f7523422d8a9a4dc121f358d3..90623f1a34e21d746de22ebace8807d2fc67fd18 0100664
 > --- a/dir2/file1
 > +++ b/dir2/file1
 > @@ -1 +1,3 @@
@@ -139,7 +139,7 @@ $ darn diff --combined
 > +Patch: "first"; Path: "dir2/file1"
 > +Patch: "second"; Path: "dir2/file1"
 > diff --git a/dir2/subdir1/file1 b/dir2/subdir1/file1
-> index b1fe1bd6942035913d1566db4c43bfcfe5499807..a00763558d39e1c1f50984e0a4a312b3fa957dc8 0000664
+> index b1fe1bd6942035913d1566db4c43bfcfe5499807..a00763558d39e1c1f50984e0a4a312b3fa957dc8 0100664
 > --- a/dir2/subdir1/file1
 > +++ b/dir2/subdir1/file1
 > @@ -1 +1,3 @@
@@ -147,7 +147,7 @@ $ darn diff --combined
 > +Patch: "first"; Path: "dir2/subdir1/file1"
 > +Patch: "second"; Path: "dir2/subdir1/file1"
 > diff --git a/file1 b/file1
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..18adc7f8fecff85df26687476be5b245607d7094 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..18adc7f8fecff85df26687476be5b245607d7094 0100664
 > --- a/file1
 > +++ b/file1
 > @@ -1 +1,3 @@
@@ -168,7 +168,7 @@ $ diff -q second.diff combined.diff
 Now check for individual files
 $ darn diff dir1/file1
 > diff --git a/dir1/file1 b/dir1/file1
-> index 78d3b410c46283067e16f8090a3f85b503ead12a..1db13fde9e286f49e91edf46217fb9113e5ba79d 0000664
+> index 78d3b410c46283067e16f8090a3f85b503ead12a..1db13fde9e286f49e91edf46217fb9113e5ba79d 0100664
 > --- a/dir1/file1
 > +++ b/dir1/file1
 > @@ -1,2 +1,3 @@
@@ -177,7 +177,7 @@ $ darn diff dir1/file1
 > +Patch: "second"; Path: "dir1/file1"
 $ darn diff --combined dir1/file1
 > diff --git a/dir1/file1 b/dir1/file1
-> index 35ecb4cc6b0ee93fe528ef6e59d81756c1613eec..1db13fde9e286f49e91edf46217fb9113e5ba79d 0000664
+> index 35ecb4cc6b0ee93fe528ef6e59d81756c1613eec..1db13fde9e286f49e91edf46217fb9113e5ba79d 0100664
 > --- a/dir1/file1
 > +++ b/dir1/file1
 > @@ -1 +1,3 @@
@@ -186,7 +186,7 @@ $ darn diff --combined dir1/file1
 > +Patch: "second"; Path: "dir1/file1"
 $ darn diff dir1/file1 file1
 > diff --git a/dir1/file1 b/dir1/file1
-> index 78d3b410c46283067e16f8090a3f85b503ead12a..1db13fde9e286f49e91edf46217fb9113e5ba79d 0000664
+> index 78d3b410c46283067e16f8090a3f85b503ead12a..1db13fde9e286f49e91edf46217fb9113e5ba79d 0100664
 > --- a/dir1/file1
 > +++ b/dir1/file1
 > @@ -1,2 +1,3 @@
@@ -194,7 +194,7 @@ $ darn diff dir1/file1 file1
 >  Patch: "first"; Path: "dir1/file1"
 > +Patch: "second"; Path: "dir1/file1"
 > diff --git a/file1 b/file1
-> index ad6359c197c230703a629bb53a12ec31a192ec50..18adc7f8fecff85df26687476be5b245607d7094 0000664
+> index ad6359c197c230703a629bb53a12ec31a192ec50..18adc7f8fecff85df26687476be5b245607d7094 0100664
 > --- a/file1
 > +++ b/file1
 > @@ -1,2 +1,3 @@
@@ -203,7 +203,7 @@ $ darn diff dir1/file1 file1
 > +Patch: "second"; Path: "file1"
 $ darn diff --combined dir1/file1 file1
 > diff --git a/dir1/file1 b/dir1/file1
-> index 35ecb4cc6b0ee93fe528ef6e59d81756c1613eec..1db13fde9e286f49e91edf46217fb9113e5ba79d 0000664
+> index 35ecb4cc6b0ee93fe528ef6e59d81756c1613eec..1db13fde9e286f49e91edf46217fb9113e5ba79d 0100664
 > --- a/dir1/file1
 > +++ b/dir1/file1
 > @@ -1 +1,3 @@
@@ -211,7 +211,7 @@ $ darn diff --combined dir1/file1 file1
 > +Patch: "first"; Path: "dir1/file1"
 > +Patch: "second"; Path: "dir1/file1"
 > diff --git a/file1 b/file1
-> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..18adc7f8fecff85df26687476be5b245607d7094 0000664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..18adc7f8fecff85df26687476be5b245607d7094 0100664
 > --- a/file1
 > +++ b/file1
 > @@ -1 +1,3 @@
@@ -223,7 +223,7 @@ And make sure it works in a sub directory
 $ cd dir2
 $ darn diff file1 subdir1/file1
 > diff --git a/dir2/file1 b/dir2/file1
-> index 36e891598e42dfccd61f5da57c187e328ed9d19f..90623f1a34e21d746de22ebace8807d2fc67fd18 0000664
+> index 36e891598e42dfccd61f5da57c187e328ed9d19f..90623f1a34e21d746de22ebace8807d2fc67fd18 0100664
 > --- a/dir2/file1
 > +++ b/dir2/file1
 > @@ -1,2 +1,3 @@
@@ -231,7 +231,7 @@ $ darn diff file1 subdir1/file1
 >  Patch: "first"; Path: "dir2/file1"
 > +Patch: "second"; Path: "dir2/file1"
 > diff --git a/dir2/subdir1/file1 b/dir2/subdir1/file1
-> index fc6ac5883788aa2a3723d1093810ef57ce223dc3..a00763558d39e1c1f50984e0a4a312b3fa957dc8 0000664
+> index fc6ac5883788aa2a3723d1093810ef57ce223dc3..a00763558d39e1c1f50984e0a4a312b3fa957dc8 0100664
 > --- a/dir2/subdir1/file1
 > +++ b/dir2/subdir1/file1
 > @@ -1,2 +1,3 @@
