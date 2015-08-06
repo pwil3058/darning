@@ -593,7 +593,7 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
         before = self.get_diff_before_data(as_refreshed=False, with_timestamps=with_timestamps)
         after = self.get_refresh_after_data(overlapping_file, with_timestamps=with_timestamps)
         if before.content.find("\000") != -1 or before.content.find("\000") != -1:
-            self.diff = BinaryDiff(before_content, after_content)
+            self.diff = BinaryDiff(before.content, after.content)
         else:
             self.diff = generate_unified_diff(before, after)
         self.patch.database.release_stored_content(self.darned)
