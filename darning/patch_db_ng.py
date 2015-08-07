@@ -178,6 +178,7 @@ class DarnIt(Exception):
 
 class DarnItPatchError(DarnIt): pass
 class DarnItPatchExists(DarnItPatchError): pass
+class DarnItUnknownPatch(DarnItPatchError): pass
 class DarnItPatchIsApplied(DarnItPatchError): pass
 class DarnItNoPatchesApplied(DarnItPatchError): pass
 class DarnItPatchNeedsRefresh(DarnItPatchError): pass
@@ -288,7 +289,7 @@ class FileDiffMixin(object):
         if as_refreshed or not self.patch.is_applied:
             efd = self.darned
             label = os.path.join("b", self.path) if efd else "/dev/null"
-            content = None
+            content = ""
         else:
             overlapping_file = self.get_overlapping_file()
             if overlapping_file is not None:
@@ -813,6 +814,14 @@ class Patch(mixins.WrapperMixin):
         except KeyError:
             efd = self.database.store_file_content(came_from_path)
         return _CameFromData(came_from_path, False, efd) if efd else None
+    def decrement_ref_counts(self, blob_ref_counts):
+        for pfd in self.files_data.itervalues():
+            if pfd.orig is not None:
+                blob_ref_counts[pfd.orig.git_hash[:2]][pfd.orig.git_hash[2:]] -= 1
+            if pfd.darned is not None:
+                blob_ref_counts[pfd.darned.git_hash[:2]][pfd.darned.git_hash[2:]] -= 1
+            if pfd.came_from is not None:
+                blob_ref_counts[pfd.came_from.orig.git_hash[:2]][pfd.came_from.orig.git_hash[2:]] -= 1
     def do_apply(self, overlaps=OverlapData()):
         # NB: presence of overlaps implies absorb
         if len(self.files_data) == 0:
@@ -894,6 +903,10 @@ class Patch(mixins.WrapperMixin):
         self.files_data[file_data.path] = file_data.persistent_file_data
         if self.is_applied:
             self.database.combined_patch.add_file(file_data)
+    def clear(self):
+        for file_data in self.iterate_files():
+            file_data.release_contents()
+        self.files_data.clear()
     def drop_file(self, file_data):
         assert not self.is_applied or self.is_top_patch
         if self.is_applied:
@@ -939,6 +952,12 @@ class Patch(mixins.WrapperMixin):
         if file_data.orig is None:
             # No longer needed as it was created in this patch and now has no content or histroy
             self.drop_file(file_data)
+    def write_to_file(self, file_path):
+        fobj = open(file_path, "w")
+        fobj.write(self.description)
+        for file_data in self.iterate_files_sorted():
+            fobj.write(file_data.get_diff_text())
+        fobj.close()
 
 class CombinedPatch(mixins.WrapperMixin):
     WRAPPED_ATTRIBUTES = _CombinedPatchData.__slots__
@@ -986,6 +1005,8 @@ class CombinedPatch(mixins.WrapperMixin):
                     continue
                 text += file_data.get_diff_text()
         return text
+
+_ContentState = collections.namedtuple("_ContentState", ["orphans", "missing", "bad_content"])
 
 class DataBase(mixins.WrapperMixin):
     WRAPPED_ATTRIBUTES = _DataBaseData.__slots__
@@ -1126,6 +1147,37 @@ class DataBase(mixins.WrapperMixin):
             except KeyError:
                 self.blob_ref_counts[git_hash[:2]] = {git_hash[2:] : 1}
         return self.blob_ref_counts[git_hash[:2]][git_hash[2:]]
+    def check_content(self):
+        assert not self.is_writable
+        orphans = []
+        missing = []
+        bad_content = []
+        for base_dir_path, dir_names, file_names in os.walk(_BLOBS_DIR_PATH):
+            if file_names:
+                key1 = os.path.basename(base_dir_path)
+                for file_name in file_names:
+                    if utils.get_git_hash_for_file(os.path.join(base_dir_path, file_name)) != key1 + file_name:
+                        bad_contents.append(key1 + file_name)
+                    try:
+                        if self.blob_ref_counts[key1][file_name] < 1:
+                            orphans.append(key1 + file_name)
+                    except KeyError:
+                        orphans.append(key1 + file_name)
+        for key1, ref_counts in self.blob_ref_counts.iteritems():
+            for file_name in ref_counts.iterkeys():
+                if not os.path.isfile(os.path.join(_BLOBS_DIR_PATH, key1, file_name)):
+                    missing.append(key1 + file_name)
+        return _ContentState(orphans=orphans, missing=missing, bad_content=bad_content)
+    def validate_ref_counts(self):
+        blob_ref_counts = self.blob_ref_counts.copy()
+        for patch in self.iterate_series():
+            patch.decrement_ref_counts(blob_ref_counts)
+        bad_ref_counts = []
+        for key1, ref_counts in blob_ref_counts.iteritems():
+            for key2, count in ref_counts.iteritems():
+                if count != 0:
+                    bad_ref_counts.append((key1 + key2, count))
+        return bad_ref_counts
     def store_content(self, content):
         git_hash = utils.get_git_hash_for_content(content)
         if self.incr_ref_count_for_hash(git_hash) == 1:
@@ -1164,6 +1216,14 @@ class DataBase(mixins.WrapperMixin):
     @staticmethod
     def get_content_for(obj):
         return "" if obj is None else open(os.path.join(_BLOBS_DIR_PATH, obj.git_hash[:2], obj.git_hash[2:]), "r").read()
+    def remove_named_patch(self, patch_name, retain_copy=False):
+        patch = self.get_named_patch(patch_name)
+        if patch.is_applied:
+            raise DarnItPatchIsApplied(patch_name=patch_name)
+        if retain_copy:
+            patch.write_to_file(os.path.join(_RETAINED_PATCHES_DIR_PATH, patch.name))
+        self.patch_series_data.remove(patch)
+        patch.clear()
 
 def do_create_db(dir_path=None, description=None):
     """Create a patch database in the current directory?"""
@@ -1481,6 +1541,25 @@ def do_refresh_patch(patch_name=None):
             RCTX.stdout.write(_("Patch \"{0}\" refreshed.\n").format(patch.name))
         return eflag
 
+def do_remove_patch(patch_name, retain_copy=None):
+    '''Remove the named patch from the series'''
+    with open_db(mutable=True) as DB:
+        if retain_copy is None: # value of True or False will override option
+            retain_copy = options.get('remove', 'keep_patch_backup')
+        try:
+            DB.remove_named_patch(patch_name, retain_copy=retain_copy)
+        except DarnItUnknownPatch:
+            RCTX.stderr.write(_("{0}: patch is NOT known.\n").format(patch_name))
+            return CmdResult.ERROR
+        except DarnItPatchIsApplied:
+            RCTX.stderr.write(_('{0}: patch is applied and cannot be removed.\n').format(patch_name))
+            return CmdResult.ERROR
+        if retain_copy:
+            RCTX.stdout.write(_('Patch "{0}" removed (but available for restoration).\n').format(patch_name))
+        else:
+            RCTX.stdout.write(_('Patch "{0}" removed.\n').format(patch_name))
+        return CmdResult.OK
+
 def do_rename_file_in_top_patch(file_path, new_file_path, force=False, overwrite=False):
     with open_db(mutable=True) as DB:
         top_patch = _get_top_patch(DB)
@@ -1516,6 +1595,28 @@ def do_unapply_top_patch(force=False):
     return do_pop_top_patch(force=force)
 
 ### GETs
+
+def report_blobs_status():
+    with open_db(mutable=False) as DB:
+        content_check = DB.check_content()
+        ref_count_check = DB.validate_ref_counts()
+        retval = CmdResult.OK
+        if content_check.orphans:
+            retval = CmdResult.ERROR
+            for orphan in content_check.orphans:
+                RCTX.stderr.write("{0}: content is orphaned.\n".format(orphan))
+        if content_check.missing:
+            retval = CmdResult.ERROR
+            for missing in content_check.missing:
+                RCTX.stderr.write("{0}: content is missing.\n".format(missing))
+        if content_check.bad_content:
+            retval = CmdResult.ERROR
+            for bad_content in content_check.bad_content:
+                RCTX.stderr.write("{0}: content is invalid.\n".format(missing))
+        for git_hex_hash, count in ref_count_check:
+            retval = CmdResult.ERROR
+            RCTX.stderr.write("{0}: reference count is out by {1}.\n".format(git_hex_hash, count))
+        return retval
 
 def get_combined_diff_for_files(file_paths, with_timestamps=False):
     with open_db(mutable=False) as DB:
