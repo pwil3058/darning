@@ -24,10 +24,12 @@ $ darn new first
 $ darn add file1 file2 file3 nonexistent > /dev/null
 $ darn_test_tree modify file1 file2 file3
 $ darn refresh
+$ darn validate
 $ darn new second
 $ darn add file1 file2 file3 file4 nonexistent > /dev/null
 $ darn_test_tree modify file1 file2 file3 file4
 $ darn refresh
+$ darn validate
 $ darn diff
 > diff --git a/file1 b/file1
 > index ad6359c197c230703a629bb53a12ec31a192ec50..18adc7f8fecff85df26687476be5b245607d7094 0100664
@@ -65,6 +67,7 @@ $ darn new third
 $ darn add file1 file2 file3 nonexistent > /dev/null
 $ darn_test_tree modify file1 file2 file3
 $ darn refresh
+$ darn validate
 $ darn series
 > +: first
 > +: second
@@ -74,6 +77,7 @@ Now test dropping files from an applied but non top patches
 $ darn drop -P second file2 file3 file4
 ? 2
 ! Patch "second" is a NON-top applied patch. Aborted.
+$ darn validate
 $ darn files second
 >  :+: file1
 >  :+: file2
@@ -151,6 +155,7 @@ Now test dropping nonexistent overlapped file
 $ darn drop -P second nonexistent
 ? 2
 ! Patch "second" is a NON-top applied patch. Aborted.
+$ darn validate
 $ darn files second
 >  :+: file1
 >  :+: file2
@@ -166,6 +171,7 @@ Now test dropping a file from an unapplied patch
 $ darn refresh
 $ darn pop
 > Patch "second" is now on top.
+$ darn validate
 $ darn series
 > +: first
 > +: second
@@ -173,6 +179,7 @@ $ darn series
 $ darn drop -P third file1 nonexistent
 > file1: file dropped from patch "third".
 > nonexistent: file dropped from patch "third".
+$ darn validate
 $ darn series
 > +: first
 > +: second
@@ -181,6 +188,7 @@ $ darn series
 Now test dropping nonexistent non overlapped file
 $ darn drop -P second nonexistent
 > nonexistent: file dropped from patch "second".
+$ darn validate
 $ darn files second
 >  :+: file1
 >  :+: file2
@@ -190,6 +198,7 @@ $ darn files second
 Now test dropping files from the top patch.
 $ darn drop -P second file4
 > file4: file dropped from patch "second".
+$ darn validate
 $ darn diff -P second
 > diff --git a/file1 b/file1
 > index ad6359c197c230703a629bb53a12ec31a192ec50..18adc7f8fecff85df26687476be5b245607d7094 0100664
@@ -263,3 +272,4 @@ $ darn drop file3 file4
 ? 1
 ! file3: file not in patch "second": ignored.
 ! file4: file not in patch "second": ignored.
+$ darn validate

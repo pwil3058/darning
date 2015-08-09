@@ -24,6 +24,7 @@ $ darn new first
 $ darn add file4
 > file4: file added to patch "first".
 $ darn_test_tree modify file4
+$ darn validate
 
 Try to rename a nonexistent file
 $ darn rename nonexistent nonexistent.renamed
@@ -35,10 +36,12 @@ $ darn rename nonexistent file1
 $ darn rename nonexistent file4
 ? 2
 ! nonexistent: file does not exist.
+$ darn validate
 
 Make a simple rename
 $ darn rename file1 file1.renamed
 > file1: file renamed to "file1.renamed" in patch "first".
+$ darn validate
 $ darn files
 > -:+: file1 -> file1.renamed
 > +:+: file1.renamed <- file1
@@ -81,10 +84,12 @@ $ darn files
 > -:+: file1 -> file1.renamed
 > +:?: file1.renamed <- file1
 >  :?: file4
+$ darn validate
 
 Rename a renamed file
 $ darn rename file1.renamed file1.renamed.renamed
 > file1.renamed: file renamed to "file1.renamed.renamed" in patch "first".
+$ darn validate
 $ darn files
 > -:+: file1 -> file1.renamed.renamed
 > +:?: file1.renamed.renamed <- file1
@@ -108,10 +113,12 @@ $ darn diff
 > @@ -1 +1,2 @@
 >  file4: is a text file.
 > +Patch: "first"; Path: "file4"
+$ darn validate
 
 Simple overwrite
 $ darn rename --overwrite file2 file3
 > file2: file renamed to "file3" in patch "first".
+$ darn validate
 $ darn files
 > -:+: file1 -> file1.renamed.renamed
 > +:?: file1.renamed.renamed <- file1
@@ -155,13 +162,16 @@ $ darn diff
 > @@ -1 +1,2 @@
 >  file4: is a text file.
 > +Patch: "first"; Path: "file4"
+$ darn validate
 
 Overwrite a tracked file
 $ darn rename file5 file4
 ? 34
 ! file4: file already in patch.
+$ darn validate
 $ darn rename --overwrite file5 file4
 > file5: file renamed to "file4" in patch "first".
+$ darn validate
 $ darn diff
 > diff --git a/file1 b/file1
 > # Renamed to: file1.renamed.renamed
@@ -193,9 +203,11 @@ $ darn diff
 > # Renamed to: file4
 $ cat file4
 > file5: is a text file.
+$ darn validate
 
 Refresh, pop and push
 $ darn refresh
+$ darn validate
 $ darn files
 > -:+: file1 -> file1.renamed.renamed
 > +:+: file1.renamed.renamed <- file1
@@ -209,6 +221,7 @@ $ ls --ignore=dir* --ignore=binary*
 > file4
 $ darn pop
 > There are now no patches applied.
+$ darn validate
 $ darn files first
 > -: : file1 -> file1.renamed.renamed
 > +: : file1.renamed.renamed <- file1
@@ -240,6 +253,7 @@ $ darn push
 > "file3": renamed from "file2" and modified.
 > "file4": renamed from "file5".
 > Patch "first" is now on top.
+$ darn validate
 $ darn files
 > -:+: file1 -> file1.renamed.renamed
 > +:+: file1.renamed.renamed <- file1
@@ -280,6 +294,7 @@ $ ls --ignore=dir* --ignore=binary*
 > file1.renamed.renamed
 > file3
 > file4
+$ darn validate
 
 Drop the overwritten "tracked" file
 $ darn files
@@ -291,6 +306,7 @@ $ darn files
 > -:+: file5 -> file4
 $ darn drop file4
 > file4: file dropped from patch "first".
+$ darn validate
 $ darn files
 > -:+: file1 -> file1.renamed.renamed
 > +:+: file1.renamed.renamed <- file1
@@ -329,10 +345,12 @@ $ darn diff
 > +++ /dev/null
 > @@ -1 +0,0 @@
 > -file5: is a text file.
+$ darn validate
 
 Drop the overwritten "untracked" file
 $ darn drop file3
 > file3: file dropped from patch "first".
+$ darn validate
 $ darn files
 > -:+: file1 -> file1.renamed.renamed
 > +:+: file1.renamed.renamed <- file1
@@ -366,10 +384,12 @@ $ darn diff
 > +++ /dev/null
 > @@ -1 +0,0 @@
 > -file5: is a text file.
+$ darn validate
 
 Drop a simple rename
 $ darn drop file1.renamed.renamed
 > file1.renamed.renamed: file dropped from patch "first".
+$ darn validate
 $ darn files
 > -:?: file1
 > -:?: file2
@@ -399,12 +419,15 @@ $ darn diff
 > +++ /dev/null
 > @@ -1 +0,0 @@
 > -file5: is a text file.
+$ darn validate
 
 Pop and we should be back to the start
 $ darn pop
 ? 14
 ! Top patch ("first") needs to be refreshed.
+$ darn validate
 $ darn refresh
+$ darn validate
 $ darn files
 > -:+: file1
 > -:+: file2
@@ -434,6 +457,7 @@ $ darn add file1
 > file1: file added to patch "second".
 $ darn_test_tree modify file1
 $ darn refresh
+$ darn validate
 $ darn diff
 > diff --git a/file1 b/file1
 > index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..a3781d65e7cc2887db9e2e6b390e9768004b22fd 0100664
@@ -511,12 +535,15 @@ $ darn diff
 > +Patch: "second"; Path: "file1"
 $ darn files
 > +:+: file1.renamed <<- file1
+$ darn validate
 
 Rename a file that was newly created in the patch
 $ darn pop > /dev/null
+$ darn validate
 $ darn new third
 $ darn add nonexistent
 > nonexistent: file added to patch "third".
+$ darn validate
 $ mkfile nonexistent
 < content
 $ darn files
@@ -541,13 +568,17 @@ $ darn diff
 > +++ b/nonexistent.renamed
 > @@ -0,0 +1 @@
 > +content
+$ darn validate
 
 Rename a file that was newly copied in the patch
 $ darn refresh
+$ darn validate
 $ darn pop > /dev/null
+$ darn validate
 $ darn new fourth
 $ darn copy file1 file1.copy
 > file1: file copied to "file1.copy" in patch "fourth".
+$ darn validate
 $ darn files
 > +:+: file1.copy <<- file1
 $ darn diff
@@ -564,16 +595,21 @@ $ darn diff
 > copy from file1
 > copy to file1.copy.renamed
 > index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..9d588eff9808b6c1b73445cb3526e1e62bf01bb7 0100664
+$ darn validate
 
 Swap the name of two files
 $ darn refresh
+$ darn validate
 $ darn pop > /dev/null
+$ darn validate
 $ darn new swap
+$ darn validate
 $ darn rename file1 file1.temp
 > file1: file renamed to "file1.temp" in patch "swap".
 $ darn rename file2 file1
 ? 34
 ! file1: file already in patch.
+$ darn validate
 $ darn files
 > -:+: file1 -> file1.temp
 > +:+: file1.temp <- file1
@@ -586,6 +622,7 @@ $ darn diff file1 file1.temp
 > index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..9d588eff9808b6c1b73445cb3526e1e62bf01bb7 0100664
 $ darn rename --overwrite file2 file1
 > file2: file renamed to "file1" in patch "swap".
+$ darn validate
 $ darn files
 >  :+: file1 <- file2
 > +:+: file1.temp <- file1
@@ -604,8 +641,10 @@ $ darn diff file1 file2 file1.temp
 $ darn rename file1.temp file2
 ? 34
 ! file2: file already in patch.
+$ darn validate
 $ darn rename --overwrite file1.temp file2
 > file1.temp: file renamed to "file2" in patch "swap".
+$ darn validate
 $ darn files
 >  :+: file1 <- file2
 >  :+: file2 <- file1
@@ -644,3 +683,4 @@ $ cat file1
 > file2: is a text file.
 $ cat file2
 > file1: is a text file.
+$ darn validate

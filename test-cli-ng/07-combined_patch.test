@@ -25,6 +25,7 @@ $ darn copy file1 file1.copy > /dev/null
 $ darn copy file2 file2.copy > /dev/null
 $ darn move file3 file3.ren1 > /dev/null
 $ darn_test_tree modify file1 file2.copy file3.ren1 dir1/file1 dir2/file1 dir2/subdir1/file1
+$ darn validate
 $ darn files
 >  :?: dir1/file1
 >  :?: dir2/file1
@@ -44,6 +45,7 @@ $ darn files --combined
 > -:+: file3
 > +:?: file3.ren1
 $ darn refresh
+$ darn validate
 $ darn files
 >  :+: dir1/file1
 >  :+: dir2/file1
@@ -121,6 +123,7 @@ $ darn diff --combined
 > @@ -0,0 +1,2 @@
 > +file3: is a text file.
 > +Patch: "first"; Path: "file3.ren1"
+$ darn validate
 
 $ darn new second --descr "Second patch"
 $ darn add file1 dir1/file1 dir2/file1 dir2/subdir1/file1 file1.copy file2.copy > /dev/null
@@ -130,6 +133,7 @@ $ darn add file1 dir1/file2 dir2/file2 > /dev/null
 ! file1: file already in patch "second". Ignored.
 $ darn copy file1.copy file1.copy.copy > /dev/null
 $ darn copy file2.copy file2.copy.copy > /dev/null
+$ darn validate
 $ darn_test_tree modify file1 file2.copy file3.ren2 dir1/file1 dir2/file1 dir1/file2 dir2/file2 dir2/subdir1/file1
 $ darn files
 >  :?: dir1/file1
@@ -158,6 +162,7 @@ $ darn files --combined
 > -:+: file3
 > +:?: file3.ren2
 $ darn refresh
+$ darn validate
 $ darn files
 >  :+: dir1/file1
 >  :+: dir1/file2
@@ -278,6 +283,7 @@ $ darn diff --combined
 > +file3: is a text file.
 > +Patch: "first"; Path: "file3.ren1"
 > +Patch: "second"; Path: "file3.ren2"
+$ darn validate
 
 $ darn new third --descr "Third patch"
 $ darn add dir2/file1 dir2/subdir1/file1 > /dev/null
@@ -286,6 +292,7 @@ $ darn add dir1/file3 dir2/file3 > /dev/null
 $ darn copy file1.copy.copy file1.copy.copy.copy > /dev/null
 $ darn copy file2.copy.copy file2.copy.copy.copy > /dev/null
 $ darn_test_tree modify file3 dir1/file3 dir2/file3 dir1/file2 dir2/file1 dir2/subdir1/file1
+$ darn validate
 $ darn files
 >  :?: dir1/file3
 >  :?: dir2/file1
@@ -312,6 +319,7 @@ $ darn files --combined
 > +:+: file2.copy.copy.copy
 >  :?: file3
 $ darn refresh
+$ darn validate
 $ darn files
 >  :+: dir1/file3
 >  :+: dir2/file1
@@ -456,23 +464,34 @@ $ darn diff --combined
 > +Patch: "first"; Path: "file3.ren1"
 > +Patch: "second"; Path: "file3.ren2"
 > +Patch: "third"; Path: "file3"
+$ darn validate
 
 $ darn pop > /dev/null
+$ darn validate
 $ darn pop > /dev/null
 ? 14
 ! Top patch ("second") needs to be refreshed.
+$ darn validate
 $ darn refresh
+$ darn validate
 $ darn pop > /dev/null
+$ darn validate
 $ darn pop > /dev/null
+$ darn validate
 $ darn pop > /dev/null
 ? 2
 ! There are no applied patches to pop.
+$ darn validate
 $ darn push > /dev/null
+$ darn validate
 $ darn push > /dev/null
+$ darn validate
 $ darn push > /dev/null
+$ darn validate
 $ darn push > /dev/null
 ? 2
 ! No pushable patches. "third" is on top.
+$ darn validate
 $ darn files
 >  :+: dir1/file3
 >  :+: dir2/file1
@@ -629,10 +648,12 @@ $ darn diff file3
 >  Patch: "first"; Path: "file3.ren1"
 >  Patch: "second"; Path: "file3.ren2"
 > +Patch: "third"; Path: "file3"
+$ darn validate
 
 Now drop some files in the second patch (one in first patch and one not)
 $ darn pop
 > Patch "second" is now on top.
+$ darn validate
 $ darn files
 >  :+: dir1/file1
 >  :+: dir1/file2
@@ -649,6 +670,7 @@ $ darn files
 $ darn drop dir1/file1 dir1/file2
 > dir1/file1: file dropped from patch "second".
 > dir1/file2: file dropped from patch "second".
+$ darn validate
 $ darn files
 >  :+: dir2/file1
 >  :+: dir2/file2
@@ -672,3 +694,4 @@ $ darn files --combined
 > +:+: file2.copy.copy
 > -:+: file3
 > +:+: file3.ren2
+$ darn validate

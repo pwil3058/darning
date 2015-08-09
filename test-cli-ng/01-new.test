@@ -22,11 +22,13 @@ $ darn new --descr='The first patch in the series.' first
 
 Create a playground.
 $ darn init --ng --descr 'A short description of the patch series.'
+$ darn validate
 
 Now try again.
 $ darn new --descr='The first patch created in the series.' first
 $ darn series
 > +: first
+$ darn validate
 
 Test listing series in a sub directory of a playground.
 $ mkdir subdir
@@ -56,19 +58,24 @@ $ darn new --descr='The second patch created in the series.' second
 Make sure a new patch goes into the series after the top patch.
 $ darn pop
 > Patch "first" is now on top.
+$ darn validate
 $ darn new --descr='The third patch created in the series.' third
 $ darn series
 > +: first
 > +: third
 >  : second
+$ darn validate
 
 Make sure a new patch goes into the series at the beginning if no
 patches are applied.
 $ darn pop
 > Patch "first" is now on top.
+$ darn validate
 $ darn pop
 > There are now no patches applied.
+$ darn validate
 $ darn new --descr='The fourth patch created in the series.' fourth
+$ darn validate
 $ darn series
 > +: fourth
 >  : first

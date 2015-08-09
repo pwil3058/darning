@@ -21,6 +21,7 @@ $ ls -a
 > .
 > ..
 > .darning.dbd
+$ darn validate
 
 Check that the expected files and directories are in place
 $ ls .darning.dbd

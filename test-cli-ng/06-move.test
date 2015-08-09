@@ -16,6 +16,7 @@ $ darn new first
 $ darn add file4
 > file4: file added to patch "first".
 $ darn_test_tree modify file4
+$ darn validate
 
 Try to move a single nonexistent file
 $ darn move nonexistent nonexistent.moved
@@ -27,6 +28,7 @@ $ darn move nonexistent file1
 $ darn move nonexistent file4
 ? 2
 ! nonexistent: file does not exist.
+$ darn validate
 
 Try to move a two nonexistent file
 $ darn move nonexistent1 nonexistent2 dir1
@@ -40,22 +42,26 @@ $ darn move nonexistent1 nonexistent2 file1 dir1
 $ darn move nonexistent1 nonexistent2 file1
 ? 2
 ! file1: target must be a directory for multiple file move operation.
+$ darn validate
 
 Try move two files to an existing directory without --overwrite
 $ darn move file1 file2 dir1
 ? 34
 ! dir1/file1: file already exists.
 ! dir1/file2: file already exists.
+$ darn validate
 
 Try move two files to a nonexistent directory without --mkdir
 $ darn move file1 file2 newdir
 ? 2
 ! newdir: does not exist. Use --mkdir to create it.
+$ darn validate
 
 Try move two files to a nonexistent directory with --mkdir
 $ darn move --mkdir file1 file2 newdir
 > file1: file renamed to "newdir/file1" in patch "first".
 > file2: file renamed to "newdir/file2" in patch "first".
+$ darn validate
 $ darn files
 > -:+: file1 -> newdir/file1
 > -:+: file2 -> newdir/file2
@@ -82,11 +88,13 @@ $ darn diff
 > rename from file2
 > rename to newdir/file2
 > index cd1c1e8e36a212ba7723de693b194e58acab54ae..cd1c1e8e36a212ba7723de693b194e58acab54ae 0100664
+$ darn validate
 
 Try move two files to an existing directory with --overwrite
 $ darn move --overwrite file3 file4 dir1
 > file3: file renamed to "dir1/file3" in patch "first".
 > file4: file renamed to "dir1/file4" in patch "first".
+$ darn validate
 $ darn files
 >  :+: dir1/file3 <- file3
 >  :?: dir1/file4 <- file4
@@ -126,11 +134,14 @@ $ darn diff
 > rename from file2
 > rename to newdir/file2
 > index cd1c1e8e36a212ba7723de693b194e58acab54ae..cd1c1e8e36a212ba7723de693b194e58acab54ae 0100664
+$ darn validate
 
 Pop back to start and check everything returned properly
 $ darn refresh
+$ darn validate
 $ darn pop
 > There are now no patches applied.
+$ darn validate
 $ ls newdir
 $ cat file1
 > file1: is a text file.
@@ -144,6 +155,7 @@ $ cat dir1/file3
 > dir1/file3: is a text file.
 $ cat dir1/file4
 > dir1/file4: is a text file.
+$ darn validate
 
 Push the patch back and check that it applied OK
 $ darn push
@@ -156,6 +168,7 @@ $ darn push
 > "newdir/file1": renamed from "file1".
 > "newdir/file2": renamed from "file2".
 > Patch "first" is now on top.
+$ darn validate
 $ darn files
 >  :+: dir1/file3 <- file3
 >  :+: dir1/file4 <- file4
@@ -195,3 +208,4 @@ $ darn diff
 > rename from file2
 > rename to newdir/file2
 > index cd1c1e8e36a212ba7723de693b194e58acab54ae..cd1c1e8e36a212ba7723de693b194e58acab54ae 0100664
+$ darn validate

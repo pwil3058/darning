@@ -22,6 +22,7 @@ $ darn init --ng
 $ darn new first --descr "First patch"
 $ darn add file1 dir1/file1 dir2/file1 dir2/subdir1/file1 > /dev/null
 $ darn_test_tree modify file1 dir1/file1 dir2/file1 dir2/subdir1/file1
+$ darn validate
 $ darn files
 >  :?: dir1/file1
 >  :?: dir2/file1
@@ -33,6 +34,7 @@ $ darn files --combined
 >  :?: dir2/subdir1/file1
 >  :?: file1
 $ darn refresh
+$ darn validate
 $ darn files
 >  :+: dir1/file1
 >  :+: dir2/file1
@@ -73,9 +75,11 @@ $ darn diff
 >  file1: is a text file.
 > +Patch: "first"; Path: "file1"
 $ darn diff > first.diff
+$ darn validate
 
 $ darn new second --descr "Second patch"
 $ darn add file1 dir1/file1 dir2/file1 dir2/subdir1/file1 > /dev/null
+$ darn validate
 $ darn files --combined
 >  :+: dir1/file1
 >  :+: dir2/file1
@@ -85,6 +89,7 @@ $ darn_test_tree modify file1 dir1/file1 dir2/file1 dir2/subdir1/file1
 $ darn diff -P first > first.diff-1
 $ diff first.diff first.diff-1
 $ darn refresh
+$ darn validate
 $ darn diff -P first > first.diff-2
 $ diff first.diff first.diff-2
 $ darn diff
@@ -164,6 +169,7 @@ $ diff -q first.diff combined.diff
 $ diff -q second.diff combined.diff
 ? 1
 > Files second.diff and combined.diff differ
+$ darn validate
 
 Now check for individual files
 $ darn diff dir1/file1
@@ -218,6 +224,7 @@ $ darn diff --combined dir1/file1 file1
 >  file1: is a text file.
 > +Patch: "first"; Path: "file1"
 > +Patch: "second"; Path: "file1"
+$ darn validate
 
 And make sure it works in a sub directory
 $ cd dir2
@@ -238,3 +245,4 @@ $ darn diff file1 subdir1/file1
 >  dir2/subdir1/file1: is a text file.
 >  Patch: "first"; Path: "dir2/subdir1/file1"
 > +Patch: "second"; Path: "dir2/subdir1/file1"
+$ darn validate

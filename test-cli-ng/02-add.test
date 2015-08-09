@@ -38,6 +38,7 @@ $ darn add file1 file2 nonexistent
 > file1: file added to patch "first".
 > file2: file added to patch "first".
 > nonexistent: file added to patch "first".
+$ darn validate
 $ darn files
 >  :+: file1
 >  :+: file2
@@ -52,6 +53,7 @@ $ darn add file1 file2 nonexistent
 > file1: file added to patch "second".
 > file2: file added to patch "second".
 > nonexistent: file added to patch "second".
+$ darn validate
 $ darn files
 >  :+: file1
 >  :+: file2
@@ -83,6 +85,7 @@ $ darn add file1 file2 nonexistent
 ? 142
 ! file2: file has unrefreshed changes in (applied) patch "second".
 ! Aborted.
+$ darn validate
 $ darn series
 > +: first
 > ?: second
@@ -98,6 +101,7 @@ $ darn add --absorb file1 file2 nonexistent
 > file2: file added to patch "third".
 ! file2: Unrefeshed changes in patch "second" incorporated in patch "third".
 > nonexistent: file added to patch "third".
+$ darn validate
 $ darn series
 > +: first
 > +: second
@@ -165,3 +169,4 @@ $ darn files fourth
 >  :+: file1
 >  :+: file2
 > +:+: nonexistent
+$ darn validate
