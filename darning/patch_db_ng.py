@@ -261,6 +261,36 @@ def generate_unified_diff(before, after):
     diff_lines = generate_unified_diff_lines(before, after)
     return patchlib.Diff.parse_lines(diff_lines) if diff_lines else None
 
+def _apply_diff_plus_changes(diff_plus, drop_atws=True, num_strip_levels=1):
+    retval = CmdResult.OK
+    file_path = diff_plus.get_file_path(num_strip_levels)
+    RCTX.stdout.write(_('Patching file "{0}".\n').format(rel_subdir(file_path)))
+    if drop_atws:
+        atws_lines = diff_plus.fix_trailing_whitespace()
+        if atws_lines:
+            RCTX.stdout.write(_('Added trailing white space to "{0}" at line(s) {{{1}}}: removed before application.\n').format(rel_subdir(file_path), ', '.join([str(line) for line in atws_lines])))
+    else:
+        atws_lines = diff_plus.report_trailing_whitespace()
+        if atws_lines:
+            RCTX.stderr.write(_('Added trailing white space to "{1}" at line(s) {{{2}}}.\n').format(rel_subdir(file_path), ', '.join([str(line) for line in atws_lines])))
+    if diff_plus.diff:
+        from .patch_db import _do_apply_diff_to_file
+        result = _do_apply_diff_to_file(file_path, diff_plus.diff)
+        if result.ecode == 0:
+            RCTX.stderr.write(result.stdout)
+        else:
+            RCTX.stdout.write(result.stdout)
+        RCTX.stderr.write(result.stderr)
+        retval = result.ecode
+    if os.path.exists(file_path):
+        git_preamble = diff_plus.get_preamble_for_type('git')
+        if git_preamble is not None:
+            for key in ['new mode', 'new file mode']:
+                if key in git_preamble.extras:
+                    os.chmod(file_path, int(git_preamble.extras[key], 8))
+                    break
+    return retval
+
 _DiffData = collections.namedtuple("_DiffData", ["label", "efd", "content", "timestamp"])
 
 def git_hashes_differ(efd1, efd2):
@@ -440,7 +470,7 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
                 if fm_file_data.came_from.file_path == self.path:
                     # Boomerang
                     assert self.renamed_as == fm_file_data.path
-                    self.patch.database.release_stored_content(fm_file_data.orig)
+                    self.patch.database.release_stored_content(fm_file_data.came_from.orig)
                     fm_file_data.came_from = None
                     self.renamed_as = None
                 else:
@@ -472,8 +502,6 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
         fm_file_data.diff_wrt = None
         fm_file_data.diff = None
         fm_file_data.darned = self.patch.database.release_stored_content(fm_file_data.darned)
-        if self.needs_refresh:
-            print "NEEDS REFRESH (2):", self.path
     def release_contents(self):
         self.patch.database.release_stored_content(self.orig)
         self.patch.database.release_stored_content(self.darned)
@@ -545,6 +573,13 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
         else:
             return self.darned != overlapping_file.orig
         return False
+    @property
+    def has_actionable_preamble(self):
+        if self.came_from:
+            return True
+        elif self.orig:
+            return self.darned and self.orig.permissions != self.darned.permissions
+        return bool(self.darned)
     @property
     def has_unresolved_merges(self):
         if not self.patch.is_applied:
@@ -958,6 +993,115 @@ class Patch(mixins.WrapperMixin):
         for file_data in self.iterate_files_sorted():
             fobj.write(file_data.get_diff_text())
         fobj.close()
+    def do_fold_epatch(self, epatch, absorb=False, force=False):
+        assert not (force and absorb)
+        assert self.is_top_patch
+        if not force:
+            new_file_paths = []
+            for diff_plus in epatch.diff_pluses:
+                file_path = diff_plus.get_file_path(epatch.num_strip_levels)
+                if file_path in self.files_data:
+                    continue
+                git_preamble = diff_plus.get_preamble_for_type('git')
+                if git_preamble and ('copy from' in git_preamble.extras or 'rename from' in git_preamble.extras):
+                    continue
+                new_file_paths.append(file_path)
+            overlaps = self.database.get_overlap_data(new_file_paths, self)
+            if not absorb and len(overlaps) > 0:
+                return overlaps.report_and_abort()
+        else:
+            overlaps = OverlapData()
+        copies = []
+        renames = []
+        creates = []
+        others = []
+        failures = []
+        # Do the caching of existing files first to obviate copy/rename problems
+        for diff_plus in epatch.diff_pluses:
+            file_path = diff_plus.get_file_path(epatch.num_strip_levels)
+            git_preamble = diff_plus.get_preamble_for_type('git')
+            copied_from = git_preamble.extras.get('copy from', None) if git_preamble else None
+            renamed_from = git_preamble.extras.get('rename from', None) if git_preamble else None
+            if file_path not in self.files_data:
+                self.add_file(FileData.new(file_path, self, overlaps=overlaps))
+            if renamed_from is not None:
+                if renamed_from not in self.files_data:
+                    self.add_file(FileData(renamed_from, self, overlaps=overlaps))
+                renames.append((diff_plus, renamed_from))
+            elif copied_from is not None:
+                copies.append((diff_plus, copied_from))
+            elif not os.path.exists(file_path):
+                creates.append(diff_plus)
+            else:
+                others.append(diff_plus)
+        drop_atws = options.get("push", "drop_added_tws")
+        biggest_ecode = CmdResult.OK
+        # Now use patch to create any file created by the fold
+        for diff_plus in creates:
+            biggest_ecode = max(_apply_diff_plus_changes(diff_plus, drop_atws, epatch.num_strip_levels), biggest_ecode)
+        # Do any copying
+        for diff_plus, came_from_path in copies:
+            new_file_data = self.get_file(diff_plus.get_file_path(epatch.num_strip_levels))
+            # We copy the current version here not the original
+            # TODO: think about force/absorb ramifications HERE
+            try:
+                new_file_data.copy_contents_from(came_from_path)
+            except OSError as edata:
+                biggest_ecode = CmdResult.ERROR
+                RCTX.stderr.write(_('{0}: failed to copy {1}.\n').format(rel_subdir(new_file_data.path), rel_subdir(came_from_path)))
+                failures.append(diff_plus)
+        # Do any renaming
+        for diff_plus, came_from_path in renames:
+            new_file_data = self.get_file(diff_plus.get_file_path(epatch.num_strip_levels))
+            fm_file_data = self.get_file(came_from_path)
+            try:
+                new_file_data.move_contents_from(fm_file_data)
+            except OSError as edata:
+                biggest_ecode = CmdResult.ERROR
+                RCTX.stderr.write(_('{0}: failed to move {1}.\n').format(rel_subdir(new_file_data.path), rel_subdir(came_from_path)))
+                failures.append(diff_plus)
+                continue
+            if fm_file_data.orig is None:
+                self.drop_file(fm_file_data)
+        # Apply the remaining changes
+        for diff_plus, _dummy in copies + renames:
+            # NB: don't try applying patch if the copy/rename failed
+            if diff_plus not in failures:
+                _apply_diff_plus_changes(diff_plus, drop_atws, epatch.num_strip_levels)
+        for diff_plus in others:
+            _apply_diff_plus_changes(diff_plus, drop_atws, epatch.num_strip_levels)
+        if self.needs_refresh:
+            RCTX.stdout.write(_('{0}: (top) patch needs refreshing.\n').format(self.name))
+            return CmdResult.WARNING if biggest_ecode is CmdResult.OK else biggest_ecode
+        return biggest_ecode
+
+class TextDiffPlus(patchlib.DiffPlus):
+    def __init__(self, file_data, with_timestamps=False):
+        diff_plus = file_data.get_diff_plus(as_refreshed=True, with_timestamps=with_timestamps)
+        patchlib.DiffPlus.__init__(self, preambles=diff_plus.preambles, diff=diff_plus.diff)
+        self.validity = file_data.validity
+
+class TextPatch(patchlib.Patch):
+    def __init__(self, patch, with_timestamps=False, with_stats=True):
+        patchlib.Patch.__init__(self, num_strip_levels=1)
+        self.source_name = patch.name
+        self.state = PatchState.APPLIED_REFRESHED if patch.is_applied else PatchState.NOT_APPLIED
+        self.set_description(patch.description)
+        for file_data in patch.iterate_files_sorted():
+            if file_data.diff is None and not file_data.has_actionable_preamble:
+                continue
+            edp = TextDiffPlus(file_data, with_timestamps=with_timestamps)
+            if edp.diff is None and (file_data.renamed_as and not file_data.came_from):
+                continue
+            self.diff_pluses.append(edp)
+            if self.state == PatchState.NOT_APPLIED:
+                continue
+            if self.state == PatchState.APPLIED_REFRESHED and edp.validity != Validity.REFRESHED:
+                self.state = PatchState.APPLIED_NEEDS_REFRESH if edp.validity == Validity.NEEDS_REFRESH else PatchState.APPLIED_UNREFRESHABLE
+            elif self.state == PatchState.APPLIED_NEEDS_REFRESH and edp.validity == Validity.UNREFRESHABLE:
+                self.state = PatchState.APPLIED_UNREFRESHABLE
+        if with_stats:
+            self.set_header_diffstat(strip_level=self.num_strip_levels)
 
 class CombinedPatch(mixins.WrapperMixin):
     WRAPPED_ATTRIBUTES = _CombinedPatchData.__slots__
@@ -1072,11 +1216,14 @@ class DataBase(mixins.WrapperMixin):
         assert new_patch in self._PPD.patch_series_data
         self._PPD.combined_patch_data = _CombinedPatchData(self._PPD.combined_patch_data)
         return Patch(new_patch, self)
-    def remove_patch(self, patch):
+    def remove_patch(self, patch, retain_copy=False):
         assert self.is_writable
-        if patch.persistent_patch_data in self._PPD.applied_patches_data:
+        if patch.is_applied:
             raise DarnItPatchIsApplied(patch_name=patch.name)
-        self._PPD.patch_series_data.remove(patch.persistent_patch_data)
+        if retain_copy:
+            patch.write_to_file(os.path.join(_RETAINED_PATCHES_DIR_PATH, patch.name))
+        self.patch_series_data.remove(patch)
+        patch.clear()
     def get_named_patch(self, patch_name):
         _index, patch = _find_named_patch_in_list(self._PPD.patch_series_data, patch_name)
         if not patch:
@@ -1218,12 +1365,7 @@ class DataBase(mixins.WrapperMixin):
         return "" if obj is None else open(os.path.join(_BLOBS_DIR_PATH, obj.git_hash[:2], obj.git_hash[2:]), "r").read()
     def remove_named_patch(self, patch_name, retain_copy=False):
         patch = self.get_named_patch(patch_name)
-        if patch.is_applied:
-            raise DarnItPatchIsApplied(patch_name=patch_name)
-        if retain_copy:
-            patch.write_to_file(os.path.join(_RETAINED_PATCHES_DIR_PATH, patch.name))
-        self.patch_series_data.remove(patch)
-        patch.clear()
+        return self.remove_patch(patch, retain_copy=retain_copy)
 
 def do_create_db(dir_path=None, description=None):
     """Create a patch database in the current directory?"""
@@ -1445,6 +1587,28 @@ def do_drop_files_fm_patch(patch_name, file_paths):
                 RCTX.stderr.write(_("{0}: file not in patch \"{1}\": ignored.\n").format(file_path_rel_subdir, patch.name))
                 issued_warning = True
         return CmdResult.WARNING if issued_warning else CmdResult.OK
+
+def do_fold_named_patch(patch_name, absorb=False, force=False):
+    '''Fold a name internal patch into the top patch.'''
+    assert not (force and absorb)
+    with open_db(mutable=True) as DB:
+        assert not (absorb and force)
+        patch = _get_patch(patch_name, DB)
+        if not patch:
+            return CmdResult.ERROR
+        elif patch.is_applied:
+            RCTX.stderr.write(_('{0}: patch is applied.\n').format(patch.name))
+            return CmdResult.ERROR
+        epatch = TextPatch(patch)
+        top_patch = _get_top_patch(DB)
+        if not top_patch:
+            return CmdResult.ERROR
+        result = top_patch.do_fold_epatch(epatch, absorb=absorb, force=force)
+        if result not in [CmdResult.OK, CmdResult.WARNING]:
+            return result
+        DB.remove_patch(patch)
+        RCTX.stdout.write(_('"{0}": patch folded into patch "{1}".\n').format(patch_name, DB.top_patch_name))
+        return result
 
 def do_move_files_in_top_patch(file_paths, target_path, force=False, overwrite=False, make_dir=False):
     if len(file_paths) == 1:
