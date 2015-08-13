@@ -878,7 +878,7 @@ class Patch(mixins.WrapperMixin):
                     copies.append(file_data)
             elif file_data.renamed_as:
                 rename_fms.append(file_data)
-            elif not os.path.exists(file_data.path):
+            elif file_data.diff_wrt is None:
                 creates.append(file_data)
             else:
                 others.append(file_data)
