@@ -79,9 +79,9 @@ def run_import(args):
             return CmdResult.ERROR
     epatch.set_strip_level(int(args.opt_strip_level))
     eflags = PM.do_import_patch(epatch, args.patchname)
-    if eflags != CmdResult.OK:
+    if eflags & CmdResult.ERROR:
         return eflags
     sys.stdout.write(_('Imported "{0}" as patch "{1}".\n').format(args.patchfile, args.patchname))
-    return CmdResult.OK
+    return eflags
 
 PARSER.set_defaults(run_cmd=run_import)

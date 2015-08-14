@@ -283,6 +283,14 @@ def _file_path_fm_pair(pair, strip=lambda x: x):
         return strip(before)
     return None
 
+def _file_outcome_fm_pair(pair):
+    get_path = lambda x: x if isinstance(x, str) else x.path
+    if get_path(pair.after) == "/dev/null":
+        return -1
+    if get_path(pair.before) == "/dev/null":
+        return 1
+    return 0
+
 def _file_data_consistent_with_strip_one(pair):
     strip = gen_strip_level_function(1)
     get_path = lambda x: x if isinstance(x, str) else x.path
@@ -421,6 +429,15 @@ class GitPreamble(Preamble):
                 strip = gen_strip_level_function(strip_level)
                 return strip(self.extras[key])
         return None
+    def is_compatible_with(self, git_hash):
+        try:
+            before_hash, _dummy = self.extras["index"].split("..")
+            if len(before_hash) > len(git_hash):
+                return before_hash.startswith(git_hash)
+            else:
+                return git_hash.startswith(before_hash)
+        except KeyError:
+            return None # means "don't know"
 
 Preamble.subtypes.append(GitPreamble)
 
@@ -643,6 +660,10 @@ class Diff(object):
             return FilePathPlus.fm_pair(self.file_data, strip)
         else:
             return None
+    def get_outcome(self):
+        if isinstance(self.file_data, _PAIR):
+            return _file_outcome_fm_pair(self.file_data)
+        return None
 
 class UnifiedDiffHunk(DiffHunk):
     def __init__(self, lines, before, after):
@@ -904,6 +925,8 @@ class GitBinaryDiff(Diff):
         Diff.__init__(self, 'git_binary', lines, None, None)
         self.forward = forward
         self.reverse = reverse
+    def get_outcome(self):
+        return None
 
 Diff.subtypes.append(GitBinaryDiff)
 
@@ -959,6 +982,20 @@ class DiffPlus(object):
     def get_preamble_for_type(self, preamble_type):
         index = self.preambles.get_index_for_type(preamble_type)
         return None if index is None else self.preambles[index]
+    def get_new_mode(self):
+        git_preamble = self.get_preamble_for_type('git')
+        if git_preamble is not None:
+            for key in ['new mode', 'new file mode']:
+                if key in git_preamble.extras:
+                    return int(git_preamble.extras[key], 8)
+        return None
+    def is_compatible_with(self, git_hash):
+        git_preamble = self.get_preamble_for_type('git')
+        if git_preamble is not None:
+            return git_preamble.is_compatible_with(git_hash)
+        return None # means "don't know"
+    def get_outcome(self):
+        return self.diff.get_outcome() if self.diff else None
     def fix_trailing_whitespace(self):
         if self.diff is None:
             return []

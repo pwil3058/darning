@@ -143,7 +143,7 @@ class BinaryDiff(patchlib.Diff):
         if delta and delta.zipped_len < to_data.zipped_len:
             text += 'delta {0}\n{1}\n'.format(delta.raw_len, ''.join(gitbase85.encode_to_lines(delta.zipped_data)))
         else:
-            text += 'literal {0}{1}\n\n'.format(to_data.raw_len, ''.join(gitbase85.encode_to_lines(to_data.zipped_data)))
+            text += 'literal {0}\n{1}\n'.format(to_data.raw_len, ''.join(gitbase85.encode_to_lines(to_data.zipped_data)))
         return text
 
 class OverlapData(object):

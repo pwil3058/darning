@@ -1,0 +1,217 @@
+### Copyright (C) 2011 Peter Williams <peter_ono@users.sourceforge.net>
+###
+### This program is free software; you can redistribute it and/or modify
+### it under the terms of the GNU General Public License as published by
+### the Free Software Foundation; version 2 of the License only.
+###
+### This program is distributed in the hope that it will be useful,
+### but WITHOUT ANY WARRANTY; without even the implied warranty of
+### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+### GNU General Public License for more details.
+###
+### You should have received a copy of the GNU General Public License
+### along with this program; if not, write to the Free Software
+### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Test the 'darn import' command.
+
+Set up a small file tree and initialise a playground therein
+$ darn_test_tree create
+
+Create some patch files
+$ mkfile patch1
+< First patch
+< --
+< diff --git a/file1 b/file1
+< --- a/file1
+< +++ b/file1
+< @@ -1 +1,2 @@
+<  file1: is a text file.
+< +Patch: "patch1"; Path: "file1"
+< diff --git a/dir1/file1 b/dir1/file1
+< --- a/dir1/file1
+< +++ b/dir1/file1
+< @@ -1 +1,2 @@
+<  dir1/file1: is a text file.
+< +Patch: "patch1"; Path: "dir1/file1"
+< diff --git a/dir2/file1 b/dir2/file1
+< --- a/dir2/file1
+< +++ b/dir2/file1
+< @@ -1 +1,2 @@
+<  dir2/file1: is a text file.
+< +Patch: "patch1"; Path: "dir2/file1"
+< diff --git a/dir2/subdir1/file1 b/dir2/subdir1/file1
+< --- a/dir2/subdir1/file1
+< +++ b/dir2/subdir1/file1
+< @@ -1 +1,2 @@
+<  dir2/subdir1/file1: is a text file.
+< +Patch: "patch1"; Path: "dir2/subdir1/file1"
+
+A patch which will require merging
+$ mkfile patch2
+< Second patch
+< --
+< diff --git a/file1 b/file1
+< --- a/file1
+< +++ b/file1
+< @@ -1,2 +1,3 @@
+<  file1: is a text file. KKKKK
+<  Patch: "patch1"; Path: "file1"
+< +Patch: "patch2"; Path: "file1"
+< diff --git a/dir1/file1 b/dir1/file1
+< --- a/dir1/file1
+< +++ b/dir1/file1
+< @@ -1,2 +1,3 @@
+<  dir1/file1: is a text file.
+<  Patch: "patch1"; Path: "dir1/file1"
+< +Patch: "patch2"; Path: "dir1/file1"
+< diff --git a/dir2/file1 b/dir2/file1
+< --- a/dir2/file1
+< +++ b/dir2/file1
+< @@ -1,2 +1,3 @@
+<  dir2/file1: is a text file.
+<  Patch: "patch1"; Path: "dir2/file1"
+< +Patch: "patch2"; Path: "dir2/file1"
+< diff --git a/dir2/subdir1/file1 b/dir2/subdir1/file1
+< --- a/dir2/subdir1/file1
+< +++ b/dir2/subdir1/file1
+< @@ -1,2 +1,3 @@
+<  dir2/subdir1/file1: is a text file.
+<  Patch: "patch1"; Path: "dir2/subdir1/file1"
+< +Patch: "patch2"; Path: "dir2/subdir1/file1"
+
+$ darn init --ng
+$ darn import patch1
+> patch1: patch inserted at start of series.
+> Patching file "file1".
+> Patching file "dir1/file1".
+> Patching file "dir2/file1".
+> Patching file "dir2/subdir1/file1".
+> Imported "patch1" as patch "patch1".
+$ darn series
+> +: patch1
+$ darn files
+>  :+: dir1/file1
+>  :+: dir2/file1
+>  :+: dir2/subdir1/file1
+>  :+: file1
+$ darn diff
+> diff --git a/dir1/file1 b/dir1/file1
+> index 35ecb4cc6b0ee93fe528ef6e59d81756c1613eec..456750c8e532d7b776074c6d46a268491a7297d1 0100664
+> --- a/dir1/file1
+> +++ b/dir1/file1
+> @@ -1 +1,2 @@
+>  dir1/file1: is a text file.
+> +Patch: "patch1"; Path: "dir1/file1"
+> diff --git a/dir2/file1 b/dir2/file1
+> index c4978769edbcf37f7523422d8a9a4dc121f358d3..962141b56ffce965c3eb3cdba2e09a4e0ec86c3b 0100664
+> --- a/dir2/file1
+> +++ b/dir2/file1
+> @@ -1 +1,2 @@
+>  dir2/file1: is a text file.
+> +Patch: "patch1"; Path: "dir2/file1"
+> diff --git a/dir2/subdir1/file1 b/dir2/subdir1/file1
+> index b1fe1bd6942035913d1566db4c43bfcfe5499807..527f835428a54509d5924f1e46e66b5e7e2fd834 0100664
+> --- a/dir2/subdir1/file1
+> +++ b/dir2/subdir1/file1
+> @@ -1 +1,2 @@
+>  dir2/subdir1/file1: is a text file.
+> +Patch: "patch1"; Path: "dir2/subdir1/file1"
+> diff --git a/file1 b/file1
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..d4090fe6fd0230a24d6a7984907cab0370305fa6 0100664
+> --- a/file1
+> +++ b/file1
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "patch1"; Path: "file1"
+
+$ darn import patch2
+? 1
+> patch2: patch inserted after patch "patch1".
+> Patching file "file1".
+! file1: Hunk #1 merged at 3.
+> Patching file "dir1/file1".
+> Patching file "dir2/file1".
+> Patching file "dir2/subdir1/file1".
+> patch2: (top) patch needs refreshing.
+> Imported "patch2" as patch "patch2".
+$ darn series
+> +: patch1
+> ?: patch2
+$ darn files
+>  :+: dir1/file1
+>  :+: dir2/file1
+>  :+: dir2/subdir1/file1
+>  :?: file1
+$ darn refresh
+$ darn files
+>  :+: dir1/file1
+>  :+: dir2/file1
+>  :+: dir2/subdir1/file1
+>  :+: file1
+$ darn diff
+> diff --git a/dir1/file1 b/dir1/file1
+> index 456750c8e532d7b776074c6d46a268491a7297d1..5a9207a3a311f54e13617604de1dc4ab2ef03373 0100664
+> --- a/dir1/file1
+> +++ b/dir1/file1
+> @@ -1,2 +1,3 @@
+>  dir1/file1: is a text file.
+>  Patch: "patch1"; Path: "dir1/file1"
+> +Patch: "patch2"; Path: "dir1/file1"
+> diff --git a/dir2/file1 b/dir2/file1
+> index 962141b56ffce965c3eb3cdba2e09a4e0ec86c3b..b9cc7a184312c8df4fb6b074883123f5a8b76056 0100664
+> --- a/dir2/file1
+> +++ b/dir2/file1
+> @@ -1,2 +1,3 @@
+>  dir2/file1: is a text file.
+>  Patch: "patch1"; Path: "dir2/file1"
+> +Patch: "patch2"; Path: "dir2/file1"
+> diff --git a/dir2/subdir1/file1 b/dir2/subdir1/file1
+> index 527f835428a54509d5924f1e46e66b5e7e2fd834..7f5007242eef8fdd34e2b98f0f05c33e00f2755f 0100664
+> --- a/dir2/subdir1/file1
+> +++ b/dir2/subdir1/file1
+> @@ -1,2 +1,3 @@
+>  dir2/subdir1/file1: is a text file.
+>  Patch: "patch1"; Path: "dir2/subdir1/file1"
+> +Patch: "patch2"; Path: "dir2/subdir1/file1"
+> diff --git a/file1 b/file1
+> index d4090fe6fd0230a24d6a7984907cab0370305fa6..6db05af43d13eb372769d60803a44cea8ea22b8b 0100664
+> --- a/file1
+> +++ b/file1
+> @@ -1,2 +1,3 @@
+>  file1: is a text file.
+>  Patch: "patch1"; Path: "file1"
+> +Patch: "patch2"; Path: "file1"
+$ darn diff --combined
+> diff --git a/dir1/file1 b/dir1/file1
+> index 35ecb4cc6b0ee93fe528ef6e59d81756c1613eec..5a9207a3a311f54e13617604de1dc4ab2ef03373 0100664
+> --- a/dir1/file1
+> +++ b/dir1/file1
+> @@ -1 +1,3 @@
+>  dir1/file1: is a text file.
+> +Patch: "patch1"; Path: "dir1/file1"
+> +Patch: "patch2"; Path: "dir1/file1"
+> diff --git a/dir2/file1 b/dir2/file1
+> index c4978769edbcf37f7523422d8a9a4dc121f358d3..b9cc7a184312c8df4fb6b074883123f5a8b76056 0100664
+> --- a/dir2/file1
+> +++ b/dir2/file1
+> @@ -1 +1,3 @@
+>  dir2/file1: is a text file.
+> +Patch: "patch1"; Path: "dir2/file1"
+> +Patch: "patch2"; Path: "dir2/file1"
+> diff --git a/dir2/subdir1/file1 b/dir2/subdir1/file1
+> index b1fe1bd6942035913d1566db4c43bfcfe5499807..7f5007242eef8fdd34e2b98f0f05c33e00f2755f 0100664
+> --- a/dir2/subdir1/file1
+> +++ b/dir2/subdir1/file1
+> @@ -1 +1,3 @@
+>  dir2/subdir1/file1: is a text file.
+> +Patch: "patch1"; Path: "dir2/subdir1/file1"
+> +Patch: "patch2"; Path: "dir2/subdir1/file1"
+> diff --git a/file1 b/file1
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..6db05af43d13eb372769d60803a44cea8ea22b8b 0100664
+> --- a/file1
+> +++ b/file1
+> @@ -1 +1,3 @@
+>  file1: is a text file.
+> +Patch: "patch1"; Path: "file1"
+> +Patch: "patch2"; Path: "file1"

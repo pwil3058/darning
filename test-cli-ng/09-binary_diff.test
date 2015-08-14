@@ -19,8 +19,13 @@ Set up a test file tree and initialise a playground therein
 $ darn_test_tree create
 $ darn init --ng
 $ darn new first --descr "First patch"
-$ darn add binary1 dir1/binary1 dir2/binary1 dir2/subdir1/binary1 > /dev/null
+$ darn add binary1 dir1/binary1 dir2/binary1 dir2/subdir1/binary1 binary5 > /dev/null
 $ darn_test_tree modify binary1 dir1/binary1 dir2/binary1 dir2/subdir1/binary1
+$ rm binary5
+$ darn add newbinary
+> newbinary: file added to patch "first".
+$ mkfile -b newbinary
+< a new binary file\n
 $ darn validate
 $ darn refresh
 $ darn validate
@@ -33,6 +38,16 @@ $ darn diff
 >
 > delta 4
 > Lc$~AAo*)eX0(=1i
+>
+> diff --git a/binary5 b/binary5
+> deleted file mode 0100664
+> index e85fcf272285f59988395bc8064ec91b87750902..000000000000000000000000000000000000000000000000
+> GIT binary patch
+> literal 0
+> Hc$@<O00001
+>
+> literal 27
+> ec$`bh%u6h)G__*LELKQVNCNW|(lT>W^|%0mv<UA2
 >
 > diff --git a/dir1/binary1 b/dir1/binary1
 > index 91dc798f94f5d73a83ef2cfa2818c5c32a901bc3..b2dd93b4af097f9fa23b13e85dd872dbf329eb94 0100664
@@ -60,6 +75,16 @@ $ darn diff
 >
 > delta 4
 > Lc$^E>n4kdw0~i4|
+>
+> diff --git a/newbinary b/newbinary
+> new file mode 0100664
+> index 000000000000000000000000000000000000000000000000..954f451f8361ad3014cfab4259fa910b4035529f
+> GIT binary patch
+> literal 21
+> cc$`aA$V)9(NXpDhWGJdsNXyJgjmhHz08R1-1poj5
+>
+> literal 0
+> Hc$@<O00001
 >
 $ darn diff > first.diff
 
@@ -121,6 +146,16 @@ $ darn diff --combined
 > delta 4
 > Lc$|xoo*)eX0{{Ud
 >
+> diff --git a/binary5 b/binary5
+> deleted file mode 0100664
+> index e85fcf272285f59988395bc8064ec91b87750902..000000000000000000000000000000000000000000000000
+> GIT binary patch
+> literal 0
+> Hc$@<O00001
+>
+> literal 27
+> ec$`bh%u6h)G__*LELKQVNCNW|(lT>W^|%0mv<UA2
+>
 > diff --git a/dir1/binary1 b/dir1/binary1
 > index 91dc798f94f5d73a83ef2cfa2818c5c32a901bc3..65ab209b67bd4be8699172f8e717a07e48cc49a9 0100664
 > GIT binary patch
@@ -149,6 +184,16 @@ $ darn diff --combined
 >
 > delta 5
 > Mc${ly)R>?F00dY8WdHyG
+>
+> diff --git a/newbinary b/newbinary
+> new file mode 0100664
+> index 000000000000000000000000000000000000000000000000..954f451f8361ad3014cfab4259fa910b4035529f
+> GIT binary patch
+> literal 21
+> cc$`aA$V)9(NXpDhWGJdsNXyJgjmhHz08R1-1poj5
+>
+> literal 0
+> Hc$@<O00001
 >
 $ diff -q first.diff second.diff
 ? 1
@@ -223,6 +268,34 @@ $ darn diff --combined dir1/binary1 binary1
 > Lc$|xoo*)eX0{{Ud
 >
 $ darn validate
+
+$ darn pop
+> Patch "first" is now on top.
+$ darn pop
+> There are now no patches applied.
+
+Now check that they survive a pop/push sequence
+$ darn push
+> "newbinary": binary file created.
+> "binary1": binary file replaced.
+> "binary5": binary file deleted.
+> "dir1/binary1": binary file replaced.
+> "dir2/binary1": binary file replaced.
+> "dir2/subdir1/binary1": binary file replaced.
+> Patch "first" is now on top.
+$ darn validate
+$ darn diff > first.pushed.diff
+$ diff -q first.diff first.pushed.diff
+
+$ darn push
+> "binary1": binary file replaced.
+> "dir1/binary1": binary file replaced.
+> "dir2/binary1": binary file replaced.
+> "dir2/subdir1/binary1": binary file replaced.
+> Patch "second" is now on top.
+$ darn validate
+$ darn diff > second.pushed.diff
+$ diff -q second.diff second.pushed.diff
 
 And make sure it works in a sub directory
 $ cd dir2

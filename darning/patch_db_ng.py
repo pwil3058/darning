@@ -40,7 +40,6 @@ from . import options
 from .pm_ifce import PatchState, FileStatus, Presence, Validity, MERGE_CRE, PatchTableRow, patch_timestamp_str
 from .patch_db import _O_IP_PAIR, _O_IP_S_TRIPLET, Failure, _tidy_text
 from .patch_db import OverlapData
-from .patch_db import BinaryDiff
 
 _DIR_PATH = ".darning.dbd"
 _BLOBS_DIR_PATH = os.path.join(_DIR_PATH, "blobs")
@@ -248,48 +247,43 @@ def generate_diff_preamble_lines(file_path, before, after, came_from=None):
 def generate_diff_preamble(file_path, before, after, came_from=None):
     return patchlib.Preamble.parse_lines(generate_diff_preamble_lines(file_path, before, after, came_from))
 
+def generate_binary_diff_lines(before, after):
+    from patch_db import ZippedData
+    import gitdelta, gitbase85
+    def _component_lines(fm_data, to_data):
+        delta = None
+        if fm_data.raw_len and to_data.raw_len:
+            delta = ZippedData(gitdelta.diff_delta(fm_data.raw_data, to_data.raw_data))
+        if delta and delta.zipped_len < to_data.zipped_len:
+            lines = ["delta {0}\n".format(delta.raw_len)] + gitbase85.encode_to_lines(delta.zipped_data) + ["\n"]
+        else:
+            lines = ["literal {0}\n".format(to_data.raw_len)] + gitbase85.encode_to_lines(to_data.zipped_data) + ["\n"]
+        return lines
+    if before.content == after.content:
+        return []
+    orig = ZippedData(before.content)
+    darned = ZippedData(after.content)
+    return ["GIT binary patch\n"] + _component_lines(orig, darned) + _component_lines(darned, orig)
+
+def generate_binary_diff(before, after):
+    diff_lines = generate_binary_diff_lines(before, after)
+    return patchlib.Diff.parse_lines(diff_lines) if diff_lines else None
+
 def generate_unified_diff_lines(before, after):
     before_lines = before.content.splitlines(True)
     after_lines = after.content.splitlines(True)
-    diff_lines = list(difflib.unified_diff(before_lines, after_lines, fromfile=before.label, tofile=after.label, fromfiledate=before.timestamp, tofiledate=after.timestamp))
-    if diff_lines and not diff_lines[-1].endswith((os.linesep, "\n")):
-        diff_lines[-1] = diff_lines[-1] + "\n"
-        diff_lines.append("\ No newline at end of file\n")
+    diff_lines = list()
+    for diff_line in difflib.unified_diff(before_lines, after_lines, fromfile=before.label, tofile=after.label, fromfiledate=before.timestamp, tofiledate=after.timestamp):
+        if diff_line.endswith((os.linesep, "\n")):
+            diff_lines.append(diff_line)
+        else:
+            diff_lines.append(diff_line + "\n")
+            diff_lines.append("\ No newline at end of file\n")
     return diff_lines
 
 def generate_unified_diff(before, after):
     diff_lines = generate_unified_diff_lines(before, after)
     return patchlib.Diff.parse_lines(diff_lines) if diff_lines else None
-
-def _apply_diff_plus_changes(diff_plus, drop_atws=True, num_strip_levels=1):
-    retval = CmdResult.OK
-    file_path = diff_plus.get_file_path(num_strip_levels)
-    RCTX.stdout.write(_('Patching file "{0}".\n').format(rel_subdir(file_path)))
-    if drop_atws:
-        atws_lines = diff_plus.fix_trailing_whitespace()
-        if atws_lines:
-            RCTX.stdout.write(_('Added trailing white space to "{0}" at line(s) {{{1}}}: removed before application.\n').format(rel_subdir(file_path), ', '.join([str(line) for line in atws_lines])))
-    else:
-        atws_lines = diff_plus.report_trailing_whitespace()
-        if atws_lines:
-            RCTX.stderr.write(_('Added trailing white space to "{1}" at line(s) {{{2}}}.\n').format(rel_subdir(file_path), ', '.join([str(line) for line in atws_lines])))
-    if diff_plus.diff:
-        from .patch_db import _do_apply_diff_to_file
-        result = _do_apply_diff_to_file(file_path, diff_plus.diff)
-        if result.ecode == 0:
-            RCTX.stderr.write(result.stdout)
-        else:
-            RCTX.stdout.write(result.stdout)
-        RCTX.stderr.write(result.stderr)
-        retval = result.ecode
-    if os.path.exists(file_path):
-        git_preamble = diff_plus.get_preamble_for_type('git')
-        if git_preamble is not None:
-            for key in ['new mode', 'new file mode']:
-                if key in git_preamble.extras:
-                    os.chmod(file_path, int(git_preamble.extras[key], 8))
-                    break
-    return retval
 
 _DiffData = collections.namedtuple("_DiffData", ["label", "efd", "content", "timestamp"])
 
@@ -343,8 +337,10 @@ class FileDiffMixin(object):
             as_refreshed = after.efd and self.darned and after.efd.git_hash == self.darned.git_hash
         if as_refreshed:
             diff = copy.deepcopy(self.diff)
-        elif before.content.find("\000") != -1 or before.content.find("\000") != -1:
-            diff = BinaryDiff(before_content, after_content)
+        elif before.content == after.content:
+            diff = None
+        elif before.content.find("\000") != -1 or after.content.find("\000") != -1:
+            diff = generate_binary_diff(before, after)
         else:
             diff = generate_unified_diff(before, after)
         diff_plus = patchlib.DiffPlus([preamble], diff)
@@ -360,8 +356,10 @@ class FileDiffMixin(object):
             as_refreshed = after.efd and self.darned and after.efd.git_hash == self.darned.git_hash
         if as_refreshed:
             diff = "" if self.diff is None else str(copy.deepcopy(self.diff))
-        elif before.content.find("\000") != -1 or before.content.find("\000") != -1:
-            diff = str(BinaryDiff(before.content, after.content))
+        elif before.content == after.content:
+            diff = ""
+        elif before.content.find("\000") != -1 or after.content.find("\000") != -1:
+            diff = "".join(generate_binary_diff_lines(before, after))
         else:
             diff = "".join(generate_unified_diff_lines(before, after))
         trailing_junk = _("# Renamed to: {0}\n").format(self.renamed_as) if self.renamed_as and after.efd is None else ""
@@ -631,8 +629,10 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
             raise DarnItFileHasUnresolvedMerges(file_path=self.path)
         before = self.get_diff_before_data(as_refreshed=False, with_timestamps=with_timestamps)
         after = self.get_refresh_after_data(overlapping_file, with_timestamps=with_timestamps)
-        if before.content.find("\000") != -1 or before.content.find("\000") != -1:
-            self.diff = BinaryDiff(before.content, after.content)
+        if before.content == after.content:
+            self.diff = None
+        elif before.content.find("\000") != -1 or after.content.find("\000") != -1:
+            self.diff = generate_binary_diff(before, after)
         else:
             self.diff = generate_unified_diff(before, after)
         self.patch.database.release_stored_content(self.darned)
@@ -648,9 +648,9 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
         current_efd = self.came_from.orig if self.came_from else self.orig
         retval = CmdResult.OK
         already_exists = os.path.exists(self.path)
-        if isinstance(self.diff, BinaryDiff):
+        if isinstance(self.diff, patchlib.GitBinaryDiff):
             if self.darned is not None:
-                open(self.path, "wb").write(self.diff.contents.raw_data)
+                open(self.path, "wb").write(self.patch.database.get_content_for(self.darned))
                 if already_exists:
                     RCTX.stdout.write(_("\"{0}\": binary file replaced.\n").format(rel_subdir(self.path)))
                 else:
@@ -962,6 +962,15 @@ class Patch(mixins.WrapperMixin):
         file_data.release_contents()
     def drop_named_file(self, file_path):
         self.drop_file(self.get_file(file_path))
+    def do_refresh(self, stdout=None):
+        eflag = CmdResult.OK
+        for file_data in self.iterate_files_sorted():
+            try:
+                file_data.do_refresh(stdout=stdout)
+            except DarnItFileHasUnresolvedMerges:
+                RCTX.stderr.write(_("\"{0}\": file has unresolved merge(s).\n").format(rel_subdir(file_data.path)))
+                eflag = CmdResult.ERROR
+        return eflag
     def do_rename_file(self, file_path, new_file_path):
         assert os.path.exists(file_path)
         assert self.is_top_patch
@@ -993,6 +1002,73 @@ class Patch(mixins.WrapperMixin):
         for file_data in self.iterate_files_sorted():
             fobj.write(file_data.get_diff_text())
         fobj.close()
+
+    def _apply_diff_plus_changes(self, diff_plus, drop_atws=True, num_strip_levels=1):
+        retval = CmdResult.OK
+        file_path = diff_plus.get_file_path(num_strip_levels)
+        if isinstance(diff_plus.diff, patchlib.GitBinaryDiff):
+            git_preamble = diff_plus.get_preamble_for_type("git")
+            if "deleted file mode" in git_preamble.extras:
+                RCTX.stdout.write(_("Deleting binary file \"{0}\".\n").format(rel_subdir(file_path)))
+                try:
+                    os.remove(file_path)
+                except OSError as edata:
+                    retval = CmdResult.ERROR
+                    RCTX.stderr.write("{0}: {1}\n".format(rel_subdir(file_path), edata))
+            elif "new file mode" in git_preamble.extras:
+                RCTX.stdout.write(_("Creating binary file \"{0}\".\n").format(rel_subdir(file_path)))
+                try:
+                    open(file_path, "wb").write(diff_plus.diff.forward.data_raw)
+                except IOError as edata:
+                    retval = CmdResult.ERROR
+                    RCTX.stderr.write("{0}: {1}\n".format(rel_subdir(file_path), edata))
+            else:
+                RCTX.stdout.write(_("Patching binary file \"{0}\".\n").format(rel_subdir(file_path)))
+                if diff_plus.diff.forward.method == patchlib.GitBinaryDiffData.LITERAL:
+                    # if it's literal just insert the raw data.
+                    try:
+                        open(file_path, "wb").write(diff_plus.diff.forward.data_raw)
+                    except IOError as edata:
+                        retval = CmdResult.ERROR
+                        RCTX.stderr.write("{0}: {1}\n".format(rel_subdir(file_path), edata))
+                elif diff_plus.is_compatible_with(utils.get_git_hash_for_file(file_path)):
+                    import gitdelta
+                    contents = open(file_path, "rb").read()
+                    try:
+                        new_contents = gitdelta.patch_delta(contents, diff_plus.diff.forward.data_raw)
+                    except gitdelta.PatchError as edata:
+                        retval = CmdResult.ERROR
+                        RCTX.stderr.write(_("\"{0}\": imported binary delta failed to apply: {1}.\n").format(rel_subdir(file_path), edata))
+                    else:
+                        open(file_path, "wb").write(new_contents)
+                else:
+                    # the original file has changed and it would be unwise to apply the delta
+                    retval = CmdResult.ERROR
+                    RCTX.stderr.write(_("\"{0}\": imported binary delta can not be applied.\n").format(rel_subdir(file_path)))
+        elif diff_plus.diff:
+            RCTX.stdout.write(_("Patching file \"{0}\".\n").format(rel_subdir(file_path)))
+            if drop_atws:
+                atws_lines = diff_plus.fix_trailing_whitespace()
+                if atws_lines:
+                    RCTX.stdout.write(_("Added trailing white space to \"{0}\" at line(s) {{{1}}}: removed before application.\n").format(rel_subdir(file_path), ", ".join([str(line) for line in atws_lines])))
+            else:
+                atws_lines = diff_plus.report_trailing_whitespace()
+                if atws_lines:
+                    RCTX.stderr.write(_("Added trailing white space to \"{1}\" at line(s) {{{2}}}.\n").format(rel_subdir(file_path), ", ".join([str(line) for line in atws_lines])))
+            from .patch_db import _do_apply_diff_to_file
+            result = _do_apply_diff_to_file(file_path, diff_plus.diff, delete_empty=diff_plus.get_outcome() < 0)
+            RCTX.stderr.write(result.stderr)
+            if result.ecode == CmdResult.OK and result.stderr:
+                retval = CmdResult.WARNING
+            else:
+                retval = result.ecode
+        if retval == CmdResult.OK:
+            self.get_file(file_path).do_refresh()
+        if os.path.exists(file_path):
+            new_mode = diff_plus.get_new_mode()
+            if new_mode is not None:
+                os.chmod(file_path, new_mode)
+        return retval
     def do_fold_epatch(self, epatch, absorb=False, force=False):
         assert not (force and absorb)
         assert self.is_top_patch
@@ -1002,8 +1078,8 @@ class Patch(mixins.WrapperMixin):
                 file_path = diff_plus.get_file_path(epatch.num_strip_levels)
                 if file_path in self.files_data:
                     continue
-                git_preamble = diff_plus.get_preamble_for_type('git')
-                if git_preamble and ('copy from' in git_preamble.extras or 'rename from' in git_preamble.extras):
+                git_preamble = diff_plus.get_preamble_for_type("git")
+                if git_preamble and ("copy from" in git_preamble.extras or "rename from" in git_preamble.extras):
                     continue
                 new_file_paths.append(file_path)
             overlaps = self.database.get_overlap_data(new_file_paths, self)
@@ -1014,23 +1090,31 @@ class Patch(mixins.WrapperMixin):
         copies = []
         renames = []
         creates = []
+        cold_deletes = []
         others = []
         failures = []
         # Do the caching of existing files first to obviate copy/rename problems
         for diff_plus in epatch.diff_pluses:
             file_path = diff_plus.get_file_path(epatch.num_strip_levels)
-            git_preamble = diff_plus.get_preamble_for_type('git')
-            copied_from = git_preamble.extras.get('copy from', None) if git_preamble else None
-            renamed_from = git_preamble.extras.get('rename from', None) if git_preamble else None
             if file_path not in self.files_data:
                 self.add_file(FileData.new(file_path, self, overlaps=overlaps))
-            if renamed_from is not None:
-                if renamed_from not in self.files_data:
-                    self.add_file(FileData(renamed_from, self, overlaps=overlaps))
-                renames.append((diff_plus, renamed_from))
-            elif copied_from is not None:
-                copies.append((diff_plus, copied_from))
-            elif not os.path.exists(file_path):
+            git_preamble = diff_plus.get_preamble_for_type("git")
+            if git_preamble:
+                copied_from = git_preamble.extras.get("copy from", None)
+                renamed_from = git_preamble.extras.get("rename from", None)
+                if renamed_from is not None:
+                    if renamed_from not in self.files_data:
+                        self.add_file(FileData.new(renamed_from, self, overlaps=overlaps))
+                    renames.append((diff_plus, renamed_from))
+                elif copied_from is not None:
+                    copies.append((diff_plus, copied_from))
+                elif git_preamble.extras.get("new file mode", False):
+                    creates.append(diff_plus)
+                elif git_preamble.extras.get("deleted file mode", False) and diff_plus.diff is None:
+                    cold_deletes.append(diff_plus)
+                else:
+                    others.append(diff_plus)
+            elif diff_plus.get_outcome() > 0:
                 creates.append(diff_plus)
             else:
                 others.append(diff_plus)
@@ -1038,27 +1122,29 @@ class Patch(mixins.WrapperMixin):
         biggest_ecode = CmdResult.OK
         # Now use patch to create any file created by the fold
         for diff_plus in creates:
-            biggest_ecode = max(_apply_diff_plus_changes(diff_plus, drop_atws, epatch.num_strip_levels), biggest_ecode)
+            biggest_ecode = max(self._apply_diff_plus_changes(diff_plus, drop_atws, epatch.num_strip_levels), biggest_ecode)
         # Do any copying
         for diff_plus, came_from_path in copies:
             new_file_data = self.get_file(diff_plus.get_file_path(epatch.num_strip_levels))
             # We copy the current version here not the original
             # TODO: think about force/absorb ramifications HERE
+            RCTX.stdout.write(_("Copying \"{0}\" to \"{1}\".\n").format(rel_subdir(came_from_path), rel_subdir(new_file_data.path)))
             try:
                 new_file_data.copy_contents_from(came_from_path)
             except OSError as edata:
                 biggest_ecode = CmdResult.ERROR
-                RCTX.stderr.write(_('{0}: failed to copy {1}.\n').format(rel_subdir(new_file_data.path), rel_subdir(came_from_path)))
+                RCTX.stderr.write(_("{0}: failed to copy {1}.\n").format(rel_subdir(new_file_data.path), rel_subdir(came_from_path)))
                 failures.append(diff_plus)
         # Do any renaming
         for diff_plus, came_from_path in renames:
             new_file_data = self.get_file(diff_plus.get_file_path(epatch.num_strip_levels))
             fm_file_data = self.get_file(came_from_path)
+            RCTX.stdout.write(_("Renaming/moving \"{0}\" to \"{1}\".\n").format(rel_subdir(came_from_path), rel_subdir(new_file_data.path)))
             try:
                 new_file_data.move_contents_from(fm_file_data)
             except OSError as edata:
                 biggest_ecode = CmdResult.ERROR
-                RCTX.stderr.write(_('{0}: failed to move {1}.\n').format(rel_subdir(new_file_data.path), rel_subdir(came_from_path)))
+                RCTX.stderr.write(_("{0}: failed to move {1}.\n").format(rel_subdir(new_file_data.path), rel_subdir(came_from_path)))
                 failures.append(diff_plus)
                 continue
             if fm_file_data.orig is None:
@@ -1067,12 +1153,18 @@ class Patch(mixins.WrapperMixin):
         for diff_plus, _dummy in copies + renames:
             # NB: don't try applying patch if the copy/rename failed
             if diff_plus not in failures:
-                _apply_diff_plus_changes(diff_plus, drop_atws, epatch.num_strip_levels)
+                biggest_ecode = max(self._apply_diff_plus_changes(diff_plus, drop_atws, epatch.num_strip_levels), biggest_ecode)
         for diff_plus in others:
-            _apply_diff_plus_changes(diff_plus, drop_atws, epatch.num_strip_levels)
-        if self.needs_refresh:
-            RCTX.stdout.write(_('{0}: (top) patch needs refreshing.\n').format(self.name))
-            return CmdResult.WARNING if biggest_ecode is CmdResult.OK else biggest_ecode
+            biggest_ecode = max(self._apply_diff_plus_changes(diff_plus, drop_atws, epatch.num_strip_levels), biggest_ecode)
+        for diff_plus in cold_deletes:
+            file_path = diff_plus.get_file_path(epatch.num_strip_levels)
+            rel_file_path = rel_subdir(file_path)
+            try:
+                RCTX.stdout.write(_("Deleting \"{0}\".\n").format(rel_file_path))
+                os.remove(file_path)
+            except OSError as edata:
+                biggest_ecode = CmdResult.ERROR
+                RCTX.stderr.write(_("{0}: deletion failed.\n").format(rel_file_path))
         return biggest_ecode
 
 class TextDiffPlus(patchlib.DiffPlus):
@@ -1285,6 +1377,11 @@ class DataBase(mixins.WrapperMixin):
                     if patched_file.needs_refresh:
                         unrefreshed[patched_file.path] = patch
         return OverlapData(unrefreshed=unrefreshed, uncommitted=uncommitted)
+    def has_patch_with_name(self, name):
+        for patch in self.patch_series_data:
+            if patch.name == name:
+                return True
+        return False
     def incr_ref_count_for_hash(self, git_hash):
         try:
             self.blob_ref_counts[git_hash[:2]][git_hash[2:]] += 1
@@ -1588,7 +1685,7 @@ def do_drop_files_fm_patch(patch_name, file_paths):
                 issued_warning = True
         return CmdResult.WARNING if issued_warning else CmdResult.OK
 
-def do_fold_named_patch(patch_name, absorb=False, force=False):
+def do_fold_named_patch(patch_name, absorb=False, force=False, retain_copy=None):
     '''Fold a name internal patch into the top patch.'''
     assert not (force and absorb)
     with open_db(mutable=True) as DB:
@@ -1597,17 +1694,57 @@ def do_fold_named_patch(patch_name, absorb=False, force=False):
         if not patch:
             return CmdResult.ERROR
         elif patch.is_applied:
-            RCTX.stderr.write(_('{0}: patch is applied.\n').format(patch.name))
+            RCTX.stderr.write(_("{0}: patch is applied.\n").format(patch.name))
             return CmdResult.ERROR
         epatch = TextPatch(patch)
         top_patch = _get_top_patch(DB)
         if not top_patch:
             return CmdResult.ERROR
         result = top_patch.do_fold_epatch(epatch, absorb=absorb, force=force)
-        if result not in [CmdResult.OK, CmdResult.WARNING]:
-            return result
-        DB.remove_patch(patch)
-        RCTX.stdout.write(_('"{0}": patch folded into patch "{1}".\n').format(patch_name, DB.top_patch_name))
+        if result == CmdResult.ERROR:
+            retain_copy = True
+        elif retain_copy is None: # value of True or False will override option
+            retain_copy = options.get("remove", "keep_patch_backup")
+        RCTX.stdout.write(_("\"{0}\": patch folded into patch \"{1}\".\n").format(patch_name, top_patch.name))
+        if top_patch.needs_refresh:
+            RCTX.stdout.write(_("{0}: (top) patch needs refreshing.\n").format(top_patch.name))
+            result = max(result, CmdResult.WARNING)
+        DB.remove_patch(patch, retain_copy=(result==CmdResult.ERROR) or retain_copy)
+        if retain_copy:
+            RCTX.stdout.write(_("Patch \"{0}\" is available for restoration.\n").format(patch_name))
+        return result
+
+def do_import_patch(epatch, patch_name, overwrite=False, absorb=False, force=False):
+    '''Import an external patch with the given name (after the top patch)'''
+    with open_db(mutable=True) as DB:
+        if DB.has_patch_with_name(patch_name):
+            if not overwrite:
+                RCTX.stderr.write(_('patch "{0}" already exists\n').format(patch_name))
+                result = CmdResult.ERROR | CmdResult.SUGGEST_RENAME
+                if not DB.is_named_patch_applied(patch_name):
+                    result |= CmdResult.SUGGEST_OVERWRITE
+                return result
+            elif DB.is_named_patch_applied(patch_name):
+                RCTX.stderr.write(_('patch "{0}" already exists and is applied. Cannot be overwritten.\n').format(patch_name))
+                return CmdResult.ERROR | CmdResult.SUGGEST_RENAME
+            else:
+                result = _do_remove_patch(DB, patch_name)
+                if result != CmdResult.OK:
+                    return result
+        elif not utils.is_valid_dir_name(patch_name):
+            RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(patch_name, utils.ALLOWED_DIR_NAME_CHARS_MSG))
+            return CmdResult.ERROR|CmdResult.SUGGEST_RENAME
+        descr = utils.make_utf8_compliant(epatch.get_description())
+        top_patch = DB.top_patch
+        patch = DB.create_new_patch(patch_name, descr)
+        if top_patch:
+            RCTX.stdout.write(_('{0}: patch inserted after patch "{1}".\n').format(patch_name, top_patch.name))
+        else:
+            RCTX.stdout.write(_('{0}: patch inserted at start of series.\n').format(patch_name))
+        result = patch.do_fold_epatch(epatch, absorb=absorb, force=force)
+        if patch.needs_refresh:
+            RCTX.stdout.write(_("{0}: (top) patch needs refreshing.\n").format(patch.name))
+            result = max(result, CmdResult.WARNING)
         return result
 
 def do_move_files_in_top_patch(file_paths, target_path, force=False, overwrite=False, make_dir=False):
@@ -1692,13 +1829,7 @@ def do_refresh_patch(patch_name=None):
         if not patch.is_applied:
             RCTX.stderr.write(_("Patch \"{0}\" is not applied\n").format(patch_name))
             return CmdResult.ERROR
-        eflag = CmdResult.OK
-        for file_data in patch.iterate_files():
-            try:
-                file_data.do_refresh(stdout=RCTX.stdout)
-            except DarnItFileHasUnresolvedMerges:
-                RCTX.stderr.write(_("\"{0}\": file has unresolved merge(s).\n").format(rel_subdir(file_data.path)))
-                eflag = CmdResult.ERROR
+        eflag = patch.do_refresh(stdout=RCTX.stdout)
         if eflag != CmdResult.OK:
             RCTX.stderr.write(_("Patch \"{0}\" requires another refresh after issues are resolved.\n").format(patch.name))
         else:
@@ -1709,19 +1840,19 @@ def do_remove_patch(patch_name, retain_copy=None):
     '''Remove the named patch from the series'''
     with open_db(mutable=True) as DB:
         if retain_copy is None: # value of True or False will override option
-            retain_copy = options.get('remove', 'keep_patch_backup')
+            retain_copy = options.get("remove", "keep_patch_backup")
         try:
             DB.remove_named_patch(patch_name, retain_copy=retain_copy)
         except DarnItUnknownPatch:
             RCTX.stderr.write(_("{0}: patch is NOT known.\n").format(patch_name))
             return CmdResult.ERROR
         except DarnItPatchIsApplied:
-            RCTX.stderr.write(_('{0}: patch is applied and cannot be removed.\n').format(patch_name))
+            RCTX.stderr.write(_("{0}: patch is applied and cannot be removed.\n").format(patch_name))
             return CmdResult.ERROR
         if retain_copy:
-            RCTX.stdout.write(_('Patch "{0}" removed (but available for restoration).\n').format(patch_name))
+            RCTX.stdout.write(_("Patch \"{0}\" removed (but available for restoration).\n").format(patch_name))
         else:
-            RCTX.stdout.write(_('Patch "{0}" removed.\n').format(patch_name))
+            RCTX.stdout.write(_("Patch \"{0}\" removed.\n").format(patch_name))
         return CmdResult.OK
 
 def do_rename_file_in_top_patch(file_path, new_file_path, force=False, overwrite=False):

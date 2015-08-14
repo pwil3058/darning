@@ -165,9 +165,23 @@ $ darn add file1 dir1/file2 dir2/file2 > /dev/null
 ! file1: file already in patch "second". Ignored.
 $ darn copy file1.copy file1.copy.copy > /dev/null
 $ darn copy file2.copy file2.copy.copy > /dev/null
-$ darn_test_tree modify file1 file2.copy file3.ren2 dir1/file1 dir2/file1 dir1/file2 dir2/file2 dir2/subdir1/file1
+$ darn move binary1 binary1.renamed > /dev/null
+$ darn copy binary2 binary2.copy > /dev/null
+$ darn add binary3 binary4 > /dev/null
+$ darn add newbinary
+> newbinary: file added to patch "second".
+$ darn validate
+$ mkfile -b newbinary
+< a new binary file\n
+$ rm binary3
+$ darn_test_tree modify file1 file2.copy file3.ren2 dir1/file1 dir2/file1 dir1/file2 dir2/file2 dir2/subdir1/file1 binary4
 $ darn refresh
 $ darn files
+> -:+: binary1 -> binary1.renamed
+> +:+: binary1.renamed <- binary1
+> +:+: binary2.copy <<- binary2
+> -:+: binary3
+>  :+: binary4
 >  :+: dir1/file1
 >  :+: dir1/file2
 >  :+: dir2/file1
@@ -180,7 +194,13 @@ $ darn files
 > +:+: file2.copy.copy <<- file2.copy
 > -:+: file3.ren1 -> file3.ren2
 > +:+: file3.ren2 <- file3.ren1
+> +:+: newbinary
 $ darn files --combined
+> -:+: binary1
+> +:+: binary1.renamed
+> +:+: binary2.copy
+> -:+: binary3
+>  :+: binary4
 >  :+: dir1/file1
 >  :+: dir1/file2
 >  :+: dir2/file1
@@ -193,7 +213,57 @@ $ darn files --combined
 > +:+: file2.copy.copy
 > -:+: file3
 > +:+: file3.ren2
+> +:+: newbinary
 $ darn diff --combined
+> diff --git a/binary1 b/binary1
+> deleted file mode 0100664
+> index 21172b42b3158210ce66f1ad674a8dc5bd82ac06..000000000000000000000000000000000000000000000000
+> GIT binary patch
+> literal 0
+> Hc$@<O00001
+>
+> literal 27
+> ec$`bh%u6h)G_+#KELKQVNCNW|(lT>W^|%0mU<m5~
+>
+> diff --git a/binary1.renamed b/binary1.renamed
+> new file mode 0100664
+> index 000000000000000000000000000000000000000000000000..21172b42b3158210ce66f1ad674a8dc5bd82ac06
+> GIT binary patch
+> literal 27
+> ec$`bh%u6h)G_+#KELKQVNCNW|(lT>W^|%0mU<m5~
+>
+> literal 0
+> Hc$@<O00001
+>
+> diff --git a/binary2.copy b/binary2.copy
+> new file mode 0100664
+> index 000000000000000000000000000000000000000000000000..769be69fe43274f3d72e9d18aab577c197522a4e
+> GIT binary patch
+> literal 27
+> ec$`bh%u6h)G_qpIELKQVNCNW|(lT>W^|%0mbqMSL
+>
+> literal 0
+> Hc$@<O00001
+>
+> diff --git a/binary3 b/binary3
+> deleted file mode 0100664
+> index 182eeacdcd65d9a7851cf5a4c1585434f94830e7..000000000000000000000000000000000000000000000000
+> GIT binary patch
+> literal 0
+> Hc$@<O00001
+>
+> literal 27
+> ec$`bh%u6h)G`3>MELKQVNCNW|(lT>W^|%0miU{oh
+>
+> diff --git a/binary4 b/binary4
+> index be84aced654704f46614e90b768ecc8a3f802b94..5de9fccb9cb9355b0d2ed9645bd90c5b72ab7c88 0100664
+> GIT binary patch
+> delta 38
+> pc$|~AnINqgkXVwOVWpr{oSK}Um!f2?02Bc6lQQ!Xiz-c&xB%a}3wHnj
+>
+> delta 4
+> Lc$~A5o*)eX0)PPn
+>
 > diff --git a/dir1/file1 b/dir1/file1
 > index 35ecb4cc6b0ee93fe528ef6e59d81756c1613eec..1db13fde9e286f49e91edf46217fb9113e5ba79d 0100664
 > --- a/dir1/file1
@@ -287,7 +357,47 @@ $ darn diff --combined
 > +file3: is a text file.
 > +Patch: "first"; Path: "file3.ren1"
 > +Patch: "second"; Path: "file3.ren2"
+> diff --git a/newbinary b/newbinary
+> new file mode 0100664
+> index 000000000000000000000000000000000000000000000000..954f451f8361ad3014cfab4259fa910b4035529f
+> GIT binary patch
+> literal 21
+> cc$`aA$V)9(NXpDhWGJdsNXyJgjmhHz08R1-1poj5
+>
+> literal 0
+> Hc$@<O00001
+>
+
 $ darn diff
+> diff --git a/binary1 b/binary1
+> # Renamed to: binary1.renamed
+> diff --git a/binary1 b/binary1.renamed
+> rename from binary1
+> rename to binary1.renamed
+> index 21172b42b3158210ce66f1ad674a8dc5bd82ac06..21172b42b3158210ce66f1ad674a8dc5bd82ac06 0100664
+> diff --git a/binary2 b/binary2.copy
+> copy from binary2
+> copy to binary2.copy
+> index 769be69fe43274f3d72e9d18aab577c197522a4e..769be69fe43274f3d72e9d18aab577c197522a4e 0100664
+> diff --git a/binary3 b/binary3
+> deleted file mode 0100664
+> index 182eeacdcd65d9a7851cf5a4c1585434f94830e7..000000000000000000000000000000000000000000000000
+> GIT binary patch
+> literal 0
+> Hc$@<O00001
+>
+> literal 27
+> ec$`bh%u6h)G`3>MELKQVNCNW|(lT>W^|%0miU{oh
+>
+> diff --git a/binary4 b/binary4
+> index be84aced654704f46614e90b768ecc8a3f802b94..5de9fccb9cb9355b0d2ed9645bd90c5b72ab7c88 0100664
+> GIT binary patch
+> delta 38
+> pc$|~AnINqgkXVwOVWpr{oSK}Um!f2?02Bc6lQQ!Xiz-c&xB%a}3wHnj
+>
+> delta 4
+> Lc$~A5o*)eX0)PPn
+>
 > diff --git a/dir1/file1 b/dir1/file1
 > index 78d3b410c46283067e16f8090a3f85b503ead12a..1db13fde9e286f49e91edf46217fb9113e5ba79d 0100664
 > --- a/dir1/file1
@@ -364,6 +474,16 @@ $ darn diff
 >  file3: is a text file.
 >  Patch: "first"; Path: "file3.ren1"
 > +Patch: "second"; Path: "file3.ren2"
+> diff --git a/newbinary b/newbinary
+> new file mode 0100664
+> index 000000000000000000000000000000000000000000000000..954f451f8361ad3014cfab4259fa910b4035529f
+> GIT binary patch
+> literal 21
+> cc$`aA$V)9(NXpDhWGJdsNXyJgjmhHz08R1-1poj5
+>
+> literal 0
+> Hc$@<O00001
+>
 
 $ darn new third --descr "Third patch"
 $ darn add dir2/file1 dir2/subdir1/file1 > /dev/null
@@ -383,6 +503,11 @@ $ darn files
 > +:+: file3 <- file3.ren2
 > -:+: file3.ren2 -> file3
 $ darn files --combined
+> -:+: binary1
+> +:+: binary1.renamed
+> +:+: binary2.copy
+> -:+: binary3
+>  :+: binary4
 >  :+: dir1/file1
 >  :?: dir1/file2
 >  :+: dir1/file3
@@ -398,7 +523,57 @@ $ darn files --combined
 > +:+: file2.copy.copy
 > +:+: file2.copy.copy.copy
 >  :+: file3
+> +:+: newbinary
 $ darn diff --combined
+> diff --git a/binary1 b/binary1
+> deleted file mode 0100664
+> index 21172b42b3158210ce66f1ad674a8dc5bd82ac06..000000000000000000000000000000000000000000000000
+> GIT binary patch
+> literal 0
+> Hc$@<O00001
+>
+> literal 27
+> ec$`bh%u6h)G_+#KELKQVNCNW|(lT>W^|%0mU<m5~
+>
+> diff --git a/binary1.renamed b/binary1.renamed
+> new file mode 0100664
+> index 000000000000000000000000000000000000000000000000..21172b42b3158210ce66f1ad674a8dc5bd82ac06
+> GIT binary patch
+> literal 27
+> ec$`bh%u6h)G_+#KELKQVNCNW|(lT>W^|%0mU<m5~
+>
+> literal 0
+> Hc$@<O00001
+>
+> diff --git a/binary2.copy b/binary2.copy
+> new file mode 0100664
+> index 000000000000000000000000000000000000000000000000..769be69fe43274f3d72e9d18aab577c197522a4e
+> GIT binary patch
+> literal 27
+> ec$`bh%u6h)G_qpIELKQVNCNW|(lT>W^|%0mbqMSL
+>
+> literal 0
+> Hc$@<O00001
+>
+> diff --git a/binary3 b/binary3
+> deleted file mode 0100664
+> index 182eeacdcd65d9a7851cf5a4c1585434f94830e7..000000000000000000000000000000000000000000000000
+> GIT binary patch
+> literal 0
+> Hc$@<O00001
+>
+> literal 27
+> ec$`bh%u6h)G`3>MELKQVNCNW|(lT>W^|%0miU{oh
+>
+> diff --git a/binary4 b/binary4
+> index be84aced654704f46614e90b768ecc8a3f802b94..5de9fccb9cb9355b0d2ed9645bd90c5b72ab7c88 0100664
+> GIT binary patch
+> delta 38
+> pc$|~AnINqgkXVwOVWpr{oSK}Um!f2?02Bc6lQQ!Xiz-c&xB%a}3wHnj
+>
+> delta 4
+> Lc$~A5o*)eX0)PPn
+>
 > diff --git a/dir1/file1 b/dir1/file1
 > index 35ecb4cc6b0ee93fe528ef6e59d81756c1613eec..1db13fde9e286f49e91edf46217fb9113e5ba79d 0100664
 > --- a/dir1/file1
@@ -517,6 +692,16 @@ $ darn diff --combined
 > +Patch: "first"; Path: "file3.ren1"
 > +Patch: "second"; Path: "file3.ren2"
 > +Patch: "third"; Path: "file3"
+> diff --git a/newbinary b/newbinary
+> new file mode 0100664
+> index 000000000000000000000000000000000000000000000000..954f451f8361ad3014cfab4259fa910b4035529f
+> GIT binary patch
+> literal 21
+> cc$`aA$V)9(NXpDhWGJdsNXyJgjmhHz08R1-1poj5
+>
+> literal 0
+> Hc$@<O00001
+>
 $ darn diff
 > diff --git a/dir1/file3 b/dir1/file3
 > index cf6f2dcb5e6a3d5c18c97fac927f453960a78bca..5f8c707e7cd70d4bceb5e037a702896770630dee 0100664
@@ -580,6 +765,35 @@ $ darn pop
 ! Top patch ("second") needs to be refreshed.
 $ darn refresh
 $ darn diff
+> diff --git a/binary1 b/binary1
+> # Renamed to: binary1.renamed
+> diff --git a/binary1 b/binary1.renamed
+> rename from binary1
+> rename to binary1.renamed
+> index 21172b42b3158210ce66f1ad674a8dc5bd82ac06..21172b42b3158210ce66f1ad674a8dc5bd82ac06 0100664
+> diff --git a/binary2 b/binary2.copy
+> copy from binary2
+> copy to binary2.copy
+> index 769be69fe43274f3d72e9d18aab577c197522a4e..769be69fe43274f3d72e9d18aab577c197522a4e 0100664
+> diff --git a/binary3 b/binary3
+> deleted file mode 0100664
+> index 182eeacdcd65d9a7851cf5a4c1585434f94830e7..000000000000000000000000000000000000000000000000
+> GIT binary patch
+> literal 0
+> Hc$@<O00001
+>
+> literal 27
+> ec$`bh%u6h)G`3>MELKQVNCNW|(lT>W^|%0miU{oh
+>
+> diff --git a/binary4 b/binary4
+> index be84aced654704f46614e90b768ecc8a3f802b94..5de9fccb9cb9355b0d2ed9645bd90c5b72ab7c88 0100664
+> GIT binary patch
+> delta 38
+> pc$|~AnINqgkXVwOVWpr{oSK}Um!f2?02Bc6lQQ!Xiz-c&xB%a}3wHnj
+>
+> delta 4
+> Lc$~A5o*)eX0)PPn
+>
 > diff --git a/dir1/file1 b/dir1/file1
 > index 78d3b410c46283067e16f8090a3f85b503ead12a..1db13fde9e286f49e91edf46217fb9113e5ba79d 0100664
 > --- a/dir1/file1
@@ -657,6 +871,16 @@ $ darn diff
 >  file3: is a text file.
 >  Patch: "first"; Path: "file3.ren1"
 > +Patch: "second"; Path: "file3.ren2"
+> diff --git a/newbinary b/newbinary
+> new file mode 0100664
+> index 000000000000000000000000000000000000000000000000..954f451f8361ad3014cfab4259fa910b4035529f
+> GIT binary patch
+> literal 21
+> cc$`aA$V)9(NXpDhWGJdsNXyJgjmhHz08R1-1poj5
+>
+> literal 0
+> Hc$@<O00001
+>
 $ darn pop
 > Patch "first" is now on top.
 $ darn pop
@@ -676,10 +900,15 @@ $ darn push
 > "file1": modified.
 > Patch "first" is now on top.
 $ darn fold second
-? 1
-> Patching file "file1.copy.copy".
-> Patching file "file2.copy.copy".
+> Creating binary file "newbinary".
+> Copying "binary2" to "binary2.copy".
+> Copying "file1.copy" to "file1.copy.copy".
+> Copying "file2.copy" to "file2.copy.copy".
+> Renaming/moving "binary1" to "binary1.renamed".
+> Renaming/moving "file3.ren1" to "file3.ren2".
 > Patching file "file3.ren2".
+> Deleting binary file "binary3".
+> Patching binary file "binary4".
 > Patching file "dir1/file1".
 > Patching file "dir1/file2".
 > Patching file "dir2/file1".
@@ -687,10 +916,15 @@ $ darn fold second
 > Patching file "dir2/subdir1/file1".
 > Patching file "file1".
 > Patching file "file2.copy".
-> first: (top) patch needs refreshing.
 > "second": patch folded into patch "first".
+> Patch "second" is available for restoration.
 $ darn refresh
 $ darn files
+> -:+: binary1 -> binary1.renamed
+> +:+: binary1.renamed <- binary1
+> +:+: binary2.copy <<- binary2
+> -:+: binary3
+>  :+: binary4
 >  :+: dir1/file1
 >  :+: dir1/file2
 >  :+: dir2/file1
@@ -703,7 +937,13 @@ $ darn files
 > +:+: file2.copy.copy <<- file2
 > -:+: file3 -> file3.ren2
 > +:+: file3.ren2 <- file3
+> +:+: newbinary
 $ darn files --combined
+> -:+: binary1
+> +:+: binary1.renamed
+> +:+: binary2.copy
+> -:+: binary3
+>  :+: binary4
 >  :+: dir1/file1
 >  :+: dir1/file2
 >  :+: dir2/file1
@@ -716,7 +956,57 @@ $ darn files --combined
 > +:+: file2.copy.copy
 > -:+: file3
 > +:+: file3.ren2
+> +:+: newbinary
 $ darn diff --combined
+> diff --git a/binary1 b/binary1
+> deleted file mode 0100664
+> index 21172b42b3158210ce66f1ad674a8dc5bd82ac06..000000000000000000000000000000000000000000000000
+> GIT binary patch
+> literal 0
+> Hc$@<O00001
+>
+> literal 27
+> ec$`bh%u6h)G_+#KELKQVNCNW|(lT>W^|%0mU<m5~
+>
+> diff --git a/binary1.renamed b/binary1.renamed
+> new file mode 0100664
+> index 000000000000000000000000000000000000000000000000..21172b42b3158210ce66f1ad674a8dc5bd82ac06
+> GIT binary patch
+> literal 27
+> ec$`bh%u6h)G_+#KELKQVNCNW|(lT>W^|%0mU<m5~
+>
+> literal 0
+> Hc$@<O00001
+>
+> diff --git a/binary2.copy b/binary2.copy
+> new file mode 0100664
+> index 000000000000000000000000000000000000000000000000..769be69fe43274f3d72e9d18aab577c197522a4e
+> GIT binary patch
+> literal 27
+> ec$`bh%u6h)G_qpIELKQVNCNW|(lT>W^|%0mbqMSL
+>
+> literal 0
+> Hc$@<O00001
+>
+> diff --git a/binary3 b/binary3
+> deleted file mode 0100664
+> index 182eeacdcd65d9a7851cf5a4c1585434f94830e7..000000000000000000000000000000000000000000000000
+> GIT binary patch
+> literal 0
+> Hc$@<O00001
+>
+> literal 27
+> ec$`bh%u6h)G`3>MELKQVNCNW|(lT>W^|%0miU{oh
+>
+> diff --git a/binary4 b/binary4
+> index be84aced654704f46614e90b768ecc8a3f802b94..5de9fccb9cb9355b0d2ed9645bd90c5b72ab7c88 0100664
+> GIT binary patch
+> delta 38
+> pc$|~AnINqgkXVwOVWpr{oSK}Um!f2?02Bc6lQQ!Xiz-c&xB%a}3wHnj
+>
+> delta 4
+> Lc$~A5o*)eX0)PPn
+>
 > diff --git a/dir1/file1 b/dir1/file1
 > index 35ecb4cc6b0ee93fe528ef6e59d81756c1613eec..1db13fde9e286f49e91edf46217fb9113e5ba79d 0100664
 > --- a/dir1/file1
@@ -811,8 +1101,47 @@ $ darn diff --combined
 > +file3: is a text file.
 > +Patch: "first"; Path: "file3.ren1"
 > +Patch: "second"; Path: "file3.ren2"
+> diff --git a/newbinary b/newbinary
+> new file mode 0100664
+> index 000000000000000000000000000000000000000000000000..954f451f8361ad3014cfab4259fa910b4035529f
+> GIT binary patch
+> literal 21
+> cc$`aA$V)9(NXpDhWGJdsNXyJgjmhHz08R1-1poj5
+>
+> literal 0
+> Hc$@<O00001
+>
 
 $ darn diff
+> diff --git a/binary1 b/binary1
+> # Renamed to: binary1.renamed
+> diff --git a/binary1 b/binary1.renamed
+> rename from binary1
+> rename to binary1.renamed
+> index 21172b42b3158210ce66f1ad674a8dc5bd82ac06..21172b42b3158210ce66f1ad674a8dc5bd82ac06 0100664
+> diff --git a/binary2 b/binary2.copy
+> copy from binary2
+> copy to binary2.copy
+> index 769be69fe43274f3d72e9d18aab577c197522a4e..769be69fe43274f3d72e9d18aab577c197522a4e 0100664
+> diff --git a/binary3 b/binary3
+> deleted file mode 0100664
+> index 182eeacdcd65d9a7851cf5a4c1585434f94830e7..000000000000000000000000000000000000000000000000
+> GIT binary patch
+> literal 0
+> Hc$@<O00001
+>
+> literal 27
+> ec$`bh%u6h)G`3>MELKQVNCNW|(lT>W^|%0miU{oh
+>
+> diff --git a/binary4 b/binary4
+> index be84aced654704f46614e90b768ecc8a3f802b94..5de9fccb9cb9355b0d2ed9645bd90c5b72ab7c88 0100664
+> GIT binary patch
+> delta 38
+> pc$|~AnINqgkXVwOVWpr{oSK}Um!f2?02Bc6lQQ!Xiz-c&xB%a}3wHnj
+>
+> delta 4
+> Lc$~A5o*)eX0)PPn
+>
 > diff --git a/dir1/file1 b/dir1/file1
 > index 35ecb4cc6b0ee93fe528ef6e59d81756c1613eec..1db13fde9e286f49e91edf46217fb9113e5ba79d 0100664
 > --- a/dir1/file1
@@ -899,21 +1228,36 @@ $ darn diff
 >  file3: is a text file.
 > +Patch: "first"; Path: "file3.ren1"
 > +Patch: "second"; Path: "file3.ren2"
+> diff --git a/newbinary b/newbinary
+> new file mode 0100664
+> index 000000000000000000000000000000000000000000000000..954f451f8361ad3014cfab4259fa910b4035529f
+> GIT binary patch
+> literal 21
+> cc$`aA$V)9(NXpDhWGJdsNXyJgjmhHz08R1-1poj5
+>
+> literal 0
+> Hc$@<O00001
+>
 
 $ darn refresh
 $ darn fold third
-? 1
-> Patching file "file1.copy.copy.copy".
-> Patching file "file2.copy.copy.copy".
+> Copying "file1.copy.copy" to "file1.copy.copy.copy".
+> Copying "file2.copy.copy" to "file2.copy.copy.copy".
+> Renaming/moving "file3.ren2" to "file3".
 > Patching file "file3".
 > Patching file "dir1/file3".
 > Patching file "dir2/file1".
 > Patching file "dir2/file3".
 > Patching file "dir2/subdir1/file1".
-> first: (top) patch needs refreshing.
 > "third": patch folded into patch "first".
+> Patch "third" is available for restoration.
 $ darn refresh
 $ darn files
+> -:+: binary1 -> binary1.renamed
+> +:+: binary1.renamed <- binary1
+> +:+: binary2.copy <<- binary2
+> -:+: binary3
+>  :+: binary4
 >  :+: dir1/file1
 >  :+: dir1/file2
 >  :+: dir1/file3
@@ -929,7 +1273,13 @@ $ darn files
 > +:+: file2.copy.copy <<- file2
 > +:+: file2.copy.copy.copy <<- file2
 >  :+: file3
+> +:+: newbinary
 $ darn files --combined
+> -:+: binary1
+> +:+: binary1.renamed
+> +:+: binary2.copy
+> -:+: binary3
+>  :+: binary4
 >  :+: dir1/file1
 >  :+: dir1/file2
 >  :+: dir1/file3
@@ -945,8 +1295,58 @@ $ darn files --combined
 > +:+: file2.copy.copy
 > +:+: file2.copy.copy.copy
 >  :+: file3
+> +:+: newbinary
 
 $ darn diff --combined
+> diff --git a/binary1 b/binary1
+> deleted file mode 0100664
+> index 21172b42b3158210ce66f1ad674a8dc5bd82ac06..000000000000000000000000000000000000000000000000
+> GIT binary patch
+> literal 0
+> Hc$@<O00001
+>
+> literal 27
+> ec$`bh%u6h)G_+#KELKQVNCNW|(lT>W^|%0mU<m5~
+>
+> diff --git a/binary1.renamed b/binary1.renamed
+> new file mode 0100664
+> index 000000000000000000000000000000000000000000000000..21172b42b3158210ce66f1ad674a8dc5bd82ac06
+> GIT binary patch
+> literal 27
+> ec$`bh%u6h)G_+#KELKQVNCNW|(lT>W^|%0mU<m5~
+>
+> literal 0
+> Hc$@<O00001
+>
+> diff --git a/binary2.copy b/binary2.copy
+> new file mode 0100664
+> index 000000000000000000000000000000000000000000000000..769be69fe43274f3d72e9d18aab577c197522a4e
+> GIT binary patch
+> literal 27
+> ec$`bh%u6h)G_qpIELKQVNCNW|(lT>W^|%0mbqMSL
+>
+> literal 0
+> Hc$@<O00001
+>
+> diff --git a/binary3 b/binary3
+> deleted file mode 0100664
+> index 182eeacdcd65d9a7851cf5a4c1585434f94830e7..000000000000000000000000000000000000000000000000
+> GIT binary patch
+> literal 0
+> Hc$@<O00001
+>
+> literal 27
+> ec$`bh%u6h)G`3>MELKQVNCNW|(lT>W^|%0miU{oh
+>
+> diff --git a/binary4 b/binary4
+> index be84aced654704f46614e90b768ecc8a3f802b94..5de9fccb9cb9355b0d2ed9645bd90c5b72ab7c88 0100664
+> GIT binary patch
+> delta 38
+> pc$|~AnINqgkXVwOVWpr{oSK}Um!f2?02Bc6lQQ!Xiz-c&xB%a}3wHnj
+>
+> delta 4
+> Lc$~A5o*)eX0)PPn
+>
 > diff --git a/dir1/file1 b/dir1/file1
 > index 35ecb4cc6b0ee93fe528ef6e59d81756c1613eec..1db13fde9e286f49e91edf46217fb9113e5ba79d 0100664
 > --- a/dir1/file1
@@ -1065,8 +1465,48 @@ $ darn diff --combined
 > +Patch: "first"; Path: "file3.ren1"
 > +Patch: "second"; Path: "file3.ren2"
 > +Patch: "third"; Path: "file3"
+> diff --git a/newbinary b/newbinary
+> new file mode 0100664
+> index 000000000000000000000000000000000000000000000000..954f451f8361ad3014cfab4259fa910b4035529f
+> GIT binary patch
+> literal 21
+> cc$`aA$V)9(NXpDhWGJdsNXyJgjmhHz08R1-1poj5
+>
+> literal 0
+> Hc$@<O00001
+>
+$ darn validate
 
 $ darn diff
+> diff --git a/binary1 b/binary1
+> # Renamed to: binary1.renamed
+> diff --git a/binary1 b/binary1.renamed
+> rename from binary1
+> rename to binary1.renamed
+> index 21172b42b3158210ce66f1ad674a8dc5bd82ac06..21172b42b3158210ce66f1ad674a8dc5bd82ac06 0100664
+> diff --git a/binary2 b/binary2.copy
+> copy from binary2
+> copy to binary2.copy
+> index 769be69fe43274f3d72e9d18aab577c197522a4e..769be69fe43274f3d72e9d18aab577c197522a4e 0100664
+> diff --git a/binary3 b/binary3
+> deleted file mode 0100664
+> index 182eeacdcd65d9a7851cf5a4c1585434f94830e7..000000000000000000000000000000000000000000000000
+> GIT binary patch
+> literal 0
+> Hc$@<O00001
+>
+> literal 27
+> ec$`bh%u6h)G`3>MELKQVNCNW|(lT>W^|%0miU{oh
+>
+> diff --git a/binary4 b/binary4
+> index be84aced654704f46614e90b768ecc8a3f802b94..5de9fccb9cb9355b0d2ed9645bd90c5b72ab7c88 0100664
+> GIT binary patch
+> delta 38
+> pc$|~AnINqgkXVwOVWpr{oSK}Um!f2?02Bc6lQQ!Xiz-c&xB%a}3wHnj
+>
+> delta 4
+> Lc$~A5o*)eX0)PPn
+>
 > diff --git a/dir1/file1 b/dir1/file1
 > index 35ecb4cc6b0ee93fe528ef6e59d81756c1613eec..1db13fde9e286f49e91edf46217fb9113e5ba79d 0100664
 > --- a/dir1/file1
@@ -1179,3 +1619,14 @@ $ darn diff
 > +Patch: "first"; Path: "file3.ren1"
 > +Patch: "second"; Path: "file3.ren2"
 > +Patch: "third"; Path: "file3"
+> diff --git a/newbinary b/newbinary
+> new file mode 0100664
+> index 000000000000000000000000000000000000000000000000..954f451f8361ad3014cfab4259fa910b4035529f
+> GIT binary patch
+> literal 21
+> cc$`aA$V)9(NXpDhWGJdsNXyJgjmhHz08R1-1poj5
+>
+> literal 0
+> Hc$@<O00001
+>
+$ darn validate
