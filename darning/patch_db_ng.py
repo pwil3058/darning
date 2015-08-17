@@ -1719,19 +1719,21 @@ def do_import_patch(epatch, patch_name, overwrite=False, absorb=False, force=Fal
     '''Import an external patch with the given name (after the top patch)'''
     with open_db(mutable=True) as DB:
         if DB.has_patch_with_name(patch_name):
+            patch = DB.get_named_patch(patch_name)
             if not overwrite:
                 RCTX.stderr.write(_('patch "{0}" already exists\n').format(patch_name))
                 result = CmdResult.ERROR | CmdResult.SUGGEST_RENAME
-                if not DB.is_named_patch_applied(patch_name):
+                if not patch.is_applied:
                     result |= CmdResult.SUGGEST_OVERWRITE
                 return result
-            elif DB.is_named_patch_applied(patch_name):
+            elif patch.is_applied:
                 RCTX.stderr.write(_('patch "{0}" already exists and is applied. Cannot be overwritten.\n').format(patch_name))
                 return CmdResult.ERROR | CmdResult.SUGGEST_RENAME
             else:
-                result = _do_remove_patch(DB, patch_name)
-                if result != CmdResult.OK:
-                    return result
+                try:
+                    DB.remove_patch(patch_name)
+                except DarnItPatchError:
+                    return CmdResult.ERROR
         elif not utils.is_valid_dir_name(patch_name):
             RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(patch_name, utils.ALLOWED_DIR_NAME_CHARS_MSG))
             return CmdResult.ERROR|CmdResult.SUGGEST_RENAME
@@ -1743,7 +1745,10 @@ def do_import_patch(epatch, patch_name, overwrite=False, absorb=False, force=Fal
         else:
             RCTX.stdout.write(_('{0}: patch inserted at start of series.\n').format(patch_name))
         result = patch.do_fold_epatch(epatch, absorb=absorb, force=force)
-        if patch.needs_refresh:
+        if result & CmdResult.SUGGEST_FORCE_OR_ABSORB:
+            DB.pop_top_patch()
+            DB.remove_patch(patch)
+        elif patch.needs_refresh:
             RCTX.stdout.write(_("{0}: (top) patch needs refreshing.\n").format(patch.name))
             result = max(result, CmdResult.WARNING)
         return result
