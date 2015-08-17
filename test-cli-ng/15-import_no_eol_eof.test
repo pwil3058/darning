@@ -1,0 +1,201 @@
+### Copyright (C) 2011 Peter Williams <peter_ono@users.sourceforge.net>
+###
+### This program is free software; you can redistribute it and/or modify
+### it under the terms of the GNU General Public License as published by
+### the Free Software Foundation; version 2 of the License only.
+###
+### This program is distributed in the hope that it will be useful,
+### but WITHOUT ANY WARRANTY; without even the implied warranty of
+### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+### GNU General Public License for more details.
+###
+### You should have received a copy of the GNU General Public License
+### along with this program; if not, write to the Free Software
+### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Test the 'darn import' command for missing newlines at end of files.
+
+Set up a small file tree and initialise a playground therein
+$ darn_test_tree create
+
+Create a unified patch file
+$ mkfile patch1
+< diff --git a/file1 b/file1
+< --- a/file1
+< +++ b/file1
+< @@ -1,2 +1,2 @@
+<  file1: is a text file.
+< -No Patches Applied; Path: "file1"
+< \ No newline at end of file
+< +No Patches Applied; Path: "file1"Patch: "first"; Path: "file1"
+< diff --git a/file2 b/file2
+< --- a/file2
+< +++ b/file2
+< @@ -1,2 +1,2 @@
+<  file2: is a text file.
+< -No Patches Applied; Path: "file2"
+< \ No newline at end of file
+< +No Patches Applied; Path: "file2"Patch: "first"; Path: "file2"
+< \ No newline at end of file
+< diff --git a/file3 b/file3
+< --- a/file3
+< +++ b/file3
+< @@ -1 +1,2 @@
+<  file3: is a text file.
+< +Patch: "first"; Path: "file3"
+< diff --git a/file4 b/file4
+< --- a/file4
+< +++ b/file4
+< @@ -1 +1,2 @@
+<  file4: is a text file.
+< +Patch: "first"; Path: "file4"
+< \ No newline at end of file
+
+$ darn init --ng
+$ darn_test_tree modify --no_newline file1 file2
+! No patches applied.
+$ darn import patch1
+> patch1: patch inserted at start of series.
+> Patching file "file1".
+> Patching file "file2".
+> Patching file "file3".
+> Patching file "file4".
+> Imported "patch1" as patch "patch1".
+$ darn files
+>  :+: file1
+>  :+: file2
+>  :+: file3
+>  :+: file4
+$ darn refresh
+$ darn diff
+> diff --git a/file1 b/file1
+> index d2b8abbff75191c4f74d75c6d2ecdfbf6bb95f5f..be28ac01d97e817fd84faf189d55735ab9cddd14 0100664
+> --- a/file1
+> +++ b/file1
+> @@ -1,2 +1,2 @@
+>  file1: is a text file.
+> -No Patches Applied; Path: "file1"
+> \ No newline at end of file
+> +No Patches Applied; Path: "file1"Patch: "first"; Path: "file1"
+> diff --git a/file2 b/file2
+> index 72b6c23e5ed175f807b857c8549010c1a17eaa41..2330d4e549a27b59e034b5102292a9192a470151 0100664
+> --- a/file2
+> +++ b/file2
+> @@ -1,2 +1,2 @@
+>  file2: is a text file.
+> -No Patches Applied; Path: "file2"
+> \ No newline at end of file
+> +No Patches Applied; Path: "file2"Patch: "first"; Path: "file2"
+> \ No newline at end of file
+> diff --git a/file3 b/file3
+> index da7f3c7d1fb148fdfadc254b6fdb3b8f41628fbd..9c960409c7a6b216ebfa5016214e6d3ffb0bd312 0100664
+> --- a/file3
+> +++ b/file3
+> @@ -1 +1,2 @@
+>  file3: is a text file.
+> +Patch: "first"; Path: "file3"
+> diff --git a/file4 b/file4
+> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..ec644e9f167dd545774b1abb38fd85ad8390262e 0100664
+> --- a/file4
+> +++ b/file4
+> @@ -1 +1,2 @@
+>  file4: is a text file.
+> +Patch: "first"; Path: "file4"
+> \ No newline at end of file
+$ darn pop
+> There are now no patches applied.
+
+
+Create a context patch file
+$ mkfile patch2
+< diff a/file1 b/file1
+< *** a/file1
+< --- b/file1
+< ***************
+< *** 1,2 ****
+<   file1: is a text file.
+< ! No Patches Applied; Path: "file1"
+< \ No newline at end of file
+< --- 1,2 ----
+<   file1: is a text file.
+< ! No Patches Applied; Path: "file1"Patch: "first"; Path: "file1"
+< diff a/file2 b/file2
+< *** a/file2
+< --- b/file2
+< ***************
+< *** 1,2 ****
+<   file2: is a text file.
+< ! No Patches Applied; Path: "file2"
+< \ No newline at end of file
+< --- 1,2 ----
+<   file2: is a text file.
+< ! No Patches Applied; Path: "file2"Patch: "first"; Path: "file2"
+< \ No newline at end of file
+< diff a/file3 b/file3
+< *** a/file3
+< --- b/file3
+< ***************
+< *** 1,1 ****
+<   file3: is a text file.
+< --- 1,2 ----
+<   file3: is a text file.
+< + Patch: "first"; Path: "file3"
+< diff a/file4 b/file4
+< *** a/file4
+< --- b/file4
+< ***************
+< *** 1,1 ****
+<   file4: is a text file.
+< --- 1,2 ----
+<   file4: is a text file.
+< + Patch: "first"; Path: "file4"
+< \ No newline at end of file
+
+$ darn import -p 1 patch2
+> patch2: patch inserted at start of series.
+> Patching file "file1".
+> Patching file "file2".
+> Patching file "file3".
+> Patching file "file4".
+> Imported "patch2" as patch "patch2".
+$ darn files
+>  :+: file1
+>  :+: file2
+>  :+: file3
+>  :+: file4
+$ darn refresh
+$ darn diff
+> diff --git a/file1 b/file1
+> index d2b8abbff75191c4f74d75c6d2ecdfbf6bb95f5f..be28ac01d97e817fd84faf189d55735ab9cddd14 0100664
+> --- a/file1
+> +++ b/file1
+> @@ -1,2 +1,2 @@
+>  file1: is a text file.
+> -No Patches Applied; Path: "file1"
+> \ No newline at end of file
+> +No Patches Applied; Path: "file1"Patch: "first"; Path: "file1"
+> diff --git a/file2 b/file2
+> index 72b6c23e5ed175f807b857c8549010c1a17eaa41..2330d4e549a27b59e034b5102292a9192a470151 0100664
+> --- a/file2
+> +++ b/file2
+> @@ -1,2 +1,2 @@
+>  file2: is a text file.
+> -No Patches Applied; Path: "file2"
+> \ No newline at end of file
+> +No Patches Applied; Path: "file2"Patch: "first"; Path: "file2"
+> \ No newline at end of file
+> diff --git a/file3 b/file3
+> index da7f3c7d1fb148fdfadc254b6fdb3b8f41628fbd..9c960409c7a6b216ebfa5016214e6d3ffb0bd312 0100664
+> --- a/file3
+> +++ b/file3
+> @@ -1 +1,2 @@
+>  file3: is a text file.
+> +Patch: "first"; Path: "file3"
+> diff --git a/file4 b/file4
+> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..ec644e9f167dd545774b1abb38fd85ad8390262e 0100664
+> --- a/file4
+> +++ b/file4
+> @@ -1 +1,2 @@
+>  file4: is a text file.
+> +Patch: "first"; Path: "file4"
+> \ No newline at end of file
