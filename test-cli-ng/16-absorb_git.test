@@ -1,0 +1,189 @@
+### Copyright (C) 2011 Peter Williams <peter_ono@users.sourceforge.net>
+###
+### This program is free software; you can redistribute it and/or modify
+### it under the terms of the GNU General Public License as published by
+### the Free Software Foundation; version 2 of the License only.
+###
+### This program is distributed in the hope that it will be useful,
+### but WITHOUT ANY WARRANTY; without even the implied warranty of
+### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+### GNU General Public License for more details.
+###
+### You should have received a copy of the GNU General Public License
+### along with this program; if not, write to the Free Software
+### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Test the 'darn absorb' command.
+
+Create some test files and start a mercurial repository.
+$ darn_test_tree create
+$ git init > /dev/null
+$ git add .
+$ git commit -m "test" > /dev/null
+$ git status --short
+
+Initialise a playground and try again without creating a patch
+$ darn init --ng
+
+Create a patch and add files
+$ darn new first --descr "First patch created."
+$ darn add file1 file2
+> file1: file added to patch "first".
+> file2: file added to patch "first".
+$ darn files
+>  :+: file1
+>  :+: file2
+$ darn_test_tree modify file1 file2
+$ git status --short
+>  M file1
+>  M file2
+> ?? .darning.dbd/
+$ git log --pretty=format:"%s"
+> test
+$ darn series
+> ?: first
+
+Try absorbing an unrefreshed patch
+$ ls > lsop_start
+$ darn absorb
+? 2
+! first: requires refreshing
+$ git status --short
+>  M file1
+>  M file2
+> ?? .darning.dbd/
+> ?? lsop_start
+$ git log --pretty=format:"%s"
+> test
+$ darn series
+> ?: first
+$ ls > lsop_now
+$ diff lsop_now lsop_start
+? 1
+> 16d15
+> < lsop_start
+
+Refresh and try again
+$ darn refresh
+$ darn absorb
+> Patch "first" removed (but available for restoration).
+$ git status --short
+> ?? .darning.dbd/
+> ?? lsop_now
+> ?? lsop_start
+$ git log --pretty=format:"%s"
+> First patch created.
+> test
+$ darn series
+$ ls > lsop_now
+$ diff lsop_now lsop_start
+? 1
+> 16,17d15
+> < lsop_now
+> < lsop_start
+Now check git status more throroughly
+$ git show --pretty=format:"%s" master@{0}
+> First patch created.
+> diff --git a/file1 b/file1
+> index 9d588ef..ad6359c 100644
+> --- a/file1
+> +++ b/file1
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1"
+> diff --git a/file2 b/file2
+> index cd1c1e8..b30b9de 100644
+> --- a/file2
+> +++ b/file2
+> @@ -1 +1,2 @@
+>  file2: is a text file.
+> +Patch: "first"; Path: "file2"
+$ git diff master@{1} master@{0}
+> diff --git a/file1 b/file1
+> index 9d588ef..ad6359c 100644
+> --- a/file1
+> +++ b/file1
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1"
+> diff --git a/file2 b/file2
+> index cd1c1e8..b30b9de 100644
+> --- a/file2
+> +++ b/file2
+> @@ -1 +1,2 @@
+>  file2: is a text file.
+> +Patch: "first"; Path: "file2"
+
+$ darn new second --desc "Second patch"
+$ darn add nonexistent
+> nonexistent: file added to patch "second".
+$ mkfile nonexistent
+< "create a new file"
+$ darn refresh
+$ darn new third --desc "Third patch"
+$ darn add dir1/file1 binary3
+> dir1/file1: file added to patch "third".
+> binary3: file added to patch "third".
+$ darn_test_tree modify dir1/file1 binary3
+$ darn refresh
+$ darn new fourth --desc "Fourth patch"
+$ darn add dir1/file1 dir2/file3 file1
+> dir1/file1: file added to patch "fourth".
+> dir2/file3: file added to patch "fourth".
+> file1: file added to patch "fourth".
+$ darn_test_tree modify dir1/file1 dir2/file3 file1
+$ darn refresh
+$ darn pop
+> Patch "third" is now on top.
+
+$ git status --short
+>  M binary3
+>  M dir1/file1
+> ?? .darning.dbd/
+> ?? lsop_now
+> ?? lsop_start
+> ?? nonexistent
+$ darn absorb
+> Patch "second" removed (but available for restoration).
+> Patch "third" removed (but available for restoration).
+$ git log --pretty=format:"%s"
+> Third patch
+> Second patch
+> First patch created.
+> test
+$ git status --short
+> ?? .darning.dbd/
+> ?? lsop_now
+> ?? lsop_start
+$ git show --pretty=format:"%s" master@{0}
+> Third patch
+> diff --git a/binary3 b/binary3
+> index 182eeac..64db301 100644
+> Binary files a/binary3 and b/binary3 differ
+> diff --git a/dir1/file1 b/dir1/file1
+> index 35ecb4c..a3bfc72 100644
+> --- a/dir1/file1
+> +++ b/dir1/file1
+> @@ -1 +1,2 @@
+>  dir1/file1: is a text file.
+> +Patch: "third"; Path: "dir1/file1"
+$ git show --pretty=format:"%s" master@{1}
+> Second patch
+> diff --git a/nonexistent b/nonexistent
+> new file mode 100644
+> index 0000000..3fcf851
+> --- /dev/null
+> +++ b/nonexistent
+> @@ -0,0 +1 @@
+> +"create a new file"
+$ darn push
+> "dir1/file1": modified.
+> "dir2/file3": modified.
+> "file1": modified.
+> Patch "fourth" is now on top.
+$ darn_test_tree modify file4
+$ git add file4
+$ darn_test_tree modify file4
+$ darn absorb
+? 2
+! Index is NOT empty

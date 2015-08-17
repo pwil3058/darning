@@ -24,6 +24,7 @@ import collections
 import shutil
 import copy
 import difflib
+import tempfile
 
 from contextlib import contextmanager
 
@@ -1885,6 +1886,97 @@ def do_rename_file_in_top_patch(file_path, new_file_path, force=False, overwrite
             return CmdResult.ERROR
         RCTX.stdout.write(_("{0}: file renamed to \"{1}\" in patch \"{2}\".\n").format(rel_subdir(file_path), rel_subdir(new_file_path), top_patch.name))
         return CmdResult.OK
+
+def do_scm_absorb_applied_patches(force=False, with_timestamps=False):
+    with open_db(mutable=True) as DB:
+        if not scm_ifce.get_ifce().in_valid_pgnd:
+            RCTX.stderr.write(_("Sources not under control of known SCM\n"))
+            return CmdResult.ERROR
+        if not DB.applied_patches_data:
+            RCTX.stderr.write(_("There are no patches applied.\n"))
+            return CmdResult.ERROR
+        is_ready, msg = scm_ifce.get_ifce().is_ready_for_import()
+        if not is_ready:
+            RCTX.stderr.write(_(msg))
+            return CmdResult.ERROR
+        problem_count = 0
+        for applied_patch in DB.iterate_applied_patches():
+            if applied_patch.needs_refresh:
+                problem_count += 1
+                RCTX.stderr.write("{0}: requires refreshing\n".format(applied_patch.name))
+            if not applied_patch.description:
+                problem_count += 1
+                RCTX.stderr.write("{0}: has no description\n".format(applied_patch.name))
+        if problem_count > 0:
+            return CmdResult.ERROR
+        tempdir = tempfile.mkdtemp()
+        patch_file_names = list()
+        applied_patch_names = list()
+        drop_atws = options.get("absorb", "drop_added_tws")
+        has_atws = False
+        empty_patch_count = 0
+        for applied_patch in DB.iterate_applied_patches():
+            fhandle, patch_file_name = tempfile.mkstemp(dir=tempdir)
+            text_patch = TextPatch(applied_patch, with_timestamps=with_timestamps, with_stats=False)
+            if drop_atws:
+                atws_reports = text_patch.fix_trailing_whitespace()
+                for file_path, atws_lines in atws_reports:
+                    RCTX.stdout.write(_("\"{0}\": adds trailing white space to \"{1}\" at line(s) {{{2}}}: removed.\n").format(applied_patch.name, rel_subdir(file_path), ", ".join([str(line) for line in atws_lines])))
+            else:
+                atws_reports = text_patch.report_trailing_whitespace()
+                for file_path, atws_lines in atws_reports:
+                    RCTX.stderr.write(_("\"{0}\": adds trailing white space to \"{1}\" at line(s) {{{2}}}.\n").format(applied_patch.name, rel_subdir(file_path), ", ".join([str(line) for line in atws_lines])))
+                has_atws = has_atws or len(atws_reports) > 0
+            os.write(fhandle, str(text_patch))
+            os.close(fhandle)
+            if len(text_patch.diff_pluses) == 0:
+                RCTX.stderr.write(_("\"{0}\": has no absorbable content.\n").format(applied_patch.name))
+                empty_patch_count += 1
+            patch_file_names.append(patch_file_name)
+            applied_patch_names.append(applied_patch.name)
+        if not force and has_atws:
+            shutil.rmtree(tempdir)
+            return CmdResult.ERROR
+        if empty_patch_count > 0:
+            shutil.rmtree(tempdir)
+            return CmdResult.ERROR
+        while len(DB.applied_patches_data) > 0:
+            try:
+                DB.pop_top_patch()
+            except DarnItNoPatchesApplied:
+                RCTX.stderr.write(_("There are no applied patches to pop."))
+                return CmdResult.ERROR
+            except DarnItPatchNeedsRefresh:
+                RCTX.stderr.write(_("Top patch (\"{0}\") needs to be refreshed.\n").format(DB.top_patch_name))
+                return CmdResult.ERROR_SUGGEST_FORCE_OR_REFRESH
+        ret_code = CmdResult.OK
+        count = 0
+        for patch_file_name in patch_file_names:
+            result = scm_ifce.get_ifce().do_import_patch(patch_file_name)
+            RCTX.stdout.write(result.stdout)
+            RCTX.stderr.write(result.stderr)
+            if result.ecode != 0:
+                RCTX.stderr.write("Aborting")
+                ret_code = CmdResult.ERROR
+                break
+            count += 1
+        retain_copy = options.get("remove", "keep_patch_backup")
+        for patch_name in applied_patch_names[0:count]:
+            try:
+                DB.remove_named_patch(patch_name, retain_copy=retain_copy)
+            except DarnItPatchIsApplied:
+                RCTX.stderr.write(_("{0}: is applied and cannot be removed.\n").format(patch_name))
+                ret_code = CmdResult.ERROR
+                break
+            if retain_copy:
+                RCTX.stdout.write(_("Patch \"{0}\" removed (but available for restoration).\n").format(patch_name))
+            else:
+                RCTX.stdout.write(_("Patch \"{0}\" removed.\n").format(patch_name))
+        while count < len(applied_patch_names):
+            DB.push_next_patch()
+            count += 1
+        shutil.rmtree(tempdir)
+        return ret_code
 
 def do_unapply_top_patch(force=False):
     return do_pop_top_patch(force=force)
