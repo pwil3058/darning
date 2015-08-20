@@ -1,0 +1,77 @@
+### Copyright (C) 2011 Peter Williams <peter_ono@users.sourceforge.net>
+###
+### This program is free software; you can redistribute it and/or modify
+### it under the terms of the GNU General Public License as published by
+### the Free Software Foundation; version 2 of the License only.
+###
+### This program is distributed in the hope that it will be useful,
+### but WITHOUT ANY WARRANTY; without even the implied warranty of
+### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+### GNU General Public License for more details.
+###
+### You should have received a copy of the GNU General Public License
+### along with this program; if not, write to the Free Software
+### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Test the 'darn duplicate' command.
+
+Create test file tree.
+$ darn_test_tree create
+
+Make a playground and patch
+$ darn init --ng
+$ darn new first --descr="first patch"
+$ darn add file4 > /dev/null
+$ darn_test_tree modify file4
+$ darn copy file3 file3.copy > /dev/null
+$ darn_test_tree modify file3.copy
+$ darn rename file5 file5.rename > /dev/null
+$ darn add binary1 > /dev/null
+$ darn_test_tree modify binary1
+$ darn validate
+$ darn series
+> ?: first
+
+Try to duplicate an unrefreshed patch
+$ darn duplicate --descr "a duplication of first" first first.duplicated
+? 10
+! first: patch needs refresh.
+! Aborted.
+$ darn validate
+$ darn series
+> ?: first
+
+Refresh and try again
+$ darn refresh
+$ darn validate
+$ darn series
+> +: first
+$ darn diff > first.diff
+$ darn duplicate --descr "a duplication of first" first first.duplicated
+> first: patch duplicated as "first.duplicated".
+$ darn series
+> +: first
+>  : first.duplicated
+$ darn validate
+
+Now check that the duplicate patch applies OK
+$ darn pop
+> There are now no patches applied.
+$ darn series
+>  : first
+>  : first.duplicated
+$ darn remove first
+> Patch "first" removed (but available for restoration).
+$ darn series
+>  : first.duplicated
+$ darn push
+> "file5": renamed as "file5.rename".
+> "file5.rename": renamed from "file5".
+> "file3.copy": copied from "file3" and modified.
+> "binary1": binary file replaced.
+> "file4": modified.
+> Patch "first.duplicated" is now on top.
+$ darn series
+> +: first.duplicated
+$ darn diff > first.duplicated.diff
+$ diff first.diff first.duplicated.diff

@@ -50,6 +50,9 @@ _BLOB_REF_COUNT_FILE_PATH = os.path.join(_DIR_PATH, "blob_ref_counts")
 _DESCRIPTION_FILE_PATH = os.path.join(_DIR_PATH, "description")
 _LOCK_FILE_PATH = os.path.join(_DIR_PATH, "lock_db_ng")
 
+BLOB_DIR_PATH = lambda git_hash: os.path.join(_BLOBS_DIR_PATH, git_hash[:2])
+BLOB_PATH = lambda git_hash: os.path.join(_BLOBS_DIR_PATH, git_hash[:2], git_hash[2:])
+
 _SUB_DIR = None
 
 def rel_subdir(file_path):
@@ -379,6 +382,16 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
         self.path < other.path
     def __gt__(self, other):
         self.path > other.path
+    def clone_for_patch(self, for_patch):
+        orig = self.patch.database.clone_stored_content_data(self.orig)
+        darned = self.patch.database.clone_stored_content_data(self.darned)
+        if self.came_from:
+            cf_orig = self.patch.database.clone_stored_content_data(self.came_from.orig)
+            came_from = _CameFromData(self.came_from.file_path, self.came_from.as_rename, cf_orig)
+        else:
+            came_from = None
+        clone_data = _FileData(orig=orig, darned=darned, came_from=came_from, renamed_as=self.renamed_as, diff=self.diff, diff_wrt=self.diff_wrt)
+        return self.__class__(self.path, clone_data, for_patch)
     @classmethod
     def new(cls, file_path, patch, overlaps=OverlapData()):
         # NB: presence of overlaps implies absorb
@@ -607,6 +620,13 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
             if file_data:
                 return FileData(self.path, file_data, patch)
         return None
+    def get_reconciliation_paths(self):
+        assert self.patch.is_top_patch
+        # make it hard for the user to (accidentally) create these files if they don't exist
+        before = BLOB_PATH(self.came_from.orig.git_hash) if self.came_from else (BLOB_PATH(self.orig.git_hash) if self.orig else "/dev/null")
+        stashed = BLOB_PATH(self.darned.git_hash) if self.darned else "/dev/null"
+        # The user has to be able to cope with the main file not existing (meld can)
+        return _O_IP_S_TRIPLET(before, self.path, stashed)
     def get_table_row(self):
         return fsdb.Data(self.path, FileStatus(self.presence, self.validity), self.related_file_data)
     def get_refresh_after_data(self, overlapping_file, with_timestamps=False):
@@ -795,6 +815,9 @@ class Patch(mixins.WrapperMixin):
     @property
     def is_applied(self):
         return self.persistent_patch_data in self.database.applied_patches_data
+    @property
+    def is_blocked_by_guard(self):
+        return _guards_block_patch(self.database.selected_guards, self)
     @property
     def is_top_patch(self):
         return self.persistent_patch_data is self.database.top_patch.persistent_patch_data
@@ -1242,6 +1265,11 @@ class CombinedPatch(mixins.WrapperMixin):
                     continue
                 text += file_data.get_diff_text()
         return text
+    def get_diff_pluses(self, file_paths=None):
+        if file_paths:
+            return [self.get_file(file_path).get_diff_plus() for file_path in file_paths]
+        else:
+            return [file_data.get_diff_plus() for file_data in self.iterate_files_sorted()]
 
 _ContentState = collections.namedtuple("_ContentState", ["orphans", "missing", "bad_content"])
 
@@ -1292,6 +1320,9 @@ class DataBase(mixins.WrapperMixin):
         next_patch_data = self._next_patch_data()
         return next_patch_data.name if next_patch_data else None
     @property
+    def is_pushable(self):
+        return self._next_patch_data() is not None
+    @property
     def combined_patch(self):
         return CombinedPatch(self.combined_patch_data, self) if self.combined_patch_data else None
     def create_new_patch(self, patch_name, description):
@@ -1309,6 +1340,25 @@ class DataBase(mixins.WrapperMixin):
         assert new_patch in self._PPD.patch_series_data
         self._PPD.combined_patch_data = _CombinedPatchData(self._PPD.combined_patch_data)
         return Patch(new_patch, self)
+    def duplicate_patch(self, patch, new_patch_name, new_description):
+        assert self.is_writable
+        if _named_patch_is_in_list(self._PPD.patch_series_data, new_patch_name):
+            raise DarnItPatchExists(patch_name=new_patch_name)
+        new_patch_data = _PatchData(new_patch_name, new_description)
+        if self._PPD.applied_patches_data:
+            top_patch_index = self._PPD.patch_series_data.index(self._PPD.applied_patches_data[-1])
+            self._PPD.patch_series_data.insert(top_patch_index + 1, new_patch_data)
+        else:
+            self._PPD.patch_series_data.insert(0, new_patch_data)
+        new_patch = Patch(new_patch_data, self)
+        for file_data in patch.iterate_files():
+            new_patch.add_file(file_data.clone_for_patch(new_patch))
+        return new_patch
+    def duplicate_named_patch(self, patch_name, new_patch_name, new_description):
+        patch = self.get_named_patch(patch_name)
+        if patch.needs_refresh:
+            raise DarnItPatchNeedsRefresh(patch_name=patch.name)
+        return self.duplicate_patch(patch, new_patch_name, new_description)
     def remove_patch(self, patch, retain_copy=False):
         assert self.is_writable
         if patch.is_applied:
@@ -1402,7 +1452,7 @@ class DataBase(mixins.WrapperMixin):
                 key1 = os.path.basename(base_dir_path)
                 for file_name in file_names:
                     if utils.get_git_hash_for_file(os.path.join(base_dir_path, file_name)) != key1 + file_name:
-                        bad_contents.append(key1 + file_name)
+                        bad_content.append(key1 + file_name)
                     try:
                         if self.blob_ref_counts[key1][file_name] < 1:
                             orphans.append(key1 + file_name)
@@ -1426,10 +1476,12 @@ class DataBase(mixins.WrapperMixin):
     def store_content(self, content):
         git_hash = utils.get_git_hash_for_content(content)
         if self.incr_ref_count_for_hash(git_hash) == 1:
-            blob_dir_path = os.path.join(_BLOBS_DIR_PATH, git_hash[:2])
+            blob_dir_path = BLOB_DIR_PATH(git_hash)
             if not os.path.exists(blob_dir_path):
                 os.mkdir(blob_dir_path)
-            open(os.path.join(blob_dir_path, git_hash[2:]), "w").write(content)
+            blob_file_path = BLOB_PATH(git_hash)
+            open(blob_file_path, "w").write(content)
+            utils.do_turn_off_write_for_file(blob_file_path)
         return git_hash
     def store_file_content(self, file_path, overlaps=OverlapData()):
         overlapped_patch = overlaps.unrefreshed.get(file_path, None)
@@ -1460,7 +1512,7 @@ class DataBase(mixins.WrapperMixin):
                 del self.blob_ref_counts[dir_name][file_name]
     @staticmethod
     def get_content_for(obj):
-        return "" if obj is None else open(os.path.join(_BLOBS_DIR_PATH, obj.git_hash[:2], obj.git_hash[2:]), "r").read()
+        return "" if obj is None else open(BLOB_PATH(obj.git_hash), "r").read()
     def remove_named_patch(self, patch_name, retain_copy=False):
         patch = self.get_named_patch(patch_name)
         return self.remove_patch(patch, retain_copy=retain_copy)
@@ -1664,6 +1716,30 @@ def do_create_new_patch(patch_name, description):
             return CmdResult.WARNING
         return CmdResult.OK
 
+def do_delete_files_in_top_patch(file_paths):
+    with open_db(mutable=True) as DB:
+        top_patch = _get_top_patch(DB)
+        if top_patch is None:
+            return CmdResult.ERROR
+        nonexists = 0
+        ioerrors = 0
+        for file_path in iter_prepending_subdir(file_paths):
+            if not os.path.exists(file_path):
+                RCTX.stderr.write(_('{0}: file does not exist. Ignored.\n').format(rel_subdir(file_path)))
+                nonexists += 1
+                continue
+            if not top_patch.has_file_with_path(file_path):
+                top_patch.add_file(FileData.new(file_path, top_patch))
+            try:
+                os.remove(file_path)
+            except OSError as edata:
+                RCTX.stderr.write(edata)
+                ioerrors += 1
+                continue
+            top_patch.get_file(file_path).do_refresh()
+            RCTX.stdout.write(_('{0}: file deleted within patch "{1}".\n').format(rel_subdir(file_path), top_patch.name))
+        return CmdResult.OK if (ioerrors == 0 and len(file_paths) > nonexists) else CmdResult.ERROR
+
 def do_drop_files_fm_patch(patch_name, file_paths):
     """Drop the named file from the named patch"""
     with open_db(mutable=True) as DB:
@@ -1685,6 +1761,28 @@ def do_drop_files_fm_patch(patch_name, file_paths):
                 RCTX.stderr.write(_("{0}: file not in patch \"{1}\": ignored.\n").format(file_path_rel_subdir, patch.name))
                 issued_warning = True
         return CmdResult.WARNING if issued_warning else CmdResult.OK
+
+def do_duplicate_patch(patch_name, as_patch_name, new_description):
+    '''Create a duplicate of the named patch with a new name and new description (after the top patch)'''
+    with open_db(mutable=True) as DB:
+        if not utils.is_valid_dir_name(as_patch_name):
+            RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(as_patch_name, utils.ALLOWED_DIR_NAME_CHARS_MSG))
+            return CmdResult.ERROR|CmdResult.SUGGEST_RENAME
+        try:
+            new_patch = DB.duplicate_named_patch(patch_name, as_patch_name, new_description)
+        except DarnItUnknownPatch:
+            RCTX.stderr.write(_("{0}: patch is NOT known.\n").format(patch_name))
+            return CmdResult.ERROR
+        except DarnItPatchNeedsRefresh as edata:
+            RCTX.stderr.write(_('{0}: patch needs refresh.\n').format(patch_name))
+            RCTX.stderr.write(_('Aborted.\n'))
+            return CmdResult.ERROR_SUGGEST_REFRESH
+        except DarnItPatchExists:
+            RCTX.stderr.write(_('{0}: patch already in series.\n').format(as_patch_name))
+            RCTX.stderr.write(_('Aborted.\n'))
+            return CmdResult.ERROR | CmdResult.SUGGEST_RENAME
+        RCTX.stdout.write(_('{0}: patch duplicated as "{1}".\n').format(patch_name, new_patch.name))
+        return CmdResult.OK
 
 def do_fold_named_patch(patch_name, absorb=False, force=False, retain_copy=None):
     '''Fold a name internal patch into the top patch.'''
@@ -1988,6 +2086,19 @@ def do_unapply_top_patch(force=False):
 
 ### GETs
 
+def all_applied_patches_refreshed():
+    # NB: the exception handling is for the case we're not in a darning pgnd
+    try:
+        with open_db(mutable=False) as DB:
+            if len(DB.applied_patches_data) == 0:
+                return False
+            for applied_patch in DB.iterate_applied_patches():
+                if applied_patch.needs_refresh:
+                    return False
+            return True
+    except OSError:
+        return False
+
 def report_blobs_status():
     with open_db(mutable=False) as DB:
         content_check = DB.check_content()
@@ -2004,30 +2115,54 @@ def report_blobs_status():
         if content_check.bad_content:
             retval = CmdResult.ERROR
             for bad_content in content_check.bad_content:
-                RCTX.stderr.write("{0}: content is invalid.\n".format(missing))
+                RCTX.stderr.write("{0}: content is invalid.\n".format(bad_content))
         for git_hex_hash, count in ref_count_check:
             retval = CmdResult.ERROR
             RCTX.stderr.write("{0}: reference count is out by {1}.\n".format(git_hex_hash, count))
         return retval
+
+def get_applied_patch_count():
+    # NB: the exception handling is for the case we're not in a darning pgnd
+    try:
+        with open_db(mutable=False) as DB:
+            count = len(DB.applied_patches_data)
+    except OSError:
+        count = 0
+    return count
 
 def get_combined_diff_for_files(file_paths, with_timestamps=False):
     with open_db(mutable=False) as DB:
         if DB.combined_patch is None:
             RCTX.stderr.write("No patches applied.\n")
             return ""
-        file_paths = list(iter_prepending_subdir(file_paths))
-        unknown_file_paths = [file_path for file_path in file_paths if not DB.combined_patch.has_file_with_path(file_path)]
-        if unknown_file_paths:
-            for file_path in unknown_file_paths:
-                RCTX.stderr.write("{0}: file is not in any applied patch.\n".format(rel_subdir(file_path)))
-            return ""
+        if file_paths:
+            file_paths = list(iter_prepending_subdir(file_paths))
+            unknown_file_paths = [file_path for file_path in file_paths if not DB.combined_patch.has_file_with_path(file_path)]
+            if unknown_file_paths:
+                for file_path in unknown_file_paths:
+                    RCTX.stderr.write("{0}: file is not in any applied patch.\n".format(rel_subdir(file_path)))
+                return ""
         return DB.combined_patch.get_text_diff(file_paths)
+
+def get_combined_diff_pluses_for_files(file_paths, with_timestamps=False):
+    with open_db(mutable=False) as DB:
+        if DB.combined_patch is None:
+            RCTX.stderr.write("No patches applied.\n")
+            return ""
+        if file_paths:
+            file_paths = list(iter_prepending_subdir(file_paths))
+            unknown_file_paths = [file_path for file_path in file_paths if not DB.combined_patch.has_file_with_path(file_path)]
+            if unknown_file_paths:
+                for file_path in unknown_file_paths:
+                    RCTX.stderr.write("{0}: file is not in any applied patch.\n".format(rel_subdir(file_path)))
+                return ""
+        return DB.combined_patch.get_diff_pluses(file_paths)
 
 def get_combined_patch_file_table():
     """Get a table of file data for all applied patches"""
     with open_db(mutable=False) as DB:
         if DB.combined_patch is None:
-            assert len(DB.applied_patches) == 0
+            assert len(DB.applied_patches_data) == 0
             return []
         return DB.combined_patch.get_files_table()
 
@@ -2050,17 +2185,75 @@ def get_diff_for_files(file_paths, patch_name, with_timestamps=False):
         diffs = (file_data.get_diff_text(with_timestamps=with_timestamps) for file_data in file_iter)
         return "".join(diffs)
 
+def get_diff_pluses_for_files(file_paths, patch_name, with_timestamps=False):
+    with open_db(mutable=False) as DB:
+        patch = _get_named_or_top_patch(patch_name, DB)
+        if patch is None:
+            return False
+        if file_paths:
+            base_file_paths = list(iter_prepending_subdir(file_paths))
+            file_paths_set = patch.get_file_paths_set(base_file_paths)
+            if len(base_file_paths) != len(file_paths_set):
+                for file_path, base_file_path in zip(file_paths, base_file_paths):
+                    if base_file_path not in file_paths_set:
+                        RCTX.stderr.write("{0}: file is not in patch \"{1}\".\n".format(file_path, patch.name))
+                return False
+            file_iter = (patch.get_file(file_path) for file_path in base_file_paths)
+        else:
+            file_iter = patch.iterate_files_sorted()
+        return [file_data.get_diff_plus(with_timestamps=with_timestamps) for file_data in file_iter]
+
+def get_filepaths_not_in_patch(patch_name, file_paths):
+    '''
+    Return the names of the files in file_paths not in the named patch.
+    '''
+    if not file_paths:
+        return []
+    with open_db(mutable=False) as DB:
+        if patch_name:
+            patch_file_paths_set = DB.get_named_patch(patch_name).get_file_paths_set()
+        else:
+            patch_file_paths_set = DB.top_patch.get_file_paths_set()
+        return [file_path for file_path in file_paths if file_path not in patch_file_paths_set]
+
 def get_named_or_top_patch_name(patch_name):
     """Return the name of the named or top patch if patch_name is None or None if patch_name is not a valid patch_name"""
     with open_db(mutable=False) as DB:
         patch = _get_named_or_top_patch(patch_name, DB)
         return None if patch is None else patch.name
 
+def get_patch_description(patch_name):
+    with open_db(mutable=False) as DB:
+        return DB.get_named_patch(patch_name).description
+
 def get_patch_file_table(patch_name=None):
     with open_db(mutable=False) as DB:
         patch = DB.top_patch if patch_name is None else DB.get_named_patch(patch_name)
-        return patch.get_files_table()
+        return patch.get_files_table() if patch else []
 
 def get_patch_table_data():
     with open_db(mutable=False) as DB:
         return [patch.get_table_row() for patch in DB.iterate_series()]
+
+def get_reconciliation_paths(file_path):
+    with open_db(mutable=False) as DB:
+        return DB.top_patch.get_file(file_path).get_reconciliation_paths()
+
+def get_selected_guards():
+    with open_db(mutable=False) as DB:
+        return DB.selected_guards
+
+def is_blocked_by_guard(patch_name):
+    '''Is the named patch blocked from being applied by any guards?'''
+    with open_db(mutable=False) as DB:
+        return DB.get_named_patch(patch_name).is_blocked_by_guard
+
+def is_pushable():
+    '''Is there a pushable patch?'''
+    with open_db(mutable=False) as DB:
+        return DB.is_pushable
+
+def is_top_patch(patch_name):
+    '''Is the named patch the top applied patch?'''
+    with open_db(mutable=False) as DB:
+        return DB.top_patch_name == patch_name

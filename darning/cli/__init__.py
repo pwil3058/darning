@@ -38,3 +38,4 @@ from . import subcmd_fold
 from . import subcmd_absorb
 from . import subcmd_rename
 from . import subcmd_validate
+from . import subcmd_duplicate
