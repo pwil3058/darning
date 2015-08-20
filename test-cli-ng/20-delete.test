@@ -1,0 +1,196 @@
+### Copyright (C) 2011 Peter Williams <peter_ono@users.sourceforge.net>
+###
+### This program is free software; you can redistribute it and/or modify
+### it under the terms of the GNU General Public License as published by
+### the Free Software Foundation; version 2 of the License only.
+###
+### This program is distributed in the hope that it will be useful,
+### but WITHOUT ANY WARRANTY; without even the implied warranty of
+### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+### GNU General Public License for more details.
+###
+### You should have received a copy of the GNU General Public License
+### along with this program; if not, write to the Free Software
+### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Test the 'darn delete' command.
+
+Create test file tree.
+$ darn_test_tree create
+
+Make a playground and patch
+$ darn init --ng
+$ darn new first --descr="first patch"
+$ darn add file4 > /dev/null
+$ darn_test_tree modify file4
+$ darn copy file3 file3.copy > /dev/null
+$ darn_test_tree modify file3.copy
+$ darn rename file5 file5.rename > /dev/null
+$ darn add binary1 > /dev/null
+$ darn add file1 > /dev/null
+$ darn_test_tree modify binary1
+$ darn validate
+$ darn series
+> ?: first
+$ darn files
+>  :?: binary1
+>  :+: file1
+> +:?: file3.copy <<- file3
+>  :?: file4
+> -:+: file5 -> file5.rename
+> +:+: file5.rename <- file5
+$ darn diff
+> diff --git a/binary1 b/binary1
+> index 21172b42b3158210ce66f1ad674a8dc5bd82ac06..bc6019fed77d07ea61df25ae3e5b2c8353f06a21 0100664
+> GIT binary patch
+> delta 37
+> nc$|~Ao*=CdkXVwOVWpsymRVF>qGS!?gSbhVd5J}phDuxj(=H1h
+>
+> delta 4
+> Lc$~AAo*)eX0(=1i
+>
+> diff --git a/file1 b/file1
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..9d588eff9808b6c1b73445cb3526e1e62bf01bb7 0100664
+> diff --git a/file3 b/file3.copy
+> copy from file3
+> copy to file3.copy
+> index da7f3c7d1fb148fdfadc254b6fdb3b8f41628fbd..89d0d699a12d162b4cb19ef5c45ef327a934d275 0100664
+> --- a/file3
+> +++ b/file3.copy
+> @@ -1 +1,2 @@
+>  file3: is a text file.
+> +Patch: "first"; Path: "file3.copy"
+> diff --git a/file4 b/file4
+> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..4dbc121c5e1079c153a88799e39bd3b920d66834 0100664
+> --- a/file4
+> +++ b/file4
+> @@ -1 +1,2 @@
+>  file4: is a text file.
+> +Patch: "first"; Path: "file4"
+> diff --git a/file5 b/file5
+> # Renamed to: file5.rename
+> diff --git a/file5 b/file5.rename
+> rename from file5
+> rename to file5.rename
+> index aac29970b8c49d0c9414043c72b15cbcc0732f04..aac29970b8c49d0c9414043c72b15cbcc0732f04 0100664
+$ darn delete binary1 file1 file2 file3 file3.copy file4 file5.rename
+> binary1: file deleted within patch "first".
+> file1: file deleted within patch "first".
+> file2: file deleted within patch "first".
+> file3: file deleted within patch "first".
+> file3.copy: file deleted within patch "first".
+> file4: file deleted within patch "first".
+> file5.rename: file deleted within patch "first".
+$ darn files
+> -:+: binary1
+> -:+: file1
+> -:+: file2
+> -:+: file3
+> +:+: file3.copy <<- file3
+> -:+: file4
+> -:+: file5 -> file5.rename
+> +:+: file5.rename <- file5
+$ ls binary1 file1 file2 file3 file3.copy file4 file5 file5.rename
+? 2
+! ls: cannot access binary1: No such file or directory
+! ls: cannot access file1: No such file or directory
+! ls: cannot access file2: No such file or directory
+! ls: cannot access file3: No such file or directory
+! ls: cannot access file3.copy: No such file or directory
+! ls: cannot access file4: No such file or directory
+! ls: cannot access file5: No such file or directory
+! ls: cannot access file5.rename: No such file or directory
+$ darn diff
+> diff --git a/binary1 b/binary1
+> deleted file mode 0100664
+> index 21172b42b3158210ce66f1ad674a8dc5bd82ac06..000000000000000000000000000000000000000000000000
+> GIT binary patch
+> literal 0
+> Hc$@<O00001
+>
+> literal 27
+> ec$`bh%u6h)G_+#KELKQVNCNW|(lT>W^|%0mU<m5~
+>
+> diff --git a/file1 b/file1
+> deleted file mode 0100664
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..000000000000000000000000000000000000000000000000
+> --- a/file1
+> +++ /dev/null
+> @@ -1 +0,0 @@
+> -file1: is a text file.
+> diff --git a/file2 b/file2
+> deleted file mode 0100664
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..000000000000000000000000000000000000000000000000
+> --- a/file2
+> +++ /dev/null
+> @@ -1 +0,0 @@
+> -file2: is a text file.
+> diff --git a/file3 b/file3
+> deleted file mode 0100664
+> index da7f3c7d1fb148fdfadc254b6fdb3b8f41628fbd..000000000000000000000000000000000000000000000000
+> --- a/file3
+> +++ /dev/null
+> @@ -1 +0,0 @@
+> -file3: is a text file.
+> diff --git a/file3 b/file3.copy
+> deleted file mode 0100664
+> copy from file3
+> copy to file3.copy
+> index da7f3c7d1fb148fdfadc254b6fdb3b8f41628fbd..000000000000000000000000000000000000000000000000
+> --- a/file3
+> +++ /dev/null
+> @@ -1 +0,0 @@
+> -file3: is a text file.
+> diff --git a/file4 b/file4
+> deleted file mode 0100664
+> index 0ae60b457dee21f4f4c4af93722f993185aff3f0..000000000000000000000000000000000000000000000000
+> --- a/file4
+> +++ /dev/null
+> @@ -1 +0,0 @@
+> -file4: is a text file.
+> diff --git a/file5 b/file5
+> # Renamed to: file5.rename
+> diff --git a/file5 b/file5.rename
+> deleted file mode 0100664
+> rename from file5
+> rename to file5.rename
+> index aac29970b8c49d0c9414043c72b15cbcc0732f04..000000000000000000000000000000000000000000000000
+> --- a/file5
+> +++ /dev/null
+> @@ -1 +0,0 @@
+> -file5: is a text file.
+$ darn diff > first.diff
+$ darn pop
+> There are now no patches applied.
+$ ls binary1 file1 file2 file3 file3.copy file4 file5 file5.rename
+? 2
+> binary1
+> file1
+> file2
+> file3
+> file4
+> file5
+! ls: cannot access file3.copy: No such file or directory
+! ls: cannot access file5.rename: No such file or directory
+$ darn push
+> "file5": renamed as "file5.rename".
+> "file5.rename": deleted.
+> "file3.copy": deleted.
+> "binary1": binary file deleted.
+> "file1": deleted.
+> "file2": deleted.
+> "file3": deleted.
+> "file4": deleted.
+> Patch "first" is now on top.
+$ ls binary1 file1 file2 file3 file3.copy file4 file5 file5.rename
+? 2
+! ls: cannot access binary1: No such file or directory
+! ls: cannot access file1: No such file or directory
+! ls: cannot access file2: No such file or directory
+! ls: cannot access file3: No such file or directory
+! ls: cannot access file3.copy: No such file or directory
+! ls: cannot access file4: No such file or directory
+! ls: cannot access file5: No such file or directory
+! ls: cannot access file5.rename: No such file or directory
+$ darn diff > first.newdiff
+$ diff first.diff first.newdiff

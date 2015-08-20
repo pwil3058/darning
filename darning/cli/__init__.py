@@ -39,3 +39,4 @@ from . import subcmd_absorb
 from . import subcmd_rename
 from . import subcmd_validate
 from . import subcmd_duplicate
+from . import subcmd_delete
