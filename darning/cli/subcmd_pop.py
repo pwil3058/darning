@@ -23,10 +23,24 @@ PARSER = cli_args.SUB_CMD_PARSER.add_parser(
     description=_('Unapply the top patch.'),
 )
 
+PARSER.add_argument(
+    "--all",
+    help=_("pop all applied patches."),
+    dest="opt_all",
+    action="store_true",
+)
+
 def run_pop(args):
     '''Execute the "pop" sub command using the supplied args'''
     PM = db_utils.get_pm_db()
     db_utils.set_report_context(verbose=True)
-    return PM.do_unapply_top_patch()
+    if args.opt_all:
+        while PM.get_applied_patch_count():
+            result = PM.do_unapply_top_patch()
+            if result:
+                return result
+        return 0
+    else:
+        return PM.do_unapply_top_patch()
 
 PARSER.set_defaults(run_cmd=run_pop)

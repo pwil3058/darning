@@ -1,0 +1,207 @@
+### Copyright (C) 2011 Peter Williams <peter_ono@users.sourceforge.net>
+###
+### This program is free software; you can redistribute it and/or modify
+### it under the terms of the GNU General Public License as published by
+### the Free Software Foundation; version 2 of the License only.
+###
+### This program is distributed in the hope that it will be useful,
+### but WITHOUT ANY WARRANTY; without even the implied warranty of
+### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+### GNU General Public License for more details.
+###
+### You should have received a copy of the GNU General Public License
+### along with this program; if not, write to the Free Software
+### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Test the 'darn select' and 'darn guard' commands.
+
+Make a playground and patch
+$ darn init --ng
+$ darn new patch1 --descr="a test patch"
+$ darn new patch2 --descr="a test patch"
+$ darn new patch3 --descr="a test patch"
+$ darn new patch4 --descr="a test patch"
+$ darn new patch5 --descr="a test patch"
+$ darn new patch6 --descr="a test patch"
+$ darn new patch7 --descr="a test patch"
+$ darn new patch8 --descr="a test patch"
+$ darn new patch9 --descr="a test patch"
+$ darn new patch10 --descr="a test patch"
+$ darn series
+> +: patch1
+> +: patch2
+> +: patch3
+> +: patch4
+> +: patch5
+> +: patch6
+> +: patch7
+> +: patch8
+> +: patch9
+> +: patch10
+$ darn select
+$ darn guard patch1
+$ darn guard patch2
+$ darn guard patch3
+$ darn guard patch4
+$ darn guard patch5
+$ darn guard patch6
+$ darn guard patch7
+$ darn guard patch8
+$ darn guard patch9
+$ darn guard patch10
+$ darn guard
+
+$ darn select --set=-one
+?2
+! -one: guard names may NOT begin with "+" or "-".
+! Aborted.
+$ darn select -s +one
+?2
+! +one: guard names may NOT begin with "+" or "-".
+! Aborted.
+$ darn guard patch2 -g +one
+> patch2: patch positive guards = {one}
+> patch2: patch negative guards = {}
+$ darn guard patch3 --guard=-two
+> patch3: patch positive guards = {}
+> patch3: patch negative guards = {two}
+$ darn guard patch5 --guard=+two
+> patch5: patch positive guards = {two}
+> patch5: patch negative guards = {}
+$ darn guard patch7 --guard=-one --guard=+two
+> patch7: patch positive guards = {two}
+> patch7: patch negative guards = {one}
+$ darn guard patch9 --guard=-one
+> patch9: patch positive guards = {}
+> patch9: patch negative guards = {one}
+$ darn guard patch1
+$ darn guard patch2
+> +one
+$ darn guard patch3
+> -two
+$ darn guard patch4
+$ darn guard patch5
+> +two
+$ darn guard patch6
+$ darn guard patch7
+> +two
+> -one
+$ darn guard patch8
+$ darn guard patch9
+> -one
+$ darn guard patch10
+
+$ darn pop --all > /dev/null
+$ darn series
+>  : patch1
+>  : patch2
+>  : patch3
+>  : patch4
+>  : patch5
+>  : patch6
+>  : patch7
+>  : patch8
+>  : patch9
+>  : patch10
+$ darn push --all > /dev/null
+$ darn series
+> +: patch1
+>  : patch2
+> +: patch3
+> +: patch4
+>  : patch5
+> +: patch6
+>  : patch7
+> +: patch8
+> +: patch9
+> +: patch10
+
+$ darn select -s one
+> {one}: is now the set of selected guards.
+$ darn select
+> one
+$ darn pop --all > /dev/null
+$ darn push --all > /dev/null
+$ darn series
+> +: patch1
+> +: patch2
+> +: patch3
+> +: patch4
+>  : patch5
+> +: patch6
+>  : patch7
+> +: patch8
+>  : patch9
+> +: patch10
+
+$ darn select -s two
+> {two}: is now the set of selected guards.
+$ darn select
+> two
+$ darn pop --all > /dev/null
+$ darn push --all > /dev/null
+$ darn series
+> +: patch1
+>  : patch2
+>  : patch3
+> +: patch4
+> +: patch5
+> +: patch6
+> +: patch7
+> +: patch8
+> +: patch9
+> +: patch10
+
+$ darn select -s two -s one
+> {one, two}: is now the set of selected guards.
+$ darn select
+> one
+> two
+$ darn pop --all > /dev/null
+$ darn push --all > /dev/null
+$ darn series
+> +: patch1
+> +: patch2
+>  : patch3
+> +: patch4
+> +: patch5
+> +: patch6
+>  : patch7
+> +: patch8
+>  : patch9
+> +: patch10
+
+$ darn select --none
+> {}: is now the set of selected guards.
+$ darn select
+$ darn pop --all > /dev/null
+$ darn push --all > /dev/null
+$ darn series
+> +: patch1
+>  : patch2
+> +: patch3
+> +: patch4
+>  : patch5
+> +: patch6
+>  : patch7
+> +: patch8
+> +: patch9
+> +: patch10
+
+$ darn guard patch2 --none
+> patch2: patch positive guards = {}
+> patch2: patch negative guards = {}
+$ darn guard patch2
+$ darn pop --all > /dev/null
+$ darn push --all > /dev/null
+$ darn series
+> +: patch1
+> +: patch2
+> +: patch3
+> +: patch4
+>  : patch5
+> +: patch6
+>  : patch7
+> +: patch8
+> +: patch9
+> +: patch10

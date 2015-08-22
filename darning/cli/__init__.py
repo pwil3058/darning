@@ -40,3 +40,5 @@ from . import subcmd_rename
 from . import subcmd_validate
 from . import subcmd_duplicate
 from . import subcmd_delete
+from . import subcmd_select
+from . import subcmd_guard

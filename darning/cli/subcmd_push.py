@@ -27,6 +27,14 @@ PARSER = cli_args.SUB_CMD_PARSER.add_parser(
     either the force or the absorb option is specified.'''),
 )
 
+
+PARSER.add_argument(
+    "--all",
+    help=_("push all unapplied (pushable) patches."),
+    dest="opt_all",
+    action="store_true",
+)
+
 GROUP = PARSER.add_mutually_exclusive_group()
 
 cli_args.add_force_option(GROUP, helptext=_('force the operation and leave uncommitted/unrefreshed changes to the pushed patch\'s files out of the pushed patch.'))
@@ -39,6 +47,13 @@ def run_push(args):
     '''Execute the "push" sub command using the supplied args'''
     PM = db_utils.get_pm_db()
     db_utils.set_report_context(verbose=not args.opt_quiet)
-    return PM.do_apply_next_patch(absorb=args.opt_absorb, force=args.opt_force)
+    if args.opt_all:
+        while PM.is_pushable():
+            result = PM.do_apply_next_patch(absorb=args.opt_absorb, force=args.opt_force)
+            if result:
+                return result
+        return 0
+    else:
+        return PM.do_apply_next_patch(absorb=args.opt_absorb, force=args.opt_force)
 
 PARSER.set_defaults(run_cmd=run_push)

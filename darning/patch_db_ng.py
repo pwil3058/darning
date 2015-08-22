@@ -209,6 +209,8 @@ def _guards_block_patch(guards, patch):
             return True
         elif patch.neg_guards & guards:
             return True
+    elif patch.pos_guards:
+        return True
     return False
 
 def _content_has_unresolved_merges(content):
@@ -1784,11 +1786,24 @@ def do_duplicate_patch(patch_name, as_patch_name, new_description):
         RCTX.stdout.write(_('{0}: patch duplicated as "{1}".\n').format(patch_name, new_patch.name))
         return CmdResult.OK
 
-def do_fold_named_patch(patch_name, absorb=False, force=False, retain_copy=None):
+def do_fold_epatch(epatch, absorb=False, force=False):
     '''Fold a name internal patch into the top patch.'''
     assert not (force and absorb)
     with open_db(mutable=True) as DB:
         assert not (absorb and force)
+        top_patch = _get_top_patch(DB)
+        if not top_patch:
+            return CmdResult.ERROR
+        result = top_patch.do_fold_epatch(epatch, absorb=absorb, force=force)
+        if top_patch.needs_refresh:
+            RCTX.stdout.write(_("{0}: (top) patch needs refreshing.\n").format(top_patch.name))
+            result = max(result, CmdResult.WARNING)
+        return result
+
+def do_fold_named_patch(patch_name, absorb=False, force=False, retain_copy=None):
+    '''Fold a name internal patch into the top patch.'''
+    assert not (force and absorb)
+    with open_db(mutable=True) as DB:
         patch = _get_patch(patch_name, DB)
         if not patch:
             return CmdResult.ERROR
@@ -2081,6 +2096,47 @@ def do_scm_absorb_applied_patches(force=False, with_timestamps=False):
         shutil.rmtree(tempdir)
         return ret_code
 
+def do_select_guards(guards):
+    with open_db(mutable=True) as DB:
+        if guards is None:
+            guards = []
+        bad_guard_count = 0
+        for guard in guards:
+            if guard.startswith('+') or guard.startswith('-'):
+                RCTX.stderr.write(_('{0}: guard names may NOT begin with "+" or "-".\n').format(guard))
+                bad_guard_count += 1
+        if bad_guard_count > 0:
+            RCTX.stderr.write(_('Aborted.\n'))
+            return CmdResult.ERROR|CmdResult.SUGGEST_EDIT
+        DB.selected_guards = set(guards)
+        RCTX.stdout.write(_('{{{0}}}: is now the set of selected guards.\n').format(', '.join(sorted(DB.selected_guards))))
+        return CmdResult.OK
+
+def do_set_patch_guards(patch_name, pos_guards, neg_guards):
+    with open_db(mutable=True) as DB:
+        patch = _get_named_or_top_patch(patch_name, DB)
+        if not patch:
+            return CmdResult.ERROR
+        patch.pos_guards = set(pos_guards)
+        patch.neg_guards = set(neg_guards)
+        RCTX.stdout.write(_('{0}: patch positive guards = {{{1}}}\n').format(patch_name, ', '.join(sorted(patch.pos_guards))))
+        RCTX.stdout.write(_('{0}: patch negative guards = {{{1}}}\n').format(patch_name, ', '.join(sorted(patch.neg_guards))))
+        return CmdResult.OK
+
+def do_set_patch_guards_fm_list(patch_name, guards_list):
+    if guards_list is None:
+        guards_list = []
+    pos_guards = [grd[1:] for grd in guards_list if grd.startswith('+')]
+    neg_guards = [grd[1:] for grd in guards_list if grd.startswith('-')]
+    if len(guards_list) != (len(pos_guards) + len(neg_guards)):
+        RCTX.stderr.write(_('Guards must start with "+" or "-" and contain no whitespace.\n'))
+        RCTX.stderr.write( _('Aborted.\n'))
+        return CmdResult.ERROR | CmdResult.SUGGEST_EDIT
+    return do_set_patch_guards(patch_name, pos_guards, neg_guards)
+
+def do_set_patch_guards_fm_str(patch_name, guards_str):
+    return do_set_patch_guards_fm_list(patch_name, guards_str.split())
+
 def do_unapply_top_patch(force=False):
     return do_pop_top_patch(force=force)
 
@@ -2230,6 +2286,11 @@ def get_patch_file_table(patch_name=None):
     with open_db(mutable=False) as DB:
         patch = DB.top_patch if patch_name is None else DB.get_named_patch(patch_name)
         return patch.get_files_table() if patch else []
+
+def get_patch_guards(patch_name=None):
+    with open_db(mutable=False) as DB:
+        patch = DB.top_patch if patch_name is None else DB.get_named_patch(patch_name)
+        return (patch.pos_guards, patch.neg_guards) if patch else None
 
 def get_patch_table_data():
     with open_db(mutable=False) as DB:
