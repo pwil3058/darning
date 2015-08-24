@@ -44,7 +44,6 @@ from .patch_db import OverlapData
 
 _DIR_PATH = ".darning.dbd"
 _BLOBS_DIR_PATH = os.path.join(_DIR_PATH, "blobs")
-_RETAINED_PATCHES_DIR_PATH = os.path.join(_DIR_PATH, "retained_patches")
 _PATCHES_DATA_FILE_PATH = os.path.join(_DIR_PATH, "patches_data")
 _BLOB_REF_COUNT_FILE_PATH = os.path.join(_DIR_PATH, "blob_ref_counts")
 _DESCRIPTION_FILE_PATH = os.path.join(_DIR_PATH, "description")
@@ -106,12 +105,13 @@ def find_base_dir(dir_path=None, remember_sub_dir=False):
     return None
 
 class _DataBaseData(mixins.PedanticSlotPickleMixin):
-    __slots__ = ("selected_guards", "patch_series_data", "applied_patches_data", "combined_patch_data")
+    __slots__ = ("selected_guards", "patch_series_data", "applied_patches_data", "combined_patch_data", "kept_patches")
     def __init__(self, description):
         self.selected_guards = set()
         self.patch_series_data = list()
         self.applied_patches_data = list()
         self.combined_patch_data = None
+        self.kept_patches = dict()
 
 class _PatchData(mixins.PedanticSlotPickleMixin):
     __slots__ = ("name", "description", "files_data", "pos_guards", "neg_guards")
@@ -121,6 +121,18 @@ class _PatchData(mixins.PedanticSlotPickleMixin):
         self.files_data = dict()
         self.pos_guards = set()
         self.neg_guards = set()
+    def decrement_ref_counts(self, blob_ref_counts):
+        for pfd in self.files_data.itervalues():
+            if pfd.orig is not None:
+                blob_ref_counts[pfd.orig.git_hash[:2]][pfd.orig.git_hash[2:]] -= 1
+            if pfd.darned is not None:
+                blob_ref_counts[pfd.darned.git_hash[:2]][pfd.darned.git_hash[2:]] -= 1
+            if pfd.came_from is not None:
+                blob_ref_counts[pfd.came_from.orig.git_hash[:2]][pfd.came_from.orig.git_hash[2:]] -= 1
+    def clear(self, database):
+        for file_data in self.files_data.itervalues():
+            file_data.release_contents(database)
+        self.files_data.clear()
 
 class _CombinedPatchData(mixins.PedanticSlotPickleMixin):
     __slots__ = ("files_data", "prev")
@@ -137,6 +149,17 @@ class _FileData(mixins.PedanticSlotPickleMixin):
         self.renamed_as = renamed_as
         self.diff = diff
         self.diff_wrt = diff_wrt
+    def release_contents(self, database):
+        database.release_stored_content(self.orig)
+        database.release_stored_content(self.darned)
+        if self.came_from:
+            database.release_stored_content(self.came_from.orig)
+        self.orig = None
+        self.darned = None
+        self.came_from = None
+        self.renamed_as = None
+        self.diff = None
+        self.diff_wrt = None
 
 class _CombinedFileData(mixins.PedanticSlotPickleMixin):
     __slots__ = ("top", "bottom")
@@ -517,16 +540,7 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
         fm_file_data.diff = None
         fm_file_data.darned = self.patch.database.release_stored_content(fm_file_data.darned)
     def release_contents(self):
-        self.patch.database.release_stored_content(self.orig)
-        self.patch.database.release_stored_content(self.darned)
-        if self.came_from:
-            self.patch.database.release_stored_content(self.came_from.orig)
-        self.orig = None
-        self.darned = None
-        self.came_from = None
-        self.renamed_as = None
-        self.diff = None
-        self.diff_wrt = None
+        return self.persistent_file_data.release_contents(self.patch.database)
     @property
     def presence(self):
         if self.orig is None:
@@ -875,14 +889,6 @@ class Patch(mixins.WrapperMixin):
         except KeyError:
             efd = self.database.store_file_content(came_from_path)
         return _CameFromData(came_from_path, False, efd) if efd else None
-    def decrement_ref_counts(self, blob_ref_counts):
-        for pfd in self.files_data.itervalues():
-            if pfd.orig is not None:
-                blob_ref_counts[pfd.orig.git_hash[:2]][pfd.orig.git_hash[2:]] -= 1
-            if pfd.darned is not None:
-                blob_ref_counts[pfd.darned.git_hash[:2]][pfd.darned.git_hash[2:]] -= 1
-            if pfd.came_from is not None:
-                blob_ref_counts[pfd.came_from.orig.git_hash[:2]][pfd.came_from.orig.git_hash[2:]] -= 1
     def do_apply(self, overlaps=OverlapData()):
         # NB: presence of overlaps implies absorb
         if len(self.files_data) == 0:
@@ -965,9 +971,7 @@ class Patch(mixins.WrapperMixin):
         if self.is_applied:
             self.database.combined_patch.add_file(file_data)
     def clear(self):
-        for file_data in self.iterate_files():
-            file_data.release_contents()
-        self.files_data.clear()
+        return self.persistent_patch_data.clear(self.database)
     def drop_file(self, file_data):
         assert not self.is_applied or self.is_top_patch
         if self.is_applied:
@@ -1365,10 +1369,40 @@ class DataBase(mixins.WrapperMixin):
         assert self.is_writable
         if patch.is_applied:
             raise DarnItPatchIsApplied(patch_name=patch.name)
-        if retain_copy:
-            patch.write_to_file(os.path.join(_RETAINED_PATCHES_DIR_PATH, patch.name))
         self.patch_series_data.remove(patch)
-        patch.clear()
+        if retain_copy:
+            try:
+                self.kept_patches.pop(patch.name).clear(self)
+            except KeyError:
+                pass
+            self.kept_patches[patch.name] = patch.persistent_patch_data
+        else:
+            patch.clear()
+    def remove_named_patch(self, patch_name, retain_copy=False):
+        patch = self.get_named_patch(patch_name)
+        return self.remove_patch(patch, retain_copy=retain_copy)
+    def delete_kept_patch(self, patch_name):
+        try:
+            self.kept_patches.pop(patch_name).clear(self)
+        except KeyError:
+            raise DarnItUnknownPatch(patch_name=patch_name)
+    def restore_named_patch(self, patch_name, as_patch_name=None):
+        assert self.is_writable
+        if not as_patch_name:
+            as_patch_name = patch_name
+        if self.has_patch_with_name(as_patch_name):
+            raise DarnItPatchExists(patch_name=as_patch_name)
+        try:
+            patch_data = self.kept_patches.pop(patch_name)
+        except KeyError:
+            raise DarnItUnknownPatch(patch_name=patch_name)
+        patch_data.name = as_patch_name
+        if self._PPD.applied_patches_data:
+            top_patch_index = self._PPD.patch_series_data.index(self._PPD.applied_patches_data[-1])
+            self._PPD.patch_series_data.insert(top_patch_index + 1, patch_data)
+        else:
+            self._PPD.patch_series_data.insert(0, patch_data)
+        return Patch(patch_data, self)
     def get_named_patch(self, patch_name):
         _index, patch = _find_named_patch_in_list(self._PPD.patch_series_data, patch_name)
         if not patch:
@@ -1467,8 +1501,10 @@ class DataBase(mixins.WrapperMixin):
         return _ContentState(orphans=orphans, missing=missing, bad_content=bad_content)
     def validate_ref_counts(self):
         blob_ref_counts = self.blob_ref_counts.copy()
-        for patch in self.iterate_series():
-            patch.decrement_ref_counts(blob_ref_counts)
+        for patch_data in self.patch_series_data:
+            patch_data.decrement_ref_counts(blob_ref_counts)
+        for patch_data in self.kept_patches.itervalues():
+            patch_data.decrement_ref_counts(blob_ref_counts)
         bad_ref_counts = []
         for key1, ref_counts in blob_ref_counts.iteritems():
             for key2, count in ref_counts.iteritems():
@@ -1515,9 +1551,6 @@ class DataBase(mixins.WrapperMixin):
     @staticmethod
     def get_content_for(obj):
         return "" if obj is None else open(BLOB_PATH(obj.git_hash), "r").read()
-    def remove_named_patch(self, patch_name, retain_copy=False):
-        patch = self.get_named_patch(patch_name)
-        return self.remove_patch(patch, retain_copy=retain_copy)
 
 def do_create_db(dir_path=None, description=None):
     """Create a patch database in the current directory?"""
@@ -1526,7 +1559,7 @@ def do_create_db(dir_path=None, description=None):
         for filnm in [patches_data_file_path, database_lock_file_path, blob_ref_count_file_path, description_file_path]:
             if os.path.exists(filnm):
                 os.remove(filnm)
-        for dirnm in [database_blobs_dir_path, retained_patches_dir_path, database_dir_path]:
+        for dirnm in [database_blobs_dir_path, database_dir_path]:
             if os.path.exists(dirnm):
                 os.rmdir(dirnm)
     if not dir_path:
@@ -1537,7 +1570,6 @@ def do_create_db(dir_path=None, description=None):
         return CmdResult.ERROR
     database_dir_path = os.path.join(dir_path, _DIR_PATH)
     database_blobs_dir_path = os.path.join(dir_path, _BLOBS_DIR_PATH)
-    retained_patches_dir_path = os.path.join(dir_path, _RETAINED_PATCHES_DIR_PATH)
     patches_data_file_path = os.path.join(dir_path, _PATCHES_DATA_FILE_PATH)
     blob_ref_count_file_path = os.path.join(dir_path, _BLOB_REF_COUNT_FILE_PATH)
     description_file_path = os.path.join(dir_path, _DESCRIPTION_FILE_PATH)
@@ -1552,7 +1584,6 @@ def do_create_db(dir_path=None, description=None):
         dir_mode = stat.S_IRWXU|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH
         os.mkdir(database_dir_path, dir_mode)
         os.mkdir(database_blobs_dir_path, dir_mode)
-        os.mkdir(retained_patches_dir_path, dir_mode)
         open(database_lock_file_path, "wb").write("0")
         open(description_file_path, "w").write(_tidy_text(description) if description else "")
         db_obj = _DataBaseData(description)
@@ -1742,6 +1773,17 @@ def do_delete_files_in_top_patch(file_paths):
             RCTX.stdout.write(_('{0}: file deleted within patch "{1}".\n').format(rel_subdir(file_path), top_patch.name))
         return CmdResult.OK if (ioerrors == 0 and len(file_paths) > nonexists) else CmdResult.ERROR
 
+def do_delete_kept_patches(patch_names):
+    with open_db(mutable=True) as DB:
+        retval = CmdResult.OK
+        for patch_name in patch_names:
+            try:
+                DB.delete_kept_patch(patch_name)
+            except DarnItUnknownPatch:
+                retval = CmdResult.ERROR
+                RCTX.stderr.write(_("{0}: unknown patch.\n").format(patch_name))
+        return retval
+
 def do_drop_files_fm_patch(patch_name, file_paths):
     """Drop the named file from the named patch"""
     with open_db(mutable=True) as DB:
@@ -1765,7 +1807,6 @@ def do_drop_files_fm_patch(patch_name, file_paths):
         return CmdResult.WARNING if issued_warning else CmdResult.OK
 
 def do_duplicate_patch(patch_name, as_patch_name, new_description):
-    '''Create a duplicate of the named patch with a new name and new description (after the top patch)'''
     with open_db(mutable=True) as DB:
         if not utils.is_valid_dir_name(as_patch_name):
             RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(as_patch_name, utils.ALLOWED_DIR_NAME_CHARS_MSG))
@@ -1787,7 +1828,6 @@ def do_duplicate_patch(patch_name, as_patch_name, new_description):
         return CmdResult.OK
 
 def do_fold_epatch(epatch, absorb=False, force=False):
-    '''Fold a name internal patch into the top patch.'''
     assert not (force and absorb)
     with open_db(mutable=True) as DB:
         assert not (absorb and force)
@@ -1801,7 +1841,6 @@ def do_fold_epatch(epatch, absorb=False, force=False):
         return result
 
 def do_fold_named_patch(patch_name, absorb=False, force=False, retain_copy=None):
-    '''Fold a name internal patch into the top patch.'''
     assert not (force and absorb)
     with open_db(mutable=True) as DB:
         patch = _get_patch(patch_name, DB)
@@ -1829,7 +1868,6 @@ def do_fold_named_patch(patch_name, absorb=False, force=False, retain_copy=None)
         return result
 
 def do_import_patch(epatch, patch_name, overwrite=False, absorb=False, force=False):
-    '''Import an external patch with the given name (after the top patch)'''
     with open_db(mutable=True) as DB:
         if DB.has_patch_with_name(patch_name):
             patch = DB.get_named_patch(patch_name)
@@ -1956,7 +1994,6 @@ def do_refresh_patch(patch_name=None):
         return eflag
 
 def do_remove_patch(patch_name, retain_copy=None):
-    '''Remove the named patch from the series'''
     with open_db(mutable=True) as DB:
         if retain_copy is None: # value of True or False will override option
             retain_copy = options.get("remove", "keep_patch_backup")
@@ -2003,6 +2040,36 @@ def do_rename_file_in_top_patch(file_path, new_file_path, force=False, overwrite
             RCTX.stderr.write(edata)
             return CmdResult.ERROR
         RCTX.stdout.write(_("{0}: file renamed to \"{1}\" in patch \"{2}\".\n").format(rel_subdir(file_path), rel_subdir(new_file_path), top_patch.name))
+        return CmdResult.OK
+
+def do_rename_patch(patch_name, new_name):
+    with open_db(mutable=True) as DB:
+        if DB.has_patch_with_name(new_name):
+            RCTX.stderr.write(_('patch "{0}" already exists\n').format(new_name))
+            return CmdResult.ERROR|CmdResult.SUGGEST_RENAME
+        elif not utils.is_valid_dir_name(new_name):
+            RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(new_name, utils.ALLOWED_DIR_NAME_CHARS_MSG))
+            return CmdResult.ERROR|CmdResult.SUGGEST_RENAME
+        patch = _get_patch(patch_name, DB)
+        if patch is None:
+            return CmdResult.ERROR
+        patch.name = new_name
+        RCTX.stdout.write(_('{0}: patch renamed as "{1}".\n').format(patch_name, patch.name))
+        return CmdResult.OK
+
+def do_restore_patch(patch_name, as_patch_name):
+    with open_db(mutable=True) as DB:
+        if not utils.is_valid_dir_name(as_patch_name):
+            RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(as_patch_name, utils.ALLOWED_DIR_NAME_CHARS_MSG))
+            return CmdResult.ERROR|CmdResult.SUGGEST_RENAME
+        try:
+            patch = DB.restore_named_patch(patch_name, as_patch_name)
+        except DarnItUnknownPatch:
+            RCTX.stderr.write(_('{0}: is NOT available for restoration\n').format(patch_name))
+            return CmdResult.ERROR|CmdResult.SUGGEST_RENAME
+        except DarnItPatchExists:
+            RCTX.stderr.write(_('{0}: Already exists in database\n').format(as_patch_name))
+            return CmdResult.ERROR|CmdResult.SUGGEST_RENAME
         return CmdResult.OK
 
 def do_scm_absorb_applied_patches(force=False, with_timestamps=False):
@@ -2260,9 +2327,6 @@ def get_diff_pluses_for_files(file_paths, patch_name, with_timestamps=False):
         return [file_data.get_diff_plus(with_timestamps=with_timestamps) for file_data in file_iter]
 
 def get_filepaths_not_in_patch(patch_name, file_paths):
-    '''
-    Return the names of the files in file_paths not in the named patch.
-    '''
     if not file_paths:
         return []
     with open_db(mutable=False) as DB:
@@ -2271,6 +2335,10 @@ def get_filepaths_not_in_patch(patch_name, file_paths):
         else:
             patch_file_paths_set = DB.top_patch.get_file_paths_set()
         return [file_path for file_path in file_paths if file_path not in patch_file_paths_set]
+
+def get_kept_patch_names():
+    with open_db(mutable=False) as DB:
+        return sorted(list(DB.kept_patches.iterkeys()))
 
 def get_named_or_top_patch_name(patch_name):
     """Return the name of the named or top patch if patch_name is None or None if patch_name is not a valid patch_name"""
@@ -2305,16 +2373,13 @@ def get_selected_guards():
         return DB.selected_guards
 
 def is_blocked_by_guard(patch_name):
-    '''Is the named patch blocked from being applied by any guards?'''
     with open_db(mutable=False) as DB:
         return DB.get_named_patch(patch_name).is_blocked_by_guard
 
 def is_pushable():
-    '''Is there a pushable patch?'''
     with open_db(mutable=False) as DB:
         return DB.is_pushable
 
 def is_top_patch(patch_name):
-    '''Is the named patch the top applied patch?'''
     with open_db(mutable=False) as DB:
         return DB.top_patch_name == patch_name

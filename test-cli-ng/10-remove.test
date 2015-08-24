@@ -50,7 +50,7 @@ $ darn series
 > +: first
 > +: second
 > +: third
-$ ls .darning.dbd/retained_patches
+$ darn kept
 
 Pop two patches
 $ darn pop
@@ -61,7 +61,7 @@ $ darn series
 > +: first
 >  : second
 >  : third
-$ ls .darning.dbd/retained_patches
+$ darn kept
 
 Remove a patch in the middle of the series
 $ darn diff --patch second
@@ -70,9 +70,8 @@ $ darn remove second
 $ darn series
 > +: first
 >  : third
-$ ls .darning.dbd/retained_patches
+$ darn kept
 > second
-$ cat .darning.dbd/retained_patches/second
 
 Remove a patch in the end of the series
 $ darn diff --patch third
@@ -80,10 +79,9 @@ $ darn remove third
 > Patch "third" removed (but available for restoration).
 $ darn series
 > +: first
-$ ls .darning.dbd/retained_patches
+$ darn kept
 > second
 > third
-$ cat .darning.dbd/retained_patches/second
 
 Now start testing removal of non empty patches
 $ darn_test_tree create
@@ -137,24 +135,6 @@ $ darn series
 >  : third
 >  : fourth
 >  : fifth
-$ cat .darning.dbd/retained_patches/second
-> second patch
-> diff --git a/dir3/file4 b/dir3/file4
-> index 426a67e8158e8f29f8f1ce64551b3f1dd745d9af..31ad731a63455372d037e05aa3e6ad642b916f7b 0100664
-> --- a/dir3/file4
-> +++ b/dir3/file4
-> @@ -1 +1,2 @@
->  dir3/file4: is a text file.
-> +Patch: "second"; Path: "dir3/file4"
-> diff --git a/file2 b/file2
-> index cd1c1e8e36a212ba7723de693b194e58acab54ae..00c55dd55bb971b92c078bee4b75df30999295fc 0100664
-> --- a/file2
-> +++ b/file2
-> @@ -1 +1,2 @@
->  file2: is a text file.
-> +Patch: "second"; Path: "file2"
-> diff --git a/file5 b/file5
-> index aac29970b8c49d0c9414043c72b15cbcc0732f04..aac29970b8c49d0c9414043c72b15cbcc0732f04 0100664
 
 $ darn remove third
 > Patch "third" removed (but available for restoration).
@@ -181,9 +161,57 @@ $ darn remove first
 > Patch "first" removed (but available for restoration).
 $ darn validate
 $ darn series
-$ ls .darning.dbd/retained_patches
+$ darn kept
 > fifth
 > first
 > fourth
 > second
 > third
+
+$ darn kept --restore second --as first
+$ darn push
+> "dir3/file4": modified.
+> "file2": modified.
+> "file5": unchanged.
+> Patch "first" is now on top.
+$ darn diff
+> diff --git a/dir3/file4 b/dir3/file4
+> index 426a67e8158e8f29f8f1ce64551b3f1dd745d9af..31ad731a63455372d037e05aa3e6ad642b916f7b 0100664
+> --- a/dir3/file4
+> +++ b/dir3/file4
+> @@ -1 +1,2 @@
+>  dir3/file4: is a text file.
+> +Patch: "second"; Path: "dir3/file4"
+> diff --git a/file2 b/file2
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..00c55dd55bb971b92c078bee4b75df30999295fc 0100664
+> --- a/file2
+> +++ b/file2
+> @@ -1 +1,2 @@
+>  file2: is a text file.
+> +Patch: "second"; Path: "file2"
+> diff --git a/file5 b/file5
+> index aac29970b8c49d0c9414043c72b15cbcc0732f04..aac29970b8c49d0c9414043c72b15cbcc0732f04 0100664
+$ darn kept
+> fifth
+> first
+> fourth
+> third
+$ darn validate
+
+$ darn kept --delete fourth first
+$ darn kept
+> fifth
+> third
+$ darn series
+> +: first
+$ darn validate
+
+$ darn kept --delete fourth first fifth
+? 2
+! fourth: unknown patch.
+! first: unknown patch.
+$ darn kept
+> third
+$ darn series
+> +: first
+$ darn validate

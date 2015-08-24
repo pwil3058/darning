@@ -42,3 +42,4 @@ from . import subcmd_duplicate
 from . import subcmd_delete
 from . import subcmd_select
 from . import subcmd_guard
+from . import subcmd_kept

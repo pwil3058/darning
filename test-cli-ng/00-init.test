@@ -30,9 +30,7 @@ $ ls .darning.dbd
 > description
 > lock_db_ng
 > patches_data
-> retained_patches
 $ ls .darning.dbd/blobs/
-$ ls .darning.dbd/retained_patches/
 $ ls .darning.dbd/patches_data
 > .darning.dbd/patches_data
 $ ls .darning.dbd/patches_data/
