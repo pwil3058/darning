@@ -21,3 +21,4 @@ from . import scm_ifce_hg
 
 # import PM backend interfaces here
 from . import pm_ifce_darning
+from . import pm_ifce_darning_ng

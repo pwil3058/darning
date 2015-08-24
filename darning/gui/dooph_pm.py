@@ -24,6 +24,8 @@ from .. import utils
 from .. import pm_ifce
 from .. import scm_ifce
 
+from ..cmd_result import CmdResult
+
 from . import ifce
 from . import dialogue
 from . import dooph
@@ -162,8 +164,10 @@ def pm_do_duplicate_patch(patch_name):
 def pm_do_edit_files(file_paths):
     if len(file_paths) == 0:
         return
-    if pm_do_add_files(ifce.PM.get_filepaths_not_in_patch(None, file_paths)).is_ok:
-        text_edit.edit_files_extern(file_paths)
+    new_file_paths = ifce.PM.get_filepaths_not_in_patch(None, file_paths)
+    if new_file_paths and not pm_do_add_files(new_file_paths).is_ok:
+        return
+    text_edit.edit_files_extern(file_paths)
 
 def pm_do_export_named_patch(patch_name, suggestion=None, busy_indicator=None):
     if busy_indicator is None:
@@ -214,6 +218,7 @@ def pm_do_export_named_patch(patch_name, suggestion=None, busy_indicator=None):
         break
 
 def pm_do_extdiff_for_file(file_path, patch_name=None):
+    from . import diff
     files = ifce.PM.get_extdiff_files_for(file_path=file_path, patch_name=patch_name)
     dialogue.report_any_problems(diff.launch_external_diff(files.original_version, files.patched_version))
 
@@ -444,6 +449,8 @@ def pm_do_push_to(patch_name):
 
 def _launch_reconciliation_tool(file_a, file_b, file_c):
     from .. import options
+    from .. import runext
+    from ..cmd_result import CmdResult
     reconciler = options.get("reconcile", "tool")
     if not reconciler:
         return CmdResult.warning(_("No reconciliation tool is defined.\n"))

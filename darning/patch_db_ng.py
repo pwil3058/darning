@@ -643,6 +643,12 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
         stashed = BLOB_PATH(self.darned.git_hash) if self.darned else "/dev/null"
         # The user has to be able to cope with the main file not existing (meld can)
         return _O_IP_S_TRIPLET(before, self.path, stashed)
+    def get_extdiff_paths(self):
+        assert self.patch.is_applied and self.get_overlapping_file() is None
+        # make it hard for the user to (accidentally) create these files if they don't exist
+        before = BLOB_PATH(self.came_from.orig.git_hash) if self.came_from else (BLOB_PATH(self.orig.git_hash) if self.orig else "/dev/null")
+        # The user has to be able to cope with the main file not existing (meld can)
+        return _O_IP_PAIR(before, self.path)
     def get_table_row(self):
         return fsdb.Data(self.path, FileStatus(self.presence, self.validity), self.related_file_data)
     def get_refresh_after_data(self, overlapping_file, with_timestamps=False):
@@ -2179,6 +2185,20 @@ def do_select_guards(guards):
         RCTX.stdout.write(_('{{{0}}}: is now the set of selected guards.\n').format(', '.join(sorted(DB.selected_guards))))
         return CmdResult.OK
 
+def do_set_patch_description(patch_name, text):
+    with open_db(mutable=True) as DB:
+        patch = _get_named_or_top_patch(patch_name, DB)
+        if not patch:
+            return CmdResult.ERROR
+        old_description = patch.description
+        if text:
+            text = _tidy_text(text)
+        patch.description = text if text is not None else ''
+        if old_description != patch.description:
+            change_lines = difflib.ndiff(old_description.splitlines(True), patch.description.splitlines(True))
+            RCTX.stdout.write(''.join(change_lines))
+        return CmdResult.OK
+
 def do_set_patch_guards(patch_name, pos_guards, neg_guards):
     with open_db(mutable=True) as DB:
         patch = _get_named_or_top_patch(patch_name, DB)
@@ -2203,6 +2223,14 @@ def do_set_patch_guards_fm_list(patch_name, guards_list):
 
 def do_set_patch_guards_fm_str(patch_name, guards_str):
     return do_set_patch_guards_fm_list(patch_name, guards_str.split())
+
+def do_set_series_description(description):
+    try:
+        open(_DESCRIPTION_FILE_PATH, "w").write(description)
+    except IOError as edata:
+        RCTX.stderr.write(edata)
+        return CmdResult.ERROR
+    return CmdResult.OK
 
 def do_unapply_top_patch(force=False):
     return do_pop_top_patch(force=force)
@@ -2326,6 +2354,10 @@ def get_diff_pluses_for_files(file_paths, patch_name, with_timestamps=False):
             file_iter = patch.iterate_files_sorted()
         return [file_data.get_diff_plus(with_timestamps=with_timestamps) for file_data in file_iter]
 
+def get_extdiff_files_for(file_path, patch_name):
+    with open_db(mutable=False) as DB:
+        return DB.get_named_patch(patch_name).get_file(file_path).get_extdiff_paths()
+
 def get_filepaths_not_in_patch(patch_name, file_paths):
     if not file_paths:
         return []
@@ -2345,6 +2377,23 @@ def get_named_or_top_patch_name(patch_name):
     with open_db(mutable=False) as DB:
         patch = _get_named_or_top_patch(patch_name, DB)
         return None if patch is None else patch.name
+
+def get_outstanding_changes_below_top():
+    with open_db(mutable=False) as DB:
+        if not DB.applied_patches_data:
+            return OverlapData()
+        skip_set = DB.top_patch.get_file_paths_set()
+        unrefreshed = {}
+        for applied_patch in DB.iterate_applied_patches(stop=-1, backwards=True):
+            apfiles = applied_patch.get_filepaths()
+            if apfiles:
+                apfiles_set = set(apfiles) - skip_set
+                for apfile in apfiles_set:
+                    if applied_patch.get_file(apfile).needs_refresh:
+                        unrefreshed[apfile] = applied_patch
+                skip_set |= apfiles_set
+        uncommitted = set(scm_ifce.get_ifce().get_files_with_uncommitted_changes()) - skip_set
+        return OverlapData(unrefreshed=unrefreshed, uncommitted=uncommitted)
 
 def get_patch_description(patch_name):
     with open_db(mutable=False) as DB:
@@ -2372,9 +2421,28 @@ def get_selected_guards():
     with open_db(mutable=False) as DB:
         return DB.selected_guards
 
+def get_series_description():
+    return open(_DESCRIPTION_FILE_PATH, "r").read()
+
+def get_textpatch(patch_name, with_timestamps=False):
+    with open_db(mutable=False) as DB:
+        return TextPatch(DB.get_named_patch(patch_name), with_timestamps=with_timestamps)
+
+def get_top_patch_for_file(file_path):
+    with open_db(mutable=False) as DB:
+        for applied_patch in reversed(DB.applied_patches_data):
+            if file_path in applied_patch.files_data:
+                return applied_patch.name
+        return None
+
 def is_blocked_by_guard(patch_name):
     with open_db(mutable=False) as DB:
         return DB.get_named_patch(patch_name).is_blocked_by_guard
+
+def is_patch_applied(patch_name):
+    '''Is the named patch applied?'''
+    with open_db(mutable=False) as DB:
+        return DB.get_named_patch(patch_name).is_applied
 
 def is_pushable():
     with open_db(mutable=False) as DB:

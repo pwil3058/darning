@@ -26,6 +26,7 @@ from .. import rctx
 
 from . import recollect
 from . import ws_event
+from . import dialogue
 from .console import LOG, RCTX
 
 E_NEW_SCM, E_NEW_PM, E_NEW_SCM_OR_PM = ws_event.new_event_flags_and_mask(2)
