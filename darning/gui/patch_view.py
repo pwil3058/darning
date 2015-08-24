@@ -187,7 +187,7 @@ class Dialogue(dialogue.AmodalDialog):
         self.unshow_busy()
     def _refresh_acb(self, _action):
         self.show_busy()
-        result = ifce.PM.do_refresh(self.widget.patchname)
+        result = ifce.PM.do_refresh_patch(self.widget.patchname)
         self.unshow_busy()
         dialogue.report_any_problems(result)
     def _save_as_acb(self, _action):
