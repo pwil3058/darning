@@ -64,6 +64,7 @@ class WSTreeView(file_tree.FileTreeView):
           <menuitem action='pm_edit_files_in_top_patch'/>
         <separator/>
           <menuitem action='pm_add_files_to_top_patch'/>
+          <menuitem action='pm_move_files_in_top_patch'/>
           <menuitem action='pm_delete_files_in_top_patch'/>
         <separator/>
         <separator/>
@@ -98,6 +99,10 @@ class WSTreeView(file_tree.FileTreeView):
                 ('pm_add_files_to_top_patch', gtk.STOCK_ADD, _('_Add'), None,
                  _('Add the selected files to the top patch'),
                  lambda _action=None: dooph_pm.pm_do_add_files(self.get_selected_filepaths())
+                ),
+                ('pm_move_files_in_top_patch', icons.STOCK_RENAME, _('_Move'), None,
+                 _('Move the selected files within the top patch'),
+                 lambda _action=None: dooph_pm.pm_do_move_files(self.get_selected_filepaths())
                 ),
                 ('pm_edit_files_in_top_patch', gtk.STOCK_EDIT, _('_Edit'), None,
                  _('Open the selected files for editing after adding them to the top patch'),

@@ -130,6 +130,19 @@ class Interface(pm_ifce.InterfaceMixin):
         cmd_str = "fold --patch {0}\n".format(utils.quote_if_needed(patch_name))
         return _RUN_DO(cmd_str, lambda: patch_db.do_fold_named_patch(patch_name, absorb=absorb, force=force), pm_ifce.E_FILE_CHANGES|pm_ifce.E_DELETE_PATCH, False)
     @staticmethod
+    def do_move_files(file_paths, destn_path, force=False, overwrite=False):
+        if force:
+            if overwrite:
+                tmpl = "move --force --overwrite {0} {1}\n"
+            else:
+                tmpl = "move --force {0} {1}\n"
+        elif overwrite:
+            tmpl = "move --overwrite {0} {1}\n"
+        else:
+            tmpl = "move {0} {1}\n"
+        cmd_str = tmpl.format(utils.quoted_join(file_paths), utils.quote_if_needed(destn_path))
+        return _RUN_DO(cmd_str, lambda: patch_db.do_move_files_in_top_patch(file_paths, destn_path, force=force, overwrite=overwrite), pm_ifce.E_FILE_ADDED|pm_ifce.E_FILE_DELETED)
+    @staticmethod
     def do_pop_top_patch():
         return _RUN_DO("pop\n", lambda: patch_db.do_unapply_top_patch(), pm_ifce.E_POP, False)
     @staticmethod
