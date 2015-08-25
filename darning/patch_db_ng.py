@@ -1532,10 +1532,15 @@ class DataBase(mixins.WrapperMixin):
         if overlapped_patch:
             return self.clone_stored_content_data(overlapped_patch.get_file(file_path).darned)
         if file_path in overlaps.uncommitted:
-            pass # TODO: handle uncommitted overlaps
-        elif not os.path.exists(file_path):
+            contents = scm_ifce.get_ifce().get_clean_contents(file_path)
+            if contents is None:
+                # Will occur if file has been added to SCM but not committed
+                return None
+        elif os.path.exists(file_path):
+            contents = open(file_path, "r").read()
+        else:
             return None
-        return _EssentialFileData(self.store_content(open(file_path, "r").read()), os.lstat(file_path))
+        return _EssentialFileData(self.store_content(contents), os.lstat(file_path))
     def update_stored_content_data(self, file_path, old_data, overlaps=OverlapData()):
         # NB: get new data first so that if it hasn't changed not much gets done
         new_data = self.store_file_content(file_path, overlaps)
@@ -1704,6 +1709,8 @@ def do_apply_next_patch(absorb=False, force=False):
             else:
                 RCTX.stderr.write(_("No pushable patches.\n"))
             return CmdResult.ERROR
+        except DarnItPatchOverlapsChanges as edata:
+            return edata.overlaps.report_and_abort()
         if ecode & CmdResult.ERROR:
             RCTX.stderr.write(_("A refresh is required after issues are resolved.\n"))
         elif DB.top_patch.needs_refresh:

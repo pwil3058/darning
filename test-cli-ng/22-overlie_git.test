@@ -1,0 +1,307 @@
+### Copyright (C) 2011 Peter Williams <peter_ono@users.sourceforge.net>
+###
+### This program is free software; you can redistribute it and/or modify
+### it under the terms of the GNU General Public License as published by
+### the Free Software Foundation; version 2 of the License only.
+###
+### This program is distributed in the hope that it will be useful,
+### but WITHOUT ANY WARRANTY; without even the implied warranty of
+### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+### GNU General Public License for more details.
+###
+### You should have received a copy of the GNU General Public License
+### along with this program; if not, write to the Free Software
+### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+
+Test overlying a git repository.
+
+Create some test files and start a git repository.
+$ darn_test_tree create
+$ mkfile .gitignore
+< .darning.dbd/
+$ git init > /dev/null
+$ git add dir1 dir3 dir5 binary1 binary3 binary5 file1 file3 file5 .gitignore
+$ git commit -m "test" > /dev/null
+$ git status --short
+> ?? binary2
+> ?? binary4
+> ?? dir2/
+> ?? dir4/
+> ?? file2
+> ?? file4
+
+Initialise a playground
+$ darn init --ng
+$ darn new patch1 --descr "first patch"
+
+Modify some files tracked by git
+$ darn_test_tree modify file1 binary1 dir1/file1
+$ git status --short
+>  M binary1
+>  M dir1/file1
+>  M file1
+> ?? binary2
+> ?? binary4
+> ?? dir2/
+> ?? dir4/
+> ?? file2
+> ?? file4
+
+Now try to add modified files to a patch
+$ darn add binary1 file1 dir1/file2
+? 134
+! binary1: file has uncommitted SCM changes.
+! file1: file has uncommitted SCM changes.
+! Aborted.
+$ darn files
+$ darn validate
+
+Now try to add modified files to a patch using --absorb
+$ darn add --absorb binary1 file1 dir1/file2
+> binary1: file added to patch "patch1".
+> file1: file added to patch "patch1".
+> dir1/file2: file added to patch "patch1".
+! binary1: Uncommited SCM changes have been incorporated in patch "patch1".
+! file1: Uncommited SCM changes have been incorporated in patch "patch1".
+$ darn files
+>  :+: binary1
+>  :+: dir1/file2
+>  :+: file1
+$ darn validate
+$ darn diff
+> diff --git a/binary1 b/binary1
+> index 21172b42b3158210ce66f1ad674a8dc5bd82ac06..a2263d3fd1cdcab600546f38c7beab32578defb8 0100664
+> GIT binary patch
+> delta 38
+> nc$|~AnINqgkXVwOVWpr{0HO_*tQCL)AbwJ2USd(Dp%NDW+Y1Xh
+>
+> delta 4
+> Lc$~A5o*)eX0)PPn
+>
+> diff --git a/dir1/file2 b/dir1/file2
+> index 355abe4cfad1788acbc320d6898fed9795da7304..355abe4cfad1788acbc320d6898fed9795da7304 0100664
+> diff --git a/file1 b/file1
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..d4090fe6fd0230a24d6a7984907cab0370305fa6 0100664
+> --- a/file1
+> +++ b/file1
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "patch1"; Path: "file1"
+
+Now try adding a file to git without committing
+$ git add file4
+$ git status --short
+>  M binary1
+>  M dir1/file1
+>  M file1
+> A  file4
+> ?? binary2
+> ?? binary4
+> ?? dir2/
+> ?? dir4/
+> ?? file2
+$ darn add file4
+? 134
+! file4: file has uncommitted SCM changes.
+! Aborted.
+$ darn add --absorb file4
+> file4: file added to patch "patch1".
+! file4: Uncommited SCM changes have been incorporated in patch "patch1".
+$ darn files
+>  :+: binary1
+>  :+: dir1/file2
+>  :+: file1
+> +:?: file4
+$ darn refresh
+$ darn diff
+> diff --git a/binary1 b/binary1
+> index 21172b42b3158210ce66f1ad674a8dc5bd82ac06..a2263d3fd1cdcab600546f38c7beab32578defb8 0100664
+> GIT binary patch
+> delta 38
+> nc$|~AnINqgkXVwOVWpr{0HO_*tQCL)AbwJ2USd(Dp%NDW+Y1Xh
+>
+> delta 4
+> Lc$~A5o*)eX0)PPn
+>
+> diff --git a/dir1/file2 b/dir1/file2
+> index 355abe4cfad1788acbc320d6898fed9795da7304..355abe4cfad1788acbc320d6898fed9795da7304 0100664
+> diff --git a/file1 b/file1
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..d4090fe6fd0230a24d6a7984907cab0370305fa6 0100664
+> --- a/file1
+> +++ b/file1
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "patch1"; Path: "file1"
+> diff --git a/file4 b/file4
+> new file mode 0100664
+> index 000000000000000000000000000000000000000000000000..0ae60b457dee21f4f4c4af93722f993185aff3f0
+> --- /dev/null
+> +++ b/file4
+> @@ -0,0 +1 @@
+> +file4: is a text file.
+$ darn diff > patch1.diff.saved
+$ darn validate
+$ darn pop
+> There are now no patches applied.
+$ git status --short
+>  M dir1/file1
+> AD file4
+> ?? binary2
+> ?? binary4
+> ?? dir2/
+> ?? dir4/
+> ?? file2
+> ?? patch1.diff.saved
+$ darn push
+? 134
+! file4: file has uncommitted SCM changes.
+! Aborted.
+$ darn push --absorb
+> "file4": created.
+> "binary1": binary file replaced.
+> "dir1/file2": unchanged.
+> "file1": modified.
+> Patch "patch1" is now on top.
+$ git status --short
+>  M binary1
+>  M dir1/file1
+>  M file1
+> A  file4
+> ?? binary2
+> ?? binary4
+> ?? dir2/
+> ?? dir4/
+> ?? file2
+> ?? patch1.diff.saved
+$ darn diff > patch1.diff
+$ diff patch1.diff patch1.diff.saved
+$ rm patch1.diff patch1.diff.saved
+$ darn validate
+
+Now repeat the exercise using --force instead of --absorb
+$ darn new patch2 --descr "second patch"
+$ darn_test_tree modify file3 binary3 dir3/file3
+$ git status --short
+>  M binary1
+>  M binary3
+>  M dir1/file1
+>  M dir3/file3
+>  M file1
+>  M file3
+> A  file4
+> ?? binary2
+> ?? binary4
+> ?? dir2/
+> ?? dir4/
+> ?? file2
+
+Now try to add modified files to a patch
+$ darn add binary3 file3 dir1/file3
+? 134
+! binary3: file has uncommitted SCM changes.
+! file3: file has uncommitted SCM changes.
+! Aborted.
+$ darn files
+$ darn validate
+
+Now try to add modified files to a patch using --force
+$ darn add --force binary3 file3 dir1/file2
+> binary3: file added to patch "patch2".
+> file3: file added to patch "patch2".
+> dir1/file2: file added to patch "patch2".
+$ darn files
+>  :+: binary3
+>  :+: dir1/file2
+>  :+: file3
+$ darn validate
+$ darn diff
+> diff --git a/binary3 b/binary3
+> index 163eb54be8370c8756133a2aec6daab7799cc832..163eb54be8370c8756133a2aec6daab7799cc832 0100664
+> diff --git a/dir1/file2 b/dir1/file2
+> index 355abe4cfad1788acbc320d6898fed9795da7304..355abe4cfad1788acbc320d6898fed9795da7304 0100664
+> diff --git a/file3 b/file3
+> index 4d02a899b354020c193b8549a0422f0e1663c337..4d02a899b354020c193b8549a0422f0e1663c337 0100664
+
+Now try adding a file to git without committing
+$ git add file2
+$ git status --short
+>  M binary1
+>  M binary3
+>  M dir1/file1
+>  M dir3/file3
+>  M file1
+> A  file2
+>  M file3
+> A  file4
+> ?? binary2
+> ?? binary4
+> ?? dir2/
+> ?? dir4/
+$ darn add file2
+? 134
+! file2: file has uncommitted SCM changes.
+! Aborted.
+$ darn add --force file2
+> file2: file added to patch "patch2".
+$ darn files
+>  :+: binary3
+>  :+: dir1/file2
+>  :+: file2
+>  :+: file3
+$ darn refresh
+$ darn diff
+> diff --git a/binary3 b/binary3
+> index 163eb54be8370c8756133a2aec6daab7799cc832..163eb54be8370c8756133a2aec6daab7799cc832 0100664
+> diff --git a/dir1/file2 b/dir1/file2
+> index 355abe4cfad1788acbc320d6898fed9795da7304..355abe4cfad1788acbc320d6898fed9795da7304 0100664
+> diff --git a/file2 b/file2
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..cd1c1e8e36a212ba7723de693b194e58acab54ae 0100664
+> diff --git a/file3 b/file3
+> index 4d02a899b354020c193b8549a0422f0e1663c337..4d02a899b354020c193b8549a0422f0e1663c337 0100664
+$ darn diff > patch2.diff.saved
+$ darn validate
+$ darn pop
+> Patch "patch1" is now on top.
+$ git status --short
+>  M binary1
+>  M binary3
+>  M dir1/file1
+>  M dir3/file3
+>  M file1
+> A  file2
+>  M file3
+> A  file4
+> ?? binary2
+> ?? binary4
+> ?? dir2/
+> ?? dir4/
+> ?? patch2.diff.saved
+$ darn push
+? 134
+! binary3: file has uncommitted SCM changes.
+! file2: file has uncommitted SCM changes.
+! file3: file has uncommitted SCM changes.
+! Aborted.
+$ darn push --force
+> "binary3": unchanged.
+> "dir1/file2": unchanged.
+> "file2": unchanged.
+> "file3": unchanged.
+> Patch "patch2" is now on top.
+$ git status --short
+>  M binary1
+>  M binary3
+>  M dir1/file1
+>  M dir3/file3
+>  M file1
+> A  file2
+>  M file3
+> A  file4
+> ?? binary2
+> ?? binary4
+> ?? dir2/
+> ?? dir4/
+> ?? patch2.diff.saved
+$ darn diff > patch2.diff
+$ diff patch2.diff patch2.diff.saved
+$ rm patch2.diff patch2.diff.saved

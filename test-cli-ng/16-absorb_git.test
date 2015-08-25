@@ -15,7 +15,7 @@
 
 Test the 'darn absorb' command.
 
-Create some test files and start a mercurial repository.
+Create some test files and start a git repository.
 $ darn_test_tree create
 $ git init > /dev/null
 $ git add .

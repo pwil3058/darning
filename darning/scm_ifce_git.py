@@ -305,6 +305,9 @@ class Interface(object):
     def get_branches_table_data():
         return BranchTableData()
     @staticmethod
+    def get_clean_contents(file_path):
+        return runext.run_get_cmd(["git", "cat-file", "blob", "HEAD:{}".format(file_path)], do_rstrip=False, default=None)
+    @staticmethod
     def get_log_table_data():
         return LogTableData()
     @staticmethod
