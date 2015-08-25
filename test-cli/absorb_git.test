@@ -23,7 +23,7 @@ $ git commit -m "test" > /dev/null
 $ git status --short
 
 Initialise a playground and try again without creating a patch
-$ darn init
+$ darn init --legacy
 
 Create a patch and add files
 $ darn new first --descr "First patch created."

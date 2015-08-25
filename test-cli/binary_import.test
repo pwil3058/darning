@@ -96,7 +96,7 @@ $ mkfile patch2
 <
 
 
-$ darn init
+$ darn init --legacy
 $ darn import patch1
 > binary1: file added to patch "patch1".
 > dir1/binary1: file added to patch "patch1".

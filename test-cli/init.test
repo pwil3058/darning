@@ -16,7 +16,7 @@
 Test the 'darn init' command.
 
 Test a valid initialization.
-$ darn init --descr 'A short description of the patch series.'
+$ darn init --legacy --descr 'A short description of the patch series.'
 $ ls -a
 > .
 > ..
@@ -37,13 +37,13 @@ $ ls .darning.dbd/database/
 ! ls: cannot access .darning.dbd/database/: Not a directory
 
 Test invalid initialization in root directory of a playground.
-$ darn init
+$ darn init --legacy
 ? 2
 ! Inside existing playground: ".".
 
 Test invalid initialization in a sub directory of a playground.
 $ mkdir subdir
 $ cd subdir
-$ darn init
+$ darn init --legacy
 ? 2
 ! Inside existing playground: "..".

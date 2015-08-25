@@ -18,7 +18,7 @@ Test darning's combined patch data.
 Set up a small file tree and initialise a playground therein
 $ darn_test_tree create
 
-$ darn init
+$ darn init --legacy
 $ darn new first --descr "First patch"
 $ darn add file1 dir1/file1 dir2/file1 dir2/subdir1/file1 > /dev/null
 $ darn copy file1 file1.copy > /dev/null

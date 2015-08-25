@@ -19,7 +19,7 @@ Create some test files.
 $ darn_test_tree create
 
 Initialiaze a playground, create some patches and add the files to the patches
-$ darn init
+$ darn init --legacy
 $ darn new first
 $ darn add file1 file2 file3 nonexistent > /dev/null
 $ darn_test_tree modify file1 file2 file3

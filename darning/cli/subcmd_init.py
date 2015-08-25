@@ -50,7 +50,6 @@ def run_init(args):
     elif args.opt_ng:
         return patch_db_ng.do_create_db(description=args.opt_description)
     else:
-        # for the time being leave "legacy" as the default
-        return patch_db.do_create_db(description=args.opt_description)
+        return patch_db_ng.do_create_db(description=args.opt_description)
 
 PARSER.set_defaults(run_cmd=run_init)

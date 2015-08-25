@@ -21,7 +21,7 @@ $ darn remove first
 ! Valid database NOT found.
 
 Set up a playground with three patches
-$ darn init
+$ darn init --legacy
 $ darn new first
 $ darn new second
 $ darn new third
