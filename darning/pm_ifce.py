@@ -90,12 +90,13 @@ def backend_requirements():
 def report_backend_requirements(parent=None):
     dialogue.inform_user(backend_requirements(), parent=parent)
 
-def avail_backends():
-    return list(_BACKEND.keys())
+def avail_backends(include_deprecated=False):
+    if include_deprecated:
+        return list(_BACKEND.keys())
+    else:
+        return [be.name for be in _BACKEND.itervalues() if not be.is_deprecated]
 
 def playground_type(dirpath=None):
-    # TODO: cope with nested playgrounds of different type and go for closest
-    # TODO: give preference to quilt if both found to allow quilt to be used on hg?
     for bname in list(_BACKEND.keys()):
         if _BACKEND[bname].dir_is_in_valid_pgnd(dirpath):
             return bname

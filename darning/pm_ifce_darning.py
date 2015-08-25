@@ -53,13 +53,14 @@ class PatchListData(pm_ifce.PatchListData):
 
 @singleton
 class Interface(pm_ifce.InterfaceMixin):
-    name = "darning"
-    cmd_label = "darning"
+    name = "darning (legacy)"
+    cmd_label = "darning (legacy)"
     has_add_files = False
     has_finish_patch = True
     has_guards = True
     has_refresh_non_top = True
     is_available = True
+    is_deprecated = True
     @staticmethod
     def __getattr__(attr_name):
         if attr_name == "in_valid_pgnd": return patch_db.find_base_dir() is not None
