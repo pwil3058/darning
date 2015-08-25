@@ -9,8 +9,8 @@ SRCDIST:=darning-$(VERSION).tar.gz
 RPMDIST:=darning-$(subst -,_,$(VERSION))-$(RELEASE).noarch.rpm
 RPMSRC:=$(RPMBDIR)/SOURCES/$(SRCDIST)
 CLI_SRCS=darn $(wildcard darning/*.py) $(wildcard darning/cli/*.py)
-CLI_TEST_SCRIPTS=$(wildcard test-cli/*.test)
-CLI_TESTS=$(patsubst test-cli/%.test,test-cli/.%.ok, $(CLI_TEST_SCRIPTS))
+CLI_TEST_SCRIPTS_LEGACY=$(wildcard test-cli/*.test)
+CLI_TESTS_LEGACY=$(patsubst test-cli/%.test,test-cli/.%.ok, $(CLI_TEST_SCRIPTS_LEGACY))
 CLI_TEST_SCRIPTS_NG=$(sort $(wildcard test-cli-ng/*.test))
 CLI_TESTS_NG=$(patsubst test-cli-ng/%.test,test-cli-ng/.%.ok, $(CLI_TEST_SCRIPTS_NG))
 
@@ -52,7 +52,9 @@ install:
 	desktop-file-install darning.desktop --dir $(PREFIX)/share/applications
 	rm MANIFEST
 
-check: $(CLI_TESTS)
+check: check-legacy check-ng
+
+check-legacy: $(CLI_TESTS_LEGACY)
 
 test-cli/.%.ok: test-cli/%.test $(CLI_SRCS)
 	@LANG=C; LC_ALL=C; PATH="$(PWD):$(PATH)";	\
@@ -73,4 +75,4 @@ test-cli-ng/.%.ok: test-cli-ng/%.test $(CLI_SRCS)
 clean:
 	-rm *.rpm *.spec *.exe *.tar.gz MANIFEST
 	-rm -r build
-	-rm $(CLI_TESTS) $(CLI_TESTS_NG)
+	-rm $(CLI_TESTS_LEGACY) $(CLI_TESTS_NG)
