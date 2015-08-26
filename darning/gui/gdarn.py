@@ -62,6 +62,9 @@ class Darning(gtk.Window, dialogue.BusyIndicator, ws_actions.AGandUIManager):
            <separator/>
             <toolitem name="Select" action="pm_select_guards"/>
            <separator/>
+            <toolitem name="Diff" action="pm_top_patch_diff_pluses"/>
+            <toolitem name="CombinedDiff" action="pm_combined_patch_diff_pluses"/>
+           <separator/>
             <toolitem action="pm_add_new_file"/>
         </toolbar>
     </ui>

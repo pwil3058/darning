@@ -215,6 +215,8 @@ class Interface(pm_ifce.InterfaceMixin):
         return None # let ifce handle this
     @staticmethod
     def get_combined_patch_diff_pluses(file_paths=None):
+        if patch_db.get_applied_patch_count() == 0:
+            return []
         return patch_db.get_combined_diff_pluses_for_files(file_paths)
     @staticmethod
     def get_combined_patch_file_db():
@@ -289,6 +291,8 @@ class Interface(pm_ifce.InterfaceMixin):
         return patch_db.get_textpatch(patch_name)
     @staticmethod
     def get_top_patch_diff_pluses(file_paths=None, with_timestamps=False):
+        if patch_db.get_applied_patch_count() == 0:
+            return []
         return patch_db.get_diff_pluses_for_files(file_paths=file_paths, patch_name=None, with_timestamps=with_timestamps)
     @staticmethod
     def get_top_patch_file_db():

@@ -26,12 +26,14 @@ from .. import utils
 from .. import options
 from .. import runext
 from .. import patchlib
+from .. import pm_ifce
 
 from . import dialogue
 from . import textview
 from . import ifce
 from . import gutils
 from . import icons
+from . import ws_event
 
 class FileAndRefreshActions:
     def __init__(self):
@@ -426,10 +428,14 @@ class DiffPlusesWidget(DiffPlusNotebook, FileAndRefreshActions):
     def window_title(self):
         return ""
 
-class TopPatchDiffPlusesWidget(DiffPlusesWidget):
+class TopPatchDiffPlusesWidget(DiffPlusesWidget, ws_event.Listener):
     def __init__(self, file_paths=None, num_strip_levels=1):
         self._file_paths = file_paths
         DiffPlusesWidget.__init__(self)
+        ws_event.Listener.__init__(self)
+        self.add_notification_cb(pm_ifce.E_PATCH_STACK_CHANGES|pm_ifce.E_FILE_CHANGES|ifce.E_CHANGE_WD, self._refresh_ecb)
+    def _refresh_ecb(self, **kwargs):
+        self.update()
     def _get_diff_pluses(self):
         return ifce.PM.get_top_patch_diff_pluses(self._file_paths)
     @property
@@ -507,10 +513,14 @@ class DiffTextWidget(DiffPlusNotebook, FileAndRefreshActions):
     def window_title(self):
         return ""
 
-class TopPatchDiffTextWidget(DiffTextWidget):
+class TopPatchDiffTextWidget(DiffTextWidget, ws_event.Listener):
     def __init__(self, file_paths=None, num_strip_levels=1):
         self._file_paths = file_paths
         DiffTextWidget.__init__(self)
+        ws_event.Listener.__init__(self)
+        self.add_notification_cb(pm_ifce.E_PATCH_STACK_CHANGES|pm_ifce.E_FILE_CHANGES|ifce.E_CHANGE_WD, self._refresh_ecb)
+    def _refresh_ecb(self, **kwargs):
+        self.update()
     def _get_diff_text(self):
         return ifce.PM.get_top_patch_diff_text(self._file_paths)
     @property
@@ -520,10 +530,7 @@ class TopPatchDiffTextWidget(DiffTextWidget):
 class TopPatchDiffTextDialog(_DiffDialog):
     DIFFS_WIDGET = TopPatchDiffTextWidget
 
-class CombinedPatchDiffTextWidget(DiffTextWidget):
-    def __init__(self, file_paths=None, num_strip_levels=1):
-        self._file_paths = file_paths
-        DiffTextWidget.__init__(self)
+class CombinedPatchDiffTextWidget(TopPatchDiffTextWidget):
     def _get_diff_text(self):
         return ifce.PM.get_combined_patch_diff_text(self._file_paths)
     @property

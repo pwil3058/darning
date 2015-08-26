@@ -373,7 +373,7 @@ class FileDiffMixin(object):
         else:
             diff = generate_unified_diff(before, after)
         diff_plus = patchlib.DiffPlus([preamble], diff)
-        if self.renamed_as and self.after.efd is None:
+        if self.renamed_as and after.efd is None:
             diff_plus.trailing_junk.append(_("# Renamed to: {0}\n").format(self.renamed_as))
         return diff_plus
     def get_diff_text(self, as_refreshed=False, with_timestamps=False):
