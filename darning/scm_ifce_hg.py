@@ -274,6 +274,9 @@ class Mercurial(object):
         cmd = ["hg", "log", "--template", "{tags}:{date|age}:{author|person}:{desc|firstline}", "--rev"]
         return [branch + runext.run_get_cmd(cmd + [str(branch[1])]).split(":", 3) for branch in branch_list_iter]
     @staticmethod
+    def get_clean_contents(file_path):
+        return runext.run_get_cmd(["hg", "cat", file_path], do_rstrip=False, default=None)
+    @staticmethod
     def get_extension_enabled(extension):
         return extension in _get_enabled_extensions()
     @staticmethod
