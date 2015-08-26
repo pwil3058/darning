@@ -80,6 +80,19 @@ def pm_do_add_new_file(open_for_edit=False):
         text_edit.edit_files_extern([new_file_path])
     return result
 
+def pm_change_wd():
+    from .import config
+    new_wd_path = config.ask_working_directory_path(dialogue.main_window)
+    if not new_wd_path:
+        return
+    result = ifce.chdir(new_wd_path)
+    dialogue.report_any_problems(result)
+    if result.is_ok and not ifce.PM.in_valid_pgnd:
+        msg = os.linesep.join([_("Directory {} has not been initialised.").format(new_wd_path),
+                               _("Do you wish to initialise it?")])
+        if dialogue.ask_yes_no(msg, parent=dialogue.main_window):
+            pm_do_initialize_curdir()
+
 def pm_do_copy_file(file_path):
     destn = dooph.ask_destination([file_path])
     if not destn:
@@ -566,6 +579,10 @@ actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_actions(
         ("pm_create_new_pgnd", icons.STOCK_NEW_PLAYGROUND, _("_New"), "",
          _("Create a new intitialized playground"),
          lambda _action=None: pm_do_create_new_pgnd()
+        ),
+        ('pm_change_working_directory', gtk.STOCK_OPEN, _('_Open'), '',
+         _('Change current working directory'),
+         lambda _action=None: pm_change_wd()
         ),
     ]
 )

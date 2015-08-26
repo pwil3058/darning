@@ -22,7 +22,6 @@ import gtk
 
 from .. import config_data
 from .. import utils
-from .. import urlops
 
 from . import dialogue
 from . import gutils
@@ -229,6 +228,15 @@ class PgndOpenDialog(PathSelectDialog):
     def __init__(self, suggestion=None, parent=None):
         PathSelectDialog.__init__(self, label=_("Playground/Directory"), suggestion=suggestion, parent=parent)
 
+def ask_working_directory_path(parent=None):
+    open_dialog = PgndOpenDialog(parent=parent)
+    if open_dialog.run() != gtk.RESPONSE_OK:
+        open_dialog.destroy()
+        return None
+    wd_path = open_dialog.get_path()
+    open_dialog.destroy()
+    return wd_path if wd_path else None
+
 # Manage external editors
 
 EDITORS_THAT_NEED_A_TERMINAL = ["vi", "joe", "vim"]
@@ -409,17 +417,6 @@ def change_pgnd_cb(_widget, repo):
     dialogue.unshow_busy()
     dialogue.report_any_problems(result)
 
-def change_pgnd_acb(_arg):
-    open_dialog = PgndOpenDialog()
-    if open_dialog.run() == gtk.RESPONSE_OK:
-        newpg = open_dialog.get_path()
-        if newpg:
-            open_dialog.show_busy()
-            result = ifce.chdir(newpg)
-            open_dialog.unshow_busy()
-            open_dialog.report_any_problems(result)
-    open_dialog.destroy()
-
 class PlaygroundsMenu(gtk.MenuItem):
     def __init__(self, label=_("Playgrounds")):
         gtk.MenuItem.__init__(self, label)
@@ -443,10 +440,6 @@ class PlaygroundsMenu(gtk.MenuItem):
 actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_actions(
     [
         ("config_menu", None, _("_Configuration")),
-        ("config_change_playground", gtk.STOCK_OPEN, _("_Open"), "",
-         _("Change current playground"),
-         change_pgnd_acb
-        ),
         ("config_allocate_editors", gtk.STOCK_PREFERENCES, _("_Editor Allocation"), "",
          _("Allocate editors to file types"),
          lambda _action=None: EditorAllocationDialog(parent=dialogue.main_window).show()
