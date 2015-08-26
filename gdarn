@@ -67,10 +67,12 @@ def report_exception(exc_data, parent=None):
     dialog.destroy()
 
 try:
+    from darning import config_data
     from darning.gui import gdarn
     from darning.gui import ifce
     from darning.gui import config
     from darning.gui import dialogue
+    from darning.gui import recollect
 except Exception:
     report_exception(sys.exc_info())
     sys.exit(3)
@@ -97,7 +99,8 @@ try:
     dialogue.report_any_problems(ifce.init(ARGS.playground is not None))
     open_dialog = None
     if not ifce.PM.in_valid_pgnd and ARGS.playground is None:
-        open_dialog = config.PgndOpenDialog()
+        last_pgnd = recollect.get(config_data.APP_NAME, "last_pgnd")
+        open_dialog = config.PgndOpenDialog(suggestion=last_pgnd)
         if open_dialog.run() == gtk.RESPONSE_OK:
             wspath = open_dialog.get_path()
             if wspath:

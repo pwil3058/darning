@@ -1,14 +1,14 @@
-### Copyright (C) 2005-2011 Peter Williams <peter_ono@users.sourceforge.net>
-
+### Copyright (C) 2005-2015 Peter Williams <pwil3058@gmail.com>
+###
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
 ### the Free Software Foundation; version 2 of the License only.
-
+###
 ### This program is distributed in the hope that it will be useful,
 ### but WITHOUT ANY WARRANTY; without even the implied warranty of
 ### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ### GNU General Public License for more details.
-
+###
 ### You should have received a copy of the GNU General Public License
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
@@ -186,14 +186,15 @@ class PgndPathTable(AliasPathTable):
     SAVED_FILE_NAME = SAVED_PGND_FILE_NAME
 
 class PathSelectDialog(dialogue.Dialog):
-    def __init__(self, create_table, label, parent=None):
+    PATH_TABLE = AliasPathTable
+    def __init__(self, label, suggestion=None, parent=None):
         dialogue.Dialog.__init__(self, title=_('gdarn: Select {0}').format(label), parent=parent,
                                  flags=gtk.DIALOG_MODAL|gtk.DIALOG_DESTROY_WITH_PARENT,
                                  buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
                                           gtk.STOCK_OK, gtk.RESPONSE_OK)
                                 )
         hbox = gtk.HBox()
-        self.ap_table = create_table()
+        self.ap_table = self.PATH_TABLE()
         hbox.pack_start(self.ap_table)
         self.vbox.pack_start(hbox)
         hbox = gtk.HBox()
@@ -201,6 +202,8 @@ class PathSelectDialog(dialogue.Dialog):
         self._path = gutils.MutableComboBoxEntry()
         self._path.child.set_width_chars(32)
         self._path.child.connect("activate", self._path_cb)
+        if suggestion:
+            self._path.set_text(suggestion)
         hbox.pack_start(self._path, expand=True, fill=True)
         self._browse_button = gtk.Button(label=_('_Browse'))
         self._browse_button.connect("clicked", self._browse_cb)
@@ -223,9 +226,9 @@ class PathSelectDialog(dialogue.Dialog):
         return os.path.expanduser(self._path.get_text())
 
 class PgndOpenDialog(PathSelectDialog):
-    def __init__(self, parent=None):
-        PathSelectDialog.__init__(self, create_table=PgndPathTable,
-            label=_('Playground/Directory'), parent=parent)
+    PATH_TABLE = PgndPathTable
+    def __init__(self, suggestion=None, parent=None):
+        PathSelectDialog.__init__(self, label=_('Playground/Directory'), suggestion=suggestion, parent=parent)
 
 # Manage external editors
 
