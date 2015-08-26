@@ -52,7 +52,7 @@ def init(log=False):
         root = PM.get_playground_root()
         os.chdir(root)
         from . import config
-        config.PgndPathTable.append_saved_pgnd(root)
+        config.PgndPathTable.append_saved_path(root)
         recollect.set(APP_NAME, "last_pgnd", root)
     SCM = scm_ifce.get_ifce()
     curdir = os.getcwd()
@@ -92,7 +92,7 @@ def init_current_dir(backend):
         events |= E_NEW_SCM
     if PM.in_valid_pgnd:
         from . import config
-        config.PgndPathTable.append_saved_pgnd(CURDIR)
+        config.PgndPathTable.append_saved_path(CURDIR)
         recollect.set(APP_NAME, "last_pgnd", CURDIR)
     if events:
         ws_event.notify_events(events)
@@ -125,7 +125,7 @@ def chdir(newdir):
         newdir = PM.get_playground_root()
         os.chdir(newdir)
         from . import config
-        config.PgndPathTable.append_saved_pgnd(newdir)
+        config.PgndPathTable.append_saved_path(newdir)
         recollect.set(APP_NAME, "last_pgnd", newdir)
     SCM = scm_ifce.get_ifce()
     options.reload_pgnd_options()
@@ -148,7 +148,7 @@ def check_interfaces(args):
         newdir = PM.get_playground_root()
         os.chdir(newdir)
         from . import config
-        config.PgndPathTable.append_saved_pgnd(newdir)
+        config.PgndPathTable.append_saved_path(newdir)
         recollect.set(APP_NAME, "last_pgnd", newdir)
         options.load_pgnd_options()
     scm = scm_ifce.get_ifce()

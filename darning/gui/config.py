@@ -14,11 +14,11 @@
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-import gobject
-import gtk
 import fnmatch
 import collections
-import hashlib
+
+import gobject
+import gtk
 
 from .. import config_data
 from .. import utils
@@ -30,12 +30,11 @@ from . import tlview
 from . import table
 from . import actions
 from . import ifce
-from . import icons
 from . import ws_event
 
 SAVED_PGND_FILE_NAME = os.sep.join([config_data.CONFIG_DIR_NAME, "playgrounds"])
 
-_KEYVAL_ESCAPE = gtk.gdk.keyval_from_name('Escape')
+_KEYVAL_ESCAPE = gtk.gdk.keyval_from_name("Escape")
 
 class AliasPathTable(table.Table):
     SAVED_FILE_NAME = None
@@ -52,7 +51,7 @@ class AliasPathTable(table.Table):
     def _abbrev_path(path):
         return utils.path_rel_home(path)
     @classmethod
-    def append_saved_pgnd(cls, path, alias=None):
+    def append_saved_path(cls, path, alias=None):
         if cls._extant_path(path):
             content = cls._fetch_contents()
             found = modified = False
@@ -76,7 +75,7 @@ class AliasPathTable(table.Table):
         extant_ap_list = []
         if not os.path.exists(cls.SAVED_FILE_NAME):
             return []
-        fobj = open(cls.SAVED_FILE_NAME, 'r')
+        fobj = open(cls.SAVED_FILE_NAME, "r")
         lines = fobj.readlines()
         fobj.close()
         for line in lines:
@@ -90,27 +89,27 @@ class AliasPathTable(table.Table):
         return extant_ap_list
     @classmethod
     def _write_list_to_file(cls, ap_list):
-        fobj = open(cls.SAVED_FILE_NAME, 'w')
+        fobj = open(cls.SAVED_FILE_NAME, "w")
         for alpth in ap_list:
             fobj.write(os.pathsep.join(alpth))
             fobj.write(os.linesep)
         fobj.close()
     class View(table.Table.View):
         class Model(table.Table.View.Model):
-            Row = collections.namedtuple('Row', ['Alias', 'Path'])
+            Row = collections.namedtuple("Row", ["Alias", "Path"])
             types = Row(Alias=gobject.TYPE_STRING, Path=gobject.TYPE_STRING)
         specification = tlview.ViewSpec(
             properties={
-                'enable-grid-lines' : False,
-                'reorderable' : False,
-                'rules_hint' : False,
-                'headers-visible' : True,
+                "enable-grid-lines" : False,
+                "reorderable" : False,
+                "rules_hint" : False,
+                "headers-visible" : True,
             },
             selection_mode=gtk.SELECTION_SINGLE,
             columns=[
                 tlview.ColumnSpec(
-                    title=_('Alias'),
-                    properties={'expand': False, 'resizable' : True},
+                    title=_("Alias"),
+                    properties={"expand": False, "resizable" : True},
                     cells=[
                         tlview.CellSpec(
                             cell_renderer_spec=tlview.CellRendererSpec(
@@ -118,15 +117,15 @@ class AliasPathTable(table.Table):
                                 expand=False,
                                 start=True
                             ),
-                            properties={'editable' : True},
+                            properties={"editable" : True},
                             cell_data_function_spec=None,
-                            attributes = {'text' : Model.col_index('Alias')}
+                            attributes = {"text" : Model.col_index("Alias")}
                         ),
                     ],
                 ),
                 tlview.ColumnSpec(
-                    title=_('Path'),
-                    properties={'expand': False, 'resizable' : True},
+                    title=_("Path"),
+                    properties={"expand": False, "resizable" : True},
                     cells=[
                         tlview.CellSpec(
                             cell_renderer_spec=tlview.CellRendererSpec(
@@ -134,9 +133,9 @@ class AliasPathTable(table.Table):
                                 expand=False,
                                 start=True
                             ),
-                            properties={'editable' : False},
+                            properties={"editable" : False},
                             cell_data_function_spec=None,
-                            attributes = {'text' : Model.col_index('Path')}
+                            attributes = {"text" : Model.col_index("Path")}
                         ),
                     ],
                 ),
@@ -146,15 +145,15 @@ class AliasPathTable(table.Table):
         table.Table.__init__(self, size_req=(480, 160))
         self.view.register_modification_callback(self.save_to_file)
         self.connect("key_press_event", self._key_press_cb)
-        self.connect('button_press_event', self._handle_button_press_cb)
+        self.connect("button_press_event", self._handle_button_press_cb)
         self.set_contents()
     def add_ap(self, path, alias=""):
         if self._extant_path(path):
             model_iter = self.model.get_iter_first()
             while model_iter:
-                if self._same_paths(self.model.get_value_named(model_iter, 'Path'), path):
+                if self._same_paths(self.model.get_value_named(model_iter, "Path"), path):
                     if alias:
-                        self.model.set_value_named(model_iter, 'Alias', alias)
+                        self.model.set_value_named(model_iter, "Alias", alias)
                     return
                 model_iter = self.model.iter_next(model_iter)
             if not alias:
@@ -166,7 +165,7 @@ class AliasPathTable(table.Table):
         ap_list = self.get_contents()
         self._write_list_to_file(ap_list)
     def get_selected_ap(self):
-        data = self.get_selected_data_by_label(['Path', 'Alias'])
+        data = self.get_selected_data_by_label(["Path", "Alias"])
         if not data:
             return False
         return data[0]
@@ -188,7 +187,7 @@ class PgndPathTable(AliasPathTable):
 class PathSelectDialog(dialogue.Dialog):
     PATH_TABLE = AliasPathTable
     def __init__(self, label, suggestion=None, parent=None):
-        dialogue.Dialog.__init__(self, title=_('gdarn: Select {0}').format(label), parent=parent,
+        dialogue.Dialog.__init__(self, title=_("{0}: Select {1}").format(config_data.APP_NAME, label), parent=parent,
                                  flags=gtk.DIALOG_MODAL|gtk.DIALOG_DESTROY_WITH_PARENT,
                                  buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
                                           gtk.STOCK_OK, gtk.RESPONSE_OK)
@@ -205,7 +204,7 @@ class PathSelectDialog(dialogue.Dialog):
         if suggestion:
             self._path.set_text(suggestion)
         hbox.pack_start(self._path, expand=True, fill=True)
-        self._browse_button = gtk.Button(label=_('_Browse'))
+        self._browse_button = gtk.Button(label=_("_Browse"))
         self._browse_button.connect("clicked", self._browse_cb)
         hbox.pack_start(self._browse_button, expand=False, fill=False)
         self.vbox.pack_start(hbox, expand=False, fill=False)
@@ -219,7 +218,7 @@ class PathSelectDialog(dialogue.Dialog):
     def _path_cb(self, entry=None):
         self.response(gtk.RESPONSE_OK)
     def _browse_cb(self, button=None):
-        dirname = dialogue.ask_dir_name(_('gdarn: Browse for Directory'), existing=True, parent=self)
+        dirname = dialogue.ask_dir_name(_("{0}: Browse for Directory").format(config_data.APP_NAME), existing=True, parent=self)
         if dirname:
             self._path.set_text(utils.path_rel_home(dirname))
     def get_path(self):
@@ -228,17 +227,17 @@ class PathSelectDialog(dialogue.Dialog):
 class PgndOpenDialog(PathSelectDialog):
     PATH_TABLE = PgndPathTable
     def __init__(self, suggestion=None, parent=None):
-        PathSelectDialog.__init__(self, label=_('Playground/Directory'), suggestion=suggestion, parent=parent)
+        PathSelectDialog.__init__(self, label=_("Playground/Directory"), suggestion=suggestion, parent=parent)
 
 # Manage external editors
 
 EDITORS_THAT_NEED_A_TERMINAL = ["vi", "joe", "vim"]
 DEFAULT_EDITOR = "gedit"
 DEFAULT_TERMINAL = "gnome-terminal"
-if os.name == 'nt' or os.name == 'dos':
+if os.name == "nt" or os.name == "dos":
     DEFAULT_EDITOR = "notepad"
 
-for env in ['VISUAL', 'EDITOR']:
+for env in ["VISUAL", "EDITOR"]:
     try:
         ed = os.environ[env]
         if ed != "":
@@ -247,7 +246,9 @@ for env in ['VISUAL', 'EDITOR']:
     except KeyError:
         pass
 
-for env in ['COLORTERM', 'TERM']:
+DEFAULT_PERUSER = os.environ.get("GQUILT_PERUSER", None)
+
+for env in ["COLORTERM", "TERM"]:
     try:
         term = os.environ[env]
         if term != "":
@@ -257,12 +258,13 @@ for env in ['COLORTERM', 'TERM']:
         pass
 
 EDITOR_GLOB_FILE_NAME = os.sep.join([config_data.CONFIG_DIR_NAME, "editors"])
+PERUSER_GLOB_FILE_NAME = os.sep.join([config_data.CONFIG_DIR_NAME, "perusers"])
 
 def _read_editor_defs(edeff=EDITOR_GLOB_FILE_NAME):
     editor_defs = []
     if os.path.isfile(edeff):
-        for line in open(edeff, 'r').readlines():
-            eqi = line.find('=')
+        for line in open(edeff, "r").readlines():
+            eqi = line.find("=")
             if eqi < 0:
                 continue
             glob = line[:eqi].strip()
@@ -271,14 +273,14 @@ def _read_editor_defs(edeff=EDITOR_GLOB_FILE_NAME):
     return editor_defs
 
 def _write_editor_defs(edefs, edeff=EDITOR_GLOB_FILE_NAME):
-    fobj = open(edeff, 'w')
+    fobj = open(edeff, "w")
     for edef in edefs:
-        fobj.write('='.join(edef))
+        fobj.write("=".join(edef))
         fobj.write(os.linesep)
     fobj.close()
 
 if not os.path.exists(EDITOR_GLOB_FILE_NAME):
-    _write_editor_defs([('*', DEFAULT_EDITOR)])
+    _write_editor_defs([("*", DEFAULT_EDITOR)])
 
 def _assign_extern_editors(file_list, edeff=EDITOR_GLOB_FILE_NAME):
     ed_assignments = {}
@@ -310,21 +312,31 @@ def assign_extern_editors(file_list):
             ed_assignments[DEFAULT_EDITOR] = unassigned_files
     return ed_assignments
 
+def assign_extern_perusers(file_list):
+    peruser_assignments, unassigned_files = _assign_extern_editors(file_list, PERUSER_GLOB_FILE_NAME)
+    extra_assigns = assign_extern_editors(unassigned_files)
+    for key in extra_assigns:
+        if key in peruser_assignments:
+            peruser_assignments[key] += extra_assigns[key]
+        else:
+            peruser_assignments[key] = extra_assigns[key]
+    return peruser_assignments
+
 class EditorAllocationTable(table.Table):
     class View(table.Table.View):
         class Model(table.Table.View.Model):
-            Row = collections.namedtuple('Row', ['globs', 'editor'])
+            Row = collections.namedtuple("Row", ["globs", "editor"])
             types = Row(globs=gobject.TYPE_STRING, editor=gobject.TYPE_STRING)
         specification = tlview.ViewSpec(
             properties={
-                'enable-grid-lines' : True,
-                'reorderable' : True,
+                "enable-grid-lines" : True,
+                "reorderable" : True,
             },
             selection_mode=gtk.SELECTION_MULTIPLE,
             columns=[
                 tlview.ColumnSpec(
-                    title=_('File Pattern(s)'),
-                    properties={'expand' : True},
+                    title=_("File Pattern(s)"),
+                    properties={"expand" : True},
                     cells=[
                         tlview.CellSpec(
                             cell_renderer_spec=tlview.CellRendererSpec(
@@ -332,15 +344,15 @@ class EditorAllocationTable(table.Table):
                                 expand=False,
                                 start=True
                             ),
-                            properties={'editable' : True},
+                            properties={"editable" : True},
                             cell_data_function_spec=None,
-                            attributes={'text' : Model.col_index('globs')}
+                            attributes={"text" : Model.col_index("globs")}
                         ),
                     ],
                 ),
                 tlview.ColumnSpec(
-                    title=_('Editor Command'),
-                    properties={'expand' : True},
+                    title=_("Editor Command"),
+                    properties={"expand" : True},
                     cells=[
                         tlview.CellSpec(
                             cell_renderer_spec=tlview.CellRendererSpec(
@@ -348,9 +360,9 @@ class EditorAllocationTable(table.Table):
                                 expand=False,
                                 start=True
                             ),
-                            properties={'editable' : True},
+                            properties={"editable" : True},
                             cell_data_function_spec=None,
-                            attributes={'text' : Model.col_index('editor')}
+                            attributes={"text" : Model.col_index("editor")}
                         ),
                     ],
                 ),
@@ -367,13 +379,15 @@ class EditorAllocationTable(table.Table):
         self.set_contents()
 
 class EditorAllocationDialog(dialogue.Dialog):
-    def __init__(self, edeff=EDITOR_GLOB_FILE_NAME, parent=None):
-        dialogue.Dialog.__init__(self, title=_('gdarn: Editor Allocation'), parent=parent,
+    EDEFF = EDITOR_GLOB_FILE_NAME
+    TITLE = _("{0}: Editor Allocation".format(config_data.APP_NAME))
+    def __init__(self, parent=None):
+        dialogue.Dialog.__init__(self, title=self.TITLE, parent=parent,
                                  flags=gtk.DIALOG_DESTROY_WITH_PARENT,
                                  buttons=(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE,
                                           gtk.STOCK_OK, gtk.RESPONSE_OK)
                                 )
-        self._table = EditorAllocationTable(edeff=edeff)
+        self._table = EditorAllocationTable(edeff=self.EDEFF)
         self._buttons = gutils.ActionHButtonBox(list(self._table.action_groups.values()))
         self.vbox.pack_start(self._table)
         self.vbox.pack_start(self._buttons, expand=False)
@@ -385,9 +399,15 @@ class EditorAllocationDialog(dialogue.Dialog):
             self._table.apply_changes()
         self.destroy()
 
-# Define some actions that are widget independent
-def editor_allocation_acb(_arg):
-    EditorAllocationDialog().show()
+class PeruserAllocationDialog(EditorAllocationDialog):
+    EDEFF = PERUSER_GLOB_FILE_NAME
+    TITLE = _("{0}: Peruser Allocation".format(config_data.APP_NAME))
+
+def change_pgnd_cb(_widget, repo):
+    dialogue.show_busy()
+    result = ifce.chdir(repo)
+    dialogue.unshow_busy()
+    dialogue.report_any_problems(result)
 
 def change_pgnd_acb(_arg):
     open_dialog = PgndOpenDialog()
@@ -400,16 +420,7 @@ def change_pgnd_acb(_arg):
             open_dialog.report_any_problems(result)
     open_dialog.destroy()
 
-actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_actions(
-    [
-        ("config_menu", None, _("_Configuration")),
-        ("config_change_playground", gtk.STOCK_OPEN, _("_Open"), "",
-         _("Change current playground"), change_pgnd_acb),
-        ("config_allocate_editors", gtk.STOCK_PREFERENCES, _("_Editor Allocation"), "",
-         _('Allocate editors to file types'), editor_allocation_acb),
-    ])
-
-class RepositoryMenu(gtk.MenuItem):
+class PlaygroundsMenu(gtk.MenuItem):
     def __init__(self, label=_("Playgrounds")):
         gtk.MenuItem.__init__(self, label)
         self.set_submenu(gtk.Menu())
@@ -421,10 +432,28 @@ class RepositoryMenu(gtk.MenuItem):
         for repo in repos:
             label = "{0.Alias}:->({0.Path})".format(repo)
             _menu_item = gtk.MenuItem(label)
-            _menu_item.connect("activate", change_repository_cb, os.path.expanduser(repo.Path))
+            _menu_item.connect("activate", change_pgnd_cb, os.path.expanduser(repo.Path))
             _menu_item.show()
             _menu.append(_menu_item)
         return _menu
     def _enter_notify_even_cb(self, widget, _event):
         widget.remove_submenu()
         widget.set_submenu(self._build_submenu())
+
+actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_actions(
+    [
+        ("config_menu", None, _("_Configuration")),
+        ("config_change_playground", gtk.STOCK_OPEN, _("_Open"), "",
+         _("Change current playground"),
+         change_pgnd_acb
+        ),
+        ("config_allocate_editors", gtk.STOCK_PREFERENCES, _("_Editor Allocation"), "",
+         _("Allocate editors to file types"),
+         lambda _action=None: EditorAllocationDialog(parent=dialogue.main_window).show()
+        ),
+        ("config_allocate_perusers", gtk.STOCK_PREFERENCES, _("_Peruser Allocation"), "",
+         _("Allocate perusers to file types"),
+         lambda _action=None: PeruserAllocationDialog(parent=dialogue.main_window).show()
+        ),
+    ]
+)
