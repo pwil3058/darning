@@ -1038,7 +1038,6 @@ class Patch(mixins.WrapperMixin):
         for file_data in self.iterate_files_sorted():
             fobj.write(file_data.get_diff_text())
         fobj.close()
-
     def _apply_diff_plus_changes(self, diff_plus, drop_atws=True, num_strip_levels=1):
         retval = CmdResult.OK
         file_path = diff_plus.get_file_path(num_strip_levels)
@@ -1659,45 +1658,41 @@ def _get_named_or_top_patch(patch_name, db):
     """Return the named or top applied patch"""
     return _get_patch(patch_name, db) if patch_name is not None else _get_top_patch(db)
 
-def _add_files_to_top_patch(DB, file_paths, absorb=False, force=False):
-    """Add the named files to the named patch"""
-    assert not (absorb and force)
-    top_patch = _get_top_patch(DB)
-    if top_patch is None:
-        return CmdResult.ERROR
-    if not force:
-        overlaps = DB.get_overlap_data(iter_prepending_subdir(file_paths), top_patch)
-        if not absorb and len(overlaps) > 0:
-            return overlaps.report_and_abort()
-    else:
-        overlaps = OverlapData()
-    top_patch_file_paths_set = top_patch.get_file_paths_set()
-    issued_warning = False
-    for file_path, file_path_rel_subdir in iter_with_subdir(file_paths):
-        if file_path in top_patch_file_paths_set:
-            RCTX.stderr.write(_("{0}: file already in patch \"{1}\". Ignored.\n").format(file_path_rel_subdir, top_patch.name))
-            issued_warning = True
-            continue
-        elif os.path.isdir(file_path):
-            RCTX.stderr.write(_("{0}: is a directory. Ignored.\n").format(file_path_rel_subdir))
-            issued_warning = True
-            continue
-        top_patch_file_paths_set.add(file_path)
-        top_patch.add_file(FileData.new(file_path, top_patch, overlaps=overlaps))
-        RCTX.stdout.write(_("{0}: file added to patch \"{1}\".\n").format(file_path_rel_subdir, top_patch.name))
-        if file_path in overlaps.uncommitted:
-            RCTX.stderr.write(_("{0}: Uncommited SCM changes have been incorporated in patch \"{1}\".\n").format(file_path_rel_subdir, top_patch.name))
-        elif file_path in overlaps.unrefreshed:
-            RCTX.stderr.write(_("{0}: Unrefeshed changes in patch \"{2}\" incorporated in patch \"{1}\".\n").format(file_path_rel_subdir, top_patch.name, overlaps.unrefreshed[file_path].name))
-    return CmdResult.WARNING if issued_warning else CmdResult.OK
-
 ### Main interface commands start here
 
 ### DOs
 
 def do_add_files_to_top_patch(file_paths, absorb=False, force=False):
+    assert not (absorb and force)
     with open_db(mutable=True) as DB:
-        return _add_files_to_top_patch(DB, file_paths, absorb=absorb, force=force)
+        top_patch = _get_top_patch(DB)
+        if top_patch is None:
+            return CmdResult.ERROR
+        if not force:
+            overlaps = DB.get_overlap_data(iter_prepending_subdir(file_paths), top_patch)
+            if not absorb and len(overlaps) > 0:
+                return overlaps.report_and_abort()
+        else:
+            overlaps = OverlapData()
+        top_patch_file_paths_set = top_patch.get_file_paths_set()
+        issued_warning = False
+        for file_path, file_path_rel_subdir in iter_with_subdir(file_paths):
+            if file_path in top_patch_file_paths_set:
+                RCTX.stderr.write(_("{0}: file already in patch \"{1}\". Ignored.\n").format(file_path_rel_subdir, top_patch.name))
+                issued_warning = True
+                continue
+            elif os.path.isdir(file_path):
+                RCTX.stderr.write(_("{0}: is a directory. Ignored.\n").format(file_path_rel_subdir))
+                issued_warning = True
+                continue
+            top_patch_file_paths_set.add(file_path)
+            top_patch.add_file(FileData.new(file_path, top_patch, overlaps=overlaps))
+            RCTX.stdout.write(_("{0}: file added to patch \"{1}\".\n").format(file_path_rel_subdir, top_patch.name))
+            if file_path in overlaps.uncommitted:
+                RCTX.stderr.write(_("{0}: Uncommited SCM changes have been incorporated in patch \"{1}\".\n").format(file_path_rel_subdir, top_patch.name))
+            elif file_path in overlaps.unrefreshed:
+                RCTX.stderr.write(_("{0}: Unrefeshed changes in patch \"{2}\" incorporated in patch \"{1}\".\n").format(file_path_rel_subdir, top_patch.name, overlaps.unrefreshed[file_path].name))
+        return CmdResult.WARNING if issued_warning else CmdResult.OK
 
 def do_apply_next_patch(absorb=False, force=False):
     with open_db(mutable=True) as DB:
