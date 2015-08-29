@@ -25,6 +25,12 @@ import select
 
 from .cmd_result import CmdResult, CmdFailure
 
+if os.name == 'nt' or os.name == 'dos':
+    startupinfo = subprocess.STARTUPINFO()
+    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+else:
+    startupinfo = 0
+
 def run_cmd(cmd, input_text=None, sanitize_stderr=None):
     '''Run the given external command and return the results'''
     if isinstance(cmd, str):
@@ -35,7 +41,8 @@ def run_cmd(cmd, input_text=None, sanitize_stderr=None):
         signal.signal(signal.SIGPIPE, signal.SIG_DFL)
     sub = subprocess.Popen(cmd,
         stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE, close_fds=is_posix, bufsize=-1)
+        stderr=subprocess.PIPE, close_fds=is_posix, bufsize=-1,
+        startupinfo=startupinfo)
     outd, errd = sub.communicate(input_text)
     if is_posix:
         signal.signal(signal.SIGPIPE, savedsh)
@@ -70,7 +77,8 @@ def run_cmd_in_console(console, cmd, input_text=None, sanitize_stderr=None):
     try:
         # we need to catch OSError if command is unknown
         sub = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-              stderr=subprocess.PIPE, close_fds=is_posix, bufsize=-1)
+            stderr=subprocess.PIPE, close_fds=is_posix, bufsize=-1,
+            startupinfo=startupinfo)
         if input_text is not None:
             sub.stdin.write(input_text)
             console.append_stdin(input_text)
@@ -112,7 +120,7 @@ def run_cmd_in_console(console, cmd, input_text=None, sanitize_stderr=None):
 
 def run_do_cmd(cmd, input_text=None, sanitize_stderr=None, suggestions=None):
     from .gui import console
-    result = runext.run_cmd_in_console(console=console.LOG, cmd=cmd, input_text=input_text, sanitize_stderr=sanitize_stderr)
+    result = run_cmd_in_console(console=console.LOG, cmd=cmd, input_text=input_text, sanitize_stderr=sanitize_stderr)
     return result.mapped_for_suggestions(suggestions if suggestions else [])
 
 def run_cmd_in_bgnd(cmd):
@@ -133,7 +141,7 @@ def run_cmd_in_bgnd(cmd):
         cmd = shlex.split(cmd)
     if not cmd:
         return False
-    pid = subprocess.Popen(cmd).pid
+    pid = subprocess.Popen(cmd, startupinfo=startupinfo).pid
     if not pid:
         return False
     gobject.timeout_add(2000, _wait_for_bgnd_cmd_timeout, pid)
