@@ -1616,12 +1616,31 @@ def do_create_db(dir_path=None, description=None):
         raise
     return CmdResult.OK
 
+# Wrappers for portable lock routines
+if os.name == 'nt' or os.name == 'dos':
+    import msvcrt
+    LOCK_EXCL = msvcrt.LK_LOCK
+    LOCK_READ = msvcrt.LK_RLCK
+    def lock_db(fd, mode):
+        return msvcrt.locking(fd, mode, 1024)
+    def unlock_db(fd):
+        os.lseek(fd, 0, 0)
+        return msvcrt.locking(fd, msvcrt.LK_UNLCK, 1024)
+else:
+    import fcntl
+    LOCK_EXCL = fcntl.LOCK_EX
+    LOCK_READ = fcntl.LOCK_SH
+    def lock_db(fd, mode):
+        return fcntl.lockf(fd, mode)
+    def unlock_db(fd):
+        return fcntl.lockf(fd, fcntl.LOCK_UN)
+
 # Make a context manager for locking/opening/closing database
 @contextmanager
 def open_db(mutable=False):
     import fcntl
     fd = os.open(_LOCK_FILE_PATH, os.O_RDWR if mutable else os.O_RDONLY)
-    fcntl.lockf(fd, fcntl.LOCK_EX if mutable else fcntl.LOCK_SH)
+    lock_db(fd, LOCK_EXCL if mutable else LOCK_READ)
     patches_data = cPickle.load(open(_PATCHES_DATA_FILE_PATH, "rb"))
     blob_ref_counts = cPickle.load(open(_BLOB_REF_COUNT_FILE_PATH, "rb"))
     try:
@@ -1633,7 +1652,7 @@ def open_db(mutable=False):
             os.write(fd, str(int(scount) + 1))
             cPickle.dump(patches_data, open(_PATCHES_DATA_FILE_PATH, "wb"))
             cPickle.dump(blob_ref_counts, open(_BLOB_REF_COUNT_FILE_PATH, "wb"))
-        fcntl.lockf(fd, fcntl.LOCK_UN)
+        unlock_db(fd)
         os.close(fd)
 
 ### Helper commands
