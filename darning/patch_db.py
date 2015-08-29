@@ -1021,6 +1021,25 @@ def _verify_applied_patch_list(applied):
     for patch in applied:
         assert patch.name in applied_set, 'Series/applied patches discrepency'
 
+# Wrappers for portable lock routines
+if os.name == 'nt' or os.name == 'dos':
+    import msvcrt
+    LOCK_EXCL = msvcrt.LK_LOCK
+    LOCK_READ = msvcrt.LK_RLCK
+    def lock_db(fd, mode):
+        return msvcrt.locking(fd, mode, 1024)
+    def unlock_db(fd):
+        os.lseek(fd, 0, 0)
+        return msvcrt.locking(fd, msvcrt.LK_UNLCK, 1024)
+else:
+    import fcntl
+    LOCK_EXCL = fcntl.LOCK_EX
+    LOCK_READ = fcntl.LOCK_SH
+    def lock_db(fd, mode):
+        return fcntl.lockf(fd, mode)
+    def unlock_db(fd):
+        return fcntl.lockf(fd, fcntl.LOCK_UN)
+
 # Make a context manager locking/opening/closing database
 @contextmanager
 def open_db(mutable=False):
@@ -1034,7 +1053,7 @@ def open_db(mutable=False):
             raise
         open(DataBase._LOCK_FILE, "w").write("0")
         fobj = os.open(DataBase._LOCK_FILE, os.O_RDWR if mutable else os.O_RDONLY)
-    fcntl.lockf(fobj, fcntl.LOCK_EX if mutable else fcntl.LOCK_SH)
+    lock_db(fobj, LOCK_EXCL if mutable else LOCK_READ)
     db = cPickle.load(open(DataBase._FILE, 'rb'))
     # TODO: get rid of this code when version upgraded
     for patch in db.series:
@@ -1048,7 +1067,7 @@ def open_db(mutable=False):
     finally:
         if mutable:
             cPickle.dump(db, open(DataBase._FILE, 'wb'))
-        fcntl.lockf(fobj, fcntl.LOCK_UN)
+        unlock_db(fobj)
         os.close(fobj)
 
 # The next three functions are wrappers for common functionality in
