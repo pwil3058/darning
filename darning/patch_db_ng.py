@@ -1638,7 +1638,6 @@ else:
 # Make a context manager for locking/opening/closing database
 @contextmanager
 def open_db(mutable=False):
-    import fcntl
     fd = os.open(_LOCK_FILE_PATH, os.O_RDWR if mutable else os.O_RDONLY)
     lock_db(fd, LOCK_EXCL if mutable else LOCK_READ)
     patches_data = cPickle.load(open(_PATCHES_DATA_FILE_PATH, "rb"))

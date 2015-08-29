@@ -1044,7 +1044,6 @@ else:
 @contextmanager
 def open_db(mutable=False):
     assert DataBase.exists()
-    import fcntl
     # Cater for the case where we're in an old playground
     try:
         fobj = os.open(DataBase._LOCK_FILE, os.O_RDWR if mutable else os.O_RDONLY)
