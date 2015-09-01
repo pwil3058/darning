@@ -237,7 +237,6 @@ def _form_question(result, clarification):
     else:
         return '\n'.join(result[1:])
 
-
 def ask_discard_or_cancel(result, clarification=None, parent=None):
     buttons = (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, _('_Discard'), Response.DISCARD)
     question = _form_question(result, clarification)

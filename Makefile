@@ -1,4 +1,4 @@
-VERSION:=$(subst ',,$(subst VERSION = ',,$(shell grep "VERSION = " darning/version.py)))
+VERSION=$(shell python darning/version.py)
 RELEASE=1
 
 RPMBDIR=~/rpmbuild
