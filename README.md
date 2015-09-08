@@ -1,13 +1,17 @@
 darning
 =======
 
-Patch series management
+Patch series management.
 
 Status
 ------
 
 This software is still under development and is only Alpha standard at
-this time.
+this time.  The core functionality has been rewritten and is now
+incompatible with legacy playgrounds.  However, the old mechanisms
+have been retained (but deprecated) so that the tool will still work on
+legacy playgrounds (without the need for the user to do anything special
+as the software can automatically detect legacy databases).
 
 Some script based testing has been undertaken.
 
@@ -18,11 +22,11 @@ This software requires:
  * Python 2.7 or later
  * PyGTK2 2.24 or later
  * patch 2.6.1 or later
- * vte 0.28.2 or later
  * gtkspell 2.0.16 or later
  * pygtkspell 2.25.3 or later
 
 This software works better with:
+ * vte 0.28.2 or later
  * meld 1.5 or later
  * pygtksourceview 2.10.1
 
