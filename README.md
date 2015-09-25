@@ -74,21 +74,9 @@ Bugs
 ----
 
 It would be greatly appreciated if any bugs encountered by users are
-reported by creating an issue at:
-
-<https://sourceforge.net/tracker/?group_id=386122&atid=1604800>
-
-or emailing:
-
-<darning-discussion@lists.sourceforge.net>
+reported by creating an issue.
 
 Feature Requests
 ----------------
 
-Feature requests can be made by creating an issue at:
-
-<https://sourceforge.net/tracker/?group_id=386122&atid=1604803>
-
-or emailing:
-
-<darning-discussion@lists.sourceforge.net>
+Feature requests can be made by creating an issue.
