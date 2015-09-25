@@ -162,13 +162,13 @@ class Mercurial(object):
         ws_event.notify_events(scm_ifce.E_INIT)
         return result
     @staticmethod
-    def do_mark_files_resolved(self, file_paths):
+    def do_mark_files_resolved(file_paths):
         cmd = ["hg", "resolve", "--mark"] + file_paths
         result = _run_do_cmd(cmd)
         ws_event.notify_events(scm_ifce.E_FILE_CHANGES)
         return result
     @staticmethod
-    def do_mark_files_unresolved(self, file_paths):
+    def do_mark_files_unresolved(file_paths):
         cmd = ["hg", "resolve", "--unmark"] + file_paths
         result = _run_do_cmd(cmd)
         ws_event.notify_events(scm_ifce.E_FILE_CHANGES)
