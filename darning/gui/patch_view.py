@@ -49,9 +49,9 @@ class Widget(gtk.VBox):
     }
     class TWSDisplay(diff.TextWidget.TwsLineCountDisplay):
         LABEL = _('File(s) that add TWS: ')
-    def __init__(self, patchname):
+    def __init__(self, patch_name):
         gtk.VBox.__init__(self)
-        self.patchname = patchname
+        self.patch_name = patch_name
         self.epatch = self.get_epatch()
         #
         self.status_icon = gtk.image_new_from_stock(self.status_icons[self.epatch.state], gtk.ICON_SIZE_BUTTON)
@@ -63,7 +63,7 @@ class Widget(gtk.VBox):
         self.tws_display.set_value(len(self.epatch.report_trailing_whitespace()))
         hbox = gtk.HBox()
         hbox.pack_start(self.status_box, expand=False)
-        hbox.pack_start(gtk.Label(self.patchname), expand=False)
+        hbox.pack_start(gtk.Label(self.patch_name), expand=False)
         hbox.pack_end(self.tws_display, expand=False)
         self.pack_start(hbox, expand=False)
         #
@@ -99,44 +99,26 @@ class Widget(gtk.VBox):
     def get_patch_text(self):
         # handle the case where our patch file gets deleted
         try:
-            return ifce.PM.get_patch_text(self.patchname)
+            return ifce.PM.get_patch_text(self.patch_name)
         except IOError as edata:
             if edata.errno == 2:
                 return str(self.epatch)
             else:
                 raise
     def get_epatch(self):
-        epatch = ifce.PM.get_textpatch(self.patchname)
+        epatch = ifce.PM.get_textpatch(self.patch_name)
         self.text_digest = epatch.get_hash_digest()
         return epatch
     @property
     def is_applied(self):
-        return ifce.PM.is_patch_applied(self.patchname)
-    @staticmethod
-    def _make_file_label(filepath, validity):
-        hbox = gtk.HBox()
-        if validity == ifce.PM.Validity.REFRESHED:
-            icon = icons.STOCK_FILE_REFRESHED
-        elif validity == ifce.PM.Validity.NEEDS_REFRESH:
-            icon = icons.STOCK_FILE_NEEDS_REFRESH
-        elif validity == ifce.PM.Validity.UNREFRESHABLE:
-            icon = icons.STOCK_FILE_UNREFRESHABLE
-        else:
-            icon = gtk.STOCK_FILE
-        hbox.pack_start(gtk.image_new_from_stock(icon, gtk.ICON_SIZE_MENU), expand=False)
-        label = gtk.Label(filepath)
-        label.set_alignment(0, 0)
-        label.set_padding(4, 0)
-        hbox.pack_start(label, expand=True)
-        hbox.show_all()
-        return hbox
+        return ifce.PM.is_patch_applied(self.patch_name)
     @staticmethod
     def _framed(label, widget):
         frame = gtk.Frame(label)
         frame.add(widget)
         return frame
     def update(self):
-        epatch = ifce.PM.get_textpatch(self.patchname)
+        epatch = ifce.PM.get_textpatch(self.patch_name)
         digest = epatch.get_hash_digest()
         if digest == self.text_digest:
             return
@@ -155,20 +137,20 @@ class Widget(gtk.VBox):
 
 class Dialogue(dialogue.AmodalDialog):
     AUTO_UPDATE_TD = gutils.TimeOutController.ToggleData("auto_update_toggle", _('Auto _Update'), _('Turn data auto update on/off'), gtk.STOCK_REFRESH)
-    def __init__(self, patchname):
+    def __init__(self, patch_name):
         from ..config_data import APP_NAME
-        title = _(APP_NAME + ": Patch \"{0}\" : {1}").format(patchname, utils.path_rel_home(os.getcwd()))
+        title = _(APP_NAME + ": Patch \"{0}\" : {1}").format(patch_name, utils.path_rel_home(os.getcwd()))
         dialogue.AmodalDialog.__init__(self, title=title, parent=dialogue.main_window, flags=gtk.DIALOG_DESTROY_WITH_PARENT)
-        self.widget = Widget(patchname)
+        self.widget = Widget(patch_name)
         self.vbox.pack_start(self.widget, expand=True, fill=True)
         self.refresh_action = gtk.Action('patch_view_refresh', _('_Refresh'), _('Refresh this patch in database.'), icons.STOCK_REFRESH_PATCH)
         self.refresh_action.connect('activate', self._refresh_acb)
-        self.refresh_action.set_sensitive(ifce.PM.is_top_patch(self.widget.patchname))
+        self.refresh_action.set_sensitive(ifce.PM.is_top_patch(self.widget.patch_name))
         refresh_button = gutils.ActionButton(self.refresh_action)
         self.auc = gutils.TimeOutController(toggle_data=self.AUTO_UPDATE_TD, function=self._update_display_cb, is_on=False, interval=10000)
         self.action_area.pack_start(gutils.ActionCheckButton(self.auc.toggle_action))
         self.action_area.pack_start(refresh_button)
-        self._save_file = utils.convert_patchname_to_filename(patchname)
+        self._save_file = utils.convert_patchname_to_filename(patch_name)
         self.save_action = gtk.Action('patch_view_save', _('_Export'), _('Export current content to text file.'), gtk.STOCK_SAVE_AS)
         self.save_action.connect('activate', self._save_as_acb)
         save_button = gutils.ActionButton(self.save_action)
@@ -183,16 +165,16 @@ class Dialogue(dialogue.AmodalDialog):
     def _update_display_cb(self, **kwargs):
         self.show_busy()
         self.widget.update()
-        self.refresh_action.set_sensitive(ifce.PM.is_top_patch(self.widget.patchname))
+        self.refresh_action.set_sensitive(ifce.PM.is_top_patch(self.widget.patch_name))
         self.unshow_busy()
     def _refresh_acb(self, _action):
         self.show_busy()
-        result = ifce.PM.do_refresh_patch(self.widget.patchname)
+        result = ifce.PM.do_refresh_patch(self.widget.patch_name)
         self.unshow_busy()
         dialogue.report_any_problems(result)
     def _save_as_acb(self, _action):
         from . import recollect
-        suggestion = os.path.basename(utils.convert_patchname_to_filename(self.widget.patchname))
+        suggestion = os.path.basename(utils.convert_patchname_to_filename(self.widget.patch_name))
         export_filepath = os.path.join(recollect.get("export", "last_directory"), suggestion)
         while True:
             export_filepath = dialogue.ask_file_name(_("Export as ..."), suggestion=export_filepath, existing=False)
