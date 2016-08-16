@@ -1,4 +1,4 @@
-### Copyright (C) 2005-20015 Peter Williams <pwil3058@gmail.com>
+### Copyright (C) 2005-2016 Peter Williams <pwil3058@gmail.com>
 ###
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
@@ -13,29 +13,33 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import os.path
+import os
 import sys
 import collections
 
-import gtk
-import gtk.gdk
+import gi
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk
+from gi.repository import Gio
+from gi.repository import GdkPixbuf
 
 from ..config_data import APP_NAME
 
 # find the icons directory
 # first look in the source directory (so that we can run uninstalled)
-_ICON_DIR = os.path.join(sys.path[0],"pixmaps")
-if not os.path.isdir(_ICON_DIR):
+_libdir = os.path.join(sys.path[0], "pixmaps")
+if not os.path.exists(_libdir) or not os.path.isdir(_libdir):
     _TAILEND = os.path.join("share", "pixmaps", APP_NAME)
     _prefix = sys.path[0]
     while _prefix:
-        _ICON_DIR = os.path.join(_prefix, _TAILEND)
-        if os.path.exists(_ICON_DIR) and os.path.isdir(_ICON_DIR):
+        _libdir = os.path.join(_prefix, _TAILEND)
+        if os.path.exists(_libdir) and os.path.isdir(_libdir):
             break
         _prefix = os.path.dirname(_prefix)
 
 APP_ICON = APP_NAME
-APP_ICON_FILE = os.path.join(os.path.dirname(_ICON_DIR), APP_ICON + os.extsep + "png")
+APP_ICON_FILE = os.path.join(os.path.dirname(_libdir), APP_ICON + os.extsep + "png")
+APP_ICON_PIXBUF = GdkPixbuf.Pixbuf.new_from_file(APP_ICON_FILE)
 
 STOCK_APPLIED = APP_NAME + "_stock_applied"
 STOCK_APPLIED_NEEDS_REFRESH = APP_NAME + "_stock_applied_needs_refresh"
@@ -81,20 +85,23 @@ _STOCK_ITEMS_OWN_PNG = [
     (STOCK_FILE_UNREFRESHABLE, _("Unrefreshable"), 0, 0, None),
 ]
 
-gtk.stock_add(_STOCK_ITEMS_OWN_PNG)
+#Gtk.stock_add(_STOCK_ITEMS_OWN_PNG)
 
-_FACTORY = gtk.IconFactory()
+_FACTORY = Gtk.IconFactory()
 _FACTORY.add_default()
+_FACTORY.add(APP_ICON, Gtk.IconSet(APP_ICON_PIXBUF))
+
+_PREFIX = APP_NAME + "_"
 
 def _png_file_name(item_name):
-    return os.path.join(_ICON_DIR, item_name[len(APP_NAME + "_"):] + os.extsep + "png")
+    return os.path.join(_libdir, item_name[len(_PREFIX):] + os.extsep + "png")
 
 def make_pixbuf(name):
-    return gtk.gdk.pixbuf_new_from_file(_png_file_name(name))
+    return GdkPixbuf.Pixbuf.new_from_file(_png_file_name(name))
 
 for _item in _STOCK_ITEMS_OWN_PNG:
     _name = _item[0]
-    _FACTORY.add(_name, gtk.IconSet(make_pixbuf(_name)))
+    _FACTORY.add(_name, Gtk.IconSet(make_pixbuf(_name)))
 
 StockAlias = collections.namedtuple("StockAlias", ["name", "alias", "text"])
 
@@ -133,42 +140,42 @@ STOCK_NEW_PLAYGROUND = APP_NAME + "_stock_new_playground"
 
 # Icons that have to be designed eventually (using GtK stock in the meantime)
 _STOCK_ALIAS_LIST = [
-    StockAlias(name=STOCK_BACKOUT, alias=gtk.STOCK_MEDIA_REWIND, text=""),
-    StockAlias(name=STOCK_CHECKOUT, alias=gtk.STOCK_EXECUTE, text=""),
-    StockAlias(name=STOCK_CLONE, alias=gtk.STOCK_COPY, text=""),
-    StockAlias(name=STOCK_CONFIG, alias=gtk.STOCK_PREFERENCES, text=""),
-    StockAlias(name=STOCK_EDIT, alias=gtk.STOCK_EDIT, text=""),
-    StockAlias(name=STOCK_GRAPH, alias=gtk.STOCK_FILE, text=""),
-    StockAlias(name=STOCK_GUESS, alias=gtk.STOCK_DIALOG_QUESTION, text=""),
+    StockAlias(name=STOCK_BACKOUT, alias=Gtk.STOCK_MEDIA_REWIND, text=""),
+    StockAlias(name=STOCK_CHECKOUT, alias=Gtk.STOCK_EXECUTE, text=""),
+    StockAlias(name=STOCK_CLONE, alias=Gtk.STOCK_COPY, text=""),
+    StockAlias(name=STOCK_CONFIG, alias=Gtk.STOCK_PREFERENCES, text=""),
+    StockAlias(name=STOCK_EDIT, alias=Gtk.STOCK_EDIT, text=""),
+    StockAlias(name=STOCK_GRAPH, alias=Gtk.STOCK_FILE, text=""),
+    StockAlias(name=STOCK_GUESS, alias=Gtk.STOCK_DIALOG_QUESTION, text=""),
     StockAlias(name=STOCK_INIT, alias=STOCK_APPLIED, text=""),
-    StockAlias(name=STOCK_INSERT, alias=gtk.STOCK_ADD, text=_("_Insert")),
-    StockAlias(name=STOCK_LOG, alias=gtk.STOCK_FIND, text=""),
-    StockAlias(name=STOCK_MARK_RESOLVE, alias=gtk.STOCK_APPLY, text=""),
-    StockAlias(name=STOCK_MARK_UNRESOLVE, alias=gtk.STOCK_CANCEL, text=""),
-    StockAlias(name=STOCK_MOVE, alias=gtk.STOCK_PASTE, text=""),
-    StockAlias(name=STOCK_PULL, alias=gtk.STOCK_GO_FORWARD, text=""),
-    StockAlias(name=STOCK_PUSH, alias=gtk.STOCK_GO_BACK, text=""),
-    StockAlias(name=STOCK_RECOVERY, alias=gtk.STOCK_REVERT_TO_SAVED, text=""),
-    StockAlias(name=STOCK_REMOVE, alias=gtk.STOCK_REMOVE, text=""),
-    StockAlias(name=STOCK_RENAME, alias=gtk.STOCK_PASTE, text=""),
-    StockAlias(name=STOCK_RESOLVE, alias=gtk.STOCK_CONVERT, text=_("Resolve")),
-    StockAlias(name=STOCK_REVERT, alias=gtk.STOCK_UNDO, text=""),
-    StockAlias(name=STOCK_ROLLBACK, alias=gtk.STOCK_UNDO, text=""),
+    StockAlias(name=STOCK_INSERT, alias=Gtk.STOCK_ADD, text=_("_Insert")),
+    StockAlias(name=STOCK_LOG, alias=Gtk.STOCK_FIND, text=""),
+    StockAlias(name=STOCK_MARK_RESOLVE, alias=Gtk.STOCK_APPLY, text=""),
+    StockAlias(name=STOCK_MARK_UNRESOLVE, alias=Gtk.STOCK_CANCEL, text=""),
+    StockAlias(name=STOCK_MOVE, alias=Gtk.STOCK_PASTE, text=""),
+    StockAlias(name=STOCK_PULL, alias=Gtk.STOCK_GO_FORWARD, text=""),
+    StockAlias(name=STOCK_PUSH, alias=Gtk.STOCK_GO_BACK, text=""),
+    StockAlias(name=STOCK_RECOVERY, alias=Gtk.STOCK_REVERT_TO_SAVED, text=""),
+    StockAlias(name=STOCK_REMOVE, alias=Gtk.STOCK_REMOVE, text=""),
+    StockAlias(name=STOCK_RENAME, alias=Gtk.STOCK_PASTE, text=""),
+    StockAlias(name=STOCK_RESOLVE, alias=Gtk.STOCK_CONVERT, text=_("Resolve")),
+    StockAlias(name=STOCK_REVERT, alias=Gtk.STOCK_UNDO, text=""),
+    StockAlias(name=STOCK_ROLLBACK, alias=Gtk.STOCK_UNDO, text=""),
     StockAlias(name=STOCK_SELECT_GUARD, alias=STOCK_APPLIED, text=""),
-    StockAlias(name=STOCK_SERVE, alias=gtk.STOCK_EXECUTE, text=""),
-    StockAlias(name=STOCK_SHELVE, alias=gtk.STOCK_EXECUTE, text=""),
-    StockAlias(name=STOCK_STATUS, alias=gtk.STOCK_INFO, text=""),
-    StockAlias(name=STOCK_STATUS_NOT_OK, alias=gtk.STOCK_CANCEL, text=""),
-    StockAlias(name=STOCK_STATUS_OK, alias=gtk.STOCK_APPLY, text=""),
-    StockAlias(name=STOCK_SYNCH, alias=gtk.STOCK_REFRESH, text=""),
-    StockAlias(name=STOCK_UPDATE, alias=gtk.STOCK_EXECUTE, text=""),
+    StockAlias(name=STOCK_SERVE, alias=Gtk.STOCK_EXECUTE, text=""),
+    StockAlias(name=STOCK_SHELVE, alias=Gtk.STOCK_EXECUTE, text=""),
+    StockAlias(name=STOCK_STATUS, alias=Gtk.STOCK_INFO, text=""),
+    StockAlias(name=STOCK_STATUS_NOT_OK, alias=Gtk.STOCK_CANCEL, text=""),
+    StockAlias(name=STOCK_STATUS_OK, alias=Gtk.STOCK_APPLY, text=""),
+    StockAlias(name=STOCK_SYNCH, alias=Gtk.STOCK_REFRESH, text=""),
+    StockAlias(name=STOCK_UPDATE, alias=Gtk.STOCK_EXECUTE, text=""),
     StockAlias(name=STOCK_VERIFY, alias=STOCK_APPLIED, text=""),
-    StockAlias(name=STOCK_NEW_PLAYGROUND, alias=gtk.STOCK_NEW, text=_("New Playground")),
+    StockAlias(name=STOCK_NEW_PLAYGROUND, alias=Gtk.STOCK_NEW, text=_("New Playground")),
 ]
 
-_STYLE = gtk.Frame().get_style()
+_STYLE = Gtk.Frame().get_style()
 
 for _item in _STOCK_ALIAS_LIST:
     _FACTORY.add(_item.name, _STYLE.lookup_icon_set(_item.alias))
 
-gtk.stock_add([(item.name, item.text, 0, 0, None) for item in _STOCK_ALIAS_LIST])
+#Gtk.stock_add([(item.name, item.text, 0, 0, None) for item in _STOCK_ALIAS_LIST])

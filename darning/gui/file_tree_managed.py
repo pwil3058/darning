@@ -15,7 +15,8 @@
 
 import os
 
-import gtk
+from gi.repository import Gtk
+from gi.repository import GObject
 
 from ..cmd_result import CmdFailure
 
@@ -27,7 +28,6 @@ from . import gutils
 from . import ifce
 from . import actions
 from . import ws_actions
-from . import ws_event
 from . import icons
 from . import text_edit
 from . import file_tree
@@ -96,7 +96,7 @@ class WSTreeView(file_tree.FileTreeView):
             ])
         self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
             [
-                ('pm_add_files_to_top_patch', gtk.STOCK_ADD, _('_Add'), None,
+                ('pm_add_files_to_top_patch', Gtk.STOCK_ADD, _('_Add'), None,
                  _('Add the selected files to the top patch'),
                  lambda _action=None: dooph_pm.pm_do_add_files(self.get_selected_filepaths())
                 ),
@@ -104,18 +104,18 @@ class WSTreeView(file_tree.FileTreeView):
                  _('Move the selected files within the top patch'),
                  lambda _action=None: dooph_pm.pm_do_move_files(self.get_selected_filepaths())
                 ),
-                ('pm_edit_files_in_top_patch', gtk.STOCK_EDIT, _('_Edit'), None,
+                ('pm_edit_files_in_top_patch', Gtk.STOCK_EDIT, _('_Edit'), None,
                  _('Open the selected files for editing after adding them to the top patch'),
                  lambda _action=None: dooph_pm.pm_do_edit_files(self.get_selected_filepaths())
                 ),
-                ('pm_delete_files_in_top_patch', gtk.STOCK_DELETE, _('_Delete'), None,
+                ('pm_delete_files_in_top_patch', Gtk.STOCK_DELETE, _('_Delete'), None,
                  _('Add the selected files to the top patch and then delete them'),
                  lambda _action=None: dooph_pm.pm_do_delete_files(self.get_selected_filepaths())
                 ),
             ])
         self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
             [
-                ('pm_copy_file_to_top_patch', gtk.STOCK_COPY, _('_Copy'), None,
+                ('pm_copy_file_to_top_patch', Gtk.STOCK_COPY, _('_Copy'), None,
                  _('Add a copy of the selected file to the top patch'),
                  lambda _action=None: dooph_pm.pm_do_copy_file(self.get_selected_filepath())
                 ),

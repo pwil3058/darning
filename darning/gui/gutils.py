@@ -1,4 +1,4 @@
-### Copyright (C) 2007-2015 Peter Williams <pwil3058@gmail.com>
+### Copyright (C) 2005-2016 Peter Williams <pwil3058@gmail.com>
 ###
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
@@ -15,8 +15,11 @@
 
 import collections
 
-import gtk
-import gobject
+import gi
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk
+from gi.repository import GObject
+from gi.repository import Gdk
 
 def get_gtk_window(widget):
     gtk_window = widget
@@ -28,29 +31,12 @@ def get_gtk_window(widget):
             break
     return gtk_window
 
-def pygtk_version_ge(version):
-    for index in range(len(version)):
-        if gtk.pygtk_version[index] >  version[index]:
-            return True
-        elif gtk.pygtk_version[index] <  version[index]:
-            return False
-    return True
-
-if pygtk_version_ge((2, 12)):
-    def set_widget_tooltip_text(widget, text):
-        widget.set_tooltip_text(text)
-else:
-    tooltips = gtk.Tooltips()
-    tooltips.enable()
-
-    def set_widget_tooltip_text(widget, text):
-        tooltips.set_tip(widget, text)
-
-class FramedScrollWindow(gtk.Frame):
-    def __init__(self, policy=(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC), label=None):
-        gtk.Frame.__init__(self, label)
-        self._sw = gtk.ScrolledWindow()
-        gtk.Frame.add(self, self._sw)
+class FramedScrollWindow(Gtk.Frame):
+    __g_type_name__ = "FramedScrollWindow"
+    def __init__(self, policy=(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)):
+        Gtk.Frame.__init__(self)
+        self._sw = Gtk.ScrolledWindow()
+        Gtk.Frame.add(self, self._sw)
     def add(self, widget):
         self._sw.add(widget)
     def set_policy(self, hpolicy, vpolicy):
@@ -60,22 +46,22 @@ class FramedScrollWindow(gtk.Frame):
     def get_vscrollbar(self):
         return self._sw.get_hscrollbar()
 
-def wrap_in_scrolled_window(widget, policy=(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC), with_frame=True, label=None):
-    scrw = FramedScrollWindow(label) if with_frame else gtk.ScrolledWindow()
+def wrap_in_scrolled_window(widget, policy=(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC), with_frame=True):
+    scrw = FramedScrollWindow() if with_frame else Gtk.ScrolledWindow()
     scrw.set_policy(policy[0], policy[1])
     scrw.add(widget)
     scrw.show_all()
     return scrw
 
-class RadioButtonFramedVBox(gtk.Frame):
+class RadioButtonFramedVBox(Gtk.Frame):
     def __init__(self, title, labels):
-        gtk.Frame.__init__(self, title)
-        self.vbox = gtk.VBox()
-        self.buttons = [gtk.RadioButton(label=labels[0], group=None)]
+        Gtk.Frame.__init__(self, title)
+        self.vbox = Gtk.VBox()
+        self.buttons = [Gtk.RadioButton(label=labels[0], group=None)]
         for label in labels[1:]:
-            self.buttons.append(gtk.RadioButton(label=label, group=self.buttons[0]))
+            self.buttons.append(Gtk.RadioButton(label=label, group=self.buttons[0]))
         for button in self.buttons:
-            self.vbox.pack_start(button, fill=False)
+            self.vbox.pack_start(button, expand=True, fill=False, padding=0)
         self.buttons[0].set_active(True)
         self.add(self.vbox)
         self.show_all()
@@ -85,7 +71,7 @@ class RadioButtonFramedVBox(gtk.Frame):
                 return index
         return None
 
-class PopupUser(object):
+class PopupUser:
     def __init__(self):
         self._gtk_window = None
     def _get_gtk_window(self):
@@ -118,12 +104,13 @@ class MappedManager:
     def unmap_action(self):
         pass
 
-_KEYVAL_UP_ARROW = gtk.gdk.keyval_from_name('Up')
-_KEYVAL_DOWN_ARROW = gtk.gdk.keyval_from_name('Down')
+_KEYVAL_UP_ARROW = Gdk.keyval_from_name('Up')
+_KEYVAL_DOWN_ARROW = Gdk.keyval_from_name('Down')
 
-class EntryWithHistory(gtk.Entry):
+class EntryWithHistory(Gtk.Entry):
     def __init__(self, max_chars=0):
-        gtk.Entry.__init__(self, max_chars)
+        Gtk.Entry.__init__(self)
+        self.set_max_width_chars(max_chars)
         self._history_list = []
         self._history_index = 0
         self._history_len = 0
@@ -166,62 +153,76 @@ class EntryWithHistory(gtk.Entry):
         self.clear_to_history()
         return text
 
+def _combo_entry_changed_cb(combo, entry):
+    if combo.get_active() == -1:
+        combo.saved_text = entry.get_text()
+    else:
+        text = combo.saved_text.rstrip()
+        # no duplicates, empty strings or strings starting with white space
+        if text and text[0] not in [' ', '\t'] and text not in combo.entry_set:
+            combo.entry_set.add(text)
+            combo.prepend_text(text)
+        combo.saved_text = ''
+    return False
 
-class MutableComboBoxEntry(gtk.ComboBoxEntry):
-    def __init__(self, entries=None):
-        self.saved_text = ''
-        gtk.ComboBoxEntry.__init__(self, gtk.ListStore(str))
-        self.entry_set = set()
-        for entry in entries if entries else []:
-            if entry not in self.entry_set:
-                self.append_text(entry)
-                self.entry_set.add(entry)
-        self.set_active(-1)
-        self.child.connect('changed', self.changed_cb)
-    def changed_cb(self, entry):
-        if self.get_active() == -1:
-            self.saved_text = entry.get_text()
-        else:
-            text = self.saved_text.rstrip()
-            # no duplicates, empty strings or strings starting with white space
-            if text and text[0] not in [' ', '\t'] and text not in self.entry_set:
-                self.entry_set.add(text)
-                self.prepend_text(text)
-            self.saved_text = ''
-        return
-    def get_text(self):
-        return self.child.get_text()
-    def set_text(self, text):
-        text = text.rstrip()
-        if text and text[0] not in [' ', '\t'] and text not in self.entry_set:
-            self.prepend_text(text)
-            self.set_active(0)
-            self.entry_set.add(text)
-        else:
-            self.child.set_text(text)
+def _combo_get_text(combo):
+    return combo.get_child().get_text()
 
-class ActionButton(gtk.Button):
+def _combo_set_text(combo, text):
+    text = text.rstrip()
+    if text and text[0] not in [' ', '\t'] and text not in combo.entry_set:
+        combo.prepend_text(text)
+        combo.set_active(0)
+        combo.entry_set.add(text)
+    else:
+        combo.get_child().set_text(text)
+
+# WORKAROUND: can't extend a ComboBox with entry
+def new_mutable_combox_text_with_entry(entries=None):
+    combo = Gtk.ComboBoxText.new_with_entry()
+    combo.get_text = lambda : _combo_get_text(combo)
+    combo.set_text = lambda text: _combo_set_text(combo, text)
+    combo.saved_text = ""
+    combo.entry_set = set()
+    for entry in entries if entries else []:
+        if entry not in combo.entry_set:
+            combo.append_text(entry)
+            combo.entry_set.add(entry)
+    combo.set_active(-1)
+    combo.get_child().connect('changed', lambda entry: _combo_entry_changed_cb(combo, entry))
+    return combo
+
+class ActionButton(Gtk.Button):
     def __init__(self, action, use_underline=True):
-        label = action.get_property("label")
-        stock_id = action.get_property("stock-id")
-        if label is not None:
-            # Empty (NB not None) label means use image only
-            gtk.Button.__init__(self, use_underline=use_underline)
-            image = gtk.Image()
-            image.set_from_stock(stock_id, gtk.ICON_SIZE_BUTTON)
-            self.set_image(image)
-            if label:
-                self.set_label(label)
-        else:
-            gtk.Button.__init__(self, stock=stock_id, label=label, use_underline=use_underline)
-        set_widget_tooltip_text(self, action.get_property("tooltip"))
-        action.connect_proxy(self)
+        Gtk.Button.__init__(self)
+        label = action.get_label()
+        icon_name = action.get_icon_name()
+        stock_id = action.get_stock_id()
+        if label:
+            self.set_label(label)
+            self.set_use_stock(False)
+            if icon_name:
+                self.set_image(Gtk.Image.new_from_icon_name(icon_name))
+        elif stock_id:
+            self.set_label(stock_id)
+            self.set_use_stock(True)
+        elif icon_name:
+            self.set_image(Gtk.Image.new_from_icon_name(icon_name))
+        self.set_use_underline(use_underline)
+        self.set_tooltip_text(action.get_property("tooltip"))
+        self.connect("clicked", lambda _button: action.activate())
 
-class ActionCheckButton(gtk.CheckButton):
+class ActionCheckButton(Gtk.CheckButton):
     def __init__(self, action, use_underline=True):
-        gtk.CheckButton.__init__(self, label=action.get_property("label"), use_underline=use_underline)
-        set_widget_tooltip_text(self, action.get_property("tooltip"))
-        action.connect_proxy(self)
+        Gtk.CheckButton.__init__(self, label=action.get_property("label"), use_underline=use_underline)
+        self.set_tooltip_text(action.get_property("tooltip"))
+        self.connect("toggled", lambda _button: action.activate())
+
+def creat_button_from_action(action, use_underline=True):
+    if isinstance(action, Gtk.ToggleAction):
+        return ActionCheckButton(action)
+    else:
+        return ActionButton(action, use_underline)
 
 class ActionButtonList:
     def __init__(self, action_group_list, action_name_list=None, use_underline=True):
@@ -232,37 +233,38 @@ class ActionButtonList:
                 for a_group in action_group_list:
                     action = a_group.get_action(a_name)
                     if action:
-                        button = ActionButton(action, use_underline)
+                        button = creat_button_from_action(action, use_underline)
                         self.list.append(button)
                         self.dict[a_name] = button
                         break
         else:
             for a_group in action_group_list:
                 for action in a_group.list_actions():
-                    button = ActionButton(action, use_underline)
+                    button = creat_button_from_action(action, use_underline)
                     self.list.append(button)
                     self.dict[action.get_name()] = button
 
-class ActionHButtonBox(gtk.HBox):
+class ActionHButtonBox(Gtk.HBox):
     def __init__(self, action_group_list, action_name_list=None,
                  use_underline=True, expand=True, fill=True, padding=0):
-        gtk.HBox.__init__(self)
+        Gtk.HBox.__init__(self)
         self.button_list = ActionButtonList(action_group_list, action_name_list, use_underline)
         for button in self.button_list.list:
-            self.pack_start(button, expand, fill, padding)
+            self.pack_start(button, expand=expand, fill=fill, padding=padding)
 
-class TimeOutController():
+class TimeOutController:
     ToggleData = collections.namedtuple('ToggleData', ['name', 'label', 'tooltip', 'stock_id'])
     def __init__(self, toggle_data, function=None, is_on=True, interval=10000):
         self._interval = abs(interval)
         self._timeout_id = None
         self._function = function
-        self.toggle_action = gtk.ToggleAction(
+        self.toggle_action = Gtk.ToggleAction(
                 toggle_data.name, toggle_data.label,
                 toggle_data.tooltip, toggle_data.stock_id
             )
-        self.toggle_action.set_menu_item_type(gtk.CheckMenuItem)
-        self.toggle_action.set_tool_item_type(gtk.ToggleToolButton)
+        # TODO: find out how to do this in PyGTK3
+        #self.toggle_action.set_menu_item_type(Gtk.CheckMenuItem)
+        #self.toggle_action.set_tool_item_type(Gtk.ToggleToolButton)
         self.toggle_action.connect("toggled", self._toggle_acb)
         self.toggle_action.set_active(is_on)
     def _toggle_acb(self, _action=None):
@@ -276,11 +278,11 @@ class TimeOutController():
         return self.toggle_action.get_active()
     def _stop_cycle(self):
         if self._timeout_id:
-            gobject.source_remove(self._timeout_id)
+            GObject.source_remove(self._timeout_id)
             self._timeout_id = None
     def _restart_cycle(self):
         self._stop_cycle()
-        self._timeout_id = gobject.timeout_add(self._interval, self._timeout_cb)
+        self._timeout_id = GObject.timeout_add(self._interval, self._timeout_cb)
     def set_function(self, function):
         self._stop_cycle()
         self._function = function
@@ -292,7 +294,7 @@ class TimeOutController():
     def get_interval(self):
         return self._interval
 
-TOC_DEFAULT_REFRESH_TD = TimeOutController.ToggleData("auto_refresh_toggle", _('Auto _Refresh'), _('Turn data auto refresh on/off'), gtk.STOCK_REFRESH)
+TOC_DEFAULT_REFRESH_TD = TimeOutController.ToggleData("auto_refresh_toggle", _('Auto _Refresh'), _('Turn data auto refresh on/off'), Gtk.STOCK_REFRESH)
 
 class RefreshController(TimeOutController):
     def __init__(self, toggle_data=None, function=None, is_on=True, interval=10000):
@@ -300,7 +302,7 @@ class RefreshController(TimeOutController):
             toggle_data = TOC_DEFAULT_REFRESH_TD
         TimeOutController.__init__(self, toggle_data, function=function, is_on=is_on, interval=interval)
 
-TOC_DEFAULT_SAVE_TD = TimeOutController.ToggleData("auto_save_toggle", _('Auto _Save'), _('Turn data auto save on/off'), gtk.STOCK_SAVE)
+TOC_DEFAULT_SAVE_TD = TimeOutController.ToggleData("auto_save_toggle", _('Auto _Save'), _('Turn data auto save on/off'), Gtk.STOCK_SAVE)
 
 class SaveController(TimeOutController):
     def __init__(self, toggle_data=None, function=None, is_on=True, interval=10000):
@@ -308,44 +310,51 @@ class SaveController(TimeOutController):
             toggle_data = TOC_DEFAULT_SAVE_TD
         TimeOutController.__init__(self, toggle_data, function=function, is_on=is_on, interval=interval)
 
-class LabelledEntry(gtk.HBox):
+class LabelledEntry(Gtk.HBox):
     def __init__(self, label="", max_chars=0, text=""):
-        gtk.HBox.__init__(self)
-        self.label = gtk.Label(label)
-        self.pack_start(self.label, expand=False)
+        Gtk.HBox.__init__(self)
+        self.label = Gtk.Label(label=label)
+        self.pack_start(self.label, expand=False, fill=True, padding=0)
         self.entry = EntryWithHistory(max_chars)
-        self.pack_start(self.entry, expand=True, fill=True)
+        self.pack_start(self.entry, expand=True, fill=True, padding=0)
         self.entry.set_text(text)
     def get_text_and_clear_to_history(self):
         return self.entry.get_text_and_clear_to_history()
     def set_label(self, text):
         self.label.set_text(text)
 
-class LabelledText(gtk.HBox):
+class LabelledText(Gtk.HBox):
     def __init__(self, label="", text="", min_chars=0):
-        gtk.HBox.__init__(self)
-        self.label = gtk.Label(label)
-        self.pack_start(self.label, expand=False)
-        self.entry = gtk.Entry()
+        Gtk.HBox.__init__(self)
+        self.label = Gtk.Label(label=label)
+        self.pack_start(self.label, expand=False, fill=True, padding=0)
+        self.entry = Gtk.Entry()
         self.entry.set_width_chars(min_chars)
-        self.pack_start(self.entry, expand=True, fill=True)
+        self.pack_start(self.entry, expand=True, fill=True, padding=0)
         self.entry.set_text(text)
         self.entry.set_editable(False)
 
-class SplitBar(gtk.HBox):
+class SplitBar(Gtk.HBox):
+    __g_type_name__ = "SplitBar"
     def __init__(self, expand_lhs=True, expand_rhs=False):
-        gtk.HBox.__init__(self)
-        self.lhs = gtk.HBox()
-        self.pack_start(self.lhs, expand=expand_lhs)
-        self.rhs = gtk.HBox()
-        self.pack_end(self.rhs, expand=expand_rhs)
+        Gtk.HBox.__init__(self)
+        self.lhs = Gtk.HBox()
+        self.pack_start(self.lhs, expand=expand_lhs, fill=True, padding=0)
+        self.rhs = Gtk.HBox()
+        self.pack_end(self.rhs, expand=expand_rhs, fill=True, padding=0)
 
 def _ui_manager_connect_proxy(_ui_mgr, action, widget):
     tooltip = action.get_property('tooltip')
-    if isinstance(widget, gtk.MenuItem) and tooltip:
+    if isinstance(widget, Gtk.MenuItem) and tooltip:
         widget.set_tooltip_text(tooltip)
 
-class UIManager(gtk.UIManager):
+def yield_to_pending_events():
+    while True:
+        Gtk.main_iteration()
+        if not Gtk.events_pending():
+            break
+
+class UIManager(Gtk.UIManager):
     def __init__(self):
-        gtk.UIManager.__init__(self)
+        Gtk.UIManager.__init__(self)
         self.connect('connect-proxy', _ui_manager_connect_proxy)

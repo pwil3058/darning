@@ -152,6 +152,6 @@ $ hg diff -c 3
 > +Patch: "third"; Path: "file3"
 $ darn push
 > Patching file "dir1/file1".
-> Patching file "file1".
 > Patching file "dir2/file3".
+> Patching file "file1".
 > Patch "fourth" is now on top.

@@ -596,12 +596,12 @@ $ darn fold third
 
 $ darn push
 > Processing file "file3".
+> Patching file "dir1/file1".
+> Patching file "dir2/file1".
 > Patching file "dir2/subdir1/file1".
 > Patching file "file1".
-> Patching file "file2.copy".
 > Processing file "file1.copy".
-> Patching file "dir2/file1".
-> Patching file "dir1/file1".
+> Patching file "file2.copy".
 > Patching file "file3.ren1".
 > Patch "first" is now on top.
 $ darn fold second

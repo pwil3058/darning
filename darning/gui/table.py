@@ -18,12 +18,13 @@ Provide generic enhancements to Textview widgets primarily to create
 them from templates and allow easier access to named contents.
 """
 
-import gtk
+from gi.repository import Gtk
+from gi.repository import Gdk
+
+from .. import enotify
 
 from . import gutils
 from . import actions
-from . import ws_actions
-from . import ws_event
 from . import tlview
 from . import icons
 from . import dialogue
@@ -41,33 +42,33 @@ TABLE_STATES = \
      UNIQUE_SELECTION]
 
 # TODO: modify this code to use the new actions model
-class Table(gtk.VBox):
+class Table(Gtk.VBox):
     View = tlview.ListView
     def __init__(self, size_req=None):
-        gtk.VBox.__init__(self)
+        Gtk.VBox.__init__(self)
         self.view = self.View()
         self.seln = self.view.get_selection()
         if size_req:
             self.view.set_size_request(*size_req)
-        self.pack_start(gutils.wrap_in_scrolled_window(self.view))
+        self.pack_start(gutils.wrap_in_scrolled_window(self.view), expand=True, fill=True, padding=0)
         self.action_groups = {}
         for key in TABLE_STATES:
-            self.action_groups[key] = gtk.ActionGroup(key)
+            self.action_groups[key] = Gtk.ActionGroup(key)
         self.action_groups[ALWAYS_ON].add_actions(
             [
-                ('table_add_row', gtk.STOCK_ADD, _('_Add'), None,
+                ('table_add_row', Gtk.STOCK_ADD, _('_Add'), None,
                  _('Add a new entry to the table'), self._add_row_acb),
             ])
         self.action_groups[MODIFIED].add_actions(
             [
-                ('table_undo_changes', gtk.STOCK_UNDO, _('_Undo'), None,
+                ('table_undo_changes', Gtk.STOCK_UNDO, _('_Undo'), None,
                  _('Undo unapplied changes'), self._undo_changes_acb),
-                ('table_apply_changes', gtk.STOCK_APPLY, _('_Apply'), None,
+                ('table_apply_changes', Gtk.STOCK_APPLY, _('_Apply'), None,
                  _('Apply outstanding changes'), self._apply_changes_acb),
             ])
         self.action_groups[SELECTION].add_actions(
             [
-                ('table_delete_selection', gtk.STOCK_DELETE, _('_Delete'), None,
+                ('table_delete_selection', Gtk.STOCK_DELETE, _('_Delete'), None,
                  _('Delete selected row(s)'), self._delete_selection_acb),
                 ('table_insert_row', icons.STOCK_INSERT, _('_Insert'), None,
                  _('Insert a new entry before the selected row(s)'), self._insert_row_acb),
@@ -137,7 +138,7 @@ class Table(gtk.VBox):
         columns = self.model.col_indices(labels)
         return self.get_selected_data(columns)
 
-def simple_text_specification(model, *hdrs_and_flds):
+def simple_text_specification(model, *hdrs_flds_xalign):
     specification = tlview.ViewSpec(
         properties={
             "enable-grid-lines" : False,
@@ -145,12 +146,13 @@ def simple_text_specification(model, *hdrs_and_flds):
             "rules_hint" : False,
             "headers-visible" : True,
         },
-        selection_mode=gtk.SELECTION_SINGLE,
-        columns=[tlview.simple_column(hdr, tlview.fixed_text_cell(model, fld)) for hdr, fld in hdrs_and_flds]
+        selection_mode=Gtk.SelectionMode.SINGLE,
+        columns=[tlview.simple_column(hdr, tlview.fixed_text_cell(model, fld, xalign)) for hdr, fld, xalign in hdrs_flds_xalign]
     )
     return specification
 
-class TableView(tlview.ListView, ws_actions.AGandUIManager, dialogue.BusyIndicatorUser, auto_update.AutoUpdater, ws_event.Listener):
+class TableView(tlview.ListView, actions.CAGandUIManager, dialogue.BusyIndicatorUser, auto_update.AutoUpdater, enotify.Listener):
+    __g_type_name__ = "TableView"
     from . import ifce
     PopUp = None
     SET_EVENTS = ifce.E_CHANGE_WD
@@ -159,9 +161,9 @@ class TableView(tlview.ListView, ws_actions.AGandUIManager, dialogue.BusyIndicat
     def __init__(self, busy_indicator=None, size_req=None):
         tlview.ListView.__init__(self)
         dialogue.BusyIndicatorUser.__init__(self, busy_indicator)
-        ws_actions.AGandUIManager.__init__(self, selection=self.get_selection(), popup=self.PopUp)
+        actions.CAGandUIManager.__init__(self, selection=self.get_selection(), popup=self.PopUp)
         auto_update.AutoUpdater.__init__(self)
-        ws_event.Listener.__init__(self)
+        enotify.Listener.__init__(self)
         self._table_db = self._get_table_db()
         if self.SET_EVENTS:
             self.add_notification_cb(self.SET_EVENTS, self.set_contents)
@@ -176,7 +178,7 @@ class TableView(tlview.ListView, ws_actions.AGandUIManager, dialogue.BusyIndicat
     def populate_action_groups(self):
         self.action_groups[actions.AC_DONT_CARE].add_actions(
             [
-                ("table_refresh_contents", gtk.STOCK_REFRESH, _('Refresh'), None,
+                ("table_refresh_contents", Gtk.STOCK_REFRESH, _("Refresh"), None,
                  _("Refresh the table's contents"),
                  lambda _action=None: self.refresh_contents()
                 ),
@@ -196,12 +198,12 @@ class TableView(tlview.ListView, ws_actions.AGandUIManager, dialogue.BusyIndicat
             args["tbd_reset_only"] = [self]
         return self.AU_REQ_EVENTS
     def _handle_clear_selection_cb(self, widget, event):
-        if event.type == gtk.gdk.BUTTON_PRESS:
+        if event.type == Gdk.EventType.BUTTON_PRESS:
             if event.button == 2:
                 self.seln.unselect_all()
                 return True
-        elif event.type == gtk.gdk.KEY_PRESS:
-            if event.keyval == gtk.gdk.keyval_from_name('Escape'):
+        elif event.type == Gdk.EventType.KEY_PRESS:
+            if event.keyval == Gdk.keyval_from_name("Escape"):
                 self.seln.unselect_all()
                 return True
         return False
@@ -228,7 +230,7 @@ class TableView(tlview.ListView, ws_actions.AGandUIManager, dialogue.BusyIndicat
             start = visible_range[0][0]
             end = visible_range[1][0]
             length = end - start + 1
-            middle_offset = length / 2
+            middle_offset = length // 2
             align = float(middle_offset) / float(length)
             middle = start + middle_offset
             middle_key = self.model.get_value(self.model.get_iter(middle), 0)
@@ -287,6 +289,7 @@ class TableView(tlview.ListView, ws_actions.AGandUIManager, dialogue.BusyIndicat
         return True
 
 class MapManagedTableView(TableView, gutils.MappedManager):
+    __g_type_name__ = "MapManagedTableView"
     _NEEDS_RESET = 123
     def __init__(self, busy_indicator=None, size_req=None):
         TableView.__init__(self, busy_indicator=busy_indicator, size_req=size_req)
@@ -321,17 +324,18 @@ class MapManagedTableView(TableView, gutils.MappedManager):
         else:
             self._needs_refresh = True
 
-class TableWidget(gtk.VBox):
+class TableWidget(Gtk.VBox):
+    __g_type_name__ = "TableWidget"
     View = TableView
     def __init__(self, scroll_bar=True, busy_indicator=None, size_req=None, **kwargs):
-        gtk.VBox.__init__(self)
+        Gtk.VBox.__init__(self)
         self.header = gutils.SplitBar()
-        self.pack_start(self.header, expand=False)
+        self.pack_start(self.header, expand=False, fill=True, padding=0)
         self.view = self.View(busy_indicator=busy_indicator, size_req=size_req, **kwargs)
         if scroll_bar:
-            self.pack_start(gutils.wrap_in_scrolled_window(self.view))
+            self.pack_start(gutils.wrap_in_scrolled_window(self.view), expand=True, fill=True, padding=0)
         else:
-            self.pack_start(self.view)
+            self.pack_start(self.view, expand=True, fill=True, padding=0)
         self.show_all()
     @property
     def ui_manager(self):

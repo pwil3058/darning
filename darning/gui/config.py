@@ -1,4 +1,4 @@
-### Copyright (C) 2005-2015 Peter Williams <pwil3058@gmail.com>
+### Copyright (C) 2005-2016 Peter Williams <pwil3058@gmail.com>
 ###
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
@@ -17,11 +17,13 @@ import os
 import fnmatch
 import collections
 
-import gobject
-import gtk
+from gi.repository import GObject
+from gi.repository import Gtk
+from gi.repository import Gdk
 
 from .. import config_data
 from .. import utils
+from .. import urlops
 
 from . import dialogue
 from . import gutils
@@ -29,11 +31,11 @@ from . import tlview
 from . import table
 from . import actions
 from . import ifce
-from . import ws_event
+from . import icons
 
 SAVED_PGND_FILE_NAME = os.sep.join([config_data.CONFIG_DIR_NAME, "playgrounds"])
 
-_KEYVAL_ESCAPE = gtk.gdk.keyval_from_name("Escape")
+_KEYVAL_ESCAPE = Gdk.keyval_from_name("Escape")
 
 class AliasPathTable(table.Table):
     SAVED_FILE_NAME = None
@@ -96,7 +98,7 @@ class AliasPathTable(table.Table):
     class View(table.Table.View):
         class Model(table.Table.View.Model):
             Row = collections.namedtuple("Row", ["Alias", "Path"])
-            types = Row(Alias=gobject.TYPE_STRING, Path=gobject.TYPE_STRING)
+            types = Row(Alias=GObject.TYPE_STRING, Path=GObject.TYPE_STRING)
         specification = tlview.ViewSpec(
             properties={
                 "enable-grid-lines" : False,
@@ -104,7 +106,7 @@ class AliasPathTable(table.Table):
                 "rules_hint" : False,
                 "headers-visible" : True,
             },
-            selection_mode=gtk.SELECTION_SINGLE,
+            selection_mode=Gtk.SelectionMode.SINGLE,
             columns=[
                 tlview.ColumnSpec(
                     title=_("Alias"),
@@ -112,11 +114,11 @@ class AliasPathTable(table.Table):
                     cells=[
                         tlview.CellSpec(
                             cell_renderer_spec=tlview.CellRendererSpec(
-                                cell_renderer=gtk.CellRendererText,
+                                cell_renderer=Gtk.CellRendererText,
                                 expand=False,
-                                start=True
+                                start=True,
+                                properties={"editable" : True},
                             ),
-                            properties={"editable" : True},
                             cell_data_function_spec=None,
                             attributes = {"text" : Model.col_index("Alias")}
                         ),
@@ -128,11 +130,11 @@ class AliasPathTable(table.Table):
                     cells=[
                         tlview.CellSpec(
                             cell_renderer_spec=tlview.CellRendererSpec(
-                                cell_renderer=gtk.CellRendererText,
+                                cell_renderer=Gtk.CellRendererText,
                                 expand=False,
-                                start=True
+                                start=True,
+                                properties={"editable" : False},
                             ),
-                            properties={"editable" : False},
                             cell_data_function_spec=None,
                             attributes = {"text" : Model.col_index("Path")}
                         ),
@@ -169,7 +171,7 @@ class AliasPathTable(table.Table):
             return False
         return data[0]
     def _handle_button_press_cb(self, widget, event):
-        if event.type == gtk.gdk.BUTTON_PRESS:
+        if event.type == Gdk.EventType.BUTTON_PRESS:
             if event.button == 2:
                 self.seln.unselect_all()
                 return True
@@ -183,30 +185,28 @@ class AliasPathTable(table.Table):
 class PgndPathTable(AliasPathTable):
     SAVED_FILE_NAME = SAVED_PGND_FILE_NAME
 
-class PathSelectDialog(dialogue.Dialog):
+class PathSelectDialog(dialogue.BusyDialog):
     PATH_TABLE = AliasPathTable
     def __init__(self, label, suggestion=None, parent=None):
-        dialogue.Dialog.__init__(self, title=_("{0}: Select {1}").format(config_data.APP_NAME, label), parent=parent,
-                                 flags=gtk.DIALOG_MODAL|gtk.DIALOG_DESTROY_WITH_PARENT,
-                                 buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
-                                          gtk.STOCK_OK, gtk.RESPONSE_OK)
+        dialogue.BusyDialog.__init__(self, title=_("{0}: Select {1}").format(config_data.APP_NAME, label), parent=parent,
+                                 flags=Gtk.DialogFlags.MODAL|Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                                 buttons=(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+                                          Gtk.STOCK_OK, Gtk.ResponseType.OK)
                                 )
-        hbox = gtk.HBox()
+        hbox = Gtk.HBox()
         self.ap_table = self.PATH_TABLE()
-        hbox.pack_start(self.ap_table)
-        self.vbox.pack_start(hbox)
-        hbox = gtk.HBox()
-        hbox.pack_start(gtk.Label("%s:" % label), expand=False)
-        self._path = gutils.MutableComboBoxEntry()
-        self._path.child.set_width_chars(32)
-        self._path.child.connect("activate", self._path_cb)
-        if suggestion:
-            self._path.set_text(suggestion)
-        hbox.pack_start(self._path, expand=True, fill=True)
-        self._browse_button = gtk.Button(label=_("_Browse"))
+        hbox.pack_start(self.ap_table, expand=True, fill=True, padding=0)
+        self.vbox.pack_start(hbox, expand=True, fill=True, padding=0)
+        hbox = Gtk.HBox()
+        hbox.pack_start(Gtk.Label("%s:" % label), expand=False, fill=True, padding=0)
+        self._path = gutils.new_mutable_combox_text_with_entry()
+        self._path.get_child().set_width_chars(32)
+        self._path.get_child().connect("activate", self._path_cb)
+        hbox.pack_start(self._path, expand=True, fill=True, padding=0)
+        self._browse_button = Gtk.Button(label=_("Browse"))
         self._browse_button.connect("clicked", self._browse_cb)
-        hbox.pack_start(self._browse_button, expand=False, fill=False)
-        self.vbox.pack_start(hbox, expand=False, fill=False)
+        hbox.pack_start(self._browse_button, expand=False, fill=False, padding=0)
+        self.vbox.pack_start(hbox, expand=False, fill=False, padding=0)
         self.show_all()
         self.ap_table.seln.unselect_all()
         self.ap_table.seln.connect("changed", self._selection_cb)
@@ -215,9 +215,9 @@ class PathSelectDialog(dialogue.Dialog):
         if alpth:
             self._path.set_text(alpth[0])
     def _path_cb(self, entry=None):
-        self.response(gtk.RESPONSE_OK)
+        self.response(Gtk.ResponseType.OK)
     def _browse_cb(self, button=None):
-        dirname = dialogue.ask_dir_name(_("{0}: Browse for Directory").format(config_data.APP_NAME), existing=True, parent=self)
+        dirname = dialogue.select_directory(_("{0}: Browse for Directory").format(config_data.APP_NAME), existing=True, parent=self)
         if dirname:
             self._path.set_text(utils.path_rel_home(dirname))
     def get_path(self):
@@ -230,7 +230,7 @@ class PgndOpenDialog(PathSelectDialog):
 
 def ask_working_directory_path(parent=None):
     open_dialog = PgndOpenDialog(parent=parent)
-    if open_dialog.run() != gtk.RESPONSE_OK:
+    if open_dialog.run() != Gtk.ResponseType.OK:
         open_dialog.destroy()
         return None
     wd_path = open_dialog.get_path()
@@ -334,13 +334,13 @@ class EditorAllocationTable(table.Table):
     class View(table.Table.View):
         class Model(table.Table.View.Model):
             Row = collections.namedtuple("Row", ["globs", "editor"])
-            types = Row(globs=gobject.TYPE_STRING, editor=gobject.TYPE_STRING)
+            types = Row(globs=GObject.TYPE_STRING, editor=GObject.TYPE_STRING)
         specification = tlview.ViewSpec(
             properties={
-                "enable-grid-lines" : True,
-                "reorderable" : True,
+                'enable-grid-lines' : True,
+                'reorderable' : True,
             },
-            selection_mode=gtk.SELECTION_MULTIPLE,
+            selection_mode=Gtk.SelectionMode.MULTIPLE,
             columns=[
                 tlview.ColumnSpec(
                     title=_("File Pattern(s)"),
@@ -348,11 +348,11 @@ class EditorAllocationTable(table.Table):
                     cells=[
                         tlview.CellSpec(
                             cell_renderer_spec=tlview.CellRendererSpec(
-                                cell_renderer=gtk.CellRendererText,
+                                cell_renderer=Gtk.CellRendererText,
                                 expand=False,
-                                start=True
+                                start=True,
+                                properties={"editable" : True},
                             ),
-                            properties={"editable" : True},
                             cell_data_function_spec=None,
                             attributes={"text" : Model.col_index("globs")}
                         ),
@@ -364,11 +364,11 @@ class EditorAllocationTable(table.Table):
                     cells=[
                         tlview.CellSpec(
                             cell_renderer_spec=tlview.CellRendererSpec(
-                                cell_renderer=gtk.CellRendererText,
+                                cell_renderer=Gtk.CellRendererText,
                                 expand=False,
-                                start=True
+                                start=True,
+                                properties={"editable" : True},
                             ),
-                            properties={"editable" : True},
                             cell_data_function_spec=None,
                             attributes={"text" : Model.col_index("editor")}
                         ),
@@ -386,24 +386,24 @@ class EditorAllocationTable(table.Table):
         _write_editor_defs(edefs=self.get_contents(), edeff=self._edeff)
         self.set_contents()
 
-class EditorAllocationDialog(dialogue.Dialog):
+class EditorAllocationDialog(dialogue.BusyDialog):
     EDEFF = EDITOR_GLOB_FILE_NAME
     TITLE = _("{0}: Editor Allocation".format(config_data.APP_NAME))
     def __init__(self, parent=None):
-        dialogue.Dialog.__init__(self, title=self.TITLE, parent=parent,
-                                 flags=gtk.DIALOG_DESTROY_WITH_PARENT,
-                                 buttons=(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE,
-                                          gtk.STOCK_OK, gtk.RESPONSE_OK)
+        dialogue.BusyDialog.__init__(self, title=self.TITLE, parent=parent,
+                                 flags=Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                                 buttons=(Gtk.STOCK_CLOSE, Gtk.ResponseType.CLOSE,
+                                          Gtk.STOCK_OK, Gtk.ResponseType.OK)
                                 )
         self._table = EditorAllocationTable(edeff=self.EDEFF)
         self._buttons = gutils.ActionHButtonBox(list(self._table.action_groups.values()))
-        self.vbox.pack_start(self._table)
-        self.vbox.pack_start(self._buttons, expand=False)
+        self.vbox.pack_start(self._table, expand=True, fill=True, padding=0)
+        self.vbox.pack_start(self._buttons, expand=False, fill=True, padding=0)
         self.connect("response", self._handle_response_cb)
         self.show_all()
         self._table.view.get_selection().unselect_all()
     def _handle_response_cb(self, dialog, response_id):
-        if response_id == gtk.RESPONSE_OK:
+        if response_id == Gtk.ResponseType.OK:
             self._table.apply_changes()
         self.destroy()
 
@@ -417,34 +417,33 @@ def change_pgnd_cb(_widget, repo):
     dialogue.unshow_busy()
     dialogue.report_any_problems(result)
 
-class PlaygroundsMenu(gtk.MenuItem):
+class PlaygroundsMenu(Gtk.MenuItem):
     def __init__(self, label=_("Playgrounds")):
-        gtk.MenuItem.__init__(self, label)
-        self.set_submenu(gtk.Menu())
+        Gtk.MenuItem.__init__(self, label)
+        self.set_submenu(Gtk.Menu())
         self.connect("enter_notify_event", self._enter_notify_even_cb)
     def _build_submenu(self):
-        _menu = gtk.Menu()
+        _menu = Gtk.Menu()
         repos = PgndPathTable._fetch_contents()
         repos.sort()
         for repo in repos:
             label = "{0.Alias}:->({0.Path})".format(repo)
-            _menu_item = gtk.MenuItem(label)
+            _menu_item = Gtk.MenuItem(label)
             _menu_item.connect("activate", change_pgnd_cb, os.path.expanduser(repo.Path))
             _menu_item.show()
             _menu.append(_menu_item)
         return _menu
     def _enter_notify_even_cb(self, widget, _event):
-        widget.remove_submenu()
         widget.set_submenu(self._build_submenu())
 
 actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_actions(
     [
         ("config_menu", None, _("_Configuration")),
-        ("config_allocate_editors", gtk.STOCK_PREFERENCES, _("_Editor Allocation"), "",
+        ("config_allocate_editors", Gtk.STOCK_PREFERENCES, _("_Editor Allocation"), "",
          _("Allocate editors to file types"),
          lambda _action=None: EditorAllocationDialog(parent=dialogue.main_window).show()
         ),
-        ("config_allocate_perusers", gtk.STOCK_PREFERENCES, _("_Peruser Allocation"), "",
+        ("config_allocate_perusers", Gtk.STOCK_PREFERENCES, _("_Peruser Allocation"), "",
          _("Allocate perusers to file types"),
          lambda _action=None: PeruserAllocationDialog(parent=dialogue.main_window).show()
         ),

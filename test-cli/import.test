@@ -89,10 +89,10 @@ $ darn import patch1
 > patch1: patch inserted at start of series.
 > Imported "patch1" as patch "patch1".
 $ darn push
-> Patching file "dir2/subdir1/file1".
-> Patching file "file1".
 > Patching file "dir1/file1".
 > Patching file "dir2/file1".
+> Patching file "dir2/subdir1/file1".
+> Patching file "file1".
 > Patch "patch1" is now on top.
 $ darn files
 >  :+: dir1/file1
@@ -133,11 +133,11 @@ $ darn import patch2
 > patch2: patch inserted after patch "patch1".
 > Imported "patch2" as patch "patch2".
 $ darn push
+> Patching file "dir1/file1".
+> Patching file "dir2/file1".
 > Patching file "dir2/subdir1/file1".
 > Patching file "file1".
 ! file1: Hunk #1 merged at 3.
-> Patching file "dir1/file1".
-> Patching file "dir2/file1".
 > Patch "patch2" is now on top.
 $ darn files
 >  :+: dir1/file1

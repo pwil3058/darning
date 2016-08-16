@@ -49,7 +49,7 @@ However, if you wish to install it do:
 
 on Unix like systems and:
 
-    python setup.py install
+    python3 setup.py install
 
 on other systems (but be aware this has only been tested on Linux).
 

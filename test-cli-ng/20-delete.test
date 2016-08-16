@@ -92,14 +92,14 @@ $ darn files
 > +:+: file5.rename <- file5
 $ ls binary1 file1 file2 file3 file3.copy file4 file5 file5.rename
 ? 2
-! ls: cannot access binary1: No such file or directory
-! ls: cannot access file1: No such file or directory
-! ls: cannot access file2: No such file or directory
-! ls: cannot access file3: No such file or directory
-! ls: cannot access file3.copy: No such file or directory
-! ls: cannot access file4: No such file or directory
-! ls: cannot access file5: No such file or directory
-! ls: cannot access file5.rename: No such file or directory
+! ls: cannot access 'binary1': No such file or directory
+! ls: cannot access 'file1': No such file or directory
+! ls: cannot access 'file2': No such file or directory
+! ls: cannot access 'file3': No such file or directory
+! ls: cannot access 'file3.copy': No such file or directory
+! ls: cannot access 'file4': No such file or directory
+! ls: cannot access 'file5': No such file or directory
+! ls: cannot access 'file5.rename': No such file or directory
 $ darn diff
 > diff --git a/binary1 b/binary1
 > deleted file mode 0100664
@@ -170,8 +170,8 @@ $ ls binary1 file1 file2 file3 file3.copy file4 file5 file5.rename
 > file3
 > file4
 > file5
-! ls: cannot access file3.copy: No such file or directory
-! ls: cannot access file5.rename: No such file or directory
+! ls: cannot access 'file3.copy': No such file or directory
+! ls: cannot access 'file5.rename': No such file or directory
 $ darn push
 > "file5": renamed as "file5.rename".
 > "file5.rename": deleted.
@@ -184,13 +184,13 @@ $ darn push
 > Patch "first" is now on top.
 $ ls binary1 file1 file2 file3 file3.copy file4 file5 file5.rename
 ? 2
-! ls: cannot access binary1: No such file or directory
-! ls: cannot access file1: No such file or directory
-! ls: cannot access file2: No such file or directory
-! ls: cannot access file3: No such file or directory
-! ls: cannot access file3.copy: No such file or directory
-! ls: cannot access file4: No such file or directory
-! ls: cannot access file5: No such file or directory
-! ls: cannot access file5.rename: No such file or directory
+! ls: cannot access 'binary1': No such file or directory
+! ls: cannot access 'file1': No such file or directory
+! ls: cannot access 'file2': No such file or directory
+! ls: cannot access 'file3': No such file or directory
+! ls: cannot access 'file3.copy': No such file or directory
+! ls: cannot access 'file4': No such file or directory
+! ls: cannot access 'file5': No such file or directory
+! ls: cannot access 'file5.rename': No such file or directory
 $ darn diff > first.newdiff
 $ diff first.diff first.newdiff

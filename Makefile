@@ -1,4 +1,4 @@
-VERSION=$(shell python darning/version.py)
+VERSION=$(shell python3 darning/version.py)
 RELEASE=1
 
 RPMBDIR=~/rpmbuild
@@ -25,17 +25,17 @@ help:
 all_dist: $(SRCDIST)  $(WINDIST) $(RPMDIST)
 
 darning.spec: setup.py Makefile setup.cfg darning/version.py
-	python setup.py bdist_rpm --build-requires python --spec-only --dist-dir .
+	python3 setup.py bdist_rpm --build-requires python3 --spec-only --dist-dir .
 	echo "%{_prefix}" >> darning.spec
 	sed -i \
-		-e 's/^\(python setup.py install.*\)/\1\ndesktop-file-install darning.desktop --dir $$RPM_BUILD_ROOT%{_datadir}\/applications/' \
+		-e 's/^\(python3 setup.py install.*\)/\1\ndesktop-file-install darning.desktop --dir $$RPM_BUILD_ROOT%{_datadir}\/applications/' \
 		-e 's/-f INSTALLED_FILES//' \
 		darning.spec
 
 sdist: $(SRCDIST)
 
 $(SRCDIST): $(SRCS)
-	python setup.py sdist --dist-dir .
+	python3 setup.py sdist --dist-dir .
 	rm MANIFEST
 
 rpm: $(RPMDIST)
@@ -48,7 +48,7 @@ $(RPMDIST): $(RPMSRC) darning.spec
 	cp $(RPMBDIR)/RPMS/noarch/$(RPMDIST) .
 
 install:
-	python setup.py install --prefix=$(PREFIX)
+	python3 setup.py install --prefix=$(PREFIX)
 	desktop-file-install darning.desktop --dir $(PREFIX)/share/applications
 	rm MANIFEST
 

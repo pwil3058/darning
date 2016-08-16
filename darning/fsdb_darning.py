@@ -13,18 +13,16 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import pango
-
-from itertools import ifilter
+from gi.repository import Pango
 
 from . import fsdb
 from . import patch_db
 
 STATUS_DECO_MAP = {
-    None: fsdb.Deco(pango.STYLE_NORMAL, "black"),
-    patch_db.Presence.ADDED: fsdb.Deco(pango.STYLE_NORMAL, "darkgreen"),
-    patch_db.Presence.REMOVED: fsdb.Deco(pango.STYLE_NORMAL, "red"),
-    patch_db.Presence.EXTANT: fsdb.Deco(pango.STYLE_NORMAL, "black"),
+    None: fsdb.Deco(Pango.Style.NORMAL, "black"),
+    patch_db.Presence.ADDED: fsdb.Deco(Pango.Style.NORMAL, "darkgreen"),
+    patch_db.Presence.REMOVED: fsdb.Deco(Pango.Style.NORMAL, "red"),
+    patch_db.Presence.EXTANT: fsdb.Deco(Pango.Style.NORMAL, "black"),
 }
 
 class _PatchFileDir(fsdb.GenericChangeFileDb.FileDir):
@@ -36,8 +34,8 @@ class _PatchFileDir(fsdb.GenericChangeFileDb.FileDir):
         return patch_db.FileStatus(None, validity)
     def dirs_and_files(self, hide_clean=False, **kwargs):
         if hide_clean:
-            dirs = ifilter((lambda x: x.status.validity), self._subdirs_data)
-            files = ifilter((lambda x: x.status.validity), self._files_data)
+            dirs = filter((lambda x: x.status.validity), self._subdirs_data)
+            files = filter((lambda x: x.status.validity), self._files_data)
         else:
             dirs = iter(self._subdirs_data)
             files = iter(self._files_data)
@@ -51,7 +49,7 @@ class TopPatchFileDb(fsdb.GenericTopPatchFileDb):
     @staticmethod
     def _get_patch_data_text(h):
         patch_status_text = patch_db.get_patch_file_table()
-        h.update(str(patch_status_text))
+        h.update(str(patch_status_text).encode())
         return patch_status_text
     @staticmethod
     def _iterate_file_data(pdt):
@@ -61,7 +59,7 @@ class TopPatchFileDb(fsdb.GenericTopPatchFileDb):
 class CombinedPatchFileDb(TopPatchFileDb):
     def _get_patch_data_text(self, h):
         patch_status_text = patch_db.get_combined_patch_file_table()
-        h.update(str(patch_status_text))
+        h.update(str(patch_status_text).encode())
         return patch_status_text
 
 class PatchFileDb(fsdb.GenericPatchFileDb):
@@ -77,7 +75,7 @@ class PatchFileDb(fsdb.GenericPatchFileDb):
         return patch_db.is_patch_applied(patch_name)
     def _get_patch_data_text(self, h):
         patch_status_text = patch_db.get_patch_file_table(self.patch_name)
-        h.update(str(patch_status_text))
+        h.update(str(patch_status_text).encode())
         return patch_status_text
     def _iterate_file_data(self, pdt):
         for item in pdt:

@@ -34,7 +34,7 @@ class PedanticSlotPickleMixin(object):
     def __getstate__(self):
         return {slot : getattr(self, slot) for slot in self.__slots__}
     def __setstate__(self, state):
-        for slot, value in state.iteritems():
+        for slot, value in state.items():
             setattr(self, slot, value)
     def all_slots_are_initialized(self):
         for slot in self.__slots__:
@@ -46,7 +46,7 @@ class LenientSlotPickleMixin(object):
     def __getstate__(self):
         return {slot : getattr(self, slot) for slot in self.__slots__ if hasattr(self, slot)}
     def __setstate__(self, state):
-        for slot, value in state.iteritems():
+        for slot, value in state.items():
             setattr(self, slot, value)
     def all_slots_are_initialized(self):
         for slot in self.__slots__:

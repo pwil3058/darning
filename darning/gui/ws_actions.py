@@ -19,13 +19,14 @@ Workspace status action groups
 
 import collections
 
-import gtk
+from gi.repository import Gtk
 
-from . import actions
-from . import ws_event
-from . import ifce
 from .. import scm_ifce
 from .. import pm_ifce
+from .. import enotify
+
+from . import actions
+from . import ifce
 
 AC_NOT_IN_PM_PGND, AC_IN_PM_PGND, AC_IN_PM_PGND_MASK = actions.ActionCondns.new_flags_and_mask(2)
 AC_NOT_IN_SCM_PGND, AC_IN_SCM_PGND, AC_IN_SCM_PGND_MASK = actions.ActionCondns.new_flags_and_mask(2)
@@ -45,22 +46,26 @@ def get_pmic_condns():
     return actions.MaskedCondns(AC_PMIC if ifce.PM.is_poppable else AC_NOT_PMIC, AC_PMIC_MASK)
 
 def _update_class_indep_pm_pgnd_cb(**kwargs):
-    actions.CLASS_INDEP_AGS.update_condns(get_in_pm_pgnd_condns())
+    condns = get_in_pm_pgnd_condns()
+    actions.CLASS_INDEP_AGS.update_condns(condns)
+    actions.CLASS_INDEP_BGS.update_condns(condns)
 
 def _update_class_indep_scm_pgnd_cb(**kwargs):
-    actions.CLASS_INDEP_AGS.update_condns(get_in_scm_pgnd_condns())
+    condns = get_in_scm_pgnd_condns()
+    actions.CLASS_INDEP_AGS.update_condns(condns)
+    actions.CLASS_INDEP_BGS.update_condns(condns)
 
 def _update_class_indep_pmic_cb(**kwargs):
-    actions.CLASS_INDEP_AGS.update_condns(get_pmic_condns())
+    condns = get_pmic_condns()
+    actions.CLASS_INDEP_AGS.update_condns(condns)
+    actions.CLASS_INDEP_BGS.update_condns(condns)
 
-ws_event.add_notification_cb(ifce.E_CHANGE_WD|ifce.E_NEW_SCM, _update_class_indep_scm_pgnd_cb)
-ws_event.add_notification_cb(ifce.E_CHANGE_WD|ifce.E_NEW_PM, _update_class_indep_pm_pgnd_cb)
-ws_event.add_notification_cb(pm_ifce.E_PATCH_STACK_CHANGES|ifce.E_NEW_PM|ifce.E_CHANGE_WD, _update_class_indep_pmic_cb)
+enotify.add_notification_cb(ifce.E_CHANGE_WD|ifce.E_NEW_SCM, _update_class_indep_scm_pgnd_cb)
+enotify.add_notification_cb(ifce.E_CHANGE_WD|ifce.E_NEW_PM, _update_class_indep_pm_pgnd_cb)
+enotify.add_notification_cb(pm_ifce.E_PATCH_STACK_CHANGES|ifce.E_NEW_PM|ifce.E_CHANGE_WD, _update_class_indep_pmic_cb)
 
-class AGandUIManager(actions.CAGandUIManager, ws_event.Listener):
-    def __init__(self, selection=None, popup=None):
-        actions.CAGandUIManager.__init__(self, selection=selection, popup=popup)
-        ws_event.Listener.__init__(self)
+class WSListenerMixin:
+    def __init__(self):
         self.add_notification_cb(ifce.E_CHANGE_WD|ifce.E_NEW_SCM, self.scm_pgnd_conds_change_cb)
         self.add_notification_cb(ifce.E_CHANGE_WD|ifce.E_NEW_PM, self.pm_pgnd_condns_change_cb)
         self.add_notification_cb(pm_ifce.E_PATCH_STACK_CHANGES|ifce.E_NEW_PM|ifce.E_CHANGE_WD, self.pmic_condns_change_cb)
@@ -78,6 +83,6 @@ class AGandUIManager(actions.CAGandUIManager, ws_event.Listener):
 actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_actions(
     [
         ("actions_wd_menu", None, _('_Working Directory')),
-        ("actions_quit", gtk.STOCK_QUIT, _('_Quit'), "",
-         _('Quit'), gtk.main_quit),
+        ("actions_quit", Gtk.STOCK_QUIT, _('_Quit'), "",
+         _('Quit'), Gtk.main_quit),
     ])

@@ -24,14 +24,13 @@ from . import console
 from . import ifce
 from . import icons
 from . import ws_actions
-from . import ws_event
 from . import patch_list
 from . import file_tree_managed
 from . import file_tree_cs
 from . import terminal
 from . import config
 
-class Darning(gtk.Window, dialogue.BusyIndicator, ws_actions.AGandUIManager):
+class Darning(Gtk.Window, dialogue.BusyIndicator, ws_actions.AGandUIManager):
     count = 0
     UI_DESCR = '''
     <ui>
@@ -72,46 +71,46 @@ class Darning(gtk.Window, dialogue.BusyIndicator, ws_actions.AGandUIManager):
     def __init__(self, dir_specified=False):
         assert Darning.count == 0
         Darning.count += 1
-        gtk.Window.__init__(self, gtk.WINDOW_TOPLEVEL)
+        Gtk.Window.__init__(self, Gtk.WINDOW_TOPLEVEL)
         self.set_icon_from_file(icons.APP_ICON_FILE)
-        self.connect("destroy", gtk.main_quit)
+        self.connect("destroy", Gtk.main_quit)
         self._update_title()
         dialogue.init(self)
         dialogue.BusyIndicator.__init__(self)
         ws_actions.AGandUIManager.__init__(self)
         self.ui_manager.add_ui_from_string(Darning.UI_DESCR)
-        vbox = gtk.VBox()
+        vbox = Gtk.VBox()
         self.add(vbox)
-        mbar_box = gtk.HBox()
+        mbar_box = Gtk.HBox()
         menubar = self.ui_manager.get_widget("/gdarn_left_menubar")
         menubar.insert(config.PlaygroundsMenu(), 1)
         mbar_box.pack_start(menubar, expand=True)
         mbar_box.pack_end(self.ui_manager.get_widget("/gdarn_right_menubar"), expand=False)
         vbox.pack_start(mbar_box, expand=False)
         toolbar = self.ui_manager.get_widget("/gdarn_patches_toolbar")
-        toolbar.set_style(gtk.TOOLBAR_BOTH)
+        toolbar.set_style(Gtk.TOOLBAR_BOTH)
         vbox.pack_start(toolbar, expand=False)
-        vpane = gtk.VPaned()
+        vpane = Gtk.VPaned()
         vbox.pack_start(vpane, expand=True)
-        hpane = gtk.HPaned()
+        hpane = Gtk.HPaned()
         vpane.add1(hpane)
         stree = file_tree_managed.WSFilesWidget()
         stree.set_size_request(280, 280)
         hpane.add1(stree)
-        phpane = gtk.HPaned()
-        nbook = gtk.Notebook()
+        phpane = Gtk.HPaned()
+        nbook = Gtk.Notebook()
         nbook.set_size_request(280, 280)
-        nbook.append_page(file_tree_cs.TopPatchFileTreeWidget(), gtk.Label(_('Top Patch Files')))
-        nbook.append_page(file_tree_cs.CombinedPatchFileTreeWidget(), gtk.Label(_('Combined Patch Files')))
+        nbook.append_page(file_tree_cs.TopPatchFileTreeWidget(), Gtk.Label(_('Top Patch Files')))
+        nbook.append_page(file_tree_cs.CombinedPatchFileTreeWidget(), Gtk.Label(_('Combined Patch Files')))
         phpane.add1(nbook)
         plist = patch_list.List()
         plist.set_size_request(280, 280)
         phpane.add2(plist)
         hpane.add2(phpane)
         if terminal.AVAILABLE:
-            nbook = gtk.Notebook()
-            nbook.append_page(console.LOG, gtk.Label(_('Transaction Log')))
-            nbook.append_page(terminal.Terminal(), gtk.Label(_('Terminal')))
+            nbook = Gtk.Notebook()
+            nbook.append_page(console.LOG, Gtk.Label(_('Transaction Log')))
+            nbook.append_page(terminal.Terminal(), Gtk.Label(_('Terminal')))
             vpane.add2(nbook)
         else:
             vpane.add2(console.LOG)

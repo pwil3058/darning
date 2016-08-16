@@ -1,4 +1,4 @@
-### Copyright (C) 2005-2015 Peter Williams <pwil3058@gmail.com>
+### Copyright (C) 2005-2016 Peter Williams <pwil3058@gmail.com>
 ###
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
@@ -18,18 +18,16 @@ Provide mechanism for notifying components of events that require them
 to update their displayed/cached data
 """
 
-import gobject
-
-from .. import utils
+from . import utils
 
 _flag_generator = utils.create_flag_generator()
 
 def new_event_flags_and_mask(count):
-    flags = [_flag_generator.next() for _i in range(count)]
+    flags = [next(_flag_generator) for _i in range(count)]
     return tuple(flags + [sum(flags)])
 
 def new_event_flag():
-    return _flag_generator.next()
+    return next(_flag_generator)
 
 _NOTIFICATION_CBS = []
 
@@ -82,20 +80,19 @@ def notify_events(events, **kwargs):
                 # TODO: try to be more explicit in naming exception type to catch here
                 # this is done to catch the race between a caller has going away and deleting its notifications
                 if True: # NB: for debug assistance e.g . locating exceptions not due to caller going away
-                    print "WS NOTIFY:", edata, callback, kwargs
+                    print("WS NOTIFY:\t edata: {}\n\t\t callback: {}\n\t\t kwargs: {}".format(edata, callback, kwargs))
                     raise edata
                 invalid_cbs.append((registered_events, callback))
     for cb_token in invalid_cbs:
         del_notification_cb(cb_token)
 
 
-class Listener(gobject.GObject):
-    """A base class for transient GTK object classes that wish to register
+class Listener:
+    """A mixin for transient GTK object classes that wish to register
     event callbacks so that their callbacks are deleted when they are
     destroyed.
     """
     def __init__(self):
-        gobject.GObject.__init__(self)
         self._listener_cbs = []
         self.connect('destroy', self._listener_destroy_cb)
 

@@ -35,10 +35,10 @@ $ ls .darning.dbd/patches_data
 > .darning.dbd/patches_data
 $ ls .darning.dbd/patches_data/
 ? 2
-! ls: cannot access .darning.dbd/patches_data/: Not a directory
+! ls: cannot access '.darning.dbd/patches_data/': Not a directory
 $ ls .darning.dbd/blob_ref_counts/
 ? 2
-! ls: cannot access .darning.dbd/blob_ref_counts/: Not a directory
+! ls: cannot access '.darning.dbd/blob_ref_counts/': Not a directory
 $ cat .darning.dbd/description
 > A short description of the patch series.
 

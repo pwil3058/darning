@@ -19,9 +19,9 @@ import shutil
 from .cmd_result import CmdResult
 from .fsdb import Relation
 
-from .gui import ws_event
+from . import enotify
 
-E_FILE_ADDED, E_FILE_DELETED, E_FILE_CHANGES = ws_event.new_event_flags_and_mask(2)
+E_FILE_ADDED, E_FILE_DELETED, E_FILE_CHANGES = enotify.new_event_flags_and_mask(2)
 E_FILE_MOVED = E_FILE_ADDED | E_FILE_DELETED
 
 def get_destn_file_paths(file_paths, destn):
@@ -63,7 +63,7 @@ def os_create_file(file_path):
     if not os.path.exists(file_path):
         try:
             open(file_path, 'w').close()
-            ws_event.notify_events(E_FILE_ADDED)
+            enotify.notify_events(E_FILE_ADDED)
             result = CmdResult.ok()
         except (IOError, OSError) as msg:
             result = CmdResult.error(stderr="\"{0}\": {1}".format(file_path, msg))
@@ -85,7 +85,7 @@ def os_delete_files(file_paths, events=E_FILE_DELETED):
             serr += errmsg
             console.LOG.append_stderr(errmsg)
     console.LOG.end_cmd()
-    ws_event.notify_events(events)
+    enotify.notify_events(events)
     return CmdResult.error("", serr) if serr else CmdResult.ok()
 
 def os_move_or_copy_file(file_path, destn, opsym, overwrite=False, dry_run=False, verbose=False):
@@ -114,7 +114,7 @@ def os_move_or_copy_file(file_path, destn, opsym, overwrite=False, dry_run=False
     except (IOError, os.error, shutil.Error) as why:
         result = CmdResult.error(omsg, _("\"{0}\" {1} \"{2}\" failed. {3}.\n").format(file_path, opsym, destn, str(why)))
     console.LOG.end_cmd(result)
-    ws_event.notify_events(E_FILE_MOVED)
+    enotify.notify_events(E_FILE_MOVED)
     return result
 
 def os_move_or_copy_files(file_paths, destn, opsym, overwrite=False, dry_run=False, verbose=False):
@@ -170,7 +170,7 @@ def os_move_or_copy_files(file_paths, destn, opsym, overwrite=False, dry_run=Fal
             failed_opns_str += serr
             continue
     console.LOG.end_cmd()
-    ws_event.notify_events(E_FILE_MOVED)
+    enotify.notify_events(E_FILE_MOVED)
     if failed_opns_str:
         return CmdResult.error(omsg, failed_opns_str)
     return CmdResult.ok(omsg)

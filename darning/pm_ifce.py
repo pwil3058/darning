@@ -21,13 +21,13 @@ import time
 
 from .cmd_result import CmdResult
 
-from .gui import ws_event
+from . import enotify
 
-E_PUSH, E_POP, E_NEW_PATCH, E_PATCH_STACK_CHANGES = ws_event.new_event_flags_and_mask(3)
-E_DELETE_PATCH, E_MODIFY_PATCH, E_MODIFY_GUARDS, E_PATCH_QUEUE_CHANGES = ws_event.new_event_flags_and_mask(3)
+E_PUSH, E_POP, E_NEW_PATCH, E_PATCH_STACK_CHANGES = enotify.new_event_flags_and_mask(3)
+E_DELETE_PATCH, E_MODIFY_PATCH, E_MODIFY_GUARDS, E_PATCH_QUEUE_CHANGES = enotify.new_event_flags_and_mask(3)
 E_PATCH_LIST_CHANGES = E_PATCH_STACK_CHANGES|E_PATCH_QUEUE_CHANGES
 
-E_FILE_ADDED, E_FILE_DELETED, E_PATCH_REFRESH, E_FILE_CHANGES = ws_event.new_event_flags_and_mask(3)
+E_FILE_ADDED, E_FILE_DELETED, E_PATCH_REFRESH, E_FILE_CHANGES = enotify.new_event_flags_and_mask(3)
 E_FILE_MOVED = E_FILE_ADDED|E_FILE_DELETED
 
 class Presence(object):
@@ -94,7 +94,7 @@ def avail_backends(include_deprecated=False):
     if include_deprecated:
         return list(_BACKEND.keys())
     else:
-        return [be.name for be in _BACKEND.itervalues() if not be.is_deprecated]
+        return [be.name for be in _BACKEND.values() if not be.is_deprecated]
 
 def playground_type(dirpath=None):
     for bname in list(_BACKEND.keys()):
@@ -109,7 +109,7 @@ def get_ifce(dirpath=None):
 def create_new_playground(pgdir, backend):
     return _BACKEND[backend].create_new_playground(pgdir)
 
-class PatchListData(object):
+class PatchListData:
     def __init__(self, **kwargs):
         self._kwargs = kwargs
         h = hashlib.sha1()
@@ -141,7 +141,7 @@ class PatchListData(object):
         for patch_data in self._patches_data:
             yield patch_data
 
-class NullPatchListData(object):
+class NullPatchListData:
     def __getattr__(self, name):
         if name == "is_current": return True
         if name == "selected_guards": return []
@@ -150,7 +150,7 @@ class NullPatchListData(object):
     def iter_rows(self):
         return []
 
-class _NULL_BACKEND(object):
+class _NULL_BACKEND:
     name = "null"
     cmd_label = "null"
     in_valid_pgnd = False
@@ -233,12 +233,12 @@ class _NULL_BACKEND(object):
         return fsdb.STATUS_DECO_MAP[status]
     @staticmethod
     def get_status_icon(status, is_dir):
-        import gtk
+        import Gtk
         from .gui import icons
         if is_dir:
-            return gtk.STOCK_DIRECTORY
+            return Gtk.STOCK_DIRECTORY
         else:
-            return gtk.STOCK_FILE
+            return Gtk.STOCK_FILE
     @staticmethod
     def get_top_patch():
         return None
@@ -307,7 +307,7 @@ def get_patch_file_description(patch_file_path):
     pobj = patchlib.Patch.parse_text(utils.get_file_contents(patch_file_path))
     return pobj.get_description()
 
-class InterfaceMixin(object):
+class InterfaceMixin:
     @classmethod
     def _add_extra_patch_file_paths(cls, file_paths):
         patch_file_paths = cls.get_patch_files()

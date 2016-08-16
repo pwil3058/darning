@@ -16,12 +16,12 @@
 import collections
 import os
 import hashlib
-from itertools import ifilter
-import pango
 
-from .gui import ws_event
+from gi.repository import Pango
 
-class Relation(object):
+from . import enotify
+
+class Relation:
     COPIED_FROM = '<<-'
     COPIED_TO = '->>'
     MOVED_FROM = '<-'
@@ -34,8 +34,8 @@ Deco = collections.namedtuple('Deco', ['style', 'foreground'])
 FSTATUS_IGNORED = " "
 
 STATUS_DECO_MAP = {
-    None: Deco(pango.STYLE_NORMAL, 'black'),
-    FSTATUS_IGNORED: Deco(pango.STYLE_ITALIC, 'grey'),
+    None: Deco(Pango.Style.NORMAL, 'black'),
+    FSTATUS_IGNORED: Deco(Pango.Style.ITALIC, 'grey'),
 }
 
 # Contained File Relative Data
@@ -66,8 +66,8 @@ class NullFileDb:
     def reset(self):
         return self
 
-class OsFileDb(object):
-    class FileDir(object):
+class OsFileDb:
+    class FileDir:
         def __init__(self, name=None, dir_path=None, status=None, **kwargs):
             # DEBUG: assert dir_path is None or os.path.basename(dir_path) == name
             self._dir_path = dir_path if dir_path is not None else os.curdir
@@ -97,12 +97,12 @@ class OsFileDb(object):
         def _get_current_hash_digest(self):
             h = hashlib.sha1()
             for item in os.listdir(self._dir_path):
-                h.update(item)
+                h.update(item.encode())
             return h.digest()
         def _populate(self):
             h = hashlib.sha1()
             for item in os.listdir(self._dir_path):
-                h.update(item)
+                h.update(item.encode())
                 dir_path = os.path.join(self._dir_path, item)
                 if os.path.isdir(dir_path):
                     self._add_subdir(name=item, dir_path=dir_path)
@@ -110,7 +110,7 @@ class OsFileDb(object):
                     self._add_file(name=item)
             self._files_data.sort()
             # presort this data for multiple access efficiency
-            self._subdirs_data = sorted([s.data for s in self._subdirs.itervalues()])
+            self._subdirs_data = sorted([s.data for s in self._subdirs.values()])
             self._is_populated = True
             return h.digest()
         def find_dir(self, dir_path):
@@ -128,8 +128,8 @@ class OsFileDb(object):
                 dirs = iter(self._subdirs_data)
                 files = iter(self._files_data)
             else:
-                dirs = ifilter((lambda x: x.name[0] != "."), self._subdirs_data)
-                files = ifilter((lambda x: x.name[0] != "."), self._files_data)
+                dirs = filter((lambda x: x.name[0] != "."), self._subdirs_data)
+                files = filter((lambda x: x.name[0] != "."), self._files_data)
             return (dirs, files)
     def __init__(self, **kwargs):
         # NB: we don't save kwargs as it's only there to allow children
@@ -150,7 +150,7 @@ class OsFileDb(object):
             return ([], [])
         return tdir.dirs_and_files(show_hidden=show_hidden, **kwargs)
 
-class Snapshot(object):
+class Snapshot:
     def __init__(self, file_status_data, relevant_keys=None):
         self._file_status_data = file_status_data
         self._relevant_keys = file_status_data.keys() if relevant_keys is None else relevant_keys
@@ -201,13 +201,13 @@ class GenericSnapshotWsFileDb(OsFileDb):
         def _get_current_hash_digest(self):
             h = hashlib.sha1()
             for item in os.listdir(self._dir_path):
-                h.update(item)
+                h.update(item.encode())
             return h.digest()
         def _populate(self):
             h = hashlib.sha1()
             files_dict = {}
             for item in os.listdir(self._dir_path):
-                h.update(item)
+                h.update(item.encode())
                 dir_path = os.path.join(self._dir_path, item)
                 if os.path.isdir(dir_path):
                     self._add_subdir(name=item, dir_path=dir_path)
@@ -226,8 +226,8 @@ class GenericSnapshotWsFileDb(OsFileDb):
                         rfd = RFD(path=os.path.relpath(rfd.path, self._dir_path), relation=rfd.relation)
                     files_dict[name] = Data(name=name, status=status, related_file_data=rfd)
             # presort this data for multiple access efficiency
-            self._files_data = sorted(files_dict.itervalues())
-            self._subdirs_data = sorted([s.data for s in self._subdirs.itervalues()])
+            self._files_data = sorted(files_dict.values())
+            self._subdirs_data = sorted([s.data for s in self._subdirs.values()])
             self._is_populated = True
             return h.digest()
         def _is_hidden_dir(self, ddata):
@@ -239,7 +239,7 @@ class GenericSnapshotWsFileDb(OsFileDb):
                 return fdata.status not in self.SIGNIFICANT_DATA_SET
             return fdata.status in self.IGNORED_STATUS_SET
         def _is_clean_dir(self, ddata):
-            return ddata.status in self.CLEAN_STATUS_SET
+            return False #ddata.status in self.CLEAN_STATUS_SET
         def _is_clean_file(self, fdata):
             return fdata.status in self.CLEAN_STATUS_SET
         def dirs_and_files(self, show_hidden=False, hide_clean=False):
@@ -247,17 +247,17 @@ class GenericSnapshotWsFileDb(OsFileDb):
                 self._dir_hash_digest = self._populate()
             if show_hidden:
                 if hide_clean:
-                    dirs = ifilter((lambda x: x.status not in self.CLEAN_STATUS_SET), self._subdirs_data)
-                    files = ifilter((lambda x: x.status not in self.CLEAN_STATUS_SET), self._files_data)
+                    dirs = filter((lambda x: x.status not in self.CLEAN_STATUS_SET), self._subdirs_data)
+                    files = filter((lambda x: x.status not in self.CLEAN_STATUS_SET), self._files_data)
                 else:
                     dirs = iter(self._subdirs_data)
                     files = iter(self._files_data)
             elif hide_clean:
-                dirs = ifilter((lambda x: not (x.status in self.CLEAN_STATUS_SET or self._is_hidden_dir(x))), self._subdirs_data)
-                files = ifilter((lambda x: not (x.status in self.CLEAN_STATUS_SET or self._is_hidden_file(x))), self._files_data)
+                dirs = filter((lambda x: not (x.status in self.CLEAN_STATUS_SET or self._is_hidden_dir(x))), self._subdirs_data)
+                files = filter((lambda x: not (x.status in self.CLEAN_STATUS_SET or self._is_hidden_file(x))), self._files_data)
             else:
-                dirs = ifilter((lambda x: not self._is_hidden_dir(x)), self._subdirs_data)
-                files = ifilter((lambda x: not self._is_hidden_file(x)), self._files_data)
+                dirs = filter((lambda x: not self._is_hidden_dir(x)), self._subdirs_data)
+                files = filter((lambda x: not self._is_hidden_file(x)), self._files_data)
             return (dirs, files)
     def __init__(self, **kwargs):
         # save the args for use in reset and related attribute mechanism
@@ -295,8 +295,8 @@ class GenericSnapshotWsFileDb(OsFileDb):
         self.base_dir = self.FileDir(parent_file_status_snapshot=self._file_status_snapshot)
         return self
 
-class GenericChangeFileDb(object):
-    class FileDir(object):
+class GenericChangeFileDb:
+    class FileDir:
         CLEAN_STATUS_SET = frozenset()
         def __init__(self, name=None, **kwargs):
             self._subdirs = {}
@@ -311,10 +311,10 @@ class GenericChangeFileDb(object):
             self._files_data.sort()
             status = self._calculate_status()
             self.data = Data(self.data.name, status, None)
-            for subdir in self._subdirs.itervalues():
+            for subdir in self._subdirs.values():
                 subdir.finalize()
             # Do this last to make sure child data is up to date
-            self._subdirs_data = sorted([s.data for s in self._subdirs.itervalues()])
+            self._subdirs_data = sorted([s.data for s in self._subdirs.values()])
         def add_file(self, path_parts, status, related_file_data=None):
             self._status_set.add(status)
             name = path_parts[0]
@@ -335,8 +335,8 @@ class GenericChangeFileDb(object):
             return self._subdirs[dir_path[:sep_index]].find_dir(dir_path[sep_index + 1:])
         def dirs_and_files(self, hide_clean=False, **kwargs):
             if hide_clean:
-                dirs = ifilter((lambda x: x.status not in self.CLEAN_STATUS_SET), self._subdirs_data)
-                files = ifilter((lambda x: x.status not in self.CLEAN_STATUS_SET), self._files_data)
+                dirs = filter((lambda x: x.status not in self.CLEAN_STATUS_SET), self._subdirs_data)
+                files = filter((lambda x: x.status not in self.CLEAN_STATUS_SET), self._files_data)
             else:
                 dirs = iter(self._subdirs_data)
                 files = iter(self._files_data)

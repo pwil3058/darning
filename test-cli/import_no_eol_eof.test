@@ -62,9 +62,9 @@ $ darn import patch1
 > patch1: patch inserted at start of series.
 > Imported "patch1" as patch "patch1".
 $ darn push
-> Patching file "file3".
-> Patching file "file2".
 > Patching file "file1".
+> Patching file "file2".
+> Patching file "file3".
 > Patching file "file4".
 > Patch "patch1" is now on top.
 $ darn refresh
@@ -125,9 +125,9 @@ $ darn import -p 1 patch2
 > patch2: patch inserted at start of series.
 > Imported "patch2" as patch "patch2".
 $ darn push
-> Patching file "file3".
-> Patching file "file2".
 > Patching file "file1".
+> Patching file "file2".
+> Patching file "file3".
 > Patching file "file4".
 > Patch "patch2" is now on top.
 $ darn refresh

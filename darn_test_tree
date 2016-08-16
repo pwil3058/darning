@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 ### Copyright (C) 2010 Peter Williams <peter_ono@users.sourceforge.net>
 ###
 ### This program is free software; you can redistribute it and/or modify
@@ -105,7 +105,7 @@ def modify_cmd(args):
             sys.stderr.write('{0}: is a directory ignored.  Ignored.'.format(filepath))
             continue
         with open(filepath, 'ab') as fobj:
-            fobj.write(template.format(filepath))
+            fobj.write(template.format(filepath).encode())
     return 0
 
 MODIFY_PARSER.set_defaults(run_cmd=modify_cmd)

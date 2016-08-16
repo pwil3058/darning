@@ -140,8 +140,8 @@ class DeltaIndex(object):
         # initialization in create_delta().
         # Current delta format can't encode offsets into
         # reference buffer with more than 32 bits.
-        entries = (min(len(data), 0xFFFFFFFF) - 1) / RABIN_WINDOW
-        hsize = entries / 4
+        entries = (min(len(data), 0xFFFFFFFF) - 1) // RABIN_WINDOW
+        hsize = entries // 4
         lshft = 4
         while (1 << lshft) < hsize and lshft < 31:
             lshft += 1

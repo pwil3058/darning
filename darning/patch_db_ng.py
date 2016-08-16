@@ -19,7 +19,7 @@ Implement a patch stack management database
 
 import os
 import stat
-import cPickle
+import pickle
 import collections
 import shutil
 import copy
@@ -122,7 +122,7 @@ class _PatchData(mixins.PedanticSlotPickleMixin):
         self.pos_guards = set()
         self.neg_guards = set()
     def decrement_ref_counts(self, blob_ref_counts):
-        for pfd in self.files_data.itervalues():
+        for pfd in self.files_data.values():
             if pfd.orig is not None:
                 blob_ref_counts[pfd.orig.git_hash[:2]][pfd.orig.git_hash[2:]] -= 1
             if pfd.darned is not None:
@@ -130,14 +130,14 @@ class _PatchData(mixins.PedanticSlotPickleMixin):
             if pfd.came_from is not None:
                 blob_ref_counts[pfd.came_from.orig.git_hash[:2]][pfd.came_from.orig.git_hash[2:]] -= 1
     def clear(self, database):
-        for file_data in self.files_data.itervalues():
+        for file_data in self.files_data.values():
             file_data.release_contents(database)
         self.files_data.clear()
 
 class _CombinedPatchData(mixins.PedanticSlotPickleMixin):
     __slots__ = ("files_data", "prev")
     def __init__(self, prev):
-        self.files_data = dict() if not prev else {file_path : copy.copy(files_data) for file_path, files_data in prev.files_data.iteritems()}
+        self.files_data = dict() if not prev else {file_path : copy.copy(files_data) for file_path, files_data in prev.files_data.items()}
         self.prev = prev
 
 class _FileData(mixins.PedanticSlotPickleMixin):
@@ -199,7 +199,7 @@ class _CameFromData(mixins.PedanticSlotPickleMixin):
 
 class DarnIt(Exception):
     def __init__(self, **kwargs):
-        for key, val in kwargs.iteritems():
+        for key, val in kwargs.items():
             self.__dict__[key] = val
 
 class DarnItPatchError(DarnIt): pass
@@ -237,13 +237,15 @@ def _guards_block_patch(guards, patch):
     return False
 
 def _content_has_unresolved_merges(content):
-    for line in content.splitlines():
+    if content.find(b"\000"):
+        return False
+    for line in content.decode().splitlines():
         if MERGE_CRE.match(line):
             return True
     return False
 
 def _file_has_unresolved_merges(file_path):
-    return _content_has_unresolved_merges(open(file_path, "r").read()) if os.path.exists(file_path) else False
+    return _content_has_unresolved_merges(open(file_path, "rb").read()) if os.path.exists(file_path) else False
 
 def generate_diff_preamble_lines(file_path, before, after, came_from=None):
     if came_from:
@@ -277,8 +279,9 @@ def generate_diff_preamble(file_path, before, after, came_from=None):
     return patchlib.Preamble.parse_lines(generate_diff_preamble_lines(file_path, before, after, came_from))
 
 def generate_binary_diff_lines(before, after):
-    from patch_db import ZippedData
-    import gitdelta, gitbase85
+    from .patch_db import ZippedData
+    from . import gitdelta
+    from . import gitbase85
     def _component_lines(fm_data, to_data):
         delta = None
         if fm_data.raw_len and to_data.raw_len:
@@ -299,8 +302,8 @@ def generate_binary_diff(before, after):
     return patchlib.Diff.parse_lines(diff_lines) if diff_lines else None
 
 def generate_unified_diff_lines(before, after):
-    before_lines = before.content.splitlines(True)
-    after_lines = after.content.splitlines(True)
+    before_lines = before.content.decode().splitlines(True)
+    after_lines = after.content.decode().splitlines(True)
     diff_lines = list()
     for diff_line in difflib.unified_diff(before_lines, after_lines, fromfile=before.label, tofile=after.label, fromfiledate=before.timestamp, tofiledate=after.timestamp):
         if diff_line.endswith((os.linesep, "\n")):
@@ -335,27 +338,27 @@ class FileDiffMixin(object):
         else:
             efd = self.orig
             label = os.path.join("a", self.path) if efd else "/dev/null"
-        timestamp = efd.timestamp if (with_timestamps and efd) else None
-        content = None if as_refreshed else self.patch.database.get_content_for(efd)
+        timestamp = efd.timestamp if (with_timestamps and efd) else ""
+        content = b"" if as_refreshed else self.patch.database.get_content_for(efd)
         return _DiffData(label, efd, content, timestamp)
     def get_diff_after_data(self, as_refreshed=False, with_timestamps=False):
         if as_refreshed or not self.patch.is_applied:
             efd = self.darned
             label = os.path.join("b", self.path) if efd else "/dev/null"
-            content = ""
+            content = b""
         else:
             overlapping_file = self.get_overlapping_file()
             if overlapping_file is not None:
                 efd = overlapping_file.orig
                 content = self.patch.database.get_content_for(efd)
             elif os.path.exists(self.path):
-                content = open(self.path, "r").read()
+                content = open(self.path, "rb").read()
                 efd = _EssentialFileData(utils.get_git_hash_for_content(content), os.lstat(self.path))
             else:
                 efd = None
-                content = ""
+                content = b""
             label = os.path.join("b", self.path) if efd else "/dev/null"
-        timestamp = efd.timestamp if (with_timestamps and efd) else None
+        timestamp = efd.timestamp if (with_timestamps and efd) else ""
         return _DiffData(label, efd, content, timestamp)
     def get_diff_plus(self, as_refreshed=False, with_timestamps=False):
         assert as_refreshed is False or not isinstance(self, CombinedFileData)
@@ -387,7 +390,7 @@ class FileDiffMixin(object):
             diff = "" if self.diff is None else str(copy.deepcopy(self.diff))
         elif before.content == after.content:
             diff = ""
-        elif before.content.find("\000") != -1 or after.content.find("\000") != -1:
+        elif before.content.find(b"\000") != -1 or after.content.find(b"\000") != -1:
             diff = "".join(generate_binary_diff_lines(before, after))
         else:
             diff = "".join(generate_unified_diff_lines(before, after))
@@ -656,13 +659,13 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
             efd = self.patch.database.clone_stored_content_data(overlapping_file.orig)
             content = self.patch.database.get_content_for(efd)
         elif os.path.exists(self.path):
-            content = open(self.path, "r").read()
+            content = open(self.path, "rb").read()
             efd = _EssentialFileData(self.patch.database.store_content(content), os.lstat(self.path))
         else:
             efd = None
-            content = ""
+            content = b""
         label = os.path.join("b", self.path) if efd else "/dev/null"
-        timestamp = efd.timestamp if (with_timestamps and efd) else None
+        timestamp = efd.timestamp if (with_timestamps and efd) else ""
         return _DiffData(label, efd, content, timestamp)
     def do_refresh(self, stdout=None, with_timestamps=False):
         assert self.patch.is_applied
@@ -674,7 +677,7 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
         after = self.get_refresh_after_data(overlapping_file, with_timestamps=with_timestamps)
         if before.content == after.content:
             self.diff = None
-        elif before.content.find("\000") != -1 or after.content.find("\000") != -1:
+        elif before.content.find(b"\000") != -1 or after.content.find(b"\000") != -1:
             self.diff = generate_binary_diff(before, after)
         else:
             self.diff = generate_unified_diff(before, after)
@@ -860,14 +863,14 @@ class Patch(mixins.WrapperMixin):
             return PatchState.APPLIED_REFRESHED
     def iterate_files(self, file_paths=None):
         if file_paths is None:
-            return (FileData(file_path, pfd, self) for file_path, pfd in self.files_data.iteritems())
+            return (FileData(file_path, pfd, self) for file_path, pfd in self.files_data.items())
         else:
             return (FileData(file_path, self.files_data[file_path], self) for file_path in file_paths)
     def iterate_files_sorted(self, file_paths=None):
         if file_paths is None:
-            return (FileData(file_path, pfd, self) for file_path, pfd in sorted(self.files_data.iteritems()))
+            return (FileData(file_path, pfd, self) for file_path, pfd in sorted(self.files_data.items()))
         else:
-            return (FileData(file_path, pfd, self) for file_path, pfd in sorted(self.files_data.iteritems()) if file_path in file_paths)
+            return (FileData(file_path, pfd, self) for file_path, pfd in sorted(self.files_data.items()) if file_path in file_paths)
     def iterate_overlying_patches(self):
         applied_index = self.database.applied_patches_data.index(self.persistent_patch_data)
         return self.database.iterate_applied_patches(start=applied_index + 1)
@@ -877,9 +880,9 @@ class Patch(mixins.WrapperMixin):
         return file_path in self.files_data
     def get_file_paths_set(self, file_paths=None):
         if file_paths is None:
-            return set(self.files_data.iterkeys())
+            return set(self.files_data.keys())
         else:
-            return {file_path for file_path in self.files_data.iterkeys() if file_path in file_paths}
+            return {file_path for file_path in self.files_data.keys() if file_path in file_paths}
     def get_files_table(self):
         return [patch_file.get_table_row() for patch_file in self.iterate_files()]
     def get_table_row(self):
@@ -943,7 +946,7 @@ class Patch(mixins.WrapperMixin):
             # so we just move content and mode using stored original data
             fm_file_data = self.get_file(file_data.came_from.file_path)
             try:
-                open(file_data.path, "w").write(self.database.get_content_for(fm_file_data.orig))
+                open(file_data.path, "wb").write(self.database.get_content_for(fm_file_data.orig))
                 os.chmod(file_data.path, fm_file_data.orig.permissions)
             except (OSError, IOError) as edata:
                 biggest_ecode = CmdResult.ERROR
@@ -957,7 +960,7 @@ class Patch(mixins.WrapperMixin):
             biggest_ecode = max(biggest_ecode, file_data.apply_diff(drop_atws))
         return biggest_ecode
     def undo_apply(self):
-        for file_path, file_data in self.files_data.iteritems():
+        for file_path, file_data in self.files_data.items():
             if file_data.orig is None:
                 if os.path.exists(file_path):
                     os.remove(file_path)
@@ -968,7 +971,7 @@ class Patch(mixins.WrapperMixin):
             # TODO: add special handling for restoring deleted soft links on pop
             # TODO: use move to put back renamed files
             orig_content = self.database.get_content_for(file_data.orig)
-            open(file_path, "w").write(orig_content)
+            open(file_path, "wb").write(orig_content)
             os.chmod(file_path, file_data.orig.permissions)
     def add_file(self, file_data):
         assert not self.is_applied or self.is_top_patch
@@ -983,7 +986,7 @@ class Patch(mixins.WrapperMixin):
         if self.is_applied:
             self.database.combined_patch.drop_file(file_data)
             if file_data.orig:
-                open(file_data.path, "w").write(self.database.get_content_for(file_data.orig))
+                open(file_data.path, "wb").write(self.database.get_content_for(file_data.orig))
                 os.chmod(file_data.path, file_data.orig.permissions)
             elif os.path.exists(file_data.path):
                 os.remove(file_data.path)
@@ -1033,7 +1036,7 @@ class Patch(mixins.WrapperMixin):
             # No longer needed as it was created in this patch and now has no content or histroy
             self.drop_file(file_data)
     def write_to_file(self, file_path):
-        fobj = open(file_path, "w")
+        fobj = open(file_path, "wb")
         fobj.write(self.description)
         for file_data in self.iterate_files_sorted():
             fobj.write(file_data.get_diff_text())
@@ -1067,7 +1070,7 @@ class Patch(mixins.WrapperMixin):
                         retval = CmdResult.ERROR
                         RCTX.stderr.write("{0}: {1}\n".format(rel_subdir(file_path), edata))
                 elif diff_plus.is_compatible_with(utils.get_git_hash_for_file(file_path)):
-                    import gitdelta
+                    from . import gitdelta
                     contents = open(file_path, "rb").read()
                     try:
                         new_contents = gitdelta.patch_delta(contents, diff_plus.diff.forward.data_raw)
@@ -1253,9 +1256,9 @@ class CombinedPatch(mixins.WrapperMixin):
             del self.files_data[file_data.path]
     def iterate_files_sorted(self, file_paths=None):
         if file_paths is None:
-            return (CombinedFileData(file_path, pfd, self) for file_path, pfd in sorted(self.files_data.iteritems()))
+            return (CombinedFileData(file_path, pfd, self) for file_path, pfd in sorted(self.files_data.items()))
         else:
-            return (CombinedFileData(file_path, pfd, self) for file_path, pfd in sorted(self.files_data.iteritems()) if file_path in file_paths)
+            return (CombinedFileData(file_path, pfd, self) for file_path, pfd in sorted(self.files_data.items()) if file_path in file_paths)
     def get_files_table(self):
         return [file_data.get_table_row() for file_data in self.iterate_files_sorted() if not file_data.was_ephemeral]
     def get_file(self, file_path):
@@ -1499,8 +1502,8 @@ class DataBase(mixins.WrapperMixin):
                             orphans.append(key1 + file_name)
                     except KeyError:
                         orphans.append(key1 + file_name)
-        for key1, ref_counts in self.blob_ref_counts.iteritems():
-            for file_name in ref_counts.iterkeys():
+        for key1, ref_counts in self.blob_ref_counts.items():
+            for file_name in ref_counts.keys():
                 if not os.path.isfile(os.path.join(_BLOBS_DIR_PATH, key1, file_name)):
                     missing.append(key1 + file_name)
         return _ContentState(orphans=orphans, missing=missing, bad_content=bad_content)
@@ -1508,11 +1511,11 @@ class DataBase(mixins.WrapperMixin):
         blob_ref_counts = self.blob_ref_counts.copy()
         for patch_data in self.patch_series_data:
             patch_data.decrement_ref_counts(blob_ref_counts)
-        for patch_data in self.kept_patches.itervalues():
+        for patch_data in self.kept_patches.values():
             patch_data.decrement_ref_counts(blob_ref_counts)
         bad_ref_counts = []
-        for key1, ref_counts in blob_ref_counts.iteritems():
-            for key2, count in ref_counts.iteritems():
+        for key1, ref_counts in blob_ref_counts.items():
+            for key2, count in ref_counts.items():
                 if count != 0:
                     bad_ref_counts.append((key1 + key2, count))
         return bad_ref_counts
@@ -1523,7 +1526,7 @@ class DataBase(mixins.WrapperMixin):
             if not os.path.exists(blob_dir_path):
                 os.mkdir(blob_dir_path)
             blob_file_path = BLOB_PATH(git_hash)
-            open(blob_file_path, "w").write(content)
+            open(blob_file_path, "wb").write(content)
             utils.do_turn_off_write_for_file(blob_file_path)
         return git_hash
     def store_file_content(self, file_path, overlaps=OverlapData()):
@@ -1536,7 +1539,7 @@ class DataBase(mixins.WrapperMixin):
                 # Will occur if file has been added to SCM but not committed
                 return None
         elif os.path.exists(file_path):
-            contents = open(file_path, "r").read()
+            contents = open(file_path, "rb").read()
         else:
             return None
         return _EssentialFileData(self.store_content(contents), os.lstat(file_path))
@@ -1560,7 +1563,7 @@ class DataBase(mixins.WrapperMixin):
                 del self.blob_ref_counts[dir_name][file_name]
     @staticmethod
     def get_content_for(obj):
-        return "" if obj is None else open(BLOB_PATH(obj.git_hash), "r").read()
+        return b"" if obj is None else open(BLOB_PATH(obj.git_hash), "rb").read()
 
 def do_create_db(dir_path=None, description=None):
     """Create a patch database in the current directory?"""
@@ -1594,17 +1597,17 @@ def do_create_db(dir_path=None, description=None):
         dir_mode = stat.S_IRWXU|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH
         os.mkdir(database_dir_path, dir_mode)
         os.mkdir(database_blobs_dir_path, dir_mode)
-        open(database_lock_file_path, "wb").write("0")
+        open(database_lock_file_path, "wb").write(b"0")
         open(description_file_path, "w").write(_tidy_text(description) if description else "")
         db_obj = _DataBaseData(description)
         fobj = open(patches_data_file_path, "wb", stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
         try:
-            cPickle.dump(db_obj, fobj)
+            pickle.dump(db_obj, fobj)
         finally:
             fobj.close()
         fobj = open(blob_ref_count_file_path, "wb", stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
         try:
-            cPickle.dump(dict(), fobj)
+            pickle.dump(dict(), fobj)
         finally:
             fobj.close()
     except OSError as edata:
@@ -1640,17 +1643,17 @@ else:
 def open_db(mutable=False):
     fd = os.open(_LOCK_FILE_PATH, os.O_RDWR if mutable else os.O_RDONLY)
     lock_db(fd, LOCK_EXCL if mutable else LOCK_READ)
-    patches_data = cPickle.load(open(_PATCHES_DATA_FILE_PATH, "rb"))
-    blob_ref_counts = cPickle.load(open(_BLOB_REF_COUNT_FILE_PATH, "rb"))
+    patches_data = pickle.load(open(_PATCHES_DATA_FILE_PATH, "rb"))
+    blob_ref_counts = pickle.load(open(_BLOB_REF_COUNT_FILE_PATH, "rb"))
     try:
         yield DataBase(patches_data, blob_ref_counts, mutable)
     finally:
         if mutable:
             scount = os.read(fd, 255)
             os.lseek(fd, 0, 0)
-            os.write(fd, str(int(scount) + 1))
-            cPickle.dump(patches_data, open(_PATCHES_DATA_FILE_PATH, "wb"))
-            cPickle.dump(blob_ref_counts, open(_BLOB_REF_COUNT_FILE_PATH, "wb"))
+            os.write(fd, str(int(scount) + 1).encode())
+            pickle.dump(patches_data, open(_PATCHES_DATA_FILE_PATH, "wb"))
+            pickle.dump(blob_ref_counts, open(_BLOB_REF_COUNT_FILE_PATH, "wb"))
         unlock_db(fd)
         os.close(fd)
 
@@ -2138,7 +2141,7 @@ def do_scm_absorb_applied_patches(force=False, with_timestamps=False):
                 for file_path, atws_lines in atws_reports:
                     RCTX.stderr.write(_("\"{0}\": adds trailing white space to \"{1}\" at line(s) {{{2}}}.\n").format(applied_patch.name, rel_subdir(file_path), ", ".join([str(line) for line in atws_lines])))
                 has_atws = has_atws or len(atws_reports) > 0
-            os.write(fhandle, str(text_patch))
+            os.write(fhandle, str(text_patch).encode())
             os.close(fhandle)
             if len(text_patch.diff_pluses) == 0:
                 RCTX.stderr.write(_("\"{0}\": has no absorbable content.\n").format(applied_patch.name))
@@ -2390,7 +2393,7 @@ def get_filepaths_not_in_patch(patch_name, file_paths):
 
 def get_kept_patch_names():
     with open_db(mutable=False) as DB:
-        return sorted(list(DB.kept_patches.iterkeys()))
+        return sorted(list(DB.kept_patches.keys()))
 
 def get_named_or_top_patch_name(patch_name):
     """Return the name of the named or top patch if patch_name is None or None if patch_name is not a valid patch_name"""

@@ -17,7 +17,9 @@
 """SCM interface for Git (git)"""
 
 import errno
-import pango
+import gi
+gi.require_version("Pango", "1.0")
+from gi.repository import Pango
 import os
 import re
 import hashlib
@@ -30,7 +32,8 @@ from . import scm_ifce
 from . import utils
 from . import patchlib
 from . import fsdb_git
-from .gui import ws_event
+from . import enotify
+
 from .gui import ifce
 
 def _do_action_cmd(cmd, success_emask, fail_emask, eflag_modifiers):
@@ -39,21 +42,21 @@ def _do_action_cmd(cmd, success_emask, fail_emask, eflag_modifiers):
     result = runext.run_cmd_in_console(console.LOG, cmd)
     if result.is_ok:
         if success_emask:
-            ws_event.notify_events(success_emask)
+            enotify.notify_events(success_emask)
         if result.stderr:
             return CmdResult.warning(result.stdout, result.stderr)
         else:
             return CmdResult.ok()
     else:
         if fail_emask:
-            ws_event.notify_events(fail_emask)
+            enotify.notify_events(fail_emask)
         eflags = CmdResult.ERROR
         for tgt_string, suggestion in eflag_modifiers:
             if result.stderr.find(tgt_string) != -1:
                 eflags |= suggestion
         return CmdResult(eflags, result.stdout, result.stderr)
 
-class TableData(object):
+class TableData:
     def __init__(self, **kwargs):
         self._kwargs = kwargs
         h = hashlib.sha1()
@@ -87,9 +90,9 @@ class BranchTableData(TableData):
     RE = re.compile("([^ ]+)\s+([a-fA-F0-9]{7}[a-fA-F0-9]*)?\s*([^\s].*)")
     def _get_data_text(self, h):
         all_branches_text = runext.run_get_cmd(["git", "branch", "-v"], default="")
-        h.update(all_branches_text)
+        h.update(all_branches_text.encode())
         merged_branches_text = runext.run_get_cmd(["git", "branch", "--merged"], default="")
-        h.update(merged_branches_text)
+        h.update(merged_branches_text.encode())
         return (all_branches_text, merged_branches_text)
     def _finalize(self, pdt):
         all_branches_text, merged_branches_text = pdt
@@ -106,7 +109,7 @@ class BranchTableData(TableData):
 class TagTableData(TableData):
     def _get_data_text(self, h):
         text = runext.run_get_cmd(["git", "tag"], default="")
-        h.update(text)
+        h.update(text.encode())
         return text
     def _finalize(self, pdt):
         self._lines = pdt.splitlines()
@@ -126,7 +129,7 @@ class RemoteRepoTableData(TableData):
     _VREMOTE_RE = re.compile(r"(\S+)\s+(\S+)\s*(\S*)")
     def _get_data_text(self, h):
         text = runext.run_get_cmd(["git", "remote", "-v"], default="")
-        h.update(text)
+        h.update(text.encode())
         return text
     def _finalize(self, pdt):
         self._lines = pdt.splitlines()
@@ -143,7 +146,7 @@ class RemoteRepoTableData(TableData):
 class LogTableData(TableData):
     def _get_data_text(self, h):
         text = runext.run_get_cmd(["git", "log", "--pretty=format:%H%n%h%n%an%n%cr%n%s"], default="")
-        h.update(text)
+        h.update(text.encode())
         return text
     def _finalize(self, pdt):
         self._lines = pdt.splitlines()
@@ -163,7 +166,7 @@ class LogTableData(TableData):
                 yield LogListRow(commit=commit, abbrevcommit=abbrevcommit, author=author, when=when, subject=line)
 
 @singleton
-class Interface(object):
+class Interface:
     name = "git"
     INDEX_DECO_MAP = fsdb_git.INDEX_DECO_MAP
     WD_DECO_MAP = fsdb_git.WD_DECO_MAP
@@ -306,7 +309,7 @@ class Interface(object):
         return BranchTableData()
     @staticmethod
     def get_clean_contents(file_path):
-        return runext.run_get_cmd(["git", "cat-file", "blob", "HEAD:{}".format(file_path)], do_rstrip=False, default=None)
+        return runext.run_get_cmd(["git", "cat-file", "blob", "HEAD:{}".format(file_path)], do_rstrip=False, default=None, decode_stdout=False)
     @staticmethod
     def get_log_table_data():
         return LogTableData()
@@ -332,7 +335,7 @@ class Interface(object):
     @staticmethod
     def get_file_status_digest():
         stdout = runext.run_get_cmd(["git", "status", "--porcelain", "--ignored", "--untracked=all"], default=None)
-        return None if stdout is None else hashlib.sha1(stdout).digest()
+        return None if stdout is None else hashlib.sha1(stdout.encode()).digest()
     @staticmethod
     def get_files_with_uncommitted_changes(files=None):
         cmd = ["git", "status", "--porcelain", "--untracked-files=no",]

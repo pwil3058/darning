@@ -18,7 +18,7 @@ Implement a patch stack management database
 '''
 
 import collections
-import cPickle
+import pickle
 import os
 import stat
 import copy
@@ -71,7 +71,7 @@ class Failure(object):
 def _do_apply_diff_to_file(filepath, diff, delete_empty=False):
     patch_cmd_hdr = ['patch', '--merge', '--force', '-p1', '--batch', ]
     patch_cmd = patch_cmd_hdr + (['--remove-empty-files', filepath] if delete_empty else [filepath])
-    result = runext.run_cmd(patch_cmd, input_text=str(diff))
+    result = runext.run_cmd(patch_cmd, input_text=str(diff).encode())
     # move all but the first line of stdout to stderr
     # drop first line so that reports can be made relative to subdir
     olines = result.stdout.splitlines(True)
@@ -105,8 +105,12 @@ class ZippedData(object):
     ZLIB_COMPRESSION_LEVEL = 6
     def __init__(self, data):
         if data is not None:
-            self.raw_len = len(data)
-            self.zipped_data = zlib.compress(bytes(data), self.ZLIB_COMPRESSION_LEVEL)
+            try:
+                self.raw_len = len(data)
+                self.zipped_data = zlib.compress(bytes(data), self.ZLIB_COMPRESSION_LEVEL)
+            except TypeError as edata:
+                print("ZIP:", len(data), ":", data, "|")
+                raise edata
         else:
             self.raw_len = None
             self.zipped_data = None
@@ -212,27 +216,27 @@ class GenericFileData(PickeExtensibleObject):
         fm_exists = os.path.exists(fm_file)
         if os.path.exists(to_file):
             to_name_label = os.path.join('b', self.path)
-            to_time_stamp = _pts_for_path(to_file) if with_timestamps else None
+            to_time_stamp = _pts_for_path(to_file) if with_timestamps else ""
             with open(to_file, 'rb') as fobj:
                 to_contents = fobj.read()
         else:
             to_name_label = '/dev/null'
-            to_time_stamp = _PTS_ZERO if with_timestamps else None
-            to_contents = ''
+            to_time_stamp = _PTS_ZERO if with_timestamps else ""
+            to_contents = b""
         if fm_exists:
             fm_name_label = os.path.join('a', self.came_from_path if self.came_from_path else self.path)
-            fm_time_stamp = _pts_for_path(fm_file) if with_timestamps else None
+            fm_time_stamp = _pts_for_path(fm_file) if with_timestamps else ""
             with open(fm_file, 'rb') as fobj:
                 fm_contents = fobj.read()
         else:
             fm_name_label = '/dev/null'
-            fm_time_stamp = _PTS_ZERO if with_timestamps else None
-            fm_contents = ''
+            fm_time_stamp = _PTS_ZERO if with_timestamps else ""
+            fm_contents = b""
         if to_contents == fm_contents:
             return None
-        if to_contents.find('\000') != -1 or fm_contents.find('\000') != -1:
+        if to_contents.find(b"\000") != -1 or fm_contents.find(b"\000") != -1:
             return BinaryDiff(fm_contents, to_contents)
-        diffgen = difflib.unified_diff(fm_contents.splitlines(True), to_contents.splitlines(True),
+        diffgen = difflib.unified_diff(fm_contents.decode().splitlines(True), to_contents.decode().splitlines(True),
             fromfile=fm_name_label, tofile=to_name_label, fromfiledate=fm_time_stamp, tofiledate=to_time_stamp)
         diff_lines = list()
         for diff_line in diffgen:
@@ -634,7 +638,7 @@ class PatchData(PickeExtensibleObject):
         self.neg_guards = set()
     def clone_as(self, name, description, database):
         patch_data = PatchData(name, description, database)
-        for file_path, file_data in self.files.iteritems():
+        for file_path, file_data in self.files.items():
             patch_data.files[file_path] = file_data.clone_for_patch(patch_data)
         patch_data.pos_guards = self.pos_guards.copy()
         patch_data.neg_guards = self.neg_guards.copy()
@@ -984,7 +988,7 @@ def do_create_db(dir_path=None, description=None):
         db_obj = DataBase(description, None)
         fobj = open(data_base_file_path, 'wb', stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
         try:
-            cPickle.dump(db_obj, fobj)
+            pickle.dump(db_obj, fobj)
         finally:
             fobj.close()
     except OSError as edata:
@@ -1053,7 +1057,7 @@ def open_db(mutable=False):
         open(DataBase._LOCK_FILE, "w").write("0")
         fobj = os.open(DataBase._LOCK_FILE, os.O_RDWR if mutable else os.O_RDONLY)
     lock_db(fobj, LOCK_EXCL if mutable else LOCK_READ)
-    db = cPickle.load(open(DataBase._FILE, 'rb'))
+    db = pickle.load(open(DataBase._FILE, 'rb'))
     # TODO: get rid of this code when version upgraded
     for patch in db.series:
         patch.set_db(db)
@@ -1065,7 +1069,7 @@ def open_db(mutable=False):
         yield db
     finally:
         if mutable:
-            cPickle.dump(db, open(DataBase._FILE, 'wb'))
+            pickle.dump(db, open(DataBase._FILE, 'wb'))
         unlock_db(fobj)
         os.close(fobj)
 
@@ -1652,7 +1656,7 @@ def _do_apply_next_patch(_DB, absorb=False, force=False):
             if file_data.after_mode is not None:
                 try:
                     open(file_data.path, 'wb').write(file_data.diff.contents.raw_data)
-                except TypeError, AttributeError:
+                except (TypeError, AttributeError):
                     # Handle patches in old database format
                     open(file_data.path, 'wb').write(file_data.diff.contents)
             elif os.path.exists(file_data.path):
@@ -1762,7 +1766,7 @@ def _do_apply_next_patch(_DB, absorb=False, force=False):
     renames = []
     creates = []
     # Do the caching of existing files first to obviate copy/rename problems
-    for file_data in next_patch.files.values():
+    for file_data in sorted(next_patch.files.values(), key=lambda f: f.path):
         file_data.do_cache_original(overlaps)
         if file_data.came_from_path:
             if file_data.came_as_rename:
@@ -1799,7 +1803,7 @@ def _do_apply_next_patch(_DB, absorb=False, force=False):
             except OSError as edata:
                 RCTX.stderr.write(edata)
     # and finally apply any patches
-    for file_data in next_patch.files.values():
+    for file_data in sorted(next_patch.files.values(), key=lambda f: f.path):
         if file_data in creates:
             continue
         biggest_ecode = _apply_file_data_patch(file_data, biggest_ecode)
@@ -2536,7 +2540,7 @@ def do_scm_absorb_applied_patches(force=False, with_timestamps=False):
                 for file_path, atws_lines in atws_reports:
                     RCTX.stderr.write(_('"{0}": adds trailing white space to "{1}" at line(s) {{{2}}}.\n').format(applied_patch.name, rel_subdir(file_path), ', '.join([str(line) for line in atws_lines])))
                 has_atws = has_atws or len(atws_reports) > 0
-            os.write(fhandle, str(text_patch))
+            os.write(fhandle, str(text_patch).encode())
             os.close(fhandle)
             if len(text_patch.diff_pluses) == 0:
                 RCTX.stderr.write(_('"{0}": has no absorbable content.\n').format(applied_patch.name))

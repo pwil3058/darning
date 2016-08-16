@@ -27,7 +27,6 @@ from .. import scm_ifce
 from .. import pm_ifce
 
 from . import dialogue
-from . import ws_event
 from . import gutils
 from . import icons
 from . import ifce
@@ -88,7 +87,7 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
     PopUp = "/patches_popup"
     class Model(table.MapManagedTableView.Model):
         Row = collections.namedtuple("Row",    ["name", "icon", "markup"])
-        types = Row(name=gobject.TYPE_STRING, icon=gobject.TYPE_STRING, markup=gobject.TYPE_STRING,)
+        types = Row(name=GObject.TYPE_STRING, icon=GObject.TYPE_STRING, markup=GObject.TYPE_STRING,)
         def get_patch_name(self, plist_iter):
             return self.get_value_named(plist_iter, "name")
         def get_patch_is_applied(self, plist_iter):
@@ -100,7 +99,7 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
             "rules_hint" : False,
             "headers-visible" : False,
         },
-        selection_mode=gtk.SELECTION_SINGLE,
+        selection_mode=Gtk.SelectionMode.SINGLE,
         columns=[
             tlview.ColumnSpec(
                 title=_("Patch List"),
@@ -108,7 +107,7 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
                 cells=[
                     tlview.CellSpec(
                         cell_renderer_spec=tlview.CellRendererSpec(
-                            cell_renderer=gtk.CellRendererPixbuf,
+                            cell_renderer=Gtk.CellRendererPixbuf,
                             expand=False,
                             start=True
                         ),
@@ -118,7 +117,7 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
                     ),
                     tlview.CellSpec(
                         cell_renderer_spec=tlview.CellRendererSpec(
-                            cell_renderer=gtk.CellRendererText,
+                            cell_renderer=Gtk.CellRendererText,
                             expand=False,
                             start=True
                         ),
@@ -179,17 +178,17 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
         self.repopulate_list()
     def populate_action_groups(self):
         table.MapManagedTableView.populate_action_groups(self)
-        self.action_groups[actions.AC_DONT_CARE].add_action(gtk.Action("menu_patch_list", _("Patch _List"), None, None))
+        self.action_groups[actions.AC_DONT_CARE].add_action(Gtk.Action("menu_patch_list", _("Patch _List"), None, None))
         self.action_groups[ws_actions.AC_IN_PM_PGND].add_actions(
             [
-                ("pm_refresh_patch_list", gtk.STOCK_REFRESH, _("Update Patch List"), None,
+                ("pm_refresh_patch_list", Gtk.STOCK_REFRESH, _("Update Patch List"), None,
                  _("Refresh/update the patch list display"),
                  lambda _action=False: self.refresh_contents()
                 ),
             ])
         self.action_groups[actions.AC_SELN_UNIQUE | ws_actions.AC_IN_PM_PGND].add_actions(
             [
-                ("pm_edit_patch_descr", gtk.STOCK_EDIT, _("Description"), None,
+                ("pm_edit_patch_descr", Gtk.STOCK_EDIT, _("Description"), None,
                  _("Edit the selected patch's description"),
                  lambda _action=None: dooph_pm.PatchDescrEditDialog(self.get_selected_patch(), parent=None).show()
                 ),
@@ -197,7 +196,7 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
                  _("View the selected patch's details"),
                  lambda _action=None: patch_view.Dialogue(self.get_selected_patch()).show()
                 ),
-                ("patch_list_export_patch", gtk.STOCK_SAVE_AS, _("Export"), None,
+                ("patch_list_export_patch", Gtk.STOCK_SAVE_AS, _("Export"), None,
                  _("Export the selected patch to a text file"),
                  lambda _action=None: dooph_pm.pm_do_export_named_patch(self.get_selected_patch())
                 ),
@@ -212,7 +211,7 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
                  _("Rename the selected patch"),
                  lambda _action=None: dooph_pm.pm_do_rename_patch(self.get_selected_patch())
                 ),
-                ("patch_list_duplicate", gtk.STOCK_COPY, _("Duplicate"), None,
+                ("patch_list_duplicate", Gtk.STOCK_COPY, _("Duplicate"), None,
                  _("Duplicate the selected patch after the top applied patch"),
                  lambda _action=None: dooph_pm.pm_do_duplicate_patch(self.get_selected_patch())
                 ),
@@ -226,7 +225,7 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
             ])
         self.action_groups[actions.AC_SELN_UNIQUE | ws_actions.AC_IN_PM_PGND | AC_UNAPPLIED].add_actions(
             [
-                ("patch_list_remove", gtk.STOCK_DELETE, _("Remove"), None,
+                ("patch_list_remove", Gtk.STOCK_DELETE, _("Remove"), None,
                  _("Remove the selected patch from the series."),
                  lambda _action=None: dooph_pm.pm_do_remove_patch(self.get_selected_patch())
                 ),

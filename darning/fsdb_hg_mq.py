@@ -14,13 +14,13 @@
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-import hashlib
-import runext
-import pango
+
+from gi.repository import Pango
 
 from . import fsdb
 from . import utils
 from . import patchlib
+from . import runext
 
 FSTATUS_MODIFIED = 'M'
 FSTATUS_ADDED = 'A'
@@ -37,15 +37,15 @@ FSTATUS_CLEAN_SET = frozenset([FSTATUS_IGNORED, FSTATUS_CLEAN, None])
 FSTATUS_MARDUC_SET = frozenset([FSTATUS_MODIFIED, FSTATUS_ADDED, FSTATUS_REMOVED, FSTATUS_MISSING, FSTATUS_NOT_TRACKED, FSTATUS_CLEAN])
 
 STATUS_DECO_MAP = {
-    None: fsdb.Deco(pango.STYLE_NORMAL, 'black'),
-    FSTATUS_CLEAN: fsdb.Deco(pango.STYLE_NORMAL, 'black'),
-    FSTATUS_MODIFIED: fsdb.Deco(pango.STYLE_NORMAL, 'blue'),
-    FSTATUS_ADDED: fsdb.Deco(pango.STYLE_NORMAL, 'darkgreen'),
-    FSTATUS_REMOVED: fsdb.Deco(pango.STYLE_NORMAL, 'red'),
-    FSTATUS_UNRESOLVED: fsdb.Deco(pango.STYLE_NORMAL, 'magenta'),
-    FSTATUS_MISSING: fsdb.Deco(pango.STYLE_ITALIC, 'pink'),
-    FSTATUS_NOT_TRACKED: fsdb.Deco(pango.STYLE_ITALIC, 'cyan'),
-    FSTATUS_IGNORED: fsdb.Deco(pango.STYLE_ITALIC, 'grey'),
+    None: fsdb.Deco(Pango.Style.NORMAL, 'black'),
+    FSTATUS_CLEAN: fsdb.Deco(Pango.Style.NORMAL, 'black'),
+    FSTATUS_MODIFIED: fsdb.Deco(Pango.Style.NORMAL, 'blue'),
+    FSTATUS_ADDED: fsdb.Deco(Pango.Style.NORMAL, 'darkgreen'),
+    FSTATUS_REMOVED: fsdb.Deco(Pango.Style.NORMAL, 'red'),
+    FSTATUS_UNRESOLVED: fsdb.Deco(Pango.Style.NORMAL, 'magenta'),
+    FSTATUS_MISSING: fsdb.Deco(Pango.Style.ITALIC, 'pink'),
+    FSTATUS_NOT_TRACKED: fsdb.Deco(Pango.Style.ITALIC, 'cyan'),
+    FSTATUS_IGNORED: fsdb.Deco(Pango.Style.ITALIC, 'grey'),
 }
 
 def get_qparent():
@@ -102,9 +102,9 @@ class WsFileDb(fsdb.GenericSnapshotWsFileDb):
         fsdb.GenericSnapshotWsFileDb.__init__(self, **kwargs)
     def _get_file_data_text(self, h):
         file_data_text = runext.run_get_cmd(["hg", "status", "-marduiC"] + self._cmd_rev)
-        h.update(file_data_text)
+        h.update(file_data_text.encode())
         unresolved_file_text = runext.run_get_cmd(["hg", "resolve", "--list"])
-        h.update(unresolved_file_text)
+        h.update(unresolved_file_text.encode())
         return (file_data_text, unresolved_file_text)
     @staticmethod
     def _extract_file_status_snapshot(file_data_text):
@@ -153,9 +153,9 @@ class TopPatchFileDb(fsdb.GenericTopPatchFileDb):
         if self._parent_rev is None:
             return ("", "")
         patch_status_text = runext.run_get_cmd(["hg", "status", "-mardC", "--rev", self._parent_rev])
-        h.update(patch_status_text)
+        h.update(patch_status_text.encode())
         resolve_list_text = runext.run_get_cmd(["hg", "resolve", "--list"])
-        h.update(resolve_list_text)
+        h.update(resolve_list_text.encode())
         return (patch_status_text, resolve_list_text)
     @staticmethod
     def _iterate_file_data(file_data_text):
@@ -198,7 +198,7 @@ class PatchFileDb(fsdb.GenericPatchFileDb):
                     patch_status_text = ""
                 else:
                     raise
-        h.update(patch_status_text)
+        h.update(patch_status_text.encode())
         return patch_status_text
     def _iterate_file_data(self, pdt):
         if self._is_applied:

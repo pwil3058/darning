@@ -93,8 +93,8 @@ $ darn diff
 $ darn pop
 > There are now no patches applied.
 $ darn push
-> Patching file "file3".
-> Patching file "file2".
 > Patching file "file1".
+> Patching file "file2".
+> Patching file "file3".
 > Patching file "file4".
 > Patch "first" is now on top.

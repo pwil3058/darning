@@ -107,10 +107,10 @@ $ darn import patch1
 $ darn series
 >  : patch1
 $ darn push
-> Processing binary file "dir2/binary1" with imported patch.
-> Processing binary file "dir2/subdir1/binary1" with imported patch.
 > Processing binary file "binary1" with imported patch.
 > Processing binary file "dir1/binary1" with imported patch.
+> Processing binary file "dir2/binary1" with imported patch.
+> Processing binary file "dir2/subdir1/binary1" with imported patch.
 > Patch "patch1" is now on top.
 $ darn series
 > +: patch1
@@ -136,11 +136,11 @@ $ darn push
 $ darn refresh
 $ darn push
 ? 2
-> Processing binary file "dir2/binary1" with imported patch.
-> Processing binary file "dir2/subdir1/binary1" with imported patch.
 > Processing binary file "binary1" with imported patch.
 ! "binary1": imported binary delta can not be applied.
 > Processing binary file "dir1/binary1" with imported patch.
+> Processing binary file "dir2/binary1" with imported patch.
+> Processing binary file "dir2/subdir1/binary1" with imported patch.
 > Patch "patch2" is now on top.
 ! A refresh is required after issues are resolved.
 $ darn series
@@ -241,10 +241,10 @@ $ darn files
 ! No patches applied.
 
 $ darn push
-> Processing binary file "dir2/binary1".
-> Processing binary file "dir2/subdir1/binary1".
 > Processing binary file "binary1".
 > Processing binary file "dir1/binary1".
+> Processing binary file "dir2/binary1".
+> Processing binary file "dir2/subdir1/binary1".
 > Patch "patch1" is now on top.
 $ darn series
 > +: patch1
@@ -256,10 +256,10 @@ $ darn files
 >  :+: dir2/subdir1/binary1
 
 $ darn push
-> Processing binary file "dir2/binary1".
-> Processing binary file "dir2/subdir1/binary1".
 > Processing file "binary1".
 > Processing binary file "dir1/binary1".
+> Processing binary file "dir2/binary1".
+> Processing binary file "dir2/subdir1/binary1".
 > Patch "patch2" is now on top.
 $ darn series
 > +: patch1

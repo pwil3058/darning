@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 ### Copyright (C) 2011 Peter Williams <peter_ono@users.sourceforge.net>
 ###
 ### This program is free software; you can redistribute it and/or modify
@@ -30,6 +30,8 @@ class Result(object):
     def _convert_std_arg(arg):
         if arg is None:
             return list()
+        elif isinstance(arg, bytes):
+            return arg.decode().splitlines()
         elif isinstance(arg, str):
             return arg.splitlines()
         else:
@@ -74,7 +76,7 @@ class Command(object):
         if self.IS_POSIX:
             signal.signal(signal.SIGPIPE, savedsh)
         if self.red_file_path:
-            open(self.red_file_path, 'w').write(sout)
+            open(self.red_file_path, 'wb').write(sout)
             sout = ''
         return Result(ecode=sub.returncode, stdout=sout, stderr=serr)
     def run(self):
@@ -102,10 +104,10 @@ class Command(object):
                 if self.cmd_line[1] != '-b':
                     return Result(ecode=1, stderr='mkfile: Unrecognized option: {0}.'.format(self.cmd_line[1]))
                 # For the time being just stick a char 0 in the middle
-                midpoint = len(self.input_text) / 2
+                midpoint = len(self.input_text) // 2
                 data = self.input_text[:midpoint] + '\000' + self.input_text[midpoint:]
                 try:
-                    open(self.cmd_line[2], 'wb').write(data)
+                    open(self.cmd_line[2], 'wb').write(data.encode())
                 except OSError as edata:
                     return Result(ecode=1, stderr=str(edata))
             else:

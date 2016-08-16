@@ -15,16 +15,16 @@
 
 import os
 import re
-import hashlib
-import runext
-import pango
 import collections
+
+from gi.repository import Pango
 
 from . import fsdb
 from . import utils
 from . import patchlib
+from . import runext
 
-class FileStatus(object):
+class FileStatus:
     UNMODIFIED = '  '
     WD_ONLY_MODIFIED = ' M'
     WD_ONLY_DELETED = ' D'
@@ -70,33 +70,33 @@ class FileStatus(object):
     SIGNIFICANT_SET = frozenset(MODIFIED_LIST + [NOT_TRACKED])
 
 WD_DECO_MAP = {
-        None: fsdb.Deco(pango.STYLE_NORMAL, "black"),
-        FileStatus.UNMODIFIED: fsdb.Deco(pango.STYLE_NORMAL, "black"),
-        FileStatus.WD_ONLY_MODIFIED: fsdb.Deco(pango.STYLE_NORMAL, "blue"),
-        FileStatus.WD_ONLY_DELETED: fsdb.Deco(pango.STYLE_NORMAL, "red"),
-        FileStatus.MODIFIED: fsdb.Deco(pango.STYLE_NORMAL, "blue"),
-        FileStatus.MODIFIED_MODIFIED: fsdb.Deco(pango.STYLE_NORMAL, "blue"),
-        FileStatus.MODIFIED_DELETED: fsdb.Deco(pango.STYLE_NORMAL, "red"),
-        FileStatus.ADDED: fsdb.Deco(pango.STYLE_NORMAL, "darkgreen"),
-        FileStatus.ADDED_MODIFIED: fsdb.Deco(pango.STYLE_NORMAL, "blue"),
-        FileStatus.ADDED_DELETED: fsdb.Deco(pango.STYLE_NORMAL, "red"),
-        FileStatus.DELETED: fsdb.Deco(pango.STYLE_NORMAL, "red"),
-        FileStatus.DELETED_MODIFIED: fsdb.Deco(pango.STYLE_NORMAL, "blue"),
-        FileStatus.RENAMED: fsdb.Deco(pango.STYLE_ITALIC, "pink"),
-        FileStatus.RENAMED_MODIFIED: fsdb.Deco(pango.STYLE_ITALIC, "blue"),
-        FileStatus.RENAMED_DELETED: fsdb.Deco(pango.STYLE_ITALIC, "red"),
-        FileStatus.COPIED: fsdb.Deco(pango.STYLE_ITALIC, "green"),
-        FileStatus.COPIED_MODIFIED: fsdb.Deco(pango.STYLE_ITALIC, "blue"),
-        FileStatus.COPIED_DELETED: fsdb.Deco(pango.STYLE_ITALIC, "red"),
-        FileStatus.UNMERGED: fsdb.Deco(pango.STYLE_NORMAL, "magenta"),
-        FileStatus.UNMERGED_ADDED: fsdb.Deco(pango.STYLE_NORMAL, "magenta"),
-        FileStatus.UNMERGED_ADDED_US: fsdb.Deco(pango.STYLE_NORMAL, "magenta"),
-        FileStatus.UNMERGED_ADDED_THEM: fsdb.Deco(pango.STYLE_NORMAL, "magenta"),
-        FileStatus.UNMERGED_DELETED: fsdb.Deco(pango.STYLE_NORMAL, "magenta"),
-        FileStatus.UNMERGED_DELETED_US: fsdb.Deco(pango.STYLE_NORMAL, "magenta"),
-        FileStatus.UNMERGED_DELETED_THEM: fsdb.Deco(pango.STYLE_NORMAL, "magenta"),
-        FileStatus.NOT_TRACKED: fsdb.Deco(pango.STYLE_ITALIC, "cyan"),
-        FileStatus.IGNORED: fsdb.Deco(pango.STYLE_ITALIC, "grey"),
+        None: fsdb.Deco(Pango.Style.NORMAL, "black"),
+        FileStatus.UNMODIFIED: fsdb.Deco(Pango.Style.NORMAL, "black"),
+        FileStatus.WD_ONLY_MODIFIED: fsdb.Deco(Pango.Style.NORMAL, "blue"),
+        FileStatus.WD_ONLY_DELETED: fsdb.Deco(Pango.Style.NORMAL, "red"),
+        FileStatus.MODIFIED: fsdb.Deco(Pango.Style.NORMAL, "blue"),
+        FileStatus.MODIFIED_MODIFIED: fsdb.Deco(Pango.Style.NORMAL, "blue"),
+        FileStatus.MODIFIED_DELETED: fsdb.Deco(Pango.Style.NORMAL, "red"),
+        FileStatus.ADDED: fsdb.Deco(Pango.Style.NORMAL, "darkgreen"),
+        FileStatus.ADDED_MODIFIED: fsdb.Deco(Pango.Style.NORMAL, "blue"),
+        FileStatus.ADDED_DELETED: fsdb.Deco(Pango.Style.NORMAL, "red"),
+        FileStatus.DELETED: fsdb.Deco(Pango.Style.NORMAL, "red"),
+        FileStatus.DELETED_MODIFIED: fsdb.Deco(Pango.Style.NORMAL, "blue"),
+        FileStatus.RENAMED: fsdb.Deco(Pango.Style.ITALIC, "pink"),
+        FileStatus.RENAMED_MODIFIED: fsdb.Deco(Pango.Style.ITALIC, "blue"),
+        FileStatus.RENAMED_DELETED: fsdb.Deco(Pango.Style.ITALIC, "red"),
+        FileStatus.COPIED: fsdb.Deco(Pango.Style.ITALIC, "green"),
+        FileStatus.COPIED_MODIFIED: fsdb.Deco(Pango.Style.ITALIC, "blue"),
+        FileStatus.COPIED_DELETED: fsdb.Deco(Pango.Style.ITALIC, "red"),
+        FileStatus.UNMERGED: fsdb.Deco(Pango.Style.NORMAL, "magenta"),
+        FileStatus.UNMERGED_ADDED: fsdb.Deco(Pango.Style.NORMAL, "magenta"),
+        FileStatus.UNMERGED_ADDED_US: fsdb.Deco(Pango.Style.NORMAL, "magenta"),
+        FileStatus.UNMERGED_ADDED_THEM: fsdb.Deco(Pango.Style.NORMAL, "magenta"),
+        FileStatus.UNMERGED_DELETED: fsdb.Deco(Pango.Style.NORMAL, "magenta"),
+        FileStatus.UNMERGED_DELETED_US: fsdb.Deco(Pango.Style.NORMAL, "magenta"),
+        FileStatus.UNMERGED_DELETED_THEM: fsdb.Deco(Pango.Style.NORMAL, "magenta"),
+        FileStatus.NOT_TRACKED: fsdb.Deco(Pango.Style.ITALIC, "cyan"),
+        FileStatus.IGNORED: fsdb.Deco(Pango.Style.ITALIC, "grey"),
     }
 
 # TODO: think about different deco map for the index
@@ -135,7 +135,7 @@ class WsFileDb(fsdb.GenericSnapshotWsFileDb):
             return None
     def _get_file_data_text(self, h):
         file_data_text = runext.run_get_cmd(["git", "status", "--porcelain", "--ignored", "--untracked=all"])
-        h.update(file_data_text)
+        h.update(file_data_text.encode())
         return file_data_text
     @staticmethod
     def _extract_file_status_snapshot(file_data_text):
@@ -165,7 +165,7 @@ class IndexFileDb(fsdb.GenericChangeFileDb):
         fsdb.GenericChangeFileDb.__init__(self)
     def _get_patch_data_text(self, h):
         patch_status_text = runext.run_get_cmd(["git", "status", "--porcelain", "--untracked-files=no"], default="")
-        h.update(patch_status_text)
+        h.update(patch_status_text.encode())
         return (patch_status_text)
     @staticmethod
     def _iterate_file_data(pdt):

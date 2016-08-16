@@ -217,12 +217,12 @@ $ ls --ignore=dir* --ignore=binary*
 > file4
 > file5
 $ darn push
-> Processing file "file2".
 > Processing file "file1".
+> Processing file "file2".
 > Processing file "file5".
+> Patching file "file1.moved.moved".
 > Patching file "file3".
 > Processing file "file4".
-> Patching file "file1.moved.moved".
 > Patch "first" is now on top.
 $ darn files
 > -:+: file1 -> file1.moved.moved
@@ -563,8 +563,8 @@ $ cat file2
 $ darn pop
 > There are now no patches applied.
 $ darn push
-> Processing file "file2".
 > Processing file "file1".
+> Processing file "file2".
 > Patch "swap" is now on top.
 $ darn files
 >  :+: file1 <- file2

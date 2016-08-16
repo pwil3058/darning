@@ -15,16 +15,17 @@
 
 import hashlib
 
-import gtk
+from gi.repository import Gtk
+from gi.repository import GObject
 
 from .. import pm_ifce
+from .. import enotify
 
 from . import gutils
 from . import ifce
 from . import actions
 from . import ws_actions
 from . import dialogue
-from . import ws_event
 from . import icons
 from . import text_edit
 from . import diff
@@ -103,17 +104,17 @@ class PatchFileTreeView(_GenericPatchFileTreeView):
         # NB Don't trigger any events as nobody else cares
         return 0
 
-class PatchFilesDialog(dialogue.AmodalDialog, ws_event.Listener):
+class PatchFilesDialog(dialogue.ListenerDialog, enotify.Listener):
     def __init__(self, patch_name):
-        dialogue.AmodalDialog.__init__(self, None, None,
-                                       gtk.DIALOG_DESTROY_WITH_PARENT,
-                                       (gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE))
-        ws_event.Listener.__init__(self)
+        dialogue.ListenerDialog.__init__(self, None, None,
+                                       Gtk.DIALOG_DESTROY_WITH_PARENT,
+                                       (Gtk.STOCK_CLOSE, Gtk.RESPONSE_CLOSE))
+        enotify.Listener.__init__(self)
         self.set_title(_('patch: %s files: %s') % (patch_name, utils.cwd_rel_home()))
         self.add_notification_cb(ifce.E_CHANGE_WD, self._chwd_cb)
         # file tree view wrapped in scrolled window
         self.file_tree = PatchFileTreeView(busy_indicator=self, patch_name=patch_name)
-        self.file_tree.get_selection().set_mode(gtk.SELECTION_MULTIPLE)
+        self.file_tree.get_selection().set_mode(Gtk.SelectionMode.MULTIPLE)
         self.file_tree.set_headers_visible(False)
         self.file_tree.set_size_request(240, 320)
         self.vbox.pack_start(gutils.wrap_in_scrolled_window(self.file_tree))
@@ -169,7 +170,7 @@ class TopPatchFileTreeView(_GenericPatchFileTreeView):
         _GenericPatchFileTreeView.populate_action_groups(self)
         self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
             [
-                ('pm_edit_files', gtk.STOCK_EDIT, _('_Edit'), None,
+                ('pm_edit_files', Gtk.STOCK_EDIT, _('_Edit'), None,
                  _('Edit the selected file(s)'),
                  lambda _action=None: dooph_pm.pm_do_edit_files(self.get_selected_filepaths())
                 ),
@@ -177,11 +178,11 @@ class TopPatchFileTreeView(_GenericPatchFileTreeView):
                  _('Display the diff for selected files'),
                  lambda _action=None: diff.TopPatchDiffPlusesDialog(file_paths=self.get_selected_filepaths()).show()
                 ),
-                ('pm_drop_selected_files', gtk.STOCK_REMOVE, _('_Drop'), None,
+                ('pm_drop_selected_files', Gtk.STOCK_REMOVE, _('_Drop'), None,
                  _('Drop/remove the selected files from the top patch'),
                  lambda _action=None: dooph_pm.pm_do_drop_files(self.get_selected_filepaths())
                 ),
-                ('pm_delete_selected_files', gtk.STOCK_DELETE, _('_Delete'), None,
+                ('pm_delete_selected_files', Gtk.STOCK_DELETE, _('_Delete'), None,
                  _('Delete the selected files'),
                  lambda _action=None: dooph_pm.pm_do_delete_files(self.get_selected_filepaths())
                 ),
@@ -192,7 +193,7 @@ class TopPatchFileTreeView(_GenericPatchFileTreeView):
                  _('Launch reconciliation tool for the selected file'),
                  lambda _action=None: dooph_pm.pm_do_reconcile_file(self.get_selected_filepath())
                 ),
-                ('pm_copy_file', gtk.STOCK_COPY, _('_Copy'), None,
+                ('pm_copy_file', Gtk.STOCK_COPY, _('_Copy'), None,
                  _('Add a copy of the selected file to the top patch'),
                  lambda _action=None: dooph_pm.pm_do_copy_file(self.get_selected_filepath())
                 ),

@@ -143,14 +143,14 @@ $ cat dir1/file4
 
 Push the patch back and check that it applied OK
 $ darn push
-> Processing file "file3".
-> Processing file "file2".
 > Processing file "file1".
+> Processing file "file2".
+> Processing file "file3".
 > Processing file "file4".
-> Processing file "newdir/file1".
-> Processing file "newdir/file2".
 > Processing file "dir1/file3".
 > Patching file "dir1/file4".
+> Processing file "newdir/file1".
+> Processing file "newdir/file2".
 > Patch "first" is now on top.
 $ darn files
 >  :+: dir1/file3 <- file3

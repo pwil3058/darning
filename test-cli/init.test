@@ -34,7 +34,7 @@ $ ls .darning.dbd/database
 > .darning.dbd/database
 $ ls .darning.dbd/database/
 ? 2
-! ls: cannot access .darning.dbd/database/: Not a directory
+! ls: cannot access '.darning.dbd/database/': Not a directory
 
 Test invalid initialization in root directory of a playground.
 $ darn init --legacy

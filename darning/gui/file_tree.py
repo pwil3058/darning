@@ -17,8 +17,9 @@ import collections
 import os
 import os.path
 
-import gtk
-import gobject
+from gi.repository import Gtk
+from gi.repository import Gdk
+from gi.repository import GObject
 
 from ..cmd_result import CmdResult, CmdFailure
 
@@ -27,6 +28,7 @@ from .. import fsdb
 from .. import os_utils
 from .. import scm_ifce
 from .. import pm_ifce
+from .. import enotify
 
 from . import tlview
 from . import gutils
@@ -34,7 +36,6 @@ from . import ifce
 from . import actions
 from . import ws_actions
 from . import dialogue
-from . import ws_event
 from . import icons
 from . import text_edit
 from . import auto_update
@@ -43,7 +44,7 @@ from . import console
 def _check_if_force(result):
     return dialogue.ask_force_or_cancel(result) == dialogue.Response.FORCE
 
-class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener, dialogue.BusyIndicatorUser, auto_update.AutoUpdater):
+class FileTreeView(tlview.TreeView, actions.CAGandUIManager, actions.BGUserMixin, enotify.Listener, dialogue.BusyIndicatorUser, auto_update.AutoUpdater, ws_actions.WSListenerMixin):
     REPOPULATE_EVENTS = ifce.E_CHANGE_WD
     UPDATE_EVENTS = os_utils.E_FILE_CHANGES
     AU_FILE_CHANGE_EVENT = os_utils.E_FILE_CHANGES # event returned by auto_update() if changes found
@@ -51,13 +52,13 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
     class Model(tlview.TreeView.Model):
         Row = collections.namedtuple('Row', ['name', 'is_dir', 'style', 'foreground', 'icon', 'status', 'related_file_data'])
         types = Row(
-            name=gobject.TYPE_STRING,
-            is_dir=gobject.TYPE_BOOLEAN,
-            style=gobject.TYPE_INT,
-            foreground=gobject.TYPE_STRING,
-            icon=gobject.TYPE_STRING,
-            status=gobject.TYPE_STRING,
-            related_file_data=gobject.TYPE_PYOBJECT
+            name=GObject.TYPE_STRING,
+            is_dir=GObject.TYPE_BOOLEAN,
+            style=GObject.TYPE_INT,
+            foreground=GObject.TYPE_STRING,
+            icon=GObject.TYPE_STRING,
+            status=GObject.TYPE_STRING,
+            related_file_data=GObject.TYPE_PYOBJECT
         )
         def insert_place_holder(self, dir_iter):
             self.append(dir_iter)
@@ -139,7 +140,7 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
     '''
     specification = tlview.ViewSpec(
         properties={"headers-visible" : False},
-        selection_mode=gtk.SELECTION_MULTIPLE,
+        selection_mode=Gtk.SelectionMode.MULTIPLE,
         columns=[
             tlview.ColumnSpec(
                 title=_("File Name"),
@@ -147,31 +148,31 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
                 cells=[
                     tlview.CellSpec(
                         cell_renderer_spec=tlview.CellRendererSpec(
-                            cell_renderer=gtk.CellRendererPixbuf,
+                            cell_renderer=Gtk.CellRendererPixbuf,
                             expand=False,
-                            start=True
+                            start=True,
+                            properties={},
                         ),
-                        properties={},
                         cell_data_function_spec=None,
                         attributes={"stock-id" : Model.col_index("icon")}
                     ),
                     tlview.CellSpec(
                         cell_renderer_spec=tlview.CellRendererSpec(
-                            cell_renderer=gtk.CellRendererText,
+                            cell_renderer=Gtk.CellRendererText,
                             expand=False,
-                            start=True
+                            start=True,
+                            properties={},
                         ),
-                        properties={},
                         cell_data_function_spec=None,
                         attributes={"text" : Model.col_index("status"), "style" : Model.col_index("style"), "foreground" : Model.col_index("foreground")}
                     ),
                     tlview.CellSpec(
                         cell_renderer_spec=tlview.CellRendererSpec(
-                            cell_renderer=gtk.CellRendererText,
+                            cell_renderer=Gtk.CellRendererText,
                             expand=False,
-                            start=True
+                            start=True,
+                            properties={},
                         ),
-                        properties={},
                         cell_data_function_spec=tlview.CellDataFunctionSpec(function=_format_file_name_crcb, user_data=None),
                         attributes={"style" : Model.col_index("style"), "foreground" : Model.col_index("foreground")}
                     )
@@ -179,20 +180,20 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
             )
         ]
     )
-    KEYVAL_c = gtk.gdk.keyval_from_name('c')
-    KEYVAL_C = gtk.gdk.keyval_from_name('C')
-    KEYVAL_ESCAPE = gtk.gdk.keyval_from_name('Escape')
+    KEYVAL_c = Gdk.keyval_from_name('c')
+    KEYVAL_C = Gdk.keyval_from_name('C')
+    KEYVAL_ESCAPE = Gdk.keyval_from_name('Escape')
     AUTO_EXPAND = False
     @staticmethod
     def _handle_button_press_cb(widget, event):
-        if event.type == gtk.gdk.BUTTON_PRESS:
+        if event.type == Gdk.EventType.BUTTON_PRESS:
             if event.button == 2:
                 widget.get_selection().unselect_all()
                 return True
         return False
     @staticmethod
     def _handle_key_press_cb(widget, event):
-        if event.state & gtk.gdk.CONTROL_MASK:
+        if event.get_state() & Gdk.ModifierType.CONTROL_MASK:
             if event.keyval in [FileTreeView.KEYVAL_c, FileTreeView.KEYVAL_C]:
                 widget.add_selected_files_to_clipboard()
                 return True
@@ -201,25 +202,28 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
             return True
         return False
     @staticmethod
+    def _handle_double_click_cb(tree_view, tree_path, tree_column):
+        model = tree_view.get_model()
+        if not model.get_row(tree_path).is_dir:
+            text_edit.edit_files_extern([model.fs_path(model.get_iter(tree_path))])
+    @staticmethod
     def search_equal_func(model, column, key, model_iter, _data=None):
         text = model.fs_path(model_iter)
         return text.find(key) == -1
-    @staticmethod
-    def _get_status_deco(status=None):
+    _FILE_ICON = {True : Gtk.STOCK_DIRECTORY, False : Gtk.STOCK_FILE}
+    @classmethod
+    def _get_status_deco(cls, status=None):
         try:
             return fsdb.STATUS_DECO_MAP[status]
         except KeyError:
             return fsdb.STATUS_DECO_MAP[None]
-    @staticmethod
-    def _get_status_icon(status, is_dir):
-        return gtk.STOCK_DIRECTORY if is_dir else gtk.STOCK_FILE
     @classmethod
     def _generate_row_tuple(cls, data, isdir):
         deco = cls._get_status_deco(data.status)
         row = cls.Model.Row(
             name=data.name,
             is_dir=isdir,
-            icon=cls._get_status_icon(data.status, isdir),
+            icon=cls._FILE_ICON[isdir],
             status=data.status,
             related_file_data=data.related_file_data,
             style=deco.style,
@@ -229,26 +233,21 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
     def __init__(self, show_hidden=False, hide_clean=False, busy_indicator=None):
         assert (self.REPOPULATE_EVENTS & self.UPDATE_EVENTS) == 0
         dialogue.BusyIndicatorUser.__init__(self, busy_indicator=busy_indicator)
-        ws_event.Listener.__init__(self)
-        auto_update.AutoUpdater.__init__(self)
-        self.show_hidden_action = gtk.ToggleAction('show_hidden_files', _('Show Hidden Files'), _('Show/hide ignored files and those beginning with "."'), None)
-        self.show_hidden_action.set_active(show_hidden)
-        self.show_hidden_action.connect('toggled', self._toggle_show_hidden_cb)
-        self.show_hidden_action.set_menu_item_type(gtk.CheckMenuItem)
-        self.show_hidden_action.set_tool_item_type(gtk.ToggleToolButton)
-        self.hide_clean_action = gtk.ToggleAction('hide_clean_files', _('Hide Clean Files'), _('Show/hide "clean" files'), None)
-        self.hide_clean_action.set_active(hide_clean)
-        self.hide_clean_action.connect('toggled', self._toggle_hide_clean_cb)
-        self.hide_clean_action.set_menu_item_type(gtk.CheckMenuItem)
-        self.hide_clean_action.set_tool_item_type(gtk.ToggleToolButton)
+        actions.BGUserMixin.__init__(self)
+        self.button_group["show_hidden_files"].set_active(show_hidden)
+        self.button_group["hide_clean_files"].set_active(hide_clean)
         tlview.TreeView.__init__(self)
+        auto_update.AutoUpdater.__init__(self)
+        enotify.Listener.__init__(self)
         self.set_search_equal_func(self.search_equal_func)
-        ws_actions.AGandUIManager.__init__(self, selection=self.get_selection(), popup=self.DEFAULT_POPUP)
+        actions.CAGandUIManager.__init__(self, selection=self.get_selection(), popup=self.DEFAULT_POPUP)
+        ws_actions.WSListenerMixin.__init__(self)
         self.connect("row-expanded", self.model.on_row_expanded_cb)
         self.connect("row-collapsed", self.model.on_row_collapsed_cb)
         self.connect("button_press_event", self._handle_button_press_cb)
         self.connect("key_press_event", self._handle_key_press_cb)
-        self.get_selection().set_select_function(self._dirs_not_selectable, full=True)
+        self.connect("row-activated", self._handle_double_click_cb)
+        self.get_selection().set_select_function(self._dirs_not_selectable)
         self.add_notification_cb(self.REPOPULATE_EVENTS, self.repopulate)
         self.add_notification_cb(self.UPDATE_EVENTS, self.update)
         self.register_auto_update_cb(self.auto_update)
@@ -263,30 +262,28 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
             args["fsdb_reset_only"] = [self]
         return self.AU_FILE_CHANGE_EVENT
     def populate_action_groups(self):
-        self.action_groups[actions.AC_DONT_CARE].add_action(self.show_hidden_action)
-        self.action_groups[actions.AC_DONT_CARE].add_action(self.hide_clean_action)
         self.action_groups[actions.AC_DONT_CARE].add_actions(
             [
-                ('refresh_files', gtk.STOCK_REFRESH, _('_Refresh Files'), None,
+                ('refresh_files', Gtk.STOCK_REFRESH, _('_Refresh Files'), None,
                  _('Refresh/update the file tree display'),
                  lambda _action=None: self.update()
                 ),
             ])
         self.action_groups[ws_actions.AC_NOT_IN_PM_PGND|actions.AC_SELN_MADE].add_actions(
             [
-                ("edit_files", gtk.STOCK_EDIT, _('_Edit'), None,
+                ("edit_files", Gtk.STOCK_EDIT, _('_Edit'), None,
                  _('Edit the selected file(s)'),
                  lambda _action=None: text_edit.edit_files_extern(self.get_selected_filepaths())
                 ),
-                ("copy_files_selection", gtk.STOCK_COPY, _('Copy'), None,
+                ("copy_files_selection", Gtk.STOCK_COPY, _('Copy'), None,
                  _('Copy the selected file(s)'),
                  lambda _action=None: self.copy_files(self.get_selected_filepaths())
                 ),
-                ("move_files_selection", gtk.STOCK_PASTE, _('_Move/Rename'), None,
+                ("move_files_selection", Gtk.STOCK_PASTE, _('_Move/Rename'), None,
                  _('Move the selected file(s)'),
                  lambda _action=None: self.move_files(self.get_selected_filepaths())
                 ),
-                ("delete_files", gtk.STOCK_DELETE, _('_Delete'), None,
+                ("delete_files", Gtk.STOCK_DELETE, _('_Delete'), None,
                  _('Delete the selected file(s)'),
                  lambda _action=None: self.delete_files(self.get_selected_filepaths(), ask=True)
                 ),
@@ -300,24 +297,36 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
             ])
         self.action_groups[ws_actions.AC_NOT_IN_PM_PGND].add_actions(
             [
-                ("new_file", gtk.STOCK_NEW, _('_New'), None,
+                ("new_file", Gtk.STOCK_NEW, _('_New'), None,
                  _('Create a new file and open for editing'),
                  lambda _action: create_new_file()
                 ),
             ])
+    def populate_button_group(self):
+        self.button_group.add_buttons(
+            [
+                ("show_hidden_files", Gtk.CheckButton(_("Show Hidden Files")),
+                _("Show/hide ignored files and those beginning with \".\""),
+                [("toggled", self._toggle_show_hidden_cb),]
+                ),
+                ("hide_clean_files", Gtk.CheckButton(_("Hide Clean Files")),
+                _("Show/hide ignored files and those beginning with \".\""),
+                [("toggled", self._toggle_hide_clean_cb),]
+                ),
+            ])
     @property
     def show_hidden(self):
-        return self.show_hidden_action.get_active()
+        return self.button_group["show_hidden_files"].get_active()
     @show_hidden.setter
     def show_hidden(self, new_value):
-        self.show_hidden_action.set_active(new_value)
+        self.button_group["show_hidden_files"].set_active(new_value)
         self._update_dir('', None)
     @property
     def hide_clean(self):
-        return self.hide_clean_action.get_active()
+        return self.button_group["hide_clean_files"].get_active()
     @hide_clean.setter
     def hide_clean(self, new_value):
-        self.hide_clean_action.set_active(new_value)
+        self.button_group["hide_clean_files"].set_active(new_value)
         self._update_dir('', None)
     @staticmethod
     def _dirs_not_selectable(selection, model, path, is_selected, *args,**kwargs):
@@ -478,7 +487,7 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
         return filepath_list
     def add_selected_files_to_clipboard(self, clipboard=None):
         if not clipboard:
-            clipboard = gtk.clipboard_get(gtk.gdk.SELECTION_CLIPBOARD)
+            clipboard = Gtk.clipboard_get(Gdk.SELECTION_CLIPBOARD)
         sel = utils.quoted_join(self.get_selected_filepaths())
         clipboard.set_text(sel)
     def get_filepaths_in_dir(self, dirname, show_hidden=True, recursive=True):
@@ -503,7 +512,7 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
         return expanded_list
     @staticmethod
     def create_new_file(open_for_edit=False):
-        new_file_path = dialogue.ask_file_name(_("New File Path"))
+        new_file_path = dialogue.ask_file_path(_("New File Path"))
         dialogue.show_busy()
         result = os_utils.os_create_file(new_file_name)
         dialogue.unshow_busy()
@@ -537,41 +546,35 @@ class FileTreeView(tlview.TreeView, ws_actions.AGandUIManager, ws_event.Listener
         dialogue.report_any_problems(result)
         return result
 
-class FileTreeWidget(gtk.VBox, ws_event.Listener):
+class FileTreeWidget(Gtk.VBox, enotify.Listener):
     MENUBAR = "/files_menubar"
     BUTTON_BAR_ACTIONS = ["show_hidden_files"]
     TREE_VIEW = FileTreeView
     SIZE = (240, 320)
     def __init__(self, show_hidden=False, hide_clean=False, **kwargs):
-        gtk.VBox.__init__(self)
-        ws_event.Listener.__init__(self)
+        Gtk.VBox.__init__(self)
+        enotify.Listener.__init__(self)
         # file tree view wrapped in scrolled window
         self.file_tree = self.TREE_VIEW(show_hidden=show_hidden, hide_clean=hide_clean, **kwargs)
-        scw = gtk.ScrolledWindow()
-        scw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
-        self.file_tree.get_selection().set_mode(gtk.SELECTION_MULTIPLE)
+        scw = Gtk.ScrolledWindow()
+        scw.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+        self.file_tree.get_selection().set_mode(Gtk.SelectionMode.MULTIPLE)
         self.file_tree.set_headers_visible(False)
         self.file_tree.set_size_request(*self.SIZE)
         scw.add(self.file_tree)
         # file tree menu bar
         mprefix = self.get_menu_prefix()
-        self.menu_prefix = gtk.Label('' if not mprefix else (mprefix + ':'))
+        self.menu_prefix = Gtk.Label(label="" if not mprefix else (mprefix + ":"))
         if self.MENUBAR:
-            hbox = gtk.HBox()
-            self.pack_start(hbox, expand=False, fill=False)
-            hbox.pack_start(self.menu_prefix, expand=False, fill=False)
+            hbox = Gtk.HBox()
+            self.pack_start(hbox, expand=False, fill=False, padding=0)
+            hbox.pack_start(self.menu_prefix, expand=False, fill=False, padding=0)
             self.menu_bar = self.file_tree.ui_manager.get_widget(self.MENUBAR)
-            hbox.pack_start(self.menu_bar, expand=False)
-        self.pack_start(scw, expand=True, fill=True)
+            hbox.pack_start(self.menu_bar, expand=False, fill=True, padding=0)
+        self.pack_start(scw, expand=True, fill=True, padding=0)
         # Mode selectors
-        hbox = gtk.HBox()
-        for action_name in self.BUTTON_BAR_ACTIONS:
-            button = gtk.CheckButton()
-            action = self.file_tree.action_groups.get_action(action_name)
-            action.connect_proxy(button)
-            gutils.set_widget_tooltip_text(button, action.get_property("tooltip"))
-            hbox.pack_start(button)
-        self.pack_start(hbox, expand=False)
+        button_box = self.file_tree.button_group.create_button_box(self.BUTTON_BAR_ACTIONS)
+        self.pack_start(button_box, expand=False, fill=True, padding=0)
         self.add_notification_cb(ifce.E_CHANGE_WD|ifce.E_NEW_SCM_OR_PM, self._cwd_change_cb)
         self.show_all()
     @staticmethod

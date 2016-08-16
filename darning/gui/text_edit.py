@@ -21,9 +21,9 @@ try:
 except ImportError:
     GTKSPELL_AVAILABLE = False
 
-import gtk
-import pango
-import gobject
+from gi.repository import Gtk
+from gi.repository import Pango
+from gi.repository import GObject
 
 from ..cmd_result import CmdFailure
 
@@ -62,8 +62,6 @@ class MessageWidget(textview.Widget, actions.CAGandUIManager):
     def __init__(self, save_file_name=None, auto_save=False):
         textview.Widget.__init__(self)
         actions.CAGandUIManager.__init__(self)
-        self.view.set_right_margin_position(72)
-        self.view.set_show_right_margin(True)
         self.view.set_cursor_visible(True)
         self.view.set_editable(True)
         if GTKSPELL_AVAILABLE:
@@ -76,7 +74,7 @@ class MessageWidget(textview.Widget, actions.CAGandUIManager):
         self._update_action_sensitivities()
     def populate_action_groups(self):
         # Set up action groups
-        # TODO: self.conditional_action_group = gtk.ActionGroup("save file dependent")
+        # TODO: self.conditional_action_group = Gtk.ActionGroup("save file dependent")
         self.action_groups[actions.AC_DONT_CARE].add_actions(
             [
                 ("text_edit_ack", None, _('_Ack'), None,
@@ -85,23 +83,23 @@ class MessageWidget(textview.Widget, actions.CAGandUIManager):
                  _('Insert Signed-off-by tag at cursor position'), self._insert_sign_off_acb),
                 ("text_edit_author", None, _('A_uthor'), None,
                  _('Insert Author tag at cursor position'), self._insert_author_acb),
-                ("text_edit_save_as", gtk.STOCK_SAVE_AS, _('S_ave as'), "",
+                ("text_edit_save_as", Gtk.STOCK_SAVE_AS, _('S_ave as'), "",
                  _('Save summary to a file'), self._save_text_as_acb),
-                ("text_edit_load_from", gtk.STOCK_REVERT_TO_SAVED, _('_Load from'), "",
+                ("text_edit_load_from", Gtk.STOCK_REVERT_TO_SAVED, _('_Load from'), "",
                  _('Load summary from a file'), self._load_text_from_acb),
-                ("text_edit_insert_from", gtk.STOCK_PASTE, _('_Insert from'), '',
+                ("text_edit_insert_from", Gtk.STOCK_PASTE, _('_Insert from'), '',
                  _('Insert the contents of a file at cursor position'), self._insert_text_from_acb),
             ])
         self.action_groups[self.AC_SAVE_OK].add_actions(
             [
-                ("text_edit_save_to_file", gtk.STOCK_SAVE, _('_Save'), "",
+                ("text_edit_save_to_file", Gtk.STOCK_SAVE, _('_Save'), "",
                  _('Save summary to file'), self._save_text_to_file_acb),
-                ("text_edit_load_fm_file", gtk.STOCK_REVERT_TO_SAVED, _('_Revert'), "",
+                ("text_edit_load_fm_file", Gtk.STOCK_REVERT_TO_SAVED, _('_Revert'), "",
                  _('Load summary from saved file'), self._load_text_fm_file_acb),
             ])
-        self.save_toggle_action = gtk.ToggleAction(
+        self.save_toggle_action = Gtk.ToggleAction(
                 "text_edit_toggle_auto_save", _('Auto Sa_ve'),
-                _('Automatically/periodically save summary to file'), gtk.STOCK_SAVE
+                _('Automatically/periodically save summary to file'), Gtk.STOCK_SAVE
             )
         self.save_toggle_action.connect("toggled", self._toggle_auto_save_acb)
         self.action_groups[self.AC_SAVE_OK].add_action(self.save_toggle_action)
@@ -147,7 +145,7 @@ class MessageWidget(textview.Widget, actions.CAGandUIManager):
     def _save_text_to_file_acb(self, _action=None):
         self.save_text_to_file()
     def _save_text_as_acb(self, _action=None):
-        fname = dialogue.ask_file_name(_('Enter file name'), existing=False, suggestion=self._save_file_name)
+        fname = dialogue.ask_file_path(_('Enter file name'), existing=False, suggestion=self._save_file_name)
         if fname and os.path.exists(fname) and not utils.samefile(fname, self._save_file_name):
             if not utils.samefile(fname, ifce.SCM.get_default_commit_save_file()):
                 if not dialogue.ask_ok_cancel(os.linesep.join([fname, _('\nFile exists. Overwrite?')])):
@@ -171,10 +169,10 @@ class MessageWidget(textview.Widget, actions.CAGandUIManager):
     def _load_text_from_acb(self, _action=None):
         if not self._ok_to_overwrite_summary():
             return
-        fname = dialogue.ask_file_name(_('Enter file name'), existing=True)
+        fname = dialogue.ask_file_path(_('Enter file name'), existing=True)
         self.load_text_fm_file(file_name=fname, already_checked=True)
     def _insert_text_from_acb(self, _action=None):
-        file_name = dialogue.ask_file_name(_('Enter file name'), existing=True)
+        file_name = dialogue.ask_file_path(_('Enter file name'), existing=True)
         if file_name is not None:
             try:
                 text = open(file_name, 'rb').read()
@@ -197,7 +195,7 @@ class MessageWidget(textview.Widget, actions.CAGandUIManager):
         return self.get_auto_save()
     def _toggle_auto_save_acb(self, _action=None):
         if self.get_auto_save():
-            gobject.timeout_add(self._save_interval, self.do_auto_save)
+            GObject.timeout_add(self._save_interval, self.do_auto_save)
     def finish_up(self, clear_save=False):
         #TODO: fix finish_up()
         if self.get_auto_save():
@@ -214,8 +212,6 @@ class DbMessageWidget(MessageWidget):
         raise NotImplentedError('Must be defined in child')
     def __init__(self, save_file_name=None, auto_save=False):
         MessageWidget.__init__(self)
-        self.view.set_right_margin_position(72)
-        self.view.set_show_right_margin(True)
         self.view.set_cursor_visible(True)
         self.view.set_editable(True)
         # Set up file stuff
@@ -223,18 +219,18 @@ class DbMessageWidget(MessageWidget):
         self._save_file_name = save_file_name
         self._save_file_digest = None
         # Make some buttons
-        self.save_button = gutils.ActionButton(self.action_groups.get_action("text_edit_save"), use_underline=False)
-        self.reload_button = gutils.ActionButton(self.action_groups.get_action("text_edit_load"), use_underline=False)
+        self.save_button = gutils.creat_button_from_action(self.action_groups.get_action("text_edit_save"), use_underline=False)
+        self.reload_button = gutils.creat_button_from_action(self.action_groups.get_action("text_edit_load"), use_underline=False)
     def populate_action_groups(self):
         MessageWidget.populate_action_groups(self)
         self.action_groups[actions.AC_DONT_CARE].add_actions(
             [
-                ("text_edit_save", gtk.STOCK_SAVE, _('_Save'), "",
+                ("text_edit_save", Gtk.STOCK_SAVE, _('_Save'), "",
                  _('Save summary to database'), self._save_text_acb),
-                ("text_edit_load", gtk.STOCK_REVERT_TO_SAVED, _('_Reload'), "",
+                ("text_edit_load", Gtk.STOCK_REVERT_TO_SAVED, _('_Reload'), "",
                  _('Reload summary from database'), self._reload_text_acb),
             ])
-    def _save_text_acb(self, _action=None):
+    def _save_text_acb(self, *args):
         text = self.bfr.get_text(self.bfr.get_start_iter(), self.bfr.get_end_iter())
         result = self.set_text_in_db(text)
         if not result.is_ok:
@@ -250,6 +246,6 @@ class DbMessageWidget(MessageWidget):
                 self._save_file_digest = None
         except CmdFailure as failure:
             dialogue.report_failure(failure)
-    def _reload_text_acb(self, _action=None):
+    def _reload_text_acb(self, *args):
         if self._ok_to_overwrite_summary():
             self.load_text_fm_db()

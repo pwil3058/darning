@@ -19,63 +19,35 @@ insertion'''
 
 import hashlib
 
-import gtk
-import pango
+from gi.repository import Gtk
+from gi.repository import Pango
+from gi.repository import GObject
 
 from .. import utils
 
-try:
-    from gtksourceview2 import Buffer as _Buffer
-    from gtksourceview2 import View as _View
-except ImportError:
-    try:
-        from gtksourceview import SourceBuffer as _Buffer
-        from gtksourceview import SourceView as _SourceView
-        class _View(_SourceView):
-            def __init__(self, buffer=None):
-                _SourceView.__init__(self, buffer=buffer if buffer else _Buffer())
-            def set_right_margin_position(self, val):
-                self.set_margin(val)
-            def set_show_right_margin(self, val):
-                self.set_show_margin(val)
-    except ImportError:
-        class _Buffer(gtk.TextBuffer):
-            def __init__(self):
-                gtk.TextBuffer.__init__(self)
-            def begin_not_undoable_action(self):
-                pass
-            def end_not_undoable_action(self):
-                pass
-        class _View(gtk.TextView):
-            def __init__(self, buffer=None):
-                gtk.TextView.__init__(self, buffer=buffer if buffer else _Buffer())
-            def set_right_margin_position(self, val):
-                pass
-            def set_show_right_margin(self, val):
-                pass
-
-class Buffer(_Buffer):
+class Buffer(Gtk.TextBuffer):
     def __init__(self):
-        _Buffer.__init__(self)
+        Gtk.TextBuffer.__init__(self)
     def set_text(self, text, undoable=False):
-        return _Buffer.set_text(self, utils.make_utf8_compliant(text))
+        return Gtk.TextBuffer.set_text(self, utils.make_utf8_compliant(text))
     def insert(self, text_iter, text):
-        return _Buffer.insert(self, text_iter, utils.make_utf8_compliant(text))
+        return Gtk.TextBuffer.insert(self, text_iter, utils.make_utf8_compliant(text))
     def insert_at_cursor(self, text):
-        return _Buffer.insert_at_cursor(self, utils.make_utf8_compliant(text))
+        return Gtk.TextBuffer.insert_at_cursor(self, utils.make_utf8_compliant(text))
     def insert_interactive(self, text_iter, text, default_editable):
-        return _Buffer.insert_interactive(self, text_iter, utils.make_utf8_compliant(text), default_editable)
+        return Gtk.TextBuffer.insert_interactive(self, text_iter, utils.make_utf8_compliant(text), default_editable)
     def insert_interactive_at_cursor(self, text, default_editable):
-        return _Buffer.insert_interactive_at_cursor(self, utils.make_utf8_compliant(text), default_editable)
+        return Gtk.TextBuffer.insert_interactive_at_cursor(self, utils.make_utf8_compliant(text), default_editable)
     def insert_with_tags(self, text_iter, text, *args):
-        return _Buffer.insert_with_tags(self, text_iter, utils.make_utf8_compliant(text), *args)
+        return Gtk.TextBuffer.insert_with_tags(self, text_iter, utils.make_utf8_compliant(text), *args)
     def insert_with_tags_by_name(self, text_iter, text, *args):
-        return _Buffer.insert_with_tags_by_name(self, text_iter, utils.make_utf8_compliant(text), *args)
+        return Gtk.TextBuffer.insert_with_tags_by_name(self, text_iter, utils.make_utf8_compliant(text), *args)
 
-class View(_View):
+class View(Gtk.TextView):
+    BUFFER = Buffer
     def __init__(self, buffer=None, width_in_chars=81, aspect_ratio=0.33, fdesc=None):
-        _View.__init__(self, buffer=buffer if buffer else Buffer())
-        self._fdesc = fdesc if fdesc is not None else pango.FontDescription("mono 10")
+        Gtk.TextView.__init__(self, buffer=buffer if buffer else self.BUFFER())
+        self._fdesc = fdesc if fdesc is not None else Pango.FontDescription("mono 10")
         self.modify_font(self._fdesc)
         self._width_in_chars = width_in_chars
         self._aspect_ratio = aspect_ratio
@@ -83,9 +55,9 @@ class View(_View):
     def _adjust_size_request(self):
         context = self.get_pango_context()
         metrics = context.get_metrics(self._fdesc)
-        width = pango.PIXELS(metrics.get_approximate_char_width() * self._width_in_chars)
+        width = (metrics.get_approximate_char_width() * self._width_in_chars) // Pango.SCALE
         height = int(width * self._aspect_ratio)
-        x, y = self.buffer_to_window_coords(gtk.TEXT_WINDOW_TEXT, width, height)
+        x, y = self.buffer_to_window_coords(Gtk.TextWindowType.TEXT, width, height)
         self.set_size_request(x, y)
     def set_width_in_chars(self, width_in_chars):
         self._width_in_chars = width_in_chars
@@ -98,23 +70,28 @@ class View(_View):
         self.modify_font(self._fdesc)
         self._adjust_size_request()
 
-class Widget(gtk.VBox):
+class Widget(Gtk.VBox):
     TEXT_VIEW = View
     def __init__(self, width_in_chars=81, aspect_ratio=0.33, fdesc=None):
-        gtk.VBox.__init__(self)
+        Gtk.VBox.__init__(self)
         # Space to add stuff at the top
-        self.top_hbox = gtk.HBox()
-        self.pack_start(self.top_hbox, expand=False)
+        self.top_hbox = Gtk.HBox()
+        self.pack_start(self.top_hbox, expand=False, fill=True, padding=0)
         # Set up text buffer and view
         self.view = self.TEXT_VIEW(width_in_chars=width_in_chars, aspect_ratio=aspect_ratio, fdesc=fdesc)
         self._initialize_contents()
-        self._scrolled_window = gtk.ScrolledWindow()
-        self.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+        self._scrolled_window = Gtk.ScrolledWindow()
+        self.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
         self._scrolled_window.add(self.view)
-        self.pack_start(self._scrolled_window)
+        vw, vh = self.view.get_size_request()
+        if vw > 0:
+            self._scrolled_window.set_min_content_width(vw)
+        if vh > 0:
+            self._scrolled_window.set_min_content_height(vh)
+        self.pack_start(self._scrolled_window, expand=True, fill=True, padding=0)
         # Space to add stuff at the bottom
-        self.bottom_hbox = gtk.HBox()
-        self.pack_start(self.bottom_hbox, expand=False)
+        self.bottom_hbox = Gtk.HBox()
+        self.pack_start(self.bottom_hbox, expand=False, fill=True, padding=0)
     @property
     def bfr(self):
         return self.view.get_buffer()
@@ -125,14 +102,14 @@ class Widget(gtk.VBox):
         return self._scrolled_window.set_policy(hpol, vpol)
     def set_contents(self, text, undoable=False):
         if not undoable:
-            self.bfr.begin_not_undoable_action()
+            self.bfr.begin_user_action()
         result = self.bfr.set_text(text)
         if not undoable:
-            self.bfr.end_not_undoable_action()
+            self.bfr.end_user_action()
         return result
     def _initialize_contents(self):
         self.set_contents('')
     def get_contents(self):
         start_iter = self.bfr.get_start_iter()
         end_iter = self.bfr.get_end_iter()
-        return self.bfr.get_text(start_iter, end_iter)
+        return self.bfr.get_text(start_iter, end_iter, False)

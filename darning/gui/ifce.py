@@ -23,15 +23,15 @@ from .. import pm_ifce
 from .. import options
 from .. import utils
 from .. import rctx
+from .. import enotify
 
 from . import recollect
-from . import ws_event
 from . import dialogue
 from .console import LOG, RCTX
 
-E_NEW_SCM, E_NEW_PM, E_NEW_SCM_OR_PM = ws_event.new_event_flags_and_mask(2)
+E_NEW_SCM, E_NEW_PM, E_NEW_SCM_OR_PM = enotify.new_event_flags_and_mask(2)
 
-E_CHANGE_WD = ws_event.new_event_flag()
+E_CHANGE_WD = enotify.new_event_flag()
 
 def report_backend_requirements(parent=None):
     dialogue.inform_user(pm_ifce.backend_requirements(), parent=parent)
@@ -63,9 +63,9 @@ def init(log=False):
     # NB: need to send either E_CHANGE_WD or E_NEW_SCM_OR_PM to ensure action sates get set
     if not utils.samefile(CURDIR, curdir):
         CURDIR = curdir
-        ws_event.notify_events(E_CHANGE_WD, new_wd=curdir)
+        enotify.notify_events(E_CHANGE_WD, new_wd=curdir)
     else:
-        ws_event.notify_events(E_NEW_SCM_OR_PM)
+        enotify.notify_events(E_NEW_SCM_OR_PM)
     return CmdResult.ok()
 
 def choose_backend():
@@ -95,7 +95,7 @@ def init_current_dir(backend):
         config.PgndPathTable.append_saved_path(CURDIR)
         recollect.set(APP_NAME, "last_pgnd", CURDIR)
     if events:
-        ws_event.notify_events(events)
+        enotify.notify_events(events)
     return result
 
 def create_new_playground(new_pgnd_path, backend=None):
@@ -132,7 +132,7 @@ def chdir(newdir):
     CURDIR = os.getcwd()
     LOG.start_cmd(_('New Playground: {0}\n').format(CURDIR))
     LOG.end_cmd(retval)
-    ws_event.notify_events(E_CHANGE_WD, new_wd=CURDIR)
+    enotify.notify_events(E_CHANGE_WD, new_wd=CURDIR)
     return retval
 
 def check_interfaces(args):
@@ -148,8 +148,6 @@ def check_interfaces(args):
         newdir = PM.get_playground_root()
         os.chdir(newdir)
         from . import config
-        config.PgndPathTable.append_saved_path(newdir)
-        recollect.set(APP_NAME, "last_pgnd", newdir)
         options.load_pgnd_options()
     scm = scm_ifce.get_ifce()
     if scm != SCM:
@@ -157,6 +155,9 @@ def check_interfaces(args):
         events |= E_NEW_SCM
     curdir = os.getcwd()
     if not utils.samefile(CURDIR, curdir):
+        if PM.in_valid_pgnd:
+            config.PgndPathTable.append_saved_path(newdir)
+            recollect.set(APP_NAME, "last_pgnd", newdir)
         args["new_wd"] = curdir
         CURDIR = curdir
         return E_CHANGE_WD # don't send ifce changes and wd change at the same time

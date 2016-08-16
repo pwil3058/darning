@@ -78,7 +78,7 @@ def _trim_trailing_ws(line):
     '''Return the given line with any trailing white space removed'''
     return re.sub('[ \t]+$', '', line)
 
-class DiffStat(object):
+class DiffStat:
     '''Class to encapsulate diffstat related code'''
     _ORDERED_KEYS = ['inserted', 'deleted', 'modified', 'unchanged']
     _FMT_DATA = {
@@ -108,7 +108,7 @@ class DiffStat(object):
             if (index < len(lines) and DiffStat.END_CRE.match(lines[index])):
                 return True
         return False
-    class Stats(object):
+    class Stats:
         '''Class to hold diffstat statistics.'''
         def __init__(self):
             self._counts = {}
@@ -150,7 +150,7 @@ class DiffStat(object):
                 char = DiffStat._FMT_DATA[key][-2]
                 string += char * count
             return string
-    class PathStats(object):
+    class PathStats:
         def __init__(self, path, diff_stats):
             self.path = path
             self.diff_stats = diff_stats
@@ -195,7 +195,7 @@ class DiffStat(object):
                 avail_width = max(0, max_width - (len_longest_name + 9))
                 if comment:
                     avail_width -= 1
-                scale = lambda x: (x * avail_width) / largest_total
+                scale = lambda x: (x * avail_width) // largest_total
                 for stats in self:
                     summation += stats.diff_stats
                     total = stats.diff_stats.get_total()
@@ -210,7 +210,7 @@ class DiffStat(object):
                 string += '\n'
             return string
 
-class _Lines(object):
+class _Lines:
     def __init__(self, contents=None):
         if contents is None:
             self.lines = list()
@@ -229,7 +229,7 @@ class _Lines(object):
         else:
             self.lines += list(data)
 
-class Header(object):
+class Header:
     def __init__(self, text=''):
         lines = text.splitlines(True)
         descr_starts_at = 0
@@ -305,7 +305,7 @@ def _file_data_consistent_with_strip_one(pair):
     except TooMayStripLevels:
         return False
 
-class FilePathPlus(object):
+class FilePathPlus:
     ADDED = '+'
     EXTANT = ' '
     DELETED = '-'
@@ -562,7 +562,7 @@ class DiffHunk(_Lines):
     def report_trailing_whitespace(self):
         return list()
 
-class Diff(object):
+class Diff:
     subtypes = list()
     @staticmethod
     def _get_file_data_at(cre, lines, index):
@@ -930,7 +930,7 @@ class GitBinaryDiff(Diff):
 
 Diff.subtypes.append(GitBinaryDiff)
 
-class DiffPlus(object):
+class DiffPlus:
     '''Class to hold diff (headerless) information relavent to a single file.
     Includes (optional) preambles and trailing junk such as quilt's separators.'''
     @staticmethod
@@ -1022,10 +1022,10 @@ class DiffPlus(object):
         return path_plus
     def get_hash_digest(self):
         h = hashlib.sha1()
-        h.update(str(self))
+        h.update(str(self).encode())
         return h.digest()
 
-class Patch(object):
+class Patch:
     '''Class to hold patch information relavent to multiple files with
     an optional header (or a single file with a header).'''
     @staticmethod
@@ -1121,7 +1121,7 @@ class Patch(object):
                 num_expected += 1
                 if not exists:
                     missing.append(fppath)
-        badness = 100 if len(fpluses) == 0 else (100 * len(missing) * len(unexpected)) / len(fpluses)
+        badness = 100 if len(fpluses) == 0 else (100 * len(missing) * len(unexpected)) // len(fpluses)
         return relevance(goodness=100-badness, missing=missing, unexpected=unexpected)
     def get_header(self):
         return self.header
@@ -1198,5 +1198,5 @@ class Patch(object):
         return reports
     def get_hash_digest(self):
         h = hashlib.sha1()
-        h.update(str(self))
+        h.update(str(self).encode())
         return h.digest()

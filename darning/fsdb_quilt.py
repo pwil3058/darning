@@ -14,7 +14,6 @@
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import os
-import hashlib
 import runext
 import pango
 import collections
@@ -81,7 +80,7 @@ class TopPatchFileDb(fsdb.GenericTopPatchFileDb):
         if self._applied_patch_count == 0:
             return ""
         patch_status_text = runext.run_get_cmd(["quilt", "files", "-v"], default="")
-        h.update(patch_status_text)
+        h.update(patch_status_text.encode())
         return (patch_status_text)
     @staticmethod
     def _iterate_file_data(pdt):
@@ -100,7 +99,7 @@ class PatchFileDb(fsdb.GenericPatchFileDb):
             patch_status_text = runext.run_get_cmd(["quilt", "files", "-v", self.patch_name], default="")
         else:
             patch_status_text = utils.get_file_contents(self._patch_file_path)
-        h.update(patch_status_text)
+        h.update(patch_status_text.encode())
         return patch_status_text
     def _iterate_file_data(self, pdt):
         if self._is_applied:
@@ -111,7 +110,7 @@ class PatchFileDb(fsdb.GenericPatchFileDb):
 class CombinedPatchFileDb(TopPatchFileDb):
     def _get_patch_data_text(self, h):
         stdout = runext.run_get_cmd(["quilt", "files", "-va"], default="")
-        h.update(stdout)
+        h.update(stdout.encode())
         return stdout
     @staticmethod
     def _iterate_file_data(pdt):

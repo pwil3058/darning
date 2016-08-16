@@ -15,55 +15,67 @@
 
 import os
 
-import gtk
+import gi
+from gi.repository import Gtk
 
 from .. import utils
+from .. import enotify
 
 from . import dialogue
-from . import ws_event
 
 try:
-    import vte
+    gi.require_version("Vte", "2.91")
+    from gi.repository import Vte
+    from gi.repository import GLib
+    from gi.repository import Gdk
 
     AVAILABLE = True
 
-    class Terminal(gtk.HBox, ws_event.Listener):
+    class Terminal(Gtk.ScrolledWindow, enotify.Listener):
+        ARGV = [os.getenv("SHELL", "/bin/bash")]
         def __init__(self):
             from . import ifce
-            gtk.HBox.__init__(self, False, 4)
-            ws_event.Listener.__init__(self)
-            self._vte = vte.Terminal()
+            Gtk.ScrolledWindow.__init__(self, None, None)
+            enotify.Listener.__init__(self)
+            self._vte = Vte.Terminal()
             self._vte.set_size(self._vte.get_column_count(), 10)
             self._vte.set_size_request(200, 50)
             self._vte.set_scrollback_lines(-1)
             self._vte.show()
             self._vte.connect('button_press_event', self._button_press_cb)
-            scrbar = gtk.VScrollbar(self._vte.get_adjustment())
-            scrbar.show()
-            self.pack_start(self._vte)
-            self.pack_start(scrbar, False, False, 0)
+            self.add(self._vte)
             self.show_all()
-            self._pid = self._vte.fork_command()
+            self._pid = self._vte.spawn_sync(Vte.PtyFlags.DEFAULT, os.getcwd(), self.ARGV, [], GLib.SpawnFlags.DO_NOT_REAP_CHILD, None, None,)
             self.add_notification_cb(ifce.E_CHANGE_WD, self._cwd_cb)
         def _cwd_cb(self, **kwargs):
             self.set_cwd(os.getcwd())
         def set_cwd(self, path):
-            self._vte.feed_child("cd %s\n" % utils.path_rel_home(path))
+            command = "cd %s\n" % utils.path_rel_home(path)
+            self._vte.feed_child(command, len(command))
         def _button_press_cb(self, widget, event):
-            if event.type == gtk.gdk.BUTTON_PRESS:
+            if event.type == Gdk.EventType.BUTTON_PRESS:
                 if event.button == 3:
-                    menu = gtk.Menu()
-                    copy_item = gtk.MenuItem(label=_('Copy'))
+                    menu = Gtk.Menu()
+                    copy_item = Gtk.MenuItem(label=_('Copy'))
+                    copy_item.connect("activate", lambda _item: widget.copy_clipboard())
                     copy_item.set_sensitive(widget.get_has_selection())
-                    copy_item.connect_object('activate', vte.Terminal.copy_clipboard, widget)
-                    paste_item = gtk.MenuItem(label=_('Paste'))
-                    paste_item.set_sensitive(gtk.Clipboard().wait_is_text_available())
-                    paste_item.connect_object('activate', vte.Terminal.paste_clipboard, widget)
+                    clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
+                    paste_item = Gtk.MenuItem(label=_('Paste'))
+                    paste_item.set_sensitive(clipboard.wait_is_text_available())
+                    paste_item.connect("activate", lambda _item: widget.paste_clipboard())
                     menu.append(copy_item)
                     menu.append(paste_item)
                     menu.show_all()
-                    menu.popup(None, None, None, event.button, event.time)
+                    menu.popup(None, None, None, None, event.button, event.time)
                     return True
             return False
+    GITSOME = utils.which("gitsome")
+    if GITSOME:
+        GITSOME_AVAILABLE = True
+        class GitsomeTerminal(Terminal):
+            ARGV = [GITSOME]
+    else:
+        GITSOME_AVAILABLE = False
 except ImportError:
     AVAILABLE = False
+    GITSOME_AVAILABLE = False

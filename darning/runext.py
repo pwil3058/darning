@@ -19,8 +19,6 @@ import os
 import signal
 import subprocess
 import shlex
-import gobject
-import gtk
 import select
 
 from .cmd_result import CmdResult, CmdFailure
@@ -31,7 +29,7 @@ IS_MSFT = os.name == "nt" or os.name == "dos"
 if IS_MSFT:
     startupinfo = subprocess.STARTUPINFO()
     startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-    def run_cmd(cmd, input_text=None, sanitize_stderr=None):
+    def run_cmd(cmd, input_text=None, sanitize_stderr=None, decode_stdout=True):
         if isinstance(cmd, str):
             cmd = shlex.split(cmd)
         sub = subprocess.Popen(cmd,
@@ -39,7 +37,7 @@ if IS_MSFT:
             stderr=subprocess.PIPE, close_fds=IS_POSIX, bufsize=-1,
             startupinfo=startupinfo)
         outd, errd = sub.communicate(input_text)
-        return CmdResult(ecode=sub.returncode, stdout=outd, stderr=errd).mapped_for_warning(sanitize_stderr=sanitize_stderr)
+        return CmdResult(ecode=sub.returncode, stdout=outd.decode() if decode_stdout else outd, stderr=errd.decode()).mapped_for_warning(sanitize_stderr=sanitize_stderr)
 
     def run_cmd_in_console(console, cmd, input_text=None, sanitize_stderr=None):
         if isinstance(cmd, str):
@@ -53,7 +51,7 @@ if IS_MSFT:
         console.end_cmd()
         return result.mapped_for_warning(sanitize_stderr=sanitize_stderr)
 else:
-    def run_cmd(cmd, input_text=None, sanitize_stderr=None):
+    def run_cmd(cmd, input_text=None, sanitize_stderr=None, decode_stdout=True):
         if isinstance(cmd, str):
             cmd = shlex.split(cmd)
         if IS_POSIX:
@@ -65,7 +63,7 @@ else:
         outd, errd = sub.communicate(input_text)
         if IS_POSIX:
             signal.signal(signal.SIGPIPE, savedsh)
-        return CmdResult(ecode=sub.returncode, stdout=outd, stderr=errd).mapped_for_warning(sanitize_stderr=sanitize_stderr)
+        return CmdResult(ecode=sub.returncode, stdout=outd.decode() if decode_stdout else outd, stderr=errd.decode()).mapped_for_warning(sanitize_stderr=sanitize_stderr)
 
     def run_cmd_in_console(console, cmd, input_text=None, sanitize_stderr=None):
         from .utils import quote_if_needed
@@ -75,8 +73,6 @@ else:
             savedsh = signal.getsignal(signal.SIGPIPE)
             signal.signal(signal.SIGPIPE, signal.SIG_DFL)
         console.start_cmd(" ".join((quote_if_needed(s) for s in cmd)) + "\n")
-        while gtk.events_pending():
-            gtk.main_iteration()
         try:
             # we need to catch OSError if command is unknown
             sub = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
@@ -92,21 +88,19 @@ else:
                               [sub.stderr] * (not stderr_eof)
                 ready = select.select(to_check_in, [], [], 0)
                 if sub.stdout in ready[0]:
-                    ochunk = sub.stdout.readline()
-                    if ochunk == '':
+                    ochunk = sub.stdout.readline().decode()
+                    if ochunk == "":
                         stdout_eof = True
                     else:
                         console.append_stdout(ochunk)
                         outd += ochunk
                 if sub.stderr in ready[0]:
-                    echunk = sub.stderr.readline()
-                    if echunk == '':
+                    echunk = sub.stderr.readline().decode()
+                    if echunk == "":
                         stderr_eof = True
                     else:
                         console.append_stderr(echunk)
                         errd += echunk
-                while gtk.events_pending():
-                    gtk.main_iteration()
                 if stdout_eof and stderr_eof:
                     break
             sub.wait()
@@ -120,28 +114,28 @@ else:
             signal.signal(signal.SIGPIPE, savedsh)
         return result.mapped_for_warning(sanitize_stderr=sanitize_stderr)
 
-def run_get_cmd(cmd, input_text=None, sanitize_stderr=None, default=CmdFailure, do_rstrip=True):
-    result = run_cmd(cmd, input_text=input_text, sanitize_stderr=sanitize_stderr)
+def run_get_cmd(cmd, input_text=None, sanitize_stderr=None, default=CmdFailure, do_rstrip=True, decode_stdout=True):
+    result = run_cmd(cmd, input_text=input_text, sanitize_stderr=sanitize_stderr, decode_stdout=decode_stdout)
     if not result.is_ok:
         if default is CmdFailure:
             raise CmdFailure(result.msg)
         else:
             return default
-    return result.stdout.rstrip() if do_rstrip else result.stdout
+    return result.stdout.rstrip() if (decode_stdout and do_rstrip) else result.stdout
 
-def run_do_cmd(cmd, input_text=None, sanitize_stderr=None, suggestions=None):
-    from .gui import console
-    result = run_cmd_in_console(console=console.LOG, cmd=cmd, input_text=input_text, sanitize_stderr=sanitize_stderr)
+def run_do_cmd(console, cmd, input_text=None, sanitize_stderr=None, suggestions=None):
+    result = run_cmd_in_console(console=console, cmd=cmd, input_text=input_text, sanitize_stderr=sanitize_stderr)
     return result.mapped_for_suggestions(suggestions if suggestions else [])
 
 def run_cmd_in_bgnd(cmd):
     """Run the given command in the background and poll for its exit using
     _wait_for_bgnd_timeout() as a callback.
     """
+    from gi.repository import GObject
     def _wait_for_bgnd_cmd_timeout(pid):
         """Callback to clean up after background tasks complete"""
         try:
-            if os.name == 'nt' or os.name == 'dos':
+            if os.name == "nt" or os.name == "dos":
                 rpid, _dummy= os.waitpid(pid, 0)
             else:
                 rpid, _dummy= os.waitpid(pid, os.WNOHANG)
@@ -158,7 +152,7 @@ def run_cmd_in_bgnd(cmd):
         pid = subprocess.Popen(cmd).pid
     if not pid:
         return False
-    gobject.timeout_add(2000, _wait_for_bgnd_cmd_timeout, pid)
+    GObject.timeout_add(2000, _wait_for_bgnd_cmd_timeout, pid)
     return True
 
 # Some generalized lambdas to assisting in constructing commands

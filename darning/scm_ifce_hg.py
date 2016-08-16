@@ -16,12 +16,12 @@
 '''SCM interface for Mercurial (hg)'''
 
 import errno
-import pango
 import hashlib
 import re
 
 from .cmd_result import CmdResult
 from .utils import singleton
+from . import enotify
 
 from . import runext
 from . import scm_ifce
@@ -122,25 +122,25 @@ class Mercurial(object):
         if dry_run:
             return runext.run_cmd(["hg", "add"] + ["-n", "--verbose"] + file_paths).mapped_for_suggestions(self.SUGGESTION_TABLE)
         result = _run_do_cmd(do_add_files.cmd + file_paths)
-        ws_event.notify_events(scm_ifce.E_FILE_ADDED)
+        enotify.notify_events(scm_ifce.E_FILE_ADDED)
         return result
     @staticmethod
     def do_backout(self, rev, msg, merge=False):
         cmd = ["hg", "backout"] + OPTNL_FLAG_WITH_ARG("-m", msg) + OPTNL_FLAG(merge, "--merge") + OPTNL_ARG(rev)
         result = _run_do_cmd(cmd)
-        ws_event.notify_events(scm_ifce.E_BACKOUT|scm_files.E_FILE_CHANGES)
+        enotify.notify_events(scm_ifce.E_BACKOUT|scm_files.E_FILE_CHANGES)
         return result
     @staticmethod
     def do_clone_as(dir_path, target=None):
         cmd = ["hg", "clone", dir_path] + OPTNL_ARG(target)
         result = _run_do_cmd(cmd)
-        ws_event.notify_events(scm_ifce.E_CLONE)
+        enotify.notify_events(scm_ifce.E_CLONE)
         return result
     @staticmethod
     def do_commit_change(self, msg, file_paths=None, amend=False):
         cmd = ["hg", "-v", "commit"] + OPTNL_FLAG_WITH_ARG("-m", msg) + OPTNL_FLAG(amend, "--amend") + OPTNL_ARG_LIST(file_paths)
         result = _run_do_cmd(cmd)
-        ws_event.notify_events(scm_ifce.E_COMMIT|scm_ifce.E_FILE_CHANGES)
+        enotify.notify_events(scm_ifce.E_COMMIT|scm_ifce.E_FILE_CHANGES)
         return result
     @staticmethod
     def do_copy_files(file_paths, destn, force=False, dry_run=False):
@@ -148,7 +148,7 @@ class Mercurial(object):
         if dry_run:
             return runext.run_cmd(cmd + ["-n", "--verbose"] + file_paths + [destn]).mapped_for_suggestions(SUGGESTION_TABLE)
         result = _run_do_cmd(cmd + file_paths + [destn])
-        ws_event.notify_events(scm_ifce.E_FILE_ADDED)
+        enotify.notify_events(scm_ifce.E_FILE_ADDED)
         return result
     @classmethod
     def do_import_patch(cls, patch_file_path):
@@ -159,25 +159,25 @@ class Mercurial(object):
     @staticmethod
     def do_init(dir_path=None):
         result = _run_do_cmd(["hg", "init"] + OPTNL_ARG(dir_path))
-        ws_event.notify_events(scm_ifce.E_INIT)
+        enotify.notify_events(scm_ifce.E_INIT)
         return result
     @staticmethod
     def do_mark_files_resolved(file_paths):
         cmd = ["hg", "resolve", "--mark"] + file_paths
         result = _run_do_cmd(cmd)
-        ws_event.notify_events(scm_ifce.E_FILE_CHANGES)
+        enotify.notify_events(scm_ifce.E_FILE_CHANGES)
         return result
     @staticmethod
     def do_mark_files_unresolved(file_paths):
         cmd = ["hg", "resolve", "--unmark"] + file_paths
         result = _run_do_cmd(cmd)
-        ws_event.notify_events(scm_ifce.E_FILE_CHANGES)
+        enotify.notify_events(scm_ifce.E_FILE_CHANGES)
         return result
     @staticmethod
     def do_merge_workspace(rev=None, force=False):
         cmd = ["hg", "merge"] + OPTIONAL_FLAG(force, "-f") + OPTNL_FLAG_WITH_ARG("--rev", rev)
         result = _run_do_cmd(cmd)
-        ws_event.notify_events(scm_ifce.E_MERGE)
+        enotify.notify_events(scm_ifce.E_MERGE)
         return result
     @staticmethod
     def do_move_files(file_paths, destn, force=False, dry_run=False):
@@ -185,43 +185,43 @@ class Mercurial(object):
         if dry_run:
             return runext.run_cmd(cmd + ["-n", "--verbose"] + file_paths + [destn]).mapped_for_suggestions(SUGGESTION_TABLE)
         result = _run_do_cmd(cmd + file_paths + [destn])
-        ws_event.notify_events(scm_ifce.E_FILE_DELETED|scm_ifce.E_FILE_ADDED)
+        enotify.notify_events(scm_ifce.E_FILE_DELETED|scm_ifce.E_FILE_ADDED)
         return result
     @staticmethod
     def do_move_tag(tag, rev, msg=None):
         cmd = ["hg", "tag", "-f", "--rev", rev] + OPTNL_FLAG_WITH_ARG("-m", msg) + [tag]
         result = _run_do_cmd(cmd)
-        ws_event.notify_events(scm_ifce.E_TAG)
+        enotify.notify_events(scm_ifce.E_TAG)
         return result
     @staticmethod
     def do_pull_from(rev=None, update=False, source=None):
         cmd = ["hg", "pull"] + OPTNL_FLAG(update, "-u") + OPTNL_FLAG_WITH_ARG("--rev", rev) + OPTNL_ARG(source)
         result = _run_do_cmd(cmd)
-        ws_event.notify_events(scm_ifce.E_PULL|scm_ifce.E_UPDATE if update else scm_ifce.E_PULL)
+        enotify.notify_events(scm_ifce.E_PULL|scm_ifce.E_UPDATE if update else scm_ifce.E_PULL)
         return result
     @staticmethod
     def do_push_to(rev=None, update=False, path=None):
         cmd = ["hg", "push"] + OPTNL_FLAG(update, "-u") + OPTNL_FLAG_WITH_ARG("--rev", rev) + OPTNL_ARG(path)
         result = _run_do_cmd(cmd)
-        ws_event.notify_events(scm_ifce.E_PUSH|scm_ifce.E_UPDATE if update else scm_ifce.E_PUSH)
+        enotify.notify_events(scm_ifce.E_PUSH|scm_ifce.E_UPDATE if update else scm_ifce.E_PUSH)
         return result
     @staticmethod
     def do_remove_files(file_paths, force=False):
         cmd = ["hg", "remove"] + OPTNL_FLAG(force, "-f") + file_paths
         result = _run_do_cmd(cmd)
-        ws_event.notify_events(scm_ifce.E_FILE_DELETED)
+        enotify.notify_events(scm_ifce.E_FILE_DELETED)
         return result
     @staticmethod
     def do_remove_tag(tag, local=False, msg=None):
         cmd = ["hg", "tag", "--remove"] + OPTNL_FLAG(local, "-l") + OPTNL_FLAG_WITH_ARG("-m", msg) + [tag]
         result = _run_do_cmd(cmd)
-        ws_event.notify_events(scm_ifce.E_TAG)
+        enotify.notify_events(scm_ifce.E_TAG)
         return result
     @staticmethod
     def do_resolve_workspace(file_paths=None):
         cmd = ["hg", "resolve"] + OPTNL_FLAG(not file_paths, "--all") + OPTNL_ARG_LIST(file_paths)
         result = _run_do_cmd(cmd)
-        ws_event.notify_events(scm_ifce.E_FILE_CHANGES)
+        enotify.notify_events(scm_ifce.E_FILE_CHANGES)
         return result
     @staticmethod
     def do_revert_files(file_paths=None, dry_run=False):
@@ -230,19 +230,19 @@ class Mercurial(object):
             return runext.run_cmd(cmd).mapped_for_suggestions(self.SUGGESTION_TABLE)
         cmd = ["hg", "revert"] + OPTNL_FLAG(not file_paths, "--all") + OPTNL_ARG_LIST(file_paths)
         result = _run_do_cmd(cmd)
-        ws_event.notify_events(scm_ifce.E_FILE_CHANGES)
+        enotify.notify_events(scm_ifce.E_FILE_CHANGES)
         return result
     @staticmethod
     def do_rollback_repo():
         # TODO: remove rollback from interface: deprecated and dangerous add amend instead
         result = _run_do_cmd('hg rollback')
-        ws_event.notify_events(scm_ifce.E_CS_CHANGES|scm_ifce.E_WD_CHANGES)
+        enotify.notify_events(scm_ifce.E_CS_CHANGES|scm_ifce.E_WD_CHANGES)
         return result
     @staticmethod
     def do_set_branch(branch, force=False):
         cmd = ["hg", "branch"] + OPTNL_FLAG(force, "-f") + [branch]
         result = _run_do_cmd(cmd)
-        ws_event.notify_events(scm_ifce.E_BRANCH)
+        enotify.notify_events(scm_ifce.E_BRANCH)
         return result
     @staticmethod
     def do_set_tag(tag, rev=None, local=False, force=False, msg=None):
@@ -250,13 +250,13 @@ class Mercurial(object):
             return CmdResult.ok()
         cmd = ["hg", "tag"] + OPTNL_FLAG(local, "-l") + OPTNL_FLAG(force, "-f") + OPTNL_FLAG_WITH_ARG("--rev", rev) + OPTNL_FLAG_WITH_ARG("--m", msg) + [tag]
         result = _run_do_cmd(cmd)
-        ws_event.notify_events(scm_ifce.E_TAG)
+        enotify.notify_events(scm_ifce.E_TAG)
         return result
     @staticmethod
     def do_update_workspace(rev=None, discard=False):
         cmd = ["hg", "update"] + OPTNL_FLAG(discard, "-C") + OPTNL_FLAG_WITH_ARG("--rev", rev)
         result = _run_do_cmd(cmd)
-        ws_event.notify_events(scm_ifce.E_UPDATE)
+        enotify.notify_events(scm_ifce.E_UPDATE)
         return result
     @staticmethod
     def do_verify_repo():
@@ -275,7 +275,7 @@ class Mercurial(object):
         return [branch + runext.run_get_cmd(cmd + [str(branch[1])]).split(":", 3) for branch in branch_list_iter]
     @staticmethod
     def get_clean_contents(file_path):
-        return runext.run_get_cmd(["hg", "cat", file_path], do_rstrip=False, default=None)
+        return runext.run_get_cmd(["hg", "cat", file_path], do_rstrip=False, default=None, decode_stdout=False)
     @staticmethod
     def get_extension_enabled(extension):
         return extension in _get_enabled_extensions()
@@ -283,7 +283,7 @@ class Mercurial(object):
     def get_file_status_digest():
         h = hashlib.sha1()
         for cmd in [["hg", "resolve", "--list", "."], ["hg", "status", "-AC", "."]]:
-            h.update(runext.run_get_cmd(cmd, default=""))
+            h.update(runext.run_get_cmd(cmd, default="").encode())
         return h.digest()
     @staticmethod
     def get_files_with_uncommitted_changes(files=None):

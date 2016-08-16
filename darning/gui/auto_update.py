@@ -13,15 +13,16 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import gtk
-import gobject
+import gi
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk
+
+from .. import enotify
 
 from . import gutils
 from . import actions
-from . import dialogue
-from . import ws_event
 
-def _check_interfaces(args):
+def initialize_event_flags(args):
     # NB: need extra level of function to avoid import loop/gridlock
     from . import ifce
     return ifce.check_interfaces(args)
@@ -44,9 +45,9 @@ def _auto_update_cb():
     DEBUG = False # set to True to investigate unexpected activity
     invalid_cbs = []
     event_args = {}
-    # make sure that the interfaces are up to date so that checks are valid
-    event_flags = _check_interfaces(event_args)
-    if DEBUG: print "AA START:", event_flags
+    # do any necessary initialization of flags and arguments
+    event_flags = initialize_event_flags(event_args)
+    if DEBUG: print("AA START:", event_flags)
     for callback in _REGISTERED_CBS:
         try:
             # pass event_flags in to give the client a chance to skip
@@ -54,7 +55,7 @@ def _auto_update_cb():
             if DEBUG:
                 cb_flags = callback(event_flags, event_args)
                 if cb_flags:
-                    print "AA FIRE:", cb_flags, callback
+                    print("AA FIRE:", cb_flags, callback)
                 event_flags |= cb_flags
             else:
                 event_flags |= callback(event_flags, event_args)
@@ -62,12 +63,12 @@ def _auto_update_cb():
             # TODO: try to be more explicit in naming exception type to catch here
             # this is done to catch the race between a caller has going away and deleting its registers
             if True: # NB: for debug assistance e.g . locating exceptions not due to caller going away
-                print "AUTO UPDATE:", edata, callback, event_flags, event_args
+                print("AUTO UPDATE:", edata, callback, event_flags, event_args)
                 raise edata
             invalid_cbs.append(callback)
-    if DEBUG: print "AA END:", event_flags
+    if DEBUG: print("AA END:", event_flags)
     if event_flags:
-        ws_event.notify_events(event_flags, **event_args)
+        enotify.notify_events(event_flags, **event_args)
     for cb in invalid_cbs:
         deregister_cb(cb)
 
@@ -78,7 +79,7 @@ AUTO_UPDATE = gutils.TimeOutController(
         name='config_auto_update',
         label=_('Auto Update'),
         tooltip=_('Enable/disable automatic updating of displayed data'),
-        stock_id=gtk.STOCK_REFRESH
+        stock_id=Gtk.STOCK_REFRESH
     ),
     function=_auto_update_cb, is_on=True, interval=10000
 )
@@ -86,20 +87,19 @@ AUTO_UPDATE = gutils.TimeOutController(
 actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_action(AUTO_UPDATE.toggle_action)
 actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_actions(
     [
-        ("au_update_all", gtk.STOCK_REFRESH, _("Freshen"), "",
+        ("au_update_all", Gtk.STOCK_REFRESH, _("Freshen"), "",
          _("Freshen all views. Useful after external actions change workspace/playground state and auto update is disabled."),
          lambda _action=None: trigger_auto_update()
          ),
     ]
 )
 
-class AutoUpdater(gobject.GObject):
+class AutoUpdater:
     """A base class for transient GTK object classes that wish to register
     auto update callbacks so that their callbacks are deleted when they are
     destroyed.
     """
     def __init__(self):
-        gobject.GObject.__init__(self)
         self._auto_updater_cbs = []
         self.connect("destroy", self._auto_updater_destroy_cb)
 

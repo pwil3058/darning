@@ -181,8 +181,8 @@ $ git show --pretty=format:"%s" master@{1}
 > +"create a new file"
 $ darn push
 > Patching file "dir1/file1".
-> Patching file "file1".
 > Patching file "dir2/file3".
+> Patching file "file1".
 > Patch "fourth" is now on top.
 $ darn_test_tree modify file4
 $ git add file4

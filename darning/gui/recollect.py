@@ -1,4 +1,4 @@
-### Copyright (C) 2010-2015 Peter Williams <pwil3058@gmail.com>
+### Copyright (C) 2010-2016 Peter Williams <pwil3058@gmail.com>
 ###
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
@@ -19,10 +19,7 @@ import os
 import sys
 import collections
 
-try:
-    import configparser
-except ImportError:
-    import ConfigParser as configparser
+import configparser
 
 from ..config_data import APP_NAME, CONFIG_DIR_NAME
 

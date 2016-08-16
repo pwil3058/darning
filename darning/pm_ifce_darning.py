@@ -15,7 +15,7 @@
 
 from .cmd_result import CmdResult, CmdFailure
 
-from .gui import ws_event
+from . import enotify
 
 from . import pm_ifce
 from . import scm_ifce
@@ -26,8 +26,6 @@ from . import utils
 from .pm_ifce import PatchState
 from .utils import singleton
 
-from .gui import ws_event
-
 from .gui.console import RCTX, LOG
 
 def _RUN_DO(cmd_text, cmd_do, events, e_always=True):
@@ -36,7 +34,7 @@ def _RUN_DO(cmd_text, cmd_do, events, e_always=True):
     result = CmdResult(cmd_do(), RCTX.stdout.text, RCTX.stderr.text)
     LOG.end_cmd()
     if e_always or result.is_less_than_error:
-        ws_event.notify_events(events)
+        enotify.notify_events(events)
     return result
 
 class PatchListData(pm_ifce.PatchListData):
@@ -47,8 +45,8 @@ class PatchListData(pm_ifce.PatchListData):
         selected_guards = patch_db.get_selected_guards()
         # the only thing that can really change unexpectably is the patch state BUT ...
         for patch_data in patches_data:
-            h.update(str(patch_data))
-        h.update(str(selected_guards))
+            h.update(str(patch_data).encode())
+        h.update(str(selected_guards).encode())
         return (patches_data, selected_guards)
 
 @singleton
@@ -274,10 +272,10 @@ class Interface(pm_ifce.InterfaceMixin):
         return fsdb_darning.STATUS_DECO_MAP[status.presence if status else None]
     @staticmethod
     def get_status_icon(status, is_dir):
-        import gtk
+        import Gtk
         from .gui import icons
         if is_dir:
-            return gtk.STOCK_DIRECTORY
+            return Gtk.STOCK_DIRECTORY
         elif status.validity == patch_db.Validity.REFRESHED:
             return icons.STOCK_FILE_REFRESHED
         elif status.validity == patch_db.Validity.NEEDS_REFRESH:
@@ -285,7 +283,7 @@ class Interface(pm_ifce.InterfaceMixin):
         elif status.validity == patch_db.Validity.UNREFRESHABLE:
             return icons.STOCK_FILE_UNREFRESHABLE
         else:
-            return gtk.STOCK_FILE
+            return Gtk.STOCK_FILE
     @staticmethod
     def get_textpatch(patch_name):
         return patch_db.get_textpatch(patch_name)

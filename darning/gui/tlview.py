@@ -20,11 +20,14 @@ them from templates and allow easier access to named contents.
 
 import collections
 
-import gtk
-import gobject
+import gi
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk
+from gi.repository import GObject
+from gi.repository import Gdk
 
-class NamedTreeModel(gtk.TreeModel):
-    # TODO: trim and improve NamedTreeModel
+class _NamedTreeModelMixin:
+    # TODO: trim and improve _NamedTreeModelMixin
     Row = None # this is a namedtuple type
     types = None # this is an instance of Row defining column types
     @classmethod
@@ -37,6 +40,10 @@ class NamedTreeModel(gtk.TreeModel):
     def get_selected_rows(selection):
         model, paths = selection.get_selected_rows()
         return [model.Row(*model[p]) for p in paths]
+    @staticmethod
+    def get_selected_row(selection):
+        model, model_iter = selection.get_selected()
+        return model.Row(*model[tree_iter])
     def get_row(self, model_iter):
         return self.Row(*self[model_iter])
     def get_named(self, model_iter, *labels):
@@ -69,9 +76,10 @@ class NamedTreeModel(gtk.TreeModel):
                 model_iter = self.iter_next(model_iter)
         return None
 
-class NamedListStore(gtk.ListStore, NamedTreeModel):
+class NamedListStore(Gtk.ListStore, _NamedTreeModelMixin):
+    __g_type_name__ = "NamedListStore"
     def __init__(self):
-        gtk.ListStore.__init__(*[self] + list(self.types))
+        Gtk.ListStore.__init__(*[self] + list(self.types))
     def append_contents(self, rows):
         for row in rows:
             self.append(row)
@@ -80,11 +88,35 @@ class NamedListStore(gtk.ListStore, NamedTreeModel):
         for row in rows:
             self.append(row)
 
-class NamedTreeStore(gtk.TreeStore, NamedTreeModel):
+class NamedTreeStore(Gtk.TreeStore, _NamedTreeModelMixin):
+    __g_type_name__ = "NamedTreeStore"
     def __init__(self):
-        gtk.TreeStore.__init__(*[self] + list(self.types))
+        Gtk.TreeStore.__init__(*[self] + list(self.types))
 
-class CellRendererSpin(gtk.CellRendererSpin):
+# Utility functions
+def delete_selection(seln):
+    model, paths = seln.get_selected_rows()
+    model_iters = [model.get_iter(path) for path in paths]
+    for model_iter in model_iters:
+        model.remove(model_iter)
+
+def insert_before_selection(seln, row):
+    model, paths = seln.get_selected_rows()
+    if not paths:
+        return
+    model_iter = model.insert_before(model.get_iter(paths[0]), row)
+    return (model, model_iter)
+
+def insert_after_selection(seln, row):
+    model, paths = seln.get_selected_rows()
+    if not paths:
+        return
+    model_iter = model.insert_after(model.get_iter(paths[-1]), row)
+    return (model, model_iter)
+
+# come in handy classes
+class CellRendererSpin(Gtk.CellRendererSpin):
+    __g_type_name__ = "CellRendererSpin"
     """
     A modified version that propagates the SpinButton's "value-changed"
     signal.  Makes the behaviour more like a SpinButton.
@@ -93,7 +125,7 @@ class CellRendererSpin(gtk.CellRendererSpin):
         """
         Add an "editing-started" callback to setup connection to SpinButton
         """
-        gtk.CellRendererSpin.__init__(self, *args, **kwargs)
+        Gtk.CellRendererSpin.__init__(self, *args, **kwargs)
         self.connect('editing-started', CellRendererSpin._editing_started_cb)
     @staticmethod
     def _editing_started_cb(cell, spinbutton, path):
@@ -107,16 +139,17 @@ class CellRendererSpin(gtk.CellRendererSpin):
         Propagate "value-changed" signal to get things moving
         """
         cell.emit('value-changed', path, spinbutton)
-gobject.signal_new('value-changed', CellRendererSpin, gobject.SIGNAL_RUN_LAST, gobject.TYPE_NONE, (gobject.TYPE_PYOBJECT, gobject.TYPE_PYOBJECT,))
+GObject.signal_new('value-changed', CellRendererSpin, GObject.SignalFlags.RUN_LAST, None, (GObject.TYPE_PYOBJECT, GObject.TYPE_PYOBJECT,))
 
-class ViewSpec(object):
+# Views
+class ViewSpec:
     __slots__ = ('properties', 'selection_mode', 'columns')
     def __init__(self, properties=None, selection_mode=None, columns=None):
         self.properties = properties if properties is not None else dict()
         self.selection_mode = selection_mode
         self.columns = columns if columns is not None else list()
 
-class ColumnSpec(object):
+class ColumnSpec:
     __slots__ = ('title', 'properties', 'cells', 'sort_key_function')
     def __init__(self, title, properties=None, cells=None, sort_key_function=None):
         self.title = title
@@ -131,86 +164,146 @@ def simple_column(lbl, *cells):
         cells=cells,
     )
 
-class CellRendererSpec(object):
-    __slots__ = ('cell_renderer', 'properties', 'expand', 'start')
-    def __init__(self, cell_renderer, expand=None, start=False):
+class CellRendererSpec:
+    __slots__ = ('cell_renderer', 'properties', 'expand', 'start', "signal_handlers")
+    def __init__(self, cell_renderer, properties=None, expand=None, start=False, signal_handlers=None):
         self.cell_renderer = cell_renderer
+        self.properties = properties if properties else {}
+        self.signal_handlers = signal_handlers if signal_handlers else {}
         self.expand = expand
         self.start = start
 
-class CellDataFunctionSpec(object):
+class CellDataFunctionSpec:
     __slots__ = ('function', 'user_data')
     def __init__(self, function, user_data=None):
         self.function = function
         self.user_data = user_data
 
-class CellSpec(object):
-    __slots__ = ('cell_renderer_spec', 'properties', 'cell_data_function_spec', 'attributes')
-    def __init__(self, cell_renderer_spec, properties=None, cell_data_function_spec=None, attributes=None):
+class CellSpec:
+    __slots__ = ('cell_renderer_spec', 'cell_data_function_spec', 'attributes')
+    def __init__(self, cell_renderer_spec, cell_data_function_spec=None, attributes=None):
         self.cell_renderer_spec = cell_renderer_spec
-        self.properties = properties if properties is not None else dict()
         self.cell_data_function_spec = cell_data_function_spec
         self.attributes = attributes if attributes is not None else dict()
 
-def stock_icon_cell(model, fld):
+def stock_icon_cell(model, fld, xalign=0.5):
     return CellSpec(
         cell_renderer_spec=CellRendererSpec(
-            cell_renderer=gtk.CellRendererPixbuf,
+            cell_renderer=Gtk.CellRendererPixbuf,
             expand=False,
-            start=True
+            start=True,
+            properties={"xalign": xalign},
         ),
-        properties={},
         cell_data_function_spec=None,
         attributes = {"stock_id" : model.col_index("icon")}
     )
 
-def _text_cell(model, fld, editable):
+def _text_cell(model, fld, editable, xalign=0.5):
     return CellSpec(
         cell_renderer_spec=CellRendererSpec(
-            cell_renderer=gtk.CellRendererText,
+            cell_renderer=Gtk.CellRendererText,
             expand=False,
-            start=True
+            start=True,
+            properties={"editable" : editable, "xalign": xalign},
         ),
-        properties={"editable" : editable},
         cell_data_function_spec=None,
         attributes = {"text" : model.col_index(fld)}
     )
 
-def fixed_text_cell(model, fld):
-    return _text_cell(model, fld, False)
+def fixed_text_cell(model, fld, xalign=0.5):
+    return _text_cell(model, fld, False, xalign)
 
-def editable_text_cell(model, fld):
-    return _text_cell(model, fld, True)
+def editable_text_cell(model, fld, xalign=0.5):
+    return _text_cell(model, fld, True, xalign)
+
+def _toggle_cell(model, fld, activatable, toggle_cb=None, xalign=0.5):
+    return CellSpec(
+        cell_renderer_spec=CellRendererSpec(
+            cell_renderer=Gtk.CellRendererToggle,
+            expand=False,
+            start=True,
+            properties={"activatable" : activatable},
+            signal_handlers={"toggled" : toggle_cb} if toggle_cb else None
+        ),
+        cell_data_function_spec=None,
+        attributes = {"active" : model.col_index(fld)}
+    )
+
+def fixed_toggle_cell(model, fld, xalign=0.5):
+    return _toggle_cell(model, fld, False, None, xalign)
+
+def activatable_toggle_cell(model, fld, toggle_cb, xalign=0.5):
+    return _togg;e_cell(model, fld, True, toggle_cb, xalign)
+
+def _transformer(treeviewcolumn, cell, model, iter, func_and_index):
+    func, index = func_and_index
+    pyobj = model.get_value(iter, index)
+    cell.set_property('text', func(pyobj))
+    return
+
+def _stock_id_transformer(treeviewcolumn, cell, model, iter, func_and_index):
+    func, index = func_and_index
+    pyobj = model.get_value(iter, index)
+    cell.set_property('stock_id', func(pyobj))
+    return
+
+def transform_data_cell(model, fld, transform_func, xalign=0.5):
+    return CellSpec(
+        cell_renderer_spec=CellRendererSpec(
+            cell_renderer=Gtk.CellRendererText,
+            expand=False,
+            start=True,
+            properties={"editable" : False, "xalign": xalign},
+        ),
+        cell_data_function_spec=CellDataFunctionSpec(_transformer, (transform_func, model.col_index(fld))),
+        attributes = {}
+    )
+
+def transform_pixbuf_stock_id_cell(model, fld, transform_func, xalign=0.5):
+    return CellSpec(
+        cell_renderer_spec=CellRendererSpec(
+            cell_renderer=Gtk.CellRendererPixbuf,
+            expand=False,
+            start=True,
+            properties={"xalign": xalign},
+        ),
+        cell_data_function_spec=CellDataFunctionSpec(_stock_id_transformer, (transform_func, model.col_index(fld))),
+        attributes = {}
+    )
 
 def mark_up_cell(model, fld):
     return CellSpec(
         cell_renderer_spec=CellRendererSpec(
-            cell_renderer=gtk.CellRendererText,
+            cell_renderer=Gtk.CellRendererText,
             expand=False,
-            start=True
+            start=True,
+            properties={"editable" : False},
         ),
-        properties={"editable" : False},
         cell_data_function_spec=None,
         attributes = {"markup" : model.col_index(fld)}
     )
 
-class View(gtk.TreeView):
+class View(Gtk.TreeView):
+    __g_type_name__ = "View"
     # TODO: bust View() up into a number of "mix ins" for more flexibility
     Model = None
     specification = None
     ColumnAndCells = collections.namedtuple('ColumnAndCells', ['column', 'cells'])
-    def __init__(self, model=None):
+    def __init__(self, model=None, size_req=None):
         if model is None:
             model = self.Model()
         else:
-            assert isinstance(model, self.Model)
-        gtk.TreeView.__init__(self, model)
-        for prop_name, prop_val in self.specification.properties.items():
+            assert isinstance(model, self.Model) or isinstance(model.get_model(), self.Model)
+        Gtk.TreeView.__init__(self, model)
+        if size_req:
+            self.set_size_request(size_req[0], size_req[1])
+        spec = self.specification if isinstance(self.specification, ViewSpec) else self.__class__.specification(model)
+        for prop_name, prop_val in spec.properties.items():
             self.set_property(prop_name, prop_val)
-        if self.specification.selection_mode is not None:
-            self.get_selection().set_mode(self.specification.selection_mode)
+        if spec.selection_mode is not None:
+            self.get_selection().set_mode(spec.selection_mode)
         self._columns = collections.OrderedDict()
-        for col_d in self.specification.columns:
+        for col_d in spec.columns:
             self._view_add_column(col_d)
         self.connect("button_press_event", self._handle_clear_selection_cb)
         self.connect("key_press_event", self._handle_clear_selection_cb)
@@ -227,23 +320,27 @@ class View(gtk.TreeView):
             "row-inserted", "rows-reordered"]
         self._change_cb_ids = [model.connect(sig_name, self._model_changed_cb) for sig_name in sig_names]
         self.last_sort_column = None
-        self.sort_order = gtk.SORT_ASCENDING
+        self.sort_order = Gtk.SortType.ASCENDING
     @staticmethod
     def _create_cell(column, cell_renderer_spec):
         cell = cell_renderer_spec.cell_renderer()
         if cell_renderer_spec.expand is not None:
             if cell_renderer_spec.start:
-                column.pack_start(cell, cell_renderer_spec.expand)
+                column.pack_start(cell, expand=cell_renderer_spec.expand)
             else:
-                column.pack_end(cell, cell_renderer_spec.expand)
+                column.pack_end(cell, expand=cell_renderer_spec.expand)
         else:
             if cell_renderer_spec.start:
-                column.pack_start(cell)
+                column.pack_start(cell, expand=True)
             else:
-                column.pack_end(cell)
+                column.pack_end(cell, expand=True)
+        for prop_name, value in cell_renderer_spec.properties.items():
+            cell.set_property(prop_name, value)
+        for signal_name, signal_handler in cell_renderer_spec.signal_handlers.items():
+            cell.connect(signal_name, signal_handler)
         return cell
     def _view_add_column(self, col_d):
-        col = gtk.TreeViewColumn(col_d.title)
+        col = Gtk.TreeViewColumn(col_d.title)
         col_cells = View.ColumnAndCells(col, [])
         self._columns[col_d.title] = col_cells
         self.append_column(col)
@@ -257,8 +354,6 @@ class View(gtk.TreeView):
     def _view_add_cell(self, col, cell_d):
         cell = self._create_cell(col, cell_d.cell_renderer_spec)
         self._columns[col.get_title()].cells.append(cell)
-        for prop_name, prop_val in cell_d.properties.items():
-            cell.set_property(prop_name, prop_val)
         if cell_d.cell_data_function_spec is not None:
             col.set_cell_data_func(cell, cell_d.cell_data_function_spec.function, cell_d.cell_data_function_spec.user_data)
         for attr_name, attr_index in cell_d.attributes.items():
@@ -274,11 +369,11 @@ class View(gtk.TreeView):
     def model(self, new_model):
         self.set_model(new_model)
     def set_model(self, model):
-        assert model is None or isinstance(model, self.Model)
+        assert model is None or isinstance(model, self.Model) or isinstance(model.get_model(), self.Model)
         old_model = self.get_model()
         for sig_cb_id in self._change_cb_ids:
             old_model.disconnect(sig_cb_id)
-        gtk.TreeView.set_model(self, model)
+        Gtk.TreeView.set_model(self, model)
         if model is not None:
             self._connect_model_changed_cbs()
     def _notify_modification(self):
@@ -290,18 +385,18 @@ class View(gtk.TreeView):
     def register_modification_callback(self, cbk, data=None):
         self._modified_cbs.append([cbk, data])
     def _handle_clear_selection_cb(self, widget, event):
-        if event.type == gtk.gdk.BUTTON_PRESS:
+        if event.type == Gdk.EventType.BUTTON_PRESS:
             if event.button == 2:
                 self.get_selection().unselect_all()
                 return True
-        elif event.type == gtk.gdk.KEY_PRESS:
-            if event.keyval == gtk.gdk.keyval_from_name('Escape'):
+        elif event.type == Gdk.EventType.KEY_PRESS:
+            if event.keyval == Gdk.keyval_from_name('Escape'):
                 self.get_selection().unselect_all()
                 return True
         return False
     def _cell_text_edited_cb(self, cell, path, new_text, index):
         # TODO: need to do type cast on ALL tree editable cells
-        if isinstance(cell, gtk.CellRendererSpin):
+        if isinstance(cell, Gtk.CellRendererSpin):
             self.get_model()[path][index] = self.get_model().types[index](new_text)
         else:
             self.get_model()[path][index] = new_text
@@ -336,19 +431,19 @@ class View(gtk.TreeView):
             self.last_sort_column.set_sort_indicator(False)
         #
         if self.last_sort_column == column:
-           if self.sort_order == gtk.SORT_ASCENDING:
-              self.sort_order = gtk.SORT_DESCENDING
+           if self.sort_order == Gtk.SortType.ASCENDING:
+              self.sort_order = Gtk.SortType.DESCENDING
            else:
-              self.sort_order = gtk.SORT_ASCENDING
+              self.sort_order = Gtk.SortType.ASCENDING
         else:
-           self.sort_order   = gtk.SORT_ASCENDING
+           self.sort_order   = Gtk.SortType.ASCENDING
            self.last_sort_column = column
         model = self.get_model()
         if len(model) == 0:
             return
         erows = list(enumerate(model.named()))
         erows.sort(key=sort_key_function)
-        if self.sort_order == gtk.SORT_DESCENDING:
+        if self.sort_order == Gtk.SortType.DESCENDING:
             erows.reverse()
         # Turn off reorder callback while we do the reordering
         model.handler_block(self._change_cb_ids[-1])
@@ -358,7 +453,20 @@ class View(gtk.TreeView):
         column.set_sort_order(self.sort_order)
 
 class ListView(View):
+    __g_type_name__ = "ListView"
     Model = NamedListStore
 
 class TreeView(View):
+    __g_type_name__ = "TreeView"
     Model = NamedTreeStore
+
+def clear_selection_cb(widget, event):
+    if event.type == Gdk.EventType.BUTTON_PRESS:
+        if event.button == 2:
+            widget.get_selection().unselect_all()
+            return True
+    elif event.type == Gdk.EventType.KEY_PRESS:
+        if event.keyval == Gdk.keyval_from_name("Escape"):
+            widget.get_selection().unselect_all()
+            return True
+    return False
