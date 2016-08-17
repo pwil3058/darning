@@ -70,7 +70,7 @@ def pm_do_add_files(file_paths):
 
 def pm_do_add_new_file(open_for_edit=False):
     from .. import os_utils
-    new_file_path = dialogue.ask_file_name(_("Enter path for new file"), existing=False)
+    new_file_path = dialogue.ask_file_path(_("Enter path for new file"), existing=False)
     if not new_file_path:
         return
     dialogue.show_busy()
@@ -116,7 +116,7 @@ def pm_do_create_new_pgnd():
     req_backend = ifce.choose_backend()
     if not req_backend:
         return CmdResult.ok()
-    new_pgnd_path = dialogue.ask_dir_name(_("Select/create playground .."))
+    new_pgnd_path = dialogue.ask_dir_path(_("Select/create playground .."))
     if new_pgnd_path is not None:
         result = ifce.create_new_playground(new_pgnd_path, req_backend)
         dialogue.report_any_problems(result)
@@ -195,7 +195,7 @@ def pm_do_export_named_patch(patch_name, suggestion=None, busy_indicator=None):
     if not os.path.dirname(suggestion):
         suggestion = os.path.join(recollect.get("export", "last_directory"), suggestion)
     PROMPT = _("Export as ...")
-    export_filename = dialogue.ask_file_name(PROMPT, suggestion=suggestion, existing=False)
+    export_filename = dialogue.ask_file_path(PROMPT, suggestion=suggestion, existing=False)
     if export_filename is None:
         return
     force = False
@@ -227,7 +227,7 @@ def pm_do_export_named_patch(patch_name, suggestion=None, busy_indicator=None):
             elif resp == dialogue.Response.OVERWRITE:
                 overwrite = True
             elif resp == dialogue.Response.RENAME:
-                export_filename = dialogue.ask_file_name(PROMPT, suggestion=export_filename, existing=False)
+                export_filename = dialogue.ask_file_path(PROMPT, suggestion=export_filename, existing=False)
                 if export_filename is None:
                     return
             continue
@@ -287,7 +287,7 @@ def pm_do_fold_to_patch(patch_name):
 
 def pm_do_fold_external_patch():
     from .. import patchlib
-    patch_file_path = dialogue.ask_file_name(_("Select patch file to be folded"))
+    patch_file_path = dialogue.ask_file_path(_("Select patch file to be folded"))
     if patch_file_path is None:
         return
     try:
@@ -333,7 +333,7 @@ def pm_do_import_external_patch():
     from . import recollect
     suggestion = recollect.get("import", "last_directory")
     from .. import patchlib
-    patch_file_path = dialogue.ask_file_name(_("Select patch file to be imported"))
+    patch_file_path = dialogue.ask_file_path(_("Select patch file to be imported"))
     if patch_file_path is None:
         return
     try:
@@ -902,8 +902,8 @@ class ImportPatchDialog(dialogue.BusyDialog):
         patch_file_name = os.path.basename(epatch.source_name)
         self.namebox = Gtk.HBox()
         self.namebox.pack_start(Gtk.Label(_("As Patch:")), expand=False, fill=True, padding=0)
-        self.as_name = gutils.MutableComboBoxEntry()
-        self.as_name.child.set_width_chars(32)
+        self.as_name = gutils.new_mutable_combox_text_with_entry()
+        self.as_name.get_child().set_width_chars(32)
         self.as_name.set_text(patch_file_name)
         self.namebox.pack_start(self.as_name, expand=True, fill=True, padding=0)
         self.vbox.pack_start(self.namebox, expand=False, fill=False, padding=0)
@@ -1029,9 +1029,9 @@ class RestorePatchDialog(dialogue.BusyDialog):
         #
         hbox = Gtk.HBox()
         hbox.pack_start(Gtk.Label(_("As Patch:")), expand=False, fill=True, padding=0)
-        self.as_name = gutils.MutableComboBoxEntry()
-        self.as_name.child.set_width_chars(32)
-        self.as_name.child.connect("activate", self._as_name_cb)
+        self.as_name = gutils.new_mutable_combox_text_with_entry()
+        self.as_name.get_child().set_width_chars(32)
+        self.as_name.get_child().connect("activate", self._as_name_cb)
         hbox.pack_start(self.as_name, expand=True, fill=True, padding=0)
         self.vbox.pack_start(hbox, expand=False, fill=False, padding=0)
         #

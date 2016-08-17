@@ -372,7 +372,7 @@ class FileDiffMixin(object):
             diff = copy.deepcopy(self.diff)
         elif before.content == after.content:
             diff = None
-        elif before.content.find("\000") != -1 or after.content.find("\000") != -1:
+        elif before.content.find(b"\000") != -1 or after.content.find(b"\000") != -1:
             diff = generate_binary_diff(before, after)
         else:
             diff = generate_unified_diff(before, after)

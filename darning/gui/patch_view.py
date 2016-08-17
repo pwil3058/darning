@@ -55,11 +55,12 @@ class Widget(Gtk.VBox):
         self.patch_name = patch_name
         self.epatch = self.get_epatch()
         #
-        self.status_icon = Gtk.image_new_from_stock(self.status_icons[self.epatch.state], Gtk.IconSize.BUTTON)
+        self.status_icon = Gtk.Image.new_from_stock(self.status_icons[self.epatch.state], Gtk.IconSize.BUTTON)
         self.status_box = Gtk.HBox()
         self.status_box.add(self.status_icon)
         self.status_box.show_all()
-        gutils.set_widget_tooltip_text(self.status_box, self.status_tooltips[self.epatch.state])
+        #gutils.set_widget_tooltip_text(self.status_box, self.status_tooltips[self.epatch.state])
+        self.status_box.set_tooltip_text(self.status_tooltips[self.epatch.state])
         self.tws_display = self.TWSDisplay()
         self.tws_display.set_value(len(self.epatch.report_trailing_whitespace()))
         hbox = Gtk.HBox()
@@ -115,7 +116,7 @@ class Widget(Gtk.VBox):
         return ifce.PM.is_patch_applied(self.patch_name)
     @staticmethod
     def _framed(label, widget):
-        frame = Gtk.Frame(label)
+        frame = Gtk.Frame(label=label)
         frame.add(widget)
         return frame
     def update(self):
@@ -126,10 +127,11 @@ class Widget(Gtk.VBox):
         self.text_digest = digest
         self.epatch = epatch
         self.status_box.remove(self.status_icon)
-        self.status_icon = Gtk.image_new_from_stock(self.status_icons[self.epatch.state], Gtk.IconSize.BUTTON)
+        self.status_icon = Gtk.Image.new_from_stock(self.status_icons[self.epatch.state], Gtk.IconSize.BUTTON)
         self.status_box.add(self.status_icon)
         self.status_box.show_all()
-        gutils.set_widget_tooltip_text(self.status_box, self.status_tooltips[self.epatch.state])
+#        gutils.set_widget_tooltip_text(self.status_box, self.status_tooltips[self.epatch.state])
+        self.status_box.set_tooltip_text(self.status_tooltips[self.epatch.state])
         self.tws_display.set_value(len(self.epatch.report_trailing_whitespace()))
         self.comments.set_contents(self.epatch.get_comments())
         self.description.set_contents(self.epatch.get_description())
@@ -142,11 +144,11 @@ class Dialogue(dialogue.ListenerDialog):
         from ..config_data import APP_NAME
         title = _(APP_NAME + ": Patch \"{0}\" : {1}").format(patch_name, utils.path_rel_home(os.getcwd()))
         dialogue.ListenerDialog.__init__(self, title=title, parent=dialogue.main_window, flags=Gtk.DialogFlags.DESTROY_WITH_PARENT)
-        self.widget = Widget(patch_name)
-        self.vbox.pack_start(self.widget, expand=True, fill=True, padding=0)
+        self._widget = Widget(patch_name)
+        self.vbox.pack_start(self._widget, expand=True, fill=True, padding=0)
         self.refresh_action = Gtk.Action('patch_view_refresh', _('_Refresh'), _('Refresh this patch in database.'), icons.STOCK_REFRESH_PATCH)
         self.refresh_action.connect('activate', self._refresh_acb)
-        self.refresh_action.set_sensitive(ifce.PM.is_top_patch(self.widget.patch_name))
+        self.refresh_action.set_sensitive(ifce.PM.is_top_patch(self._widget.patch_name))
         refresh_button = gutils.ActionButton(self.refresh_action)
         self.auc = gutils.TimeOutController(toggle_data=self.AUTO_UPDATE_TD, function=self._update_display_cb, is_on=False, interval=10000)
         self.action_area.pack_start(gutils.ActionCheckButton(self.auc.toggle_action), expand=True, fill=True, padding=0)
@@ -165,20 +167,20 @@ class Dialogue(dialogue.ListenerDialog):
         dialog.destroy()
     def _update_display_cb(self, **kwargs):
         self.show_busy()
-        self.widget.update()
-        self.refresh_action.set_sensitive(ifce.PM.is_top_patch(self.widget.patch_name))
+        self._widget.update()
+        self.refresh_action.set_sensitive(ifce.PM.is_top_patch(self._widget.patch_name))
         self.unshow_busy()
     def _refresh_acb(self, _action):
         self.show_busy()
-        result = ifce.PM.do_refresh_patch(self.widget.patch_name)
+        result = ifce.PM.do_refresh_patch(self._widget.patch_name)
         self.unshow_busy()
         dialogue.report_any_problems(result)
     def _save_as_acb(self, _action):
         from . import recollect
-        suggestion = os.path.basename(utils.convert_patchname_to_filename(self.widget.patch_name))
+        suggestion = os.path.basename(utils.convert_patchname_to_filename(self._widget.patch_name))
         export_filepath = os.path.join(recollect.get("export", "last_directory"), suggestion)
         while True:
-            export_filepath = dialogue.ask_file_name(_("Export as ..."), suggestion=export_filepath, existing=False)
+            export_filepath = dialogue.ask_file_path(_("Export as ..."), suggestion=export_filepath, existing=False)
             if export_filepath is None:
                 return
             if os.path.exists(export_filepath):
@@ -198,4 +200,4 @@ class Dialogue(dialogue.ListenerDialog):
             export_filepath = utils.path_rel_home(export_filepath)
         if export_filepath.startswith(os.pardir):
             export_filepath = os.path.abspath(export_filepath)
-        dialogue.report_any_problems(utils.set_file_contents(export_filepath, str(self.widget.epatch)))
+        dialogue.report_any_problems(utils.set_file_contents(export_filepath, str(self._widget.epatch)))
