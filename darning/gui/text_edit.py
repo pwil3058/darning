@@ -59,7 +59,8 @@ def peruse_files_extern(file_list):
 class MessageWidget(textview.Widget, actions.CAGandUIManager):
     UI_DESCR = ''
     AC_SAVE_OK = actions.ActionCondns.new_flag()
-    def __init__(self, save_file_name=None, auto_save=False):
+    def __init__(self, save_file_name=None, auto_save=False, parent=None):
+        self._parent = parent
         textview.Widget.__init__(self)
         actions.CAGandUIManager.__init__(self)
         self.view.set_cursor_visible(True)
@@ -108,7 +109,7 @@ class MessageWidget(textview.Widget, actions.CAGandUIManager):
         self.action_groups.update_condns(mcondn)
     @staticmethod
     def _inform_user_data_problem():
-        dialogue.inform_user(_('Unable to determine user\'s data'))
+        dialogue.inform_user(_('Unable to determine user\'s data'), parent=self._parent)
     def _insert_sign_off_acb(self, _action=None):
         data = ifce.get_author_name_and_email()
         if data:
@@ -210,8 +211,8 @@ class DbMessageWidget(MessageWidget):
         raise NotImplentedError('Must be defined in child')
     def set_text_in_db(self, text):
         raise NotImplentedError('Must be defined in child')
-    def __init__(self, save_file_name=None, auto_save=False):
-        MessageWidget.__init__(self)
+    def __init__(self, save_file_name=None, auto_save=False, parent=None):
+        MessageWidget.__init__(self, parent=parent)
         self.view.set_cursor_visible(True)
         self.view.set_editable(True)
         # Set up file stuff

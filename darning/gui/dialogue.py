@@ -169,7 +169,7 @@ class FileChooserDialog(Gtk.FileChooserDialog):
 class SelectFromListDialog(BusyDialog):
     __g_type_name__ = "SelectFromListDialog"
     def __init__(self, olist=list(), prompt=_('Select from list:'), parent=None):
-        Dialog.__init__(self, "{0}: {1}".format(config_data.APP_NAME, os.getcwd()), parent,
+        BusyDialog.__init__(self, "{0}: {1}".format(config_data.APP_NAME, os.getcwd()), parent,
                         Gtk.DialogFlags.DESTROY_WITH_PARENT,
                         (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
                         Gtk.STOCK_OK, Gtk.ResponseType.OK))
@@ -259,10 +259,10 @@ def report_any_problems(result, parent=None):
         problem_type = Gtk.MessageType.WARNING
     else:
         problem_type = Gtk.MessageType.ERROR
-    inform_user("\n".join(result[1:]), parent, problem_type)
+    inform_user("\n".join(result[1:]), parent=parent, problem_type=problem_type)
 
 def report_failure(failure, parent=None):
-    inform_user(failure.result, parent, Gtk.MessageType.ERROR)
+    inform_user(failure.result, parent=parent, problem_type=Gtk.MessageType.ERROR)
 
 def report_exception_as_error(edata, parent=None):
     alert_user(str(edata), parent=parent)
@@ -367,7 +367,7 @@ def _form_question(result, clarification):
 def ask_discard_or_cancel(result, clarification=None, parent=None):
     buttons = (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, _('_Discard'), Response.DISCARD)
     question = _form_question(result, clarification)
-    return ask_question(question, parent, buttons)
+    return ask_question(question, parent=parent, buttons=buttons)
 
 def ask_force_refresh_or_cancel(result, clarification=None, parent=None):
     buttons = (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
@@ -376,7 +376,7 @@ def ask_force_refresh_or_cancel(result, clarification=None, parent=None):
     if result.suggests_force:
         buttons += (_('_Force'), Response.FORCE)
     question = _form_question(result, clarification)
-    return ask_question(question, parent, buttons)
+    return ask_question(question, parent=parent, buttons=buttons)
 
 def ask_force_refresh_absorb_or_cancel(result, clarification=None, parent=None):
     buttons = (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
@@ -387,17 +387,17 @@ def ask_force_refresh_absorb_or_cancel(result, clarification=None, parent=None):
     if result.suggests_force:
         buttons += (_('_Force'), Response.FORCE)
     question = _form_question(result, clarification)
-    return ask_question(question, parent, buttons)
+    return ask_question(question, parent=parent, buttons=buttons)
 
 def ask_force_or_cancel(result, clarification=None, parent=None):
     buttons = (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, _('_Force'), Response.FORCE)
     question = _form_question(result, clarification)
-    return ask_question(question, parent, buttons)
+    return ask_question(question, parent=parent, buttons=buttons)
 
 def ask_force_skip_or_cancel(result, clarification=None, parent=None):
     buttons = (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, _('_Skip'), Response.SKIP, _('_Force'), Response.FORCE)
     question = _form_question(result, clarification)
-    return ask_question(question, parent, buttons)
+    return ask_question(question, parent=parent, buttons=buttons)
 
 def ask_merge_discard_or_cancel(result, clarification=None, parent=None):
     buttons = (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
@@ -406,12 +406,12 @@ def ask_merge_discard_or_cancel(result, clarification=None, parent=None):
     if result.suggests_discard:
         buttons += (_('_Discard Changes'), Response.DISCARD)
     question = _form_question(result, clarification)
-    return ask_question(question, parent, buttons)
+    return ask_question(question, parent=parent, buttons=buttons)
 
 def ask_recover_or_cancel(result, clarification=None, parent=None):
     buttons = (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, _('_Recover'), Response.RECOVER)
     question = _form_question(result, clarification)
-    return ask_question(question, parent, buttons)
+    return ask_question(question, parent=parent, buttons=buttons)
 
 def ask_edit_force_or_cancel(result, clarification=None, parent=None):
     buttons = (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
@@ -420,7 +420,7 @@ def ask_edit_force_or_cancel(result, clarification=None, parent=None):
     if result.suggests_force:
         buttons += (_('_Force'), Response.FORCE)
     question = _form_question(result, clarification)
-    return ask_question(question, parent, buttons)
+    return ask_question(question, parent=parent, buttons=buttons)
 
 def ask_rename_force_or_cancel(result, clarification=None, parent=None):
     buttons = (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
@@ -429,7 +429,7 @@ def ask_rename_force_or_cancel(result, clarification=None, parent=None):
     if result.suggests_force:
         buttons += (_('_Force'), Response.FORCE)
     question = _form_question(result, clarification)
-    return ask_question(question, parent, buttons)
+    return ask_question(question, parent=parent, buttons=buttons)
 
 def ask_rename_force_or_skip(result, clarification=None, parent=None):
     buttons = ()
@@ -439,7 +439,7 @@ def ask_rename_force_or_skip(result, clarification=None, parent=None):
         buttons += (_('_Force'), Response.FORCE)
     buttons += (_('_Skip'), Response.SKIP, _('Skip _All'), Response.SKIP_ALL)
     question = _form_question(result, clarification)
-    return ask_question(question, parent, buttons)
+    return ask_question(question, parent=parent, buttons=buttons)
 
 def ask_rename_overwrite_or_cancel(result, clarification=None, parent=None):
     buttons = (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
@@ -448,7 +448,7 @@ def ask_rename_overwrite_or_cancel(result, clarification=None, parent=None):
     if result.suggests_overwrite:
         buttons += (_('_Overwrite'), Response.OVERWRITE)
     question = _form_question(result, clarification)
-    return ask_question(question, parent, buttons)
+    return ask_question(question, parent=parent, buttons=buttons)
 
 def select_file(prompt, suggestion=None, existing=True, absolute=False, parent=None):
     if existing:
