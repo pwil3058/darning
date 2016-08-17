@@ -16,8 +16,10 @@
 import collections
 import os
 
-import gtk
-import gobject
+import gi
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk
+from gi.repository import GObject
 
 from ..pm_ifce import PatchState
 
@@ -109,9 +111,9 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
                         cell_renderer_spec=tlview.CellRendererSpec(
                             cell_renderer=Gtk.CellRendererPixbuf,
                             expand=False,
-                            start=True
+                            start=True,
+                            properties={},
                         ),
-                        properties={},
                         cell_data_function_spec=None,
                         attributes = {"stock_id" : Model.col_index("icon")}
                     ),
@@ -119,9 +121,9 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
                         cell_renderer_spec=tlview.CellRendererSpec(
                             cell_renderer=Gtk.CellRendererText,
                             expand=False,
-                            start=True
+                            start=True,
+                            properties={"editable" : False},
                         ),
-                        properties={"editable" : False},
                         cell_data_function_spec=None,
                         attributes = {"markup" : Model.col_index("markup")}
                     ),
@@ -169,8 +171,8 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
         self.last_import_dir = None
         self._hash_data = None
         self._applied_count = 0
-        auto_update.AutoUpdater.__init__(self)
         table.MapManagedTableView.__init__(self, busy_indicator=busy_indicator, size_req=size_req)
+        auto_update.AutoUpdater.__init__(self)
         self.get_selection().connect("changed", self._selection_changed_cb)
         self.add_notification_cb(self.REPOPULATE_EVENTS, self.repopulate_list)
         self.add_notification_cb(self.UPDATE_EVENTS, self.refresh_contents)
@@ -292,4 +294,4 @@ class List(table.TableWidget):
     View = ListView
     def __init__(self, busy_indicator=None):
         table.TableWidget.__init__(self, scroll_bar=True, busy_indicator=busy_indicator, size_req=None)
-        self.header.lhs.pack_start(self.view.ui_manager.get_widget("/patch_list_menubar"), expand=True, fill=True)
+        self.header.lhs.pack_start(self.view.ui_manager.get_widget("/patch_list_menubar"), expand=True, fill=True, padding=0)

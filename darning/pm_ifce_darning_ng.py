@@ -272,7 +272,7 @@ class Interface(pm_ifce.InterfaceMixin):
         return fsdb_darning_ng.STATUS_DECO_MAP[status.presence if status else None]
     @staticmethod
     def get_status_icon(status, is_dir):
-        import Gtk
+        from gi.repository import Gtk
         from .gui import icons
         if is_dir:
             return Gtk.STOCK_DIRECTORY

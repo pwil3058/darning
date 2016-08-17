@@ -19,7 +19,10 @@
 import argparse
 import os
 import sys
-import gtk
+
+import gi
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk
 
 from darning import i18n
 
@@ -37,30 +40,30 @@ Thank you.</b>
 
 def report_exception(exc_data, parent=None):
     def copy_cb(tview):
-        tview.get_buffer().copy_clipboard(gtk.clipboard_get())
+        tview.get_buffer().copy_clipboard(Gtk.clipboard_get())
     import traceback
     msg = ''.join(traceback.format_exception(exc_data[0], exc_data[1], exc_data[2]))
-    dialog = gtk.Dialog(title=_('darning: Unhandled Exception'),
-                        parent=parent, flags=gtk.DIALOG_MODAL|gtk.DIALOG_DESTROY_WITH_PARENT,
-                        buttons=(gtk.STOCK_CLOSE, gtk.RESPONSE_CLOSE))
-    icon = gtk.Image()
-    icon.set_from_stock(gtk.STOCK_DIALOG_ERROR, gtk.ICON_SIZE_DIALOG)
-    vbox = gtk.VBox()
-    vbox.pack_start(icon, expand=False, fill=False)
-    hbox = gtk.HBox()
-    hbox.pack_start(vbox, expand=False, fill=False)
-    label = gtk.Label()
+    dialog = Gtk.Dialog(title=_('darning: Unhandled Exception'),
+                        parent=parent, flags=Gtk.DialogFlags.MODAL|Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                        buttons=(Gtk.STOCK_CLOSE, Gtk.ResponseType.CLOSE))
+    icon = Gtk.Image()
+    icon.set_from_stock(Gtk.STOCK_DIALOG_ERROR, Gtk.IconSize.DIALOG)
+    vbox = Gtk.VBox()
+    vbox.pack_start(icon, expand=False, fill=False, padding=0)
+    hbox = Gtk.HBox()
+    hbox.pack_start(vbox, expand=False, fill=False, padding=0)
+    label = Gtk.Label()
     label.set_selectable(True)
     label.set_markup(_REPORT_REQUEST_MSG)
-    hbox.pack_start(label, expand=False, fill=False)
-    dialog.get_content_area().pack_start(hbox, expand=False, fill=False)
-    sbw = gtk.ScrolledWindow()
-    tview = gtk.TextView()
+    hbox.pack_start(label, expand=False, fill=False, padding=0)
+    dialog.get_content_area().pack_start(hbox, expand=False, fill=False, padding=0)
+    sbw = Gtk.ScrolledWindow()
+    tview = Gtk.TextView()
     tview.set_editable(False)
     tview.get_buffer().set_text(msg)
     tview.connect('copy-clipboard', copy_cb)
     sbw.add(tview)
-    dialog.get_content_area().pack_end(sbw, expand=True, fill=True)
+    dialog.get_content_area().pack_end(sbw, expand=True, fill=True, padding=0)
     dialog.show_all()
     dialog.set_resizable(True)
     dialog.run()
@@ -101,7 +104,7 @@ try:
     if not ifce.PM.in_valid_pgnd and ARGS.playground is None:
         last_pgnd = recollect.get(config_data.APP_NAME, "last_pgnd")
         open_dialog = config.PgndOpenDialog(suggestion=last_pgnd)
-        if open_dialog.run() == gtk.RESPONSE_OK:
+        if open_dialog.run() == Gtk.ResponseType.OK:
             wspath = open_dialog.get_path()
             if wspath:
                 open_dialog.show_busy()
@@ -115,7 +118,7 @@ try:
     if open_dialog:
         open_dialog.unshow_busy()
         open_dialog.destroy()
-    gtk.main()
+    Gtk.main()
 except (SystemExit, KeyboardInterrupt):
     pass
 except BaseException:

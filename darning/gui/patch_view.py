@@ -18,7 +18,9 @@
 import os
 import hashlib
 
-import gtk
+import gi
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk
 
 from .. import patchlib
 from .. import utils
@@ -46,14 +48,14 @@ class Widget(Gtk.VBox):
         PatchState.APPLIED_NEEDS_REFRESH : _('This patch is applied but refresh is NOT up to date.'),
         PatchState.APPLIED_UNREFRESHABLE : _('This patch is applied but has problems (e.g. unresolved merge errosr) that prevent it being refreshed.'),
     }
-    class TWSDisplay(diff.TextWidget.TwsLineCountDisplay):
+    class TWSDisplay(diff.TwsLineCountDisplay):
         LABEL = _('File(s) that add TWS: ')
     def __init__(self, patch_name):
         Gtk.VBox.__init__(self)
         self.patch_name = patch_name
         self.epatch = self.get_epatch()
         #
-        self.status_icon = Gtk.image_new_from_stock(self.status_icons[self.epatch.state], Gtk.ICON_SIZE_BUTTON)
+        self.status_icon = Gtk.image_new_from_stock(self.status_icons[self.epatch.state], Gtk.IconSize.BUTTON)
         self.status_box = Gtk.HBox()
         self.status_box.add(self.status_icon)
         self.status_box.show_all()
@@ -61,13 +63,13 @@ class Widget(Gtk.VBox):
         self.tws_display = self.TWSDisplay()
         self.tws_display.set_value(len(self.epatch.report_trailing_whitespace()))
         hbox = Gtk.HBox()
-        hbox.pack_start(self.status_box, expand=False)
-        hbox.pack_start(Gtk.Label(self.patch_name), expand=False)
-        hbox.pack_end(self.tws_display, expand=False)
-        self.pack_start(hbox, expand=False)
+        hbox.pack_start(self.status_box, expand=False, fill=True, padding=0)
+        hbox.pack_start(Gtk.Label(self.patch_name), expand=False, fill=True, padding=0)
+        hbox.pack_end(self.tws_display, expand=False, fill=True, padding=0)
+        self.pack_start(hbox, expand=False, fill=True, padding=0)
         #
         pane = Gtk.VPaned()
-        self.pack_start(pane, expand=True, fill=True)
+        self.pack_start(pane, expand=True, fill=True, padding=0)
         #
         self.header_nbook = Gtk.Notebook()
         self.header_nbook.popup_enable()
@@ -124,7 +126,7 @@ class Widget(Gtk.VBox):
         self.text_digest = digest
         self.epatch = epatch
         self.status_box.remove(self.status_icon)
-        self.status_icon = Gtk.image_new_from_stock(self.status_icons[self.epatch.state], Gtk.ICON_SIZE_BUTTON)
+        self.status_icon = Gtk.image_new_from_stock(self.status_icons[self.epatch.state], Gtk.IconSize.BUTTON)
         self.status_box.add(self.status_icon)
         self.status_box.show_all()
         gutils.set_widget_tooltip_text(self.status_box, self.status_tooltips[self.epatch.state])
@@ -139,22 +141,22 @@ class Dialogue(dialogue.ListenerDialog):
     def __init__(self, patch_name):
         from ..config_data import APP_NAME
         title = _(APP_NAME + ": Patch \"{0}\" : {1}").format(patch_name, utils.path_rel_home(os.getcwd()))
-        dialogue.ListenerDialog.__init__(self, title=title, parent=dialogue.main_window, flags=Gtk.DIALOG_DESTROY_WITH_PARENT)
+        dialogue.ListenerDialog.__init__(self, title=title, parent=dialogue.main_window, flags=Gtk.DialogFlags.DESTROY_WITH_PARENT)
         self.widget = Widget(patch_name)
-        self.vbox.pack_start(self.widget, expand=True, fill=True)
+        self.vbox.pack_start(self.widget, expand=True, fill=True, padding=0)
         self.refresh_action = Gtk.Action('patch_view_refresh', _('_Refresh'), _('Refresh this patch in database.'), icons.STOCK_REFRESH_PATCH)
         self.refresh_action.connect('activate', self._refresh_acb)
         self.refresh_action.set_sensitive(ifce.PM.is_top_patch(self.widget.patch_name))
         refresh_button = gutils.ActionButton(self.refresh_action)
         self.auc = gutils.TimeOutController(toggle_data=self.AUTO_UPDATE_TD, function=self._update_display_cb, is_on=False, interval=10000)
-        self.action_area.pack_start(gutils.ActionCheckButton(self.auc.toggle_action))
-        self.action_area.pack_start(refresh_button)
+        self.action_area.pack_start(gutils.ActionCheckButton(self.auc.toggle_action), expand=True, fill=True, padding=0)
+        self.action_area.pack_start(refresh_button, expand=True, fill=True, padding=0)
         self._save_file = utils.convert_patchname_to_filename(patch_name)
         self.save_action = Gtk.Action('patch_view_save', _('_Export'), _('Export current content to text file.'), Gtk.STOCK_SAVE_AS)
         self.save_action.connect('activate', self._save_as_acb)
         save_button = gutils.ActionButton(self.save_action)
-        self.action_area.pack_start(save_button)
-        self.add_buttons(Gtk.STOCK_CLOSE, Gtk.RESPONSE_CLOSE)
+        self.action_area.pack_start(save_button, expand=True, fill=True, padding=0)
+        self.add_buttons(Gtk.STOCK_CLOSE, Gtk.ResponseType.CLOSE)
         self.connect("response", self._close_cb)
         self.add_notification_cb(pm_ifce.E_PATCH_LIST_CHANGES|pm_ifce.E_FILE_CHANGES, self._update_display_cb)
         self.show_all()
@@ -183,7 +185,7 @@ class Dialogue(dialogue.ListenerDialog):
                 from ..cmd_result import CmdResult
                 problem = CmdResult.error(stderr=_("A file of that name already exists!!")) | CmdResult.SUGGEST_OVERWRITE_OR_RENAME
                 response = dialogue.ask_rename_overwrite_or_cancel(problem)
-                if response == Gtk.RESPONSE_CANCEL:
+                if response == Gtk.ResponseType.CANCEL:
                     return
                 elif response == dialogue.Response.RENAME:
                     continue

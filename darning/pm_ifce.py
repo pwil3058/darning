@@ -233,7 +233,7 @@ class _NULL_BACKEND:
         return fsdb.STATUS_DECO_MAP[status]
     @staticmethod
     def get_status_icon(status, is_dir):
-        import Gtk
+        from gi.repository import Gtk
         from .gui import icons
         if is_dir:
             return Gtk.STOCK_DIRECTORY

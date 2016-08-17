@@ -13,16 +13,21 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-import gtk
 import os
 
+import gi
+gi.require_version("Gtk", "3.0")
+from gi.repository import Gtk
+
 from .. import utils
+from .. import enotify
 
 from . import gutils
 from . import dialogue
 from . import console
 from . import ifce
 from . import icons
+from . import actions
 from . import ws_actions
 from . import patch_list
 from . import file_tree_managed
@@ -30,7 +35,7 @@ from . import file_tree_cs
 from . import terminal
 from . import config
 
-class Darning(Gtk.Window, dialogue.BusyIndicator, ws_actions.AGandUIManager):
+class Darning(Gtk.Window, dialogue.BusyIndicator, actions.CAGandUIManager, enotify.Listener, ws_actions.WSListenerMixin):
     count = 0
     UI_DESCR = '''
     <ui>
@@ -71,27 +76,29 @@ class Darning(Gtk.Window, dialogue.BusyIndicator, ws_actions.AGandUIManager):
     def __init__(self, dir_specified=False):
         assert Darning.count == 0
         Darning.count += 1
-        Gtk.Window.__init__(self, Gtk.WINDOW_TOPLEVEL)
+        Gtk.Window.__init__(self, Gtk.WindowType.TOPLEVEL)
         self.set_icon_from_file(icons.APP_ICON_FILE)
         self.connect("destroy", Gtk.main_quit)
         self._update_title()
         dialogue.init(self)
         dialogue.BusyIndicator.__init__(self)
-        ws_actions.AGandUIManager.__init__(self)
+        actions.CAGandUIManager.__init__(self)
+        enotify.Listener.__init__(self)
+        ws_actions.WSListenerMixin.__init__(self)
         self.ui_manager.add_ui_from_string(Darning.UI_DESCR)
         vbox = Gtk.VBox()
         self.add(vbox)
         mbar_box = Gtk.HBox()
         menubar = self.ui_manager.get_widget("/gdarn_left_menubar")
         menubar.insert(config.PlaygroundsMenu(), 1)
-        mbar_box.pack_start(menubar, expand=True)
-        mbar_box.pack_end(self.ui_manager.get_widget("/gdarn_right_menubar"), expand=False)
-        vbox.pack_start(mbar_box, expand=False)
+        mbar_box.pack_start(menubar, expand=True, fill=True, padding=0)
+        mbar_box.pack_end(self.ui_manager.get_widget("/gdarn_right_menubar"), expand=False, fill=True, padding=0)
+        vbox.pack_start(mbar_box, expand=False, fill=True, padding=0)
         toolbar = self.ui_manager.get_widget("/gdarn_patches_toolbar")
-        toolbar.set_style(Gtk.TOOLBAR_BOTH)
-        vbox.pack_start(toolbar, expand=False)
+        toolbar.set_style(Gtk.ToolbarStyle.BOTH)
+        vbox.pack_start(toolbar, expand=False, fill=True, padding=0)
         vpane = Gtk.VPaned()
-        vbox.pack_start(vpane, expand=True)
+        vbox.pack_start(vpane, expand=True, fill=True, padding=0)
         hpane = Gtk.HPaned()
         vpane.add1(hpane)
         stree = file_tree_managed.WSFilesWidget()

@@ -471,7 +471,7 @@ class _DiffDialog(dialogue.ListenerDialog):
         dialogue.ListenerDialog.__init__(self, None, parent if parent else dialogue.main_window, flags, ())
         dtw = self.DIFFS_WIDGET(**kwargs)
         self.set_title(dtw.window_title)
-        self.vbox.pack_start(dtw, True, True, 0)
+        self.vbox.pack_start(dtw, expand=True, fill=True, padding=0)
         tws_display = dtw.tws_display
         self.action_area.pack_end(tws_display, expand=False, fill=False, padding=0)
         for button in dtw.diff_buttons.list:

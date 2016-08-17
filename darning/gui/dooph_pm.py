@@ -17,6 +17,8 @@ import os
 import collections
 
 from gi.repository import Gtk
+from gi.repository import Gdk
+from gi.repository import GObject
 
 from ..config_data import APP_NAME
 
@@ -48,7 +50,8 @@ def get_pushable_condns():
     return actions.MaskedCondns(AC_PUSH_POSSIBLE if ifce.PM.is_pushable else 0, AC_PUSH_POSSIBLE)
 
 def _update_class_indep_pushable_cb(**kwargs):
-    actions.CLASS_INDEP_AGS.update_condns(get_pushable_condns())
+    condns = get_pushable_condns()
+    actions.CLASS_INDEP_AGS.update_condns(condns)
     actions.CLASS_INDEP_BGS.update_condns(condns)
 
 enotify.add_notification_cb(ifce.E_CHANGE_WD|pm_ifce.E_PATCH_LIST_CHANGES, _update_class_indep_pushable_cb)
@@ -675,7 +678,7 @@ actions.CLASS_INDEP_AGS[AC_ALL_APPLIED_REFRESHED | ws_actions.AC_IN_SCM_PGND | w
     ]
 )
 
-class NewSeriesDescrDialog(dialogue.Dialog):
+class NewSeriesDescrDialog(dialogue.BusyDialog):
     class Widget(text_edit.DbMessageWidget):
         UI_DESCR = \
         """
@@ -704,7 +707,7 @@ class NewSeriesDescrDialog(dialogue.Dialog):
     def __init__(self, parent=None):
         flags = Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT
         title = _("Patch Series Description: %s -- gdarn") % utils.path_rel_home(os.getcwd())
-        dialogue.Dialog.__init__(self, title, parent, flags,
+        dialogue.BusyDialog.__init__(self, title, parent, flags,
                                  (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
                                   Gtk.STOCK_OK, Gtk.ResponseType.OK))
         if not parent:
@@ -712,14 +715,14 @@ class NewSeriesDescrDialog(dialogue.Dialog):
         self.edit_descr_widget = self.Widget()
         hbox = Gtk.HBox()
         menubar = self.edit_descr_widget.ui_manager.get_widget("/menubar")
-        hbox.pack_start(menubar, fill=True, expand=False)
+        hbox.pack_start(menubar, expand=False, fill=True, padding=0)
         toolbar = self.edit_descr_widget.ui_manager.get_widget("/toolbar")
-        toolbar.set_style(Gtk.TOOLBAR_BOTH)
-        toolbar.set_orientation(Gtk.ORIENTATION_HORIZONTAL)
-        hbox.pack_end(toolbar, fill=False, expand=False)
+        toolbar.set_style(Gtk.ToolbarStyle.BOTH)
+        toolbar.set_orientation(Gtk.Orientation.HORIZONTAL)
+        hbox.pack_end(toolbar, expand=False, fill=False, padding=0)
         hbox.show_all()
-        self.vbox.pack_start(hbox, expand=False)
-        self.vbox.pack_start(self.edit_descr_widget)
+        self.vbox.pack_start(hbox, expand=False, fill=True, padding=0)
+        self.vbox.pack_start(self.edit_descr_widget, expand=True, fill=True, padding=0)
         self.set_focus_child(self.edit_descr_widget)
         self.edit_descr_widget.show_all()
     def get_descr(self):
@@ -730,12 +733,12 @@ class NewPatchDialog(NewSeriesDescrDialog):
         NewSeriesDescrDialog.__init__(self, parent=parent)
         self.set_title(_("New Patch: {0} -- gdarn").format(utils.path_rel_home(os.getcwd())))
         self.hbox = Gtk.HBox()
-        self.hbox.pack_start(Gtk.Label(_("New Patch Name:")), fill=False, expand=False)
+        self.hbox.pack_start(Gtk.Label(_("New Patch Name:")), expand=False, fill=False, padding=0)
         self.new_name_entry = Gtk.Entry()
         self.new_name_entry.set_width_chars(32)
-        self.hbox.pack_start(self.new_name_entry)
+        self.hbox.pack_start(self.new_name_entry, expand=True, fill=True, padding=0)
         self.hbox.show_all()
-        self.vbox.pack_start(self.hbox)
+        self.vbox.pack_start(self.hbox, expand=True, fill=True, padding=0)
         self.vbox.reorder_child(self.hbox, 0)
     def get_new_patch_name(self):
         return self.new_name_entry.get_text()
@@ -745,19 +748,19 @@ class DuplicatePatchDialog(NewSeriesDescrDialog):
         NewSeriesDescrDialog.__init__(self, parent=parent)
         self.set_title(_("Duplicate Patch: {0}: {1} -- gdarn").format(patch_name, utils.path_rel_home(os.getcwd())))
         self.hbox = Gtk.HBox()
-        self.hbox.pack_start(Gtk.Label(_("Duplicate Patch Name:")), fill=False, expand=False)
+        self.hbox.pack_start(Gtk.Label(_("Duplicate Patch Name:")), expand=False, fill=False, padding=0)
         self.new_name_entry = Gtk.Entry()
         self.new_name_entry.set_width_chars(32)
         self.new_name_entry.set_text(patch_name + ".duplicate")
-        self.hbox.pack_start(self.new_name_entry)
+        self.hbox.pack_start(self.new_name_entry, expand=True, fill=True, padding=0)
         self.edit_descr_widget.set_contents(olddescr)
         self.hbox.show_all()
-        self.vbox.pack_start(self.hbox)
+        self.vbox.pack_start(self.hbox, expand=True, fill=True, padding=0)
         self.vbox.reorder_child(self.hbox, 0)
     def get_new_patch_name(self):
         return self.new_name_entry.get_text()
 
-class SeriesDescrEditDialog(dialogue.Dialog):
+class SeriesDescrEditDialog(dialogue.BusyDialog):
     class Widget(text_edit.DbMessageWidget):
         UI_DESCR = \
         """
@@ -790,26 +793,26 @@ class SeriesDescrEditDialog(dialogue.Dialog):
         def set_text_in_db(self, text):
             return ifce.PM.do_set_series_description(text)
     def __init__(self, parent=None):
-        flags = ~Gtk.DIALOG_MODAL | Gtk.DIALOG_DESTROY_WITH_PARENT
+        flags = ~Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT
         title = _("Series Description: {0} -- gdarn").format(utils.path_rel_home(os.getcwd()))
-        dialogue.Dialog.__init__(self, title, parent, flags, None)
+        dialogue.BusyDialog.__init__(self, title, parent, flags, None)
         if not parent:
             self.set_icon_from_file(icons.APP_ICON_FILE)
         self.edit_descr_widget = self.Widget()
         hbox = Gtk.HBox()
         menubar = self.edit_descr_widget.ui_manager.get_widget("/menubar")
-        hbox.pack_start(menubar, fill=True, expand=False)
+        hbox.pack_start(menubar, expand=False, fill=True, padding=0)
         toolbar = self.edit_descr_widget.ui_manager.get_widget("/toolbar")
-        toolbar.set_style(Gtk.TOOLBAR_BOTH)
-        toolbar.set_orientation(Gtk.ORIENTATION_HORIZONTAL)
-        hbox.pack_end(toolbar, fill=False, expand=False)
+        toolbar.set_style(Gtk.ToolbarStyle.BOTH)
+        toolbar.set_orientation(Gtk.Orientation.HORIZONTAL)
+        hbox.pack_end(toolbar, expand=False, fill=False, padding=0)
         hbox.show_all()
-        self.vbox.pack_start(hbox, expand=False)
-        self.vbox.pack_start(self.edit_descr_widget)
+        self.vbox.pack_start(hbox, expand=False, fill=True, padding=0)
+        self.vbox.pack_start(self.edit_descr_widget, expand=True, fill=True, padding=0)
         self.set_focus_child(self.edit_descr_widget)
-        self.action_area.pack_start(self.edit_descr_widget.reload_button)
-        self.action_area.pack_start(self.edit_descr_widget.save_button)
-        self.add_button(Gtk.STOCK_CLOSE, Gtk.RESPONSE_CLOSE)
+        self.action_area.pack_start(self.edit_descr_widget.reload_button, expand=True, fill=True, padding=0)
+        self.action_area.pack_start(self.edit_descr_widget.save_button, expand=True, fill=True, padding=0)
+        self.add_button(Gtk.STOCK_CLOSE, Gtk.ResponseType.CLOSE)
         self.connect("response", self._handle_response_cb)
         self.set_focus_child(self.edit_descr_widget.view)
         self.edit_descr_widget.show_all()
@@ -822,7 +825,7 @@ class SeriesDescrEditDialog(dialogue.Dialog):
             else:
                 self.destroy()
 
-class PatchDescrEditDialog(dialogue.Dialog):
+class PatchDescrEditDialog(dialogue.BusyDialog):
     class Widget(text_edit.DbMessageWidget):
         UI_DESCR = """
             <ui>
@@ -855,31 +858,31 @@ class PatchDescrEditDialog(dialogue.Dialog):
         def set_text_in_db(self, text):
             return ifce.PM.do_set_patch_description(self._patch, text)
     def __init__(self, patch, parent=None):
-        flags = ~Gtk.DIALOG_MODAL | Gtk.DIALOG_DESTROY_WITH_PARENT
+        flags = ~Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT
         title = _("Patch: {0} : {1} -- gdarn").format(patch, utils.path_rel_home(os.getcwd()))
-        dialogue.Dialog.__init__(self, title, parent, flags, None)
+        dialogue.BusyDialog.__init__(self, title, parent, flags, None)
         if not parent:
             self.set_icon_from_file(icons.APP_ICON_FILE)
         self.edit_descr_widget = self.Widget(patch)
         hbox = Gtk.HBox()
         menubar = self.edit_descr_widget.ui_manager.get_widget("/menubar")
-        hbox.pack_start(menubar, fill=True, expand=False)
+        hbox.pack_start(menubar, expand=False, fill=True, padding=0)
         toolbar = self.edit_descr_widget.ui_manager.get_widget("/toolbar")
-        toolbar.set_style(Gtk.TOOLBAR_BOTH)
-        toolbar.set_orientation(Gtk.ORIENTATION_HORIZONTAL)
-        hbox.pack_end(toolbar, fill=False, expand=False)
+        toolbar.set_style(Gtk.ToolbarStyle.BOTH)
+        toolbar.set_orientation(Gtk.Orientation.HORIZONTAL)
+        hbox.pack_end(toolbar, expand=False, fill=False, padding=0)
         hbox.show_all()
-        self.vbox.pack_start(hbox, expand=False)
-        self.vbox.pack_start(self.edit_descr_widget)
+        self.vbox.pack_start(hbox, expand=False, fill=True, padding=0)
+        self.vbox.pack_start(self.edit_descr_widget, expand=True, fill=True, padding=0)
         self.set_focus_child(self.edit_descr_widget)
-        self.action_area.pack_start(self.edit_descr_widget.reload_button)
-        self.action_area.pack_start(self.edit_descr_widget.save_button)
-        self.add_button(Gtk.STOCK_CLOSE, Gtk.RESPONSE_CLOSE)
+        self.action_area.pack_start(self.edit_descr_widget.reload_button, expand=True, fill=True, padding=0)
+        self.action_area.pack_start(self.edit_descr_widget.save_button, expand=True, fill=True, padding=0)
+        self.add_button(Gtk.STOCK_CLOSE, Gtk.ResponseType.CLOSE)
         self.connect("response", self._handle_response_cb)
         self.set_focus_child(self.edit_descr_widget.view)
         self.edit_descr_widget.show_all()
     def _handle_response_cb(self, dialog, response_id):
-        if response_id == Gtk.RESPONSE_CLOSE:
+        if response_id == Gtk.ResponseType.CLOSE:
             if self.edit_descr_widget.view.get_buffer().get_modified():
                 qtn = "\n".join([_("Unsaved changes to summary will be lost."), _("Close anyway?")])
                 if dialogue.ask_yes_no(qtn):
@@ -887,42 +890,42 @@ class PatchDescrEditDialog(dialogue.Dialog):
             else:
                 self.destroy()
 
-class ImportPatchDialog(dialogue.Dialog):
+class ImportPatchDialog(dialogue.BusyDialog):
     def __init__(self, epatch, parent=None):
-        flags = ~Gtk.DIALOG_MODAL | Gtk.DIALOG_DESTROY_WITH_PARENT
+        flags = ~Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT
         title = _("Import Patch: {0} : {1} -- gdarn").format(epatch.source_name, utils.path_rel_home(os.getcwd()))
-        dialogue.Dialog.__init__(self, title, parent, flags, None)
+        dialogue.BusyDialog.__init__(self, title, parent, flags, None)
         if not parent:
             self.set_icon_from_file(icons.APP_ICON_FILE)
         self.epatch = epatch
         #
         patch_file_name = os.path.basename(epatch.source_name)
         self.namebox = Gtk.HBox()
-        self.namebox.pack_start(Gtk.Label(_("As Patch:")), expand=False)
+        self.namebox.pack_start(Gtk.Label(_("As Patch:")), expand=False, fill=True, padding=0)
         self.as_name = gutils.MutableComboBoxEntry()
         self.as_name.child.set_width_chars(32)
         self.as_name.set_text(patch_file_name)
-        self.namebox.pack_start(self.as_name, expand=True, fill=True)
-        self.vbox.pack_start(self.namebox, expand=False, fill=False)
+        self.namebox.pack_start(self.as_name, expand=True, fill=True, padding=0)
+        self.vbox.pack_start(self.namebox, expand=False, fill=False, padding=0)
         #
         hbox = Gtk.HBox()
-        hbox.pack_start(Gtk.Label(_("Files: Strip Level:")), expand=False)
+        hbox.pack_start(Gtk.Label(_("Files: Strip Level:")), expand=False, fill=True, padding=0)
         est_strip_level = self.epatch.estimate_strip_level()
         self.strip_level_buttons = [Gtk.RadioButton(group=None, label="0")]
         self.strip_level_buttons.append(Gtk.RadioButton(group=self.strip_level_buttons[0], label="1"))
         for strip_level_button in self.strip_level_buttons:
             strip_level_button.connect("toggled", self._strip_level_toggle_cb)
-            hbox.pack_start(strip_level_button, expand=False, fill=False)
+            hbox.pack_start(strip_level_button, expand=False, fill=False, padding=0)
             strip_level_button.set_active(False)
-        self.vbox.pack_start(hbox, expand=False, fill=False)
+        self.vbox.pack_start(hbox, expand=False, fill=False, padding=0)
         #
         self.file_list_widget = textview.Widget()
         self.strip_level_buttons[1 if est_strip_level is None else est_strip_level].set_active(True)
         self.update_file_list()
-        self.vbox.pack_start(self.file_list_widget, expand=True, fill=True)
+        self.vbox.pack_start(self.file_list_widget, expand=True, fill=True, padding=0)
         self.show_all()
-        self.add_button(Gtk.STOCK_CANCEL, Gtk.RESPONSE_CANCEL)
-        self.add_button(Gtk.STOCK_OK, Gtk.RESPONSE_OK)
+        self.add_button(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
+        self.add_button(Gtk.STOCK_OK, Gtk.ResponseType.OK)
         self.set_focus_child(self.as_name)
     def get_strip_level(self):
         for strip_level in [0, 1]:
@@ -949,7 +952,7 @@ class FoldPatchDialog(ImportPatchDialog):
         self.set_title( _("Fold Patch: {0} : {1} -- gdarn").format(epatch.source_name, utils.path_rel_home(os.getcwd())))
         self.namebox.hide()
 
-class RestorePatchDialog(dialogue.Dialog):
+class RestorePatchDialog(dialogue.BusyDialog):
     _KEYVAL_ESCAPE = Gdk.keyval_from_name("Escape")
     class Table(table.Table):
         class View(table.Table.View):
@@ -973,9 +976,9 @@ class RestorePatchDialog(dialogue.Dialog):
                                 cell_renderer_spec=tlview.CellRendererSpec(
                                     cell_renderer=Gtk.CellRendererText,
                                     expand=False,
-                                    start=True
+                                    start=True,
+                                    properties={"editable" : False},
                                 ),
-                                properties={"editable" : False},
                                 cell_data_function_spec=None,
                                 attributes = {"text" : Model.col_index("PatchName")}
                             ),
@@ -1008,29 +1011,29 @@ class RestorePatchDialog(dialogue.Dialog):
         def _fetch_contents():
             return [[name] for name in ifce.PM.get_kept_patch_names()]
     def __init__(self, parent):
-        dialogue.Dialog.__init__(self, title=_("gdarn: Restore Patch"), parent=parent,
-                                 flags=Gtk.DIALOG_MODAL|Gtk.DIALOG_DESTROY_WITH_PARENT,
-                                 buttons=(Gtk.STOCK_CANCEL, Gtk.RESPONSE_CANCEL,
-                                          Gtk.STOCK_OK, Gtk.RESPONSE_OK)
+        dialogue.BusyDialog.__init__(self, title=_("gdarn: Restore Patch"), parent=parent,
+                                 flags=Gtk.DialogFlags.MODAL|Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                                 buttons=(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
+                                          Gtk.STOCK_OK, Gtk.ResponseType.OK)
                                 )
         self.kept_patch_table = self.Table()
-        self.vbox.pack_start(self.kept_patch_table)
+        self.vbox.pack_start(self.kept_patch_table, expand=True, fill=True, padding=0)
         #
         hbox = Gtk.HBox()
-        hbox.pack_start(Gtk.Label(_("Restore Patch:")), expand=False)
+        hbox.pack_start(Gtk.Label(_("Restore Patch:")), expand=False, fill=True, padding=0)
         self.rpatch_name = Gtk.Entry()
         self.rpatch_name.set_editable(False)
         self.rpatch_name.set_width_chars(32)
-        hbox.pack_start(self.rpatch_name, expand=True, fill=True)
-        self.vbox.pack_start(hbox, expand=False, fill=False)
+        hbox.pack_start(self.rpatch_name, expand=True, fill=True, padding=0)
+        self.vbox.pack_start(hbox, expand=False, fill=False, padding=0)
         #
         hbox = Gtk.HBox()
-        hbox.pack_start(Gtk.Label(_("As Patch:")), expand=False)
+        hbox.pack_start(Gtk.Label(_("As Patch:")), expand=False, fill=True, padding=0)
         self.as_name = gutils.MutableComboBoxEntry()
         self.as_name.child.set_width_chars(32)
         self.as_name.child.connect("activate", self._as_name_cb)
-        hbox.pack_start(self.as_name, expand=True, fill=True)
-        self.vbox.pack_start(hbox, expand=False, fill=False)
+        hbox.pack_start(self.as_name, expand=True, fill=True, padding=0)
+        self.vbox.pack_start(hbox, expand=False, fill=False, padding=0)
         #
         self.show_all()
         self.kept_patch_table.seln.unselect_all()
@@ -1040,7 +1043,7 @@ class RestorePatchDialog(dialogue.Dialog):
         if rpatch:
             self.rpatch_name.set_text(rpatch[0])
     def _as_name_cb(self, entry=None):
-        self.response(Gtk.RESPONSE_OK)
+        self.response(Gtk.ResponseType.OK)
     def get_restore_patch_name(self):
         return self.rpatch_name.get_text()
     def get_as_name(self):

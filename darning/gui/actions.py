@@ -206,53 +206,6 @@ class ClientAndButtonsWidget(Gtk.VBox):
         self.pack_start(self.client.create_button_box(self.BUTTONS), expand=False, fill=True, padding=0)
         self.show_all()
 
-#class ActionButton(Gtk.Button):
-    #def __init__(self, action, use_underline=True):
-        #label = action.get_property("label")
-        #stock_id = action.get_property("stock-id")
-        #if label is not None:
-            ## Empty (NB not None) label means use image only
-            #Gtk.Button.__init__(self, use_underline=use_underline)
-            #if stock_id is not None:
-                #image = Gtk.Image()
-                #image.set_from_stock(stock_id, Gtk.ICON_SIZE_BUTTON)
-                #self.set_image(image)
-            #if label:
-                #self.set_label(label)
-        #else:
-            #Gtk.Button.__init__(self, stock=stock_id, label=label, use_underline=use_underline)
-        #self.set_tooltip_text(action.get_property("tooltip"))
-        #action.connect_proxy(self)
-
-#class ActionButtonList:
-    #def __init__(self, action_group_list, action_name_list=None, use_underline=True):
-        #self.list = []
-        #self.dict = {}
-        #if action_name_list:
-            #for a_name in action_name_list:
-                #for a_group in action_group_list:
-                    #action = a_group.get_action(a_name)
-                    #if action:
-                        #button = ActionButton(action, use_underline)
-                        #self.list.append(button)
-                        #self.dict[a_name] = button
-                        #break
-        #else:
-            #for a_group in action_group_list:
-                #for action in a_group.list_actions():
-                    #button = ActionButton(action, use_underline)
-                    #self.list.append(button)
-                    #self.dict[action.get_name()] = button
-
-#class ActionHButtonBox(Gtk.HBox):
-    #def __init__(self, action_group_list, action_name_list=None,
-                 #use_underline=True, expand=True, fill=True, padding=0):
-        #Gtk.HBox.__init__(self)
-        #self.button_list = ActionButtonList(action_group_list, action_name_list, use_underline)
-        #for button in self.button_list.list:
-            #self.pack_start(button, expand, fill, padding)
-        #return self
-
 class ConditionalActionGroups:
     class UnknownAction(Exception): pass
     def __init__(self, name, ui_mgrs=None, selection=None):

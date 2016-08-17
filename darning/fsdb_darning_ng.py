@@ -49,7 +49,7 @@ class TopPatchFileDb(fsdb.GenericTopPatchFileDb):
     @staticmethod
     def _get_patch_data_text(h):
         patch_status_text = patch_db_ng.get_patch_file_table()
-        h.update(str(patch_status_text.encode()))
+        h.update(str(patch_status_text).encode())
         return patch_status_text
     @staticmethod
     def _iterate_file_data(pdt):
@@ -59,7 +59,7 @@ class TopPatchFileDb(fsdb.GenericTopPatchFileDb):
 class CombinedPatchFileDb(TopPatchFileDb):
     def _get_patch_data_text(self, h):
         patch_status_text = patch_db_ng.get_combined_patch_file_table()
-        h.update(str(patch_status_text.encode()))
+        h.update(str(patch_status_text).encode())
         return patch_status_text
 
 class PatchFileDb(fsdb.GenericPatchFileDb):
@@ -75,7 +75,7 @@ class PatchFileDb(fsdb.GenericPatchFileDb):
         return patch_db_ng.is_patch_applied(patch_name)
     def _get_patch_data_text(self, h):
         patch_status_text = patch_db_ng.get_patch_file_table(self.patch_name)
-        h.update(str(patch_status_text.encode()))
+        h.update(str(patch_status_text).encode())
         return patch_status_text
     def _iterate_file_data(self, pdt):
         for item in pdt:

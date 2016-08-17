@@ -107,8 +107,8 @@ class PatchFileTreeView(_GenericPatchFileTreeView):
 class PatchFilesDialog(dialogue.ListenerDialog, enotify.Listener):
     def __init__(self, patch_name):
         dialogue.ListenerDialog.__init__(self, None, None,
-                                       Gtk.DIALOG_DESTROY_WITH_PARENT,
-                                       (Gtk.STOCK_CLOSE, Gtk.RESPONSE_CLOSE))
+                                       Gtk.DialogFlags.DESTROY_WITH_PARENT,
+                                       (Gtk.STOCK_CLOSE, Gtk.ResponseType.CLOSE))
         enotify.Listener.__init__(self)
         self.set_title(_('patch: %s files: %s') % (patch_name, utils.cwd_rel_home()))
         self.add_notification_cb(ifce.E_CHANGE_WD, self._chwd_cb)
@@ -117,7 +117,7 @@ class PatchFilesDialog(dialogue.ListenerDialog, enotify.Listener):
         self.file_tree.get_selection().set_mode(Gtk.SelectionMode.MULTIPLE)
         self.file_tree.set_headers_visible(False)
         self.file_tree.set_size_request(240, 320)
-        self.vbox.pack_start(gutils.wrap_in_scrolled_window(self.file_tree))
+        self.vbox.pack_start(gutils.wrap_in_scrolled_window(self.file_tree), expand=True, fill=True, padding=0)
         self.connect("response", self._close_cb)
         self.show_all()
     def _close_cb(self, dialog, response_id):
