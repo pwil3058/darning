@@ -30,6 +30,7 @@ from contextlib import contextmanager
 
 from .cmd_result import CmdResult
 
+from . import ntuples
 from . import rctx as RCTX
 from . import utils
 from . import mixins
@@ -2430,7 +2431,7 @@ def get_patch_file_table(patch_name=None):
 def get_patch_guards(patch_name=None):
     with open_db(mutable=False) as DB:
         patch = DB.top_patch if patch_name is None else DB.get_named_patch(patch_name)
-        return (patch.pos_guards, patch.neg_guards) if patch else None
+        return ntuples.Guards(patch.pos_guards, patch.neg_guards) if patch else None
 
 def get_patch_table_data():
     with open_db(mutable=False) as DB:
