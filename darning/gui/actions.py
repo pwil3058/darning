@@ -281,6 +281,21 @@ class ConditionalActionGroups:
             member_names += ']'
             string += '\tGroup({0:x},{1}): {2}\n'.format(condns, name, member_names)
         return string
+    def create_action_button(self, action_name, use_underline=True):
+        from . import gutils
+        action = self.get_action(action_name)
+        return gutils.creat_button_from_action(action, use_underline=use_underline)
+    def create_action_button_box(self, action_name_list, use_underline=True,
+                                 horizontal=True,
+                                 expand=True, fill=True, padding=0):
+        if horizontal:
+            box = Gtk.HBox()
+        else:
+            box = Gtk.VBox()
+        for action_name in action_name_list:
+            button = self.create_action_button(action_name, use_underline)
+            box.pack_start(button, expand, fill, padding)
+        return box
 
 CLASS_INDEP_AGS = ConditionalActionGroups('class_indep')
 
