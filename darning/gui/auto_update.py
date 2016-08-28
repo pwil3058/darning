@@ -22,10 +22,11 @@ from .. import enotify
 from . import gutils
 from . import actions
 
-def initialize_event_flags(args):
+initialize_event_flags = lambda args: 0
+
+def set_initialize_event_flags(func):
     # NB: need extra level of function to avoid import loop/gridlock
-    from . import ifce
-    return ifce.check_interfaces(args)
+    initialize_event_flags = func
 
 _REGISTERED_CBS = []
 
@@ -101,7 +102,10 @@ class AutoUpdater:
     """
     def __init__(self):
         self._auto_updater_cbs = []
-        self.connect("destroy", self._auto_updater_destroy_cb)
+        try:
+            self.connect("destroy", self.auto_updater_destroy_cb)
+        except TypeError:
+            pass
 
     def register_auto_update_cb(self, callback):
         """
@@ -116,7 +120,7 @@ class AutoUpdater:
         """
         self._auto_updater_cbs.append(register_cb(callback))
 
-    def _auto_updater_destroy_cb(self, widget):
+    def auto_updater_destroy_cb(self, *args):
         """Remove all of my callbacks from the register database"""
         for cb in self._auto_updater_cbs:
             deregister_cb(cb)

@@ -36,7 +36,7 @@ class _GenericPatchFileTreeView(file_tree.FileTreeView):
     @classmethod
     def _generate_row_tuple(cls, data, is_dir):
         deco = ifce.PM.get_status_deco(data.status)
-        row = cls.Model.Row(
+        row = cls.MODEL.ROW(
             name=data.name,
             is_dir=is_dir,
             icon=ifce.PM.get_status_icon(data.status, is_dir),

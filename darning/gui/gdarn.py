@@ -90,7 +90,7 @@ class Darning(Gtk.Window, dialogue.BusyIndicator, actions.CAGandUIManager, enoti
         self.add(vbox)
         mbar_box = Gtk.HBox()
         menubar = self.ui_manager.get_widget("/gdarn_left_menubar")
-        menubar.insert(config.PlaygroundsMenu(), 1)
+        menubar.insert(config.generate_local_playground_menu(), 1)
         mbar_box.pack_start(menubar, expand=True, fill=True, padding=0)
         mbar_box.pack_end(self.ui_manager.get_widget("/gdarn_right_menubar"), expand=False, fill=True, padding=0)
         vbox.pack_start(mbar_box, expand=False, fill=True, padding=0)

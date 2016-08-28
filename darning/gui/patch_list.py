@@ -87,14 +87,14 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
     REPOPULATE_EVENTS = ifce.E_CHANGE_WD|ifce.E_NEW_PM
     UPDATE_EVENTS = pm_ifce.E_PATCH_LIST_CHANGES|pm_ifce.E_PATCH_REFRESH
     PopUp = "/patches_popup"
-    class Model(table.MapManagedTableView.Model):
-        Row = collections.namedtuple("Row",    ["name", "icon", "markup"])
-        types = Row(name=GObject.TYPE_STRING, icon=GObject.TYPE_STRING, markup=GObject.TYPE_STRING,)
+    class MODEL(table.MapManagedTableView.MODEL):
+        ROW = collections.namedtuple("ROW",    ["name", "icon", "markup"])
+        TYPES = ROW(name=GObject.TYPE_STRING, icon=GObject.TYPE_STRING, markup=GObject.TYPE_STRING,)
         def get_patch_name(self, plist_iter):
             return self.get_value_named(plist_iter, "name")
         def get_patch_is_applied(self, plist_iter):
             return self.get_value_named(plist_iter, "icon") is not None
-    specification = tlview.ViewSpec(
+    SPECIFICATION = tlview.ViewSpec(
         properties={
             "enable-grid-lines" : False,
             "reorderable" : False,
@@ -115,7 +115,7 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
                             properties={},
                         ),
                         cell_data_function_spec=None,
-                        attributes = {"stock_id" : Model.col_index("icon")}
+                        attributes = {"stock_id" : MODEL.col_index("icon")}
                     ),
                     tlview.CellSpec(
                         cell_renderer_spec=tlview.CellRendererSpec(
@@ -125,7 +125,7 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
                             properties={"editable" : False},
                         ),
                         cell_data_function_spec=None,
-                        attributes = {"markup" : Model.col_index("markup")}
+                        attributes = {"markup" : MODEL.col_index("markup")}
                     ),
                 ],
             ),
@@ -291,7 +291,7 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
         self.action_groups.update_condns(condns)
 
 class List(table.TableWidget):
-    View = ListView
+    VIEW = ListView
     def __init__(self, busy_indicator=None):
         table.TableWidget.__init__(self, scroll_bar=True, busy_indicator=busy_indicator, size_req=None)
         self.header.lhs.pack_start(self.view.ui_manager.get_widget("/patch_list_menubar"), expand=True, fill=True, padding=0)

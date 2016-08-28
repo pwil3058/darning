@@ -114,8 +114,7 @@ class ListenerDialog(BusyDialog, enotify.Listener):
         BusyDialog.__init__(self, title=title, parent=parent, flags=flags, buttons=buttons)
         enotify.Listener.__init__(self)
         self.set_type_hint(Gdk.WindowTypeHint.NORMAL)
-        from . import ifce
-        self.add_notification_cb(ifce.E_CHANGE_WD, self._self_destruct_cb)
+        self.add_notification_cb(enotify.E_CHANGE_WD, self._self_destruct_cb)
     def _self_destruct_cb(self, **kwargs):
         self.destroy()
 
@@ -250,7 +249,7 @@ def alert_user(msg, expln=None, parent=None):
     inform_user(msg, expln, parent=parent, problem_type=Gtk.MessageType.ERROR)
 
 def confirm_list_action(alist, question, parent=None):
-    return ask_ok_cancel('\n'.join(alist + ['\n', question]), parent)
+    return ask_ok_cancel('\n'.join(alist + ['\n', question]), parent=parent)
 
 def report_any_problems(result, parent=None):
     if result.is_ok:
@@ -262,7 +261,7 @@ def report_any_problems(result, parent=None):
     inform_user("\n".join(result[1:]), parent=parent, problem_type=problem_type)
 
 def report_failure(failure, parent=None):
-    inform_user(failure.result, parent=parent, problem_type=Gtk.MessageType.ERROR)
+    inform_user(failure.result, parent, Gtk.MessageType.ERROR)
 
 def report_exception_as_error(edata, parent=None):
     alert_user(str(edata), parent=parent)
@@ -358,16 +357,18 @@ class Response:
     MERGE = 10
     OVERWRITE = 11
 
-def _form_question(result, clarification):
-    if clarification:
-        return '\n'.join(list(result[1:]) + [clarification])
+def _form_question(result):
+    if not result[2]:
+        return result[1]
+    elif not result[1]:
+        return result[2]
     else:
         return '\n'.join(result[1:])
 
 def ask_discard_or_cancel(result, clarification=None, parent=None):
     buttons = (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, _('_Discard'), Response.DISCARD)
-    question = _form_question(result, clarification)
-    return ask_question(question, parent=parent, buttons=buttons)
+    question = _form_question(result)
+    return ask_question(question, clarification, parent, buttons)
 
 def ask_force_refresh_or_cancel(result, clarification=None, parent=None):
     buttons = (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
@@ -375,8 +376,8 @@ def ask_force_refresh_or_cancel(result, clarification=None, parent=None):
         buttons += (_('_Refresh and Retry'), Response.REFRESH)
     if result.suggests_force:
         buttons += (_('_Force'), Response.FORCE)
-    question = _form_question(result, clarification)
-    return ask_question(question, parent=parent, buttons=buttons)
+    question = _form_question(result)
+    return ask_question(question, clarification, parent, buttons)
 
 def ask_force_refresh_absorb_or_cancel(result, clarification=None, parent=None):
     buttons = (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
@@ -386,18 +387,18 @@ def ask_force_refresh_absorb_or_cancel(result, clarification=None, parent=None):
         buttons += (_('_Absorb Changes'), Response.ABSORB)
     if result.suggests_force:
         buttons += (_('_Force'), Response.FORCE)
-    question = _form_question(result, clarification)
-    return ask_question(question, parent=parent, buttons=buttons)
+    question = _form_question(result)
+    return ask_question(question, clarification, parent, buttons)
 
 def ask_force_or_cancel(result, clarification=None, parent=None):
     buttons = (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, _('_Force'), Response.FORCE)
-    question = _form_question(result, clarification)
-    return ask_question(question, parent=parent, buttons=buttons)
+    question = _form_question(result)
+    return ask_question(question, clarification, parent, buttons)
 
 def ask_force_skip_or_cancel(result, clarification=None, parent=None):
     buttons = (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, _('_Skip'), Response.SKIP, _('_Force'), Response.FORCE)
-    question = _form_question(result, clarification)
-    return ask_question(question, parent=parent, buttons=buttons)
+    question = _form_question(result)
+    return ask_question(question, clarification, parent, buttons)
 
 def ask_merge_discard_or_cancel(result, clarification=None, parent=None):
     buttons = (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
@@ -405,13 +406,13 @@ def ask_merge_discard_or_cancel(result, clarification=None, parent=None):
         buttons += (_('_Merge'), Response.MERGE)
     if result.suggests_discard:
         buttons += (_('_Discard Changes'), Response.DISCARD)
-    question = _form_question(result, clarification)
-    return ask_question(question, parent=parent, buttons=buttons)
+    question = _form_question(result)
+    return ask_question(question, clarification, parent, buttons)
 
 def ask_recover_or_cancel(result, clarification=None, parent=None):
     buttons = (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL, _('_Recover'), Response.RECOVER)
-    question = _form_question(result, clarification)
-    return ask_question(question, parent=parent, buttons=buttons)
+    question = _form_question(result)
+    return ask_question(question, clarification, parent, buttons)
 
 def ask_edit_force_or_cancel(result, clarification=None, parent=None):
     buttons = (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
@@ -419,8 +420,8 @@ def ask_edit_force_or_cancel(result, clarification=None, parent=None):
         buttons += (_('_Edit'), Response.EDIT)
     if result.suggests_force:
         buttons += (_('_Force'), Response.FORCE)
-    question = _form_question(result, clarification)
-    return ask_question(question, parent=parent, buttons=buttons)
+    question = _form_question(result)
+    return ask_question(question, clarification, parent, buttons)
 
 def ask_rename_force_or_cancel(result, clarification=None, parent=None):
     buttons = (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
@@ -428,8 +429,8 @@ def ask_rename_force_or_cancel(result, clarification=None, parent=None):
         buttons += (_('_Rename'), Response.RENAME)
     if result.suggests_force:
         buttons += (_('_Force'), Response.FORCE)
-    question = _form_question(result, clarification)
-    return ask_question(question, parent=parent, buttons=buttons)
+    question = _form_question(result)
+    return ask_question(question, clarification, parent, buttons)
 
 def ask_rename_force_or_skip(result, clarification=None, parent=None):
     buttons = ()
@@ -438,8 +439,8 @@ def ask_rename_force_or_skip(result, clarification=None, parent=None):
     if result.suggests_force:
         buttons += (_('_Force'), Response.FORCE)
     buttons += (_('_Skip'), Response.SKIP, _('Skip _All'), Response.SKIP_ALL)
-    question = _form_question(result, clarification)
-    return ask_question(question, parent=parent, buttons=buttons)
+    question = _form_question(result)
+    return ask_question(question, clarification, parent, buttons)
 
 def ask_rename_overwrite_or_cancel(result, clarification=None, parent=None):
     buttons = (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
@@ -447,8 +448,19 @@ def ask_rename_overwrite_or_cancel(result, clarification=None, parent=None):
         buttons += (_('_Rename'), Response.RENAME)
     if result.suggests_overwrite:
         buttons += (_('_Overwrite'), Response.OVERWRITE)
-    question = _form_question(result, clarification)
-    return ask_question(question, parent=parent, buttons=buttons)
+    question = _form_question(result)
+    return ask_question(question, clarification, parent, buttons)
+
+def ask_rename_overwrite_force_or_cancel(result, clarification=None, parent=None):
+    buttons = (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
+    if result.suggests_rename:
+        buttons += (_('_Rename'), Response.RENAME)
+    if result.suggests_overwrite:
+        buttons += (_('_Overwrite'), Response.OVERWRITE)
+    if result.suggests_force:
+        buttons += (_('_Force'), Response.FORCE)
+    question = _form_question(result)
+    return ask_question(question, clarification, parent, buttons)
 
 def select_file(prompt, suggestion=None, existing=True, absolute=False, parent=None):
     if existing:
@@ -475,12 +487,15 @@ def select_file(prompt, suggestion=None, existing=True, absolute=False, parent=N
     else:
         dialog.set_current_folder(os.getcwd())
     response = dialog.run()
-    if response == Gtk.ResponseType.OK:
-        new_file_name = os.path.relpath(dialog.get_filename())
+    if dialog.run() == Gtk.ResponseType.OK:
+        if absolute:
+            new_file_path = dialog.get_filename()
+        else:
+            new_file_path = os.path.relpath(dialog.get_filename())
     else:
-        new_file_name = None
+        new_file_path = None
     dialog.destroy()
-    return os.path.abspath(new_file_name) if (absolute and new_file_name) else new_file_name
+    return new_file_path
 
 def select_directory(prompt, suggestion=None, existing=True, absolute=False, parent=None):
     if existing:
@@ -503,11 +518,14 @@ def select_directory(prompt, suggestion=None, existing=True, absolute=False, par
         dialog.set_current_folder(os.getcwd())
     response = dialog.run()
     if response == Gtk.ResponseType.OK:
-        new_dir_name = os.path.relpath(dialog.get_filename())
+        if absolute:
+            new_dir_path = dialog.get_filename()
+        else:
+            new_dir_path = os.path.relpath(dialog.get_filename())
     else:
-        new_dir_name = None
+        new_dir_path = None
     dialog.destroy()
-    return os.path.abspath(new_dir_name) if (absolute and new_dir_name) else new_dir_name
+    return new_dir_path
 
 def ask_uri_name(prompt, suggestion=None, parent=None):
     if suggestion and not os.path.exists(suggestion):
@@ -543,6 +561,7 @@ class _EnterPathWidget(Gtk.HBox):
         Gtk.HBox.__init__(self)
         self._parent = parent
         self._path = ReadTextWidget(prompt=prompt, suggestion=suggestion, width_chars=width_chars)
+        self._path.entry.set_activates_default(True)
         self._existing = existing
         self.b_button = Gtk.Button.new_with_label(_("Browse"))
         self.b_button.connect("clicked", self._browse_cb)
@@ -551,15 +570,15 @@ class _EnterPathWidget(Gtk.HBox):
         self.show_all()
     @property
     def path(self):
-        return self._path.entry.get_text()
+        return os.path.expanduser(self._path.entry.get_text())
     def set_sensitive(self, sensitive):
         self._path.entry.set_editable(sensitive)
         self.b_button.set_sensitive(sensitive)
     def _browse_cb(self, button=None):
         suggestion = self._path.entry.get_text()
-        path = self.SELECT_FUNC(self.SELECT_TITLE, suggestion=suggestion, existing=self._existing, parent=self._parent)
+        path = self.SELECT_FUNC(self.SELECT_TITLE, suggestion=suggestion, existing=self._existing, parent=self._parent, absolute=False)
         if path:
-            self._path.entry.set_text(os.path.abspath(os.path.expanduser(path)))
+            self._path.entry.set_text(path)
     def start_busy_pulse(self):
         self._path.start_busy_pulse()
     def stop_busy_pulse(self):
@@ -572,6 +591,8 @@ class _EnterPathDialog(CancelOKDialog):
         CancelOKDialog.__init__(self, title, parent)
         self.entry = self.WIDGET(prompt, suggestion, existing, parent=self)
         self.get_content_area().add(self.entry)
+        self.set_default_response(Gtk.ResponseType.OK)
+        self.set_position(Gtk.WindowPosition.MOUSE)
         self.show_all()
     @property
     def path(self):

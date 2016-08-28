@@ -71,14 +71,33 @@ class WSListenerMixin:
         self.add_notification_cb(pm_ifce.E_PATCH_STACK_CHANGES|ifce.E_NEW_PM|ifce.E_CHANGE_WD, self.pmic_condns_change_cb)
         self.init_action_states()
     def scm_pgnd_conds_change_cb(self, **kwargs):
-        self.action_groups.update_condns(get_in_scm_pgnd_condns())
+        condns = get_in_scm_pgnd_condns()
+        self.action_groups.update_condns(condns)
+        try:
+            self.button_groups.update_condns(condns)
+        except AttributeError:
+            pass
     def pm_pgnd_condns_change_cb(self, **kwargs):
-        self.action_groups.update_condns(get_in_pm_pgnd_condns())
+        condns = get_in_pm_pgnd_condns()
+        self.action_groups.update_condns(condns)
+        try:
+            self.button_groups.update_condns(condns)
+        except AttributeError:
+            pass
     def pmic_condns_change_cb(self, **kwargs):
-        self.action_groups.update_condns(get_pmic_condns())
+        condns = get_pmic_condns()
+        self.action_groups.update_condns(condns)
+        try:
+            self.button_groups.update_condns(condns)
+        except AttributeError:
+            pass
     def init_action_states(self):
         condn_set = get_in_pm_pgnd_condns() | get_in_scm_pgnd_condns() | get_pmic_condns()
         self.action_groups.update_condns(condn_set)
+        try:
+            self.button_groups.update_condns(condn_set)
+        except AttributeError:
+            pass
 
 actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_actions(
     [

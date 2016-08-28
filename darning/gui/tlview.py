@@ -28,24 +28,24 @@ from gi.repository import Gdk
 
 class _NamedTreeModelMixin:
     # TODO: trim and improve _NamedTreeModelMixin
-    Row = None # this is a namedtuple type
-    types = None # this is an instance of Row defining column types
+    ROW = None # this is a namedtuple type
+    TYPES = None # this is an instance of ROW defining column types
     @classmethod
     def col_index(cls, label):
-        return cls.Row._fields.index(label)
+        return cls.ROW._fields.index(label)
     @classmethod
     def col_indices(cls, labels):
-        return [cls.Row._fields.index(label) for label in labels]
+        return [cls.ROW._fields.index(label) for label in labels]
     @staticmethod
     def get_selected_rows(selection):
         model, paths = selection.get_selected_rows()
-        return [model.Row(*model[p]) for p in paths]
+        return [model.ROW(*model[p]) for p in paths]
     @staticmethod
     def get_selected_row(selection):
         model, model_iter = selection.get_selected()
-        return model.Row(*model[tree_iter])
+        return model.ROW(*model[tree_iter])
     def get_row(self, model_iter):
-        return self.Row(*self[model_iter])
+        return self.ROW(*self[model_iter])
     def get_named(self, model_iter, *labels):
         return self.get(model_iter, *self.col_indices(labels))
     def get_value_named(self, model_iter, label):
@@ -61,7 +61,7 @@ class _NamedTreeModelMixin:
                 col_values.append(label_values[index])
         self.set(model_iter, *col_values)
     def named(self):
-        # Iterate over rows as instances of type Row()
+        # Iterate over rows as instances of type ROW()
         model_iter = self.get_iter_first()
         while model_iter is not None:
             yield self.get_row(model_iter)
@@ -79,7 +79,7 @@ class _NamedTreeModelMixin:
 class NamedListStore(Gtk.ListStore, _NamedTreeModelMixin):
     __g_type_name__ = "NamedListStore"
     def __init__(self):
-        Gtk.ListStore.__init__(*[self] + list(self.types))
+        Gtk.ListStore.__init__(*[self] + list(self.TYPES))
     def append_contents(self, rows):
         for row in rows:
             self.append(row)
@@ -91,7 +91,7 @@ class NamedListStore(Gtk.ListStore, _NamedTreeModelMixin):
 class NamedTreeStore(Gtk.TreeStore, _NamedTreeModelMixin):
     __g_type_name__ = "NamedTreeStore"
     def __init__(self):
-        Gtk.TreeStore.__init__(*[self] + list(self.types))
+        Gtk.TreeStore.__init__(*[self] + list(self.TYPES))
 
 # Utility functions
 def delete_selection(seln):
@@ -286,23 +286,21 @@ def mark_up_cell(model, fld):
 class View(Gtk.TreeView):
     __g_type_name__ = "View"
     # TODO: bust View() up into a number of "mix ins" for more flexibility
-    Model = None
-    specification = None
-    ColumnAndCells = collections.namedtuple('ColumnAndCells', ['column', 'cells'])
+    MODEL = None
+    SPECIFICATION = None
     def __init__(self, model=None, size_req=None):
         if model is None:
-            model = self.Model()
+            model = self.MODEL()
         else:
-            assert isinstance(model, self.Model) or isinstance(model.get_model(), self.Model)
+            assert isinstance(model, self.MODEL) or isinstance(model.get_model(), self.MODEL)
         Gtk.TreeView.__init__(self, model)
         if size_req:
             self.set_size_request(size_req[0], size_req[1])
-        spec = self.specification if isinstance(self.specification, ViewSpec) else self.__class__.specification(model)
+        spec = self.SPECIFICATION if isinstance(self.SPECIFICATION, ViewSpec) else self.SPECIFICATION(model)
         for prop_name, prop_val in spec.properties.items():
             self.set_property(prop_name, prop_val)
         if spec.selection_mode is not None:
             self.get_selection().set_mode(spec.selection_mode)
-        self._columns = collections.OrderedDict()
         for col_d in spec.columns:
             self._view_add_column(col_d)
         self.connect("button_press_event", self._handle_clear_selection_cb)
@@ -341,8 +339,6 @@ class View(Gtk.TreeView):
         return cell
     def _view_add_column(self, col_d):
         col = Gtk.TreeViewColumn(col_d.title)
-        col_cells = View.ColumnAndCells(col, [])
-        self._columns[col_d.title] = col_cells
         self.append_column(col)
         for prop_name, prop_val in col_d.properties.items():
             col.set_property(prop_name, prop_val)
@@ -353,7 +349,6 @@ class View(Gtk.TreeView):
             col.set_clickable(True)
     def _view_add_cell(self, col, cell_d):
         cell = self._create_cell(col, cell_d.cell_renderer_spec)
-        self._columns[col.get_title()].cells.append(cell)
         if cell_d.cell_data_function_spec is not None:
             col.set_cell_data_func(cell, cell_d.cell_data_function_spec.function, cell_d.cell_data_function_spec.user_data)
         for attr_name, attr_index in cell_d.attributes.items():
@@ -369,7 +364,7 @@ class View(Gtk.TreeView):
     def model(self, new_model):
         self.set_model(new_model)
     def set_model(self, model):
-        assert model is None or isinstance(model, self.Model) or isinstance(model.get_model(), self.Model)
+        assert model is None or isinstance(model, self.MODEL) or isinstance(model.get_model(), self.MODEL)
         old_model = self.get_model()
         for sig_cb_id in self._change_cb_ids:
             old_model.disconnect(sig_cb_id)
@@ -397,7 +392,7 @@ class View(Gtk.TreeView):
     def _cell_text_edited_cb(self, cell, path, new_text, index):
         # TODO: need to do type cast on ALL tree editable cells
         if isinstance(cell, Gtk.CellRendererSpin):
-            self.get_model()[path][index] = self.get_model().types[index](new_text)
+            self.get_model()[path][index] = self.get_model().TYPES[index](new_text)
         else:
             self.get_model()[path][index] = new_text
         self._notify_modification()
@@ -406,13 +401,6 @@ class View(Gtk.TreeView):
         # should it be model[path][index] = not model[path][index]
         self.model[path][index] = cell.get_active()
         self._notify_modification()
-    def get_col_with_title(self, title):
-        return self._columns[title].column
-    def get_cell_with_title(self, title, index=0):
-        return self._columns[title].cells[index]
-    def get_cell(self, col_index, cell_index=0):
-        key = list(self._columns.keys())[col_index]
-        return self._columns[key].cells[cell_index]
     def _model_changed_cb(self, *_args, **_kwargs):
         """
         The model has changed and if the column involved is the
@@ -454,19 +442,8 @@ class View(Gtk.TreeView):
 
 class ListView(View):
     __g_type_name__ = "ListView"
-    Model = NamedListStore
+    MODEL = NamedListStore
 
 class TreeView(View):
     __g_type_name__ = "TreeView"
-    Model = NamedTreeStore
-
-def clear_selection_cb(widget, event):
-    if event.type == Gdk.EventType.BUTTON_PRESS:
-        if event.button == 2:
-            widget.get_selection().unselect_all()
-            return True
-    elif event.type == Gdk.EventType.KEY_PRESS:
-        if event.keyval == Gdk.keyval_from_name("Escape"):
-            widget.get_selection().unselect_all()
-            return True
-    return False
+    MODEL = NamedTreeStore

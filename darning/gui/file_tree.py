@@ -49,9 +49,9 @@ class FileTreeView(tlview.TreeView, actions.CAGandUIManager, actions.BGUserMixin
     UPDATE_EVENTS = os_utils.E_FILE_CHANGES
     AU_FILE_CHANGE_EVENT = os_utils.E_FILE_CHANGES # event returned by auto_update() if changes found
     DEFAULT_POPUP = "/files_popup"
-    class Model(tlview.TreeView.Model):
-        Row = collections.namedtuple('Row', ['name', 'is_dir', 'style', 'foreground', 'icon', 'status', 'related_file_data'])
-        types = Row(
+    class MODEL(tlview.TreeView.MODEL):
+        ROW = collections.namedtuple('ROW', ['name', 'is_dir', 'style', 'foreground', 'icon', 'status', 'related_file_data'])
+        TYPES = ROW(
             name=GObject.TYPE_STRING,
             is_dir=GObject.TYPE_BOOLEAN,
             style=GObject.TYPE_INT,
@@ -138,7 +138,7 @@ class FileTreeView(tlview.TreeView, actions.CAGandUIManager, actions.BGUserMixin
       </popup>
     </ui>
     '''
-    specification = tlview.ViewSpec(
+    SPECIFICATION = tlview.ViewSpec(
         properties={"headers-visible" : False},
         selection_mode=Gtk.SelectionMode.MULTIPLE,
         columns=[
@@ -154,7 +154,7 @@ class FileTreeView(tlview.TreeView, actions.CAGandUIManager, actions.BGUserMixin
                             properties={},
                         ),
                         cell_data_function_spec=None,
-                        attributes={"stock-id" : Model.col_index("icon")}
+                        attributes={"stock-id" : MODEL.col_index("icon")}
                     ),
                     tlview.CellSpec(
                         cell_renderer_spec=tlview.CellRendererSpec(
@@ -164,7 +164,7 @@ class FileTreeView(tlview.TreeView, actions.CAGandUIManager, actions.BGUserMixin
                             properties={},
                         ),
                         cell_data_function_spec=None,
-                        attributes={"text" : Model.col_index("status"), "style" : Model.col_index("style"), "foreground" : Model.col_index("foreground")}
+                        attributes={"text" : MODEL.col_index("status"), "style" : MODEL.col_index("style"), "foreground" : MODEL.col_index("foreground")}
                     ),
                     tlview.CellSpec(
                         cell_renderer_spec=tlview.CellRendererSpec(
@@ -174,7 +174,7 @@ class FileTreeView(tlview.TreeView, actions.CAGandUIManager, actions.BGUserMixin
                             properties={},
                         ),
                         cell_data_function_spec=tlview.CellDataFunctionSpec(function=_format_file_name_crcb, user_data=None),
-                        attributes={"style" : Model.col_index("style"), "foreground" : Model.col_index("foreground")}
+                        attributes={"style" : MODEL.col_index("style"), "foreground" : MODEL.col_index("foreground")}
                     )
                 ]
             )
@@ -220,7 +220,7 @@ class FileTreeView(tlview.TreeView, actions.CAGandUIManager, actions.BGUserMixin
     @classmethod
     def _generate_row_tuple(cls, data, isdir):
         deco = cls._get_status_deco(data.status)
-        row = cls.Model.Row(
+        row = cls.MODEL.ROW(
             name=data.name,
             is_dir=isdir,
             icon=cls._FILE_ICON[isdir],

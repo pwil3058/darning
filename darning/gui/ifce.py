@@ -31,7 +31,7 @@ from .console import LOG, RCTX
 
 E_NEW_SCM, E_NEW_PM, E_NEW_SCM_OR_PM = enotify.new_event_flags_and_mask(2)
 
-E_CHANGE_WD = enotify.new_event_flag()
+E_CHANGE_WD = enotify.E_CHANGE_WD
 
 def report_backend_requirements(parent=None):
     dialogue.inform_user(pm_ifce.backend_requirements(), parent=parent)
@@ -52,7 +52,7 @@ def init(log=False):
         root = PM.get_playground_root()
         os.chdir(root)
         from . import config
-        config.PgndPathTable.append_saved_path(root)
+        config.PgndPathView.append_saved_path(root)
         recollect.set(APP_NAME, "last_pgnd", root)
     SCM = scm_ifce.get_ifce()
     curdir = os.getcwd()
@@ -66,6 +66,8 @@ def init(log=False):
         enotify.notify_events(E_CHANGE_WD, new_wd=curdir)
     else:
         enotify.notify_events(E_NEW_SCM_OR_PM)
+    from . import auto_update
+    auto_update.set_initialize_event_flags(check_interfaces)
     return CmdResult.ok()
 
 def choose_backend():
@@ -92,7 +94,7 @@ def init_current_dir(backend):
         events |= E_NEW_SCM
     if PM.in_valid_pgnd:
         from . import config
-        config.PgndPathTable.append_saved_path(CURDIR)
+        config.PgndPathView.append_saved_path(CURDIR)
         recollect.set(APP_NAME, "last_pgnd", CURDIR)
     if events:
         enotify.notify_events(events)
@@ -125,7 +127,7 @@ def chdir(newdir):
         newdir = PM.get_playground_root()
         os.chdir(newdir)
         from . import config
-        config.PgndPathTable.append_saved_path(newdir)
+        config.PgndPathView.append_saved_path(newdir)
         recollect.set(APP_NAME, "last_pgnd", newdir)
     SCM = scm_ifce.get_ifce()
     options.reload_pgnd_options()
@@ -156,7 +158,7 @@ def check_interfaces(args):
     curdir = os.getcwd()
     if not utils.samefile(CURDIR, curdir):
         if PM.in_valid_pgnd:
-            config.PgndPathTable.append_saved_path(newdir)
+            config.PgndPathView.append_saved_path(newdir)
             recollect.set(APP_NAME, "last_pgnd", newdir)
         args["new_wd"] = curdir
         CURDIR = curdir

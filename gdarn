@@ -98,29 +98,30 @@ if ARGS.playground:
         sys.stderr.write(str(msg) + '\n')
         sys.exit(2)
 
+dialogue.report_any_problems(ifce.init(ARGS.playground is not None))
+open_dialog = None
+if not ifce.PM.in_valid_pgnd and ARGS.playground is None:
+    last_pgnd = recollect.get(config_data.APP_NAME, "last_pgnd")
+    open_dialog = config.PgndOpenDialog(suggestion=last_pgnd)
+    if open_dialog.run() == Gtk.ResponseType.OK:
+        wspath = open_dialog.get_path()
+        if wspath:
+            open_dialog.show_busy()
+            result = ifce.chdir(wspath)
+            open_dialog.unshow_busy()
+            open_dialog.report_any_problems(result)
+    else:
+        sys.exit()
+    open_dialog.show_busy()
+mw = gdarn.Darning(dir_specified=ARGS.playground is not None).show()
+if open_dialog:
+    open_dialog.unshow_busy()
+    open_dialog.destroy()
+
 try:
-    dialogue.report_any_problems(ifce.init(ARGS.playground is not None))
-    open_dialog = None
-    if not ifce.PM.in_valid_pgnd and ARGS.playground is None:
-        last_pgnd = recollect.get(config_data.APP_NAME, "last_pgnd")
-        open_dialog = config.PgndOpenDialog(suggestion=last_pgnd)
-        if open_dialog.run() == Gtk.ResponseType.OK:
-            wspath = open_dialog.get_path()
-            if wspath:
-                open_dialog.show_busy()
-                result = ifce.chdir(wspath)
-                open_dialog.unshow_busy()
-                open_dialog.report_any_problems(result)
-        else:
-            sys.exit()
-        open_dialog.show_busy()
-    gdarn.Darning(dir_specified=ARGS.playground is not None).show()
-    if open_dialog:
-        open_dialog.unshow_busy()
-        open_dialog.destroy()
     Gtk.main()
 except (SystemExit, KeyboardInterrupt):
     pass
 except BaseException:
-    report_exception(sys.exc_info())
+    report_exception(sys.exc_info(), parent=mw)
     sys.exit(3)

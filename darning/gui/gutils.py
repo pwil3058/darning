@@ -45,11 +45,21 @@ class FramedScrollWindow(Gtk.Frame):
         return self._sw.get_hscrollbar()
     def get_vscrollbar(self):
         return self._sw.get_hscrollbar()
+    def set_min_content_width(self, width):
+        return self._sw.set_min_content_width(width)
+    def set_min_content_height(self, height):
+        return self._sw.set_min_content_height(height)
 
-def wrap_in_scrolled_window(widget, policy=(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC), with_frame=True):
+def wrap_in_scrolled_window(widget, policy=(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC), with_frame=False, use_widget_size=False):
     scrw = FramedScrollWindow() if with_frame else Gtk.ScrolledWindow()
     scrw.set_policy(policy[0], policy[1])
     scrw.add(widget)
+    if use_widget_size:
+        vw, vh = widget.get_size_request()
+        if vw > 0:
+            scrw.set_min_content_width(vw)
+        if vh > 0:
+            scrw.set_min_content_height(vh)
     scrw.show_all()
     return scrw
 

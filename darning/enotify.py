@@ -29,6 +29,9 @@ def new_event_flags_and_mask(count):
 def new_event_flag():
     return next(_flag_generator)
 
+# Some general use events
+E_CHANGE_WD = new_event_flag()
+
 _NOTIFICATION_CBS = []
 
 def add_notification_cb(events, callback):
@@ -94,7 +97,10 @@ class Listener:
     """
     def __init__(self):
         self._listener_cbs = []
-        self.connect('destroy', self._listener_destroy_cb)
+        try:
+            self.connect("destroy", self.listener_destroy_cb)
+        except TypeError:
+            pass
 
     def add_notification_cb(self, events, callback):
         """
@@ -109,7 +115,7 @@ class Listener:
         """
         self._listener_cbs.append(add_notification_cb(events, callback))
 
-    def _listener_destroy_cb(self, widget):
+    def listener_destroy_cb(self, *args):
         """Remove all of my callbacks from the notification database"""
         for cb_token in self._listener_cbs:
             del_notification_cb(cb_token)

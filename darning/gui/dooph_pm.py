@@ -954,12 +954,12 @@ class FoldPatchDialog(ImportPatchDialog):
 
 class RestorePatchDialog(dialogue.BusyDialog):
     _KEYVAL_ESCAPE = Gdk.keyval_from_name("Escape")
-    class Table(table.Table):
-        class View(table.Table.View):
-            class Model(table.Table.View.Model):
-                Row = collections.namedtuple("Row", ["PatchName"])
-                types = Row(PatchName=GObject.TYPE_STRING)
-            specification = tlview.ViewSpec(
+    class Table(table.EditedEntriesTable):
+        class VIEW(table.EditedEntriesTable.VIEW):
+            class MODEL(table.EditedEntriesTable.VIEW.MODEL):
+                ROW = collections.namedtuple("ROW", ["PatchName"])
+                TYPES = ROW(PatchName=GObject.TYPE_STRING)
+            SPECIFICATION = tlview.ViewSpec(
                 properties={
                     "enable-grid-lines" : False,
                     "reorderable" : False,
@@ -980,14 +980,14 @@ class RestorePatchDialog(dialogue.BusyDialog):
                                     properties={"editable" : False},
                                 ),
                                 cell_data_function_spec=None,
-                                attributes = {"text" : Model.col_index("PatchName")}
+                                attributes = {"text" : MODEL.col_index("PatchName")}
                             ),
                         ],
                     ),
                 ]
             )
         def __init__(self):
-            table.Table.__init__(self, size_req=(480, 160))
+            table.EditedEntriesTable.__init__(self, size_req=(480, 160))
             self.connect("key_press_event", self._key_press_cb)
             self.connect("button_press_event", self._handle_button_press_cb)
             self.set_contents()

@@ -27,6 +27,7 @@ import gzip
 import bz2
 import re
 import hashlib
+import urllib.parse
 
 from gi.repository import GObject
 
@@ -35,7 +36,6 @@ from gi.repository import GObject
 from .cmd_result import CmdResult
 from .config_data import HOME
 
-from . import urlops
 from . import options
 
 def singleton(aClass):
@@ -70,7 +70,7 @@ def path_relative_to_playground(path):
 
 def path_rel_home(path):
     """Return the given path as a path relative to user's home directory."""
-    pr = urlops.parse_url(path)
+    pr = urllib.parse.urlparse(path)
     if pr.scheme and pr.scheme != "file":
         return path
     path = os.path.abspath(pr.path)
