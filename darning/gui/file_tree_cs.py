@@ -32,13 +32,6 @@ from . import diff
 from . import file_tree
 from . import dooph_pm
 
-def patch_tf_icon_set_func(treeviewcolumn, cell, model, tree_iter, *args):
-    file_data = model.get_value(tree_iter, 0)
-    if file_data is None:
-        cell.set_property("stock_id", None)
-    else:
-        cell.set_property("stock_id", ifce.PM.get_status_icon(file_data.status, file_data.is_dir))
-
 def patch_tf_status_set_func(treeviewcolumn, cell, model, tree_iter, *args):
     file_data = model.get_value(tree_iter, 0)
     if file_data is None: return
@@ -68,7 +61,7 @@ def patch_file_tree_view_spec(view, model):
                             start=True,
                             properties={"xalign": 0.0},
                         ),
-                        cell_data_function_spec=tlview.CellDataFunctionSpec(function=patch_tf_icon_set_func),
+                        cell_data_function_spec=tlview.CellDataFunctionSpec(function=file_tree.tv_icon_set_func),
                         attributes={}
                     ),
                     tlview.CellSpec(

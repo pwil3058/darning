@@ -308,10 +308,8 @@ def tv_icon_set_func(treeviewcolumn, cell, model, tree_iter, *args):
     file_data = model.get_value(tree_iter, 0)
     if file_data is None:
         cell.set_property("stock_id", None)
-    elif file_data.is_dir:
-        cell.set_property("stock_id", Gtk.STOCK_DIRECTORY)
     else:
-        cell.set_property("stock_id", Gtk.STOCK_FILE)
+        cell.set_property("stock_id", file_data.icon)
 
 def tf_file_name_set_func(treeviewcolumn, cell, model, tree_iter, *args):
     file_data = model.get_value(tree_iter, 0)

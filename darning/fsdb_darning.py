@@ -30,6 +30,17 @@ class FileData(fsdb.FileData):
     @property
     def deco(self):
         return self.STATUS_DECO_MAP[self.status.presence]
+    @property
+    def icon(self):
+        from .gui import icons
+        if status.validity == patch_db.Validity.REFRESHED:
+            return self.icons.STOCK_FILE_REFRESHED
+        elif status.validity == patch_db.Validity.NEEDS_REFRESH:
+            return self.icons.STOCK_FILE_NEEDS_REFRESH
+        elif status.validity == patch_db.Validity.UNREFRESHABLE:
+            return self.icons.STOCK_FILE_UNREFRESHABLE
+        else:
+            return Gtk.STOCK_FILE
 
 class DirData(fsdb.DirData):
     STATUS_DECO_MAP = _STATUS_DECO_MAP

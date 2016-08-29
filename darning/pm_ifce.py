@@ -228,13 +228,6 @@ class _NULL_BACKEND:
     def get_selected_guards():
         return []
     @staticmethod
-    def get_status_icon(status, is_dir):
-        from gi.repository import Gtk
-        if is_dir:
-            return Gtk.STOCK_DIRECTORY
-        else:
-            return Gtk.STOCK_FILE
-    @staticmethod
     def get_top_patch():
         return None
     @staticmethod

@@ -268,20 +268,6 @@ class Interface(pm_ifce.InterfaceMixin):
     def get_series_description():
         return patch_db.get_series_description()
     @staticmethod
-    def get_status_icon(status, is_dir):
-        import Gtk
-        from .gui import icons
-        if is_dir:
-            return Gtk.STOCK_DIRECTORY
-        elif status.validity == patch_db.Validity.REFRESHED:
-            return icons.STOCK_FILE_REFRESHED
-        elif status.validity == patch_db.Validity.NEEDS_REFRESH:
-            return icons.STOCK_FILE_NEEDS_REFRESH
-        elif status.validity == patch_db.Validity.UNREFRESHABLE:
-            return icons.STOCK_FILE_UNREFRESHABLE
-        else:
-            return Gtk.STOCK_FILE
-    @staticmethod
     def get_textpatch(patch_name):
         return patch_db.get_textpatch(patch_name)
     @staticmethod

@@ -18,6 +18,7 @@ import os
 import hashlib
 
 from gi.repository import Pango
+from gi.repository import Gtk
 
 RFD = collections.namedtuple("RFD", ["path", "relation"])
 Deco = collections.namedtuple("Deco", ["style", "foreground"])
@@ -31,6 +32,7 @@ _STATUS_DECO_MAP = {
 
 class FileData(collections.namedtuple("FileData", ["path", "status", "related_file_data"])):
     is_dir = False
+    icon = Gtk.STOCK_FILE
     STATUS_DECO_MAP = _STATUS_DECO_MAP
     @property
     def name(self):
@@ -41,6 +43,7 @@ class FileData(collections.namedtuple("FileData", ["path", "status", "related_fi
 
 class DirData(collections.namedtuple("DirData", FileData._fields + ("clean_status",))):
     is_dir = True
+    icon = Gtk.STOCK_DIRECTORY
     STATUS_DECO_MAP = _STATUS_DECO_MAP
     @property
     def name(self):
