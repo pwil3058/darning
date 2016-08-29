@@ -40,6 +40,9 @@ class FileData(collections.namedtuple("FileData", ["path", "status", "related_fi
     @property
     def deco(self):
         return self.STATUS_DECO_MAP[self.status]
+    @property
+    def status_str(self):
+        return self.status
 
 class DirData(collections.namedtuple("DirData", FileData._fields + ("clean_status",))):
     is_dir = True
@@ -54,6 +57,12 @@ class DirData(collections.namedtuple("DirData", FileData._fields + ("clean_statu
     @property
     def clean_deco(self):
         return self.STATUS_DECO_MAP[self.clean_status]
+    @property
+    def status_str(self):
+        return self.status
+    @property
+    def clean_status_str(self):
+        return self.clean_status
 
 # Contained File Relative Data
 CFRD = collections.namedtuple("CFRD", ["subdir_relpath", "name"])

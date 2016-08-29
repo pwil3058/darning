@@ -41,6 +41,9 @@ class FileData(fsdb.FileData):
             return icons.STOCK_FILE_UNREFRESHABLE
         else:
             return Gtk.STOCK_FILE
+    @property
+    def status_str(self):
+        return self.status.presence
 
 class DirData(fsdb.DirData):
     STATUS_DECO_MAP = _STATUS_DECO_MAP
@@ -50,6 +53,12 @@ class DirData(fsdb.DirData):
     @property
     def clean_deco(self):
         return self.STATUS_DECO_MAP[self.clean_status.presence]
+    @property
+    def status_str(self):
+        return self.status.presence
+    @property
+    def clean_status_str(self):
+        return self.clean_status.presence
 
 class _PatchFileDir(fsdb.GenericChangeFileDb.FileDir):
     FILE_DATA = FileData

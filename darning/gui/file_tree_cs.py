@@ -32,66 +32,7 @@ from . import diff
 from . import file_tree
 from . import dooph_pm
 
-def patch_tf_status_set_func(treeviewcolumn, cell, model, tree_iter, *args):
-    file_data = model.get_value(tree_iter, 0)
-    if file_data is None: return
-    if file_data.is_dir and model.hide_clean:
-        cell.set_property("foreground", file_data.clean_deco.foreground)
-        cell.set_property("style", file_data.clean_deco.style)
-        cell.set_property("text", file_data.clean_status.presence)
-    else:
-        cell.set_property("foreground", file_data.deco.foreground)
-        cell.set_property("style", file_data.deco.style)
-        cell.set_property("text", file_data.status.presence)
-
-def patch_file_tree_view_spec(view, model):
-    from . import tlview
-    specification = tlview.ViewSpec(
-        properties={"headers-visible" : False},
-        selection_mode=Gtk.SelectionMode.MULTIPLE,
-        columns=[
-            tlview.ColumnSpec(
-                title=_("File Name"),
-                properties={},
-                cells=[
-                    tlview.CellSpec(
-                        cell_renderer_spec=tlview.CellRendererSpec(
-                            cell_renderer=Gtk.CellRendererPixbuf,
-                            expand=False,
-                            start=True,
-                            properties={"xalign": 0.0},
-                        ),
-                        cell_data_function_spec=tlview.CellDataFunctionSpec(function=file_tree.tv_icon_set_func),
-                        attributes={}
-                    ),
-                    tlview.CellSpec(
-                        cell_renderer_spec=tlview.CellRendererSpec(
-                            cell_renderer=Gtk.CellRendererText,
-                            expand=False,
-                            start=True,
-                            properties={},
-                        ),
-                        cell_data_function_spec=tlview.CellDataFunctionSpec(function=patch_tf_status_set_func, user_data=None),
-                        attributes={}
-                    ),
-                    tlview.CellSpec(
-                        cell_renderer_spec=tlview.CellRendererSpec(
-                            cell_renderer=Gtk.CellRendererText,
-                            expand=False,
-                            start=True,
-                            properties={},
-                        ),
-                        cell_data_function_spec=tlview.CellDataFunctionSpec(function=file_tree.tf_file_name_set_func, user_data=None),
-                        attributes={}
-                    )
-                ]
-            )
-        ]
-    )
-    return specification
-
 class _GenericPatchFileTreeView(file_tree.FileTreeView, enotify.Listener, ws_actions.WSListenerMixin):
-    SPECIFICATION = patch_file_tree_view_spec
     def __init__(self, **kwargs):
         file_tree.FileTreeView.__init__(self, **kwargs)
         enotify.Listener.__init__(self)

@@ -333,11 +333,11 @@ def tf_status_set_func(treeviewcolumn, cell, model, tree_iter, *args):
     if file_data.is_dir and model.hide_clean:
         cell.set_property("foreground", file_data.clean_deco.foreground)
         cell.set_property("style", file_data.clean_deco.style)
-        cell.set_property("text", file_data.clean_status)
+        cell.set_property("text", file_data.clean_status_str)
     else:
         cell.set_property("foreground", file_data.deco.foreground)
         cell.set_property("style", file_data.deco.style)
-        cell.set_property("text", file_data.status)
+        cell.set_property("text", file_data.status_str)
 
 def file_tree_view_spec(view, model):
     specification = tlview.ViewSpec(
