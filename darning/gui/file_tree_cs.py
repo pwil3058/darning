@@ -32,24 +32,91 @@ from . import diff
 from . import file_tree
 from . import dooph_pm
 
-class _GenericPatchFileTreeView(file_tree.FileTreeView):
-    @classmethod
-    def _generate_row_tuple(cls, data, is_dir):
-        deco = ifce.PM.get_status_deco(data.status)
-        row = cls.MODEL.ROW(
-            name=data.name,
-            is_dir=is_dir,
-            icon=ifce.PM.get_status_icon(data.status, is_dir),
-            status=data.status.presence,
-            related_file_data=data.related_file_data,
-            style=deco.style,
-            foreground=deco.foreground
-        )
-        return row
+def patch_tf_icon_set_func(treeviewcolumn, cell, model, tree_iter, *args):
+    file_data = model.get_value(tree_iter, 0)
+    if file_data is None:
+        cell.set_property("stock_id", None)
+    else:
+        cell.set_property("stock_id", ifce.PM.get_status_icon(file_data.status, file_data.is_dir))
 
-class PatchFileTreeView(_GenericPatchFileTreeView):
+def patch_tf_status_set_func(treeviewcolumn, cell, model, tree_iter, *args):
+    file_data = model.get_value(tree_iter, 0)
+    if file_data is None: return
+    if file_data.is_dir and model.hide_clean:
+        cell.set_property("foreground", file_data.clean_deco.foreground)
+        cell.set_property("style", file_data.clean_deco.style)
+        cell.set_property("text", file_data.clean_status.presence)
+    else:
+        cell.set_property("foreground", file_data.deco.foreground)
+        cell.set_property("style", file_data.deco.style)
+        cell.set_property("text", file_data.status.presence)
+
+def patch_file_tree_view_spec(view, model):
+    from . import tlview
+    specification = tlview.ViewSpec(
+        properties={"headers-visible" : False},
+        selection_mode=Gtk.SelectionMode.MULTIPLE,
+        columns=[
+            tlview.ColumnSpec(
+                title=_("File Name"),
+                properties={},
+                cells=[
+                    tlview.CellSpec(
+                        cell_renderer_spec=tlview.CellRendererSpec(
+                            cell_renderer=Gtk.CellRendererPixbuf,
+                            expand=False,
+                            start=True,
+                            properties={"xalign": 0.0},
+                        ),
+                        cell_data_function_spec=tlview.CellDataFunctionSpec(function=patch_tf_icon_set_func),
+                        attributes={}
+                    ),
+                    tlview.CellSpec(
+                        cell_renderer_spec=tlview.CellRendererSpec(
+                            cell_renderer=Gtk.CellRendererText,
+                            expand=False,
+                            start=True,
+                            properties={},
+                        ),
+                        cell_data_function_spec=tlview.CellDataFunctionSpec(function=patch_tf_status_set_func, user_data=None),
+                        attributes={}
+                    ),
+                    tlview.CellSpec(
+                        cell_renderer_spec=tlview.CellRendererSpec(
+                            cell_renderer=Gtk.CellRendererText,
+                            expand=False,
+                            start=True,
+                            properties={},
+                        ),
+                        cell_data_function_spec=tlview.CellDataFunctionSpec(function=file_tree.tf_file_name_set_func, user_data=None),
+                        attributes={}
+                    )
+                ]
+            )
+        ]
+    )
+    return specification
+
+class _GenericPatchFileTreeView(file_tree.FileTreeView, enotify.Listener, ws_actions.WSListenerMixin):
+    SPECIFICATION = patch_file_tree_view_spec
+    def __init__(self, **kwargs):
+        file_tree.FileTreeView.__init__(self, **kwargs)
+        enotify.Listener.__init__(self)
+        ws_actions.WSListenerMixin.__init__(self)
+
+class PatchFileTreeModel(file_tree.FileTreeModel):
     REPOPULATE_EVENTS = pm_ifce.E_POP|pm_ifce.E_PUSH|pm_ifce.E_PATCH_STACK_CHANGES
     UPDATE_EVENTS = pm_ifce.E_PATCH_REFRESH|pm_ifce.E_FILE_CHANGES
+    def auto_update(self, _events_so_far, _args):
+        if not self._file_db.is_current:
+            self.update(fsdb_reset_only=[self])
+        # NB Don't trigger any events as nobody else cares
+        return 0
+    def _get_file_db(self):
+        return ifce.PM.get_patch_file_db(self._view._patch_name)
+
+class PatchFileTreeView(file_tree.FileTreeView):
+    MODEL = PatchFileTreeModel
     AUTO_EXPAND = True
     UI_DESCR = \
     '''
@@ -68,7 +135,7 @@ class PatchFileTreeView(_GenericPatchFileTreeView):
     '''
     def __init__(self, busy_indicator=None, patch_name=None):
         self._patch_name = patch_name
-        _GenericPatchFileTreeView.__init__(self, show_hidden=True, hide_clean=False)
+        file_tree.FileTreeView.__init__(self, show_hidden=True, hide_clean=False)
     @property
     def patch_name(self):
         return self._patch_name
@@ -76,8 +143,6 @@ class PatchFileTreeView(_GenericPatchFileTreeView):
     def patch_name(self, new_patch_name):
         self._patch_name = new_patch_name
         self.repopulate()
-    def _get_file_db(self):
-        return ifce.PM.get_patch_file_db(self._patch_name)
     def populate_action_groups(self):
         _GenericPatchFileTreeView.populate_action_groups(self)
         self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
@@ -98,11 +163,6 @@ class PatchFileTreeView(_GenericPatchFileTreeView):
             [
                 ("menu_files", None, _('_Files')),
             ])
-    def auto_update(self, _events_so_far, _args):
-        if not self._file_db.is_current:
-            self.update(fsdb_reset_only=[self])
-        # NB Don't trigger any events as nobody else cares
-        return 0
 
 class PatchFilesDialog(dialogue.ListenerDialog, enotify.Listener):
     def __init__(self, patch_name):
@@ -125,9 +185,29 @@ class PatchFilesDialog(dialogue.ListenerDialog, enotify.Listener):
     def _chwd_cb(self, **kwargs):
         self.destroy()
 
-class TopPatchFileTreeView(_GenericPatchFileTreeView):
+
+class TopPatchFileTreeModel(file_tree.FileTreeModel):
     REPOPULATE_EVENTS = ifce.E_CHANGE_WD|ifce.E_NEW_PM|pm_ifce.E_PATCH_STACK_CHANGES|pm_ifce.E_PUSH|pm_ifce.E_POP|pm_ifce.E_NEW_PATCH
     UPDATE_EVENTS = pm_ifce.E_FILE_CHANGES|pm_ifce.E_PATCH_REFRESH
+    @staticmethod
+    def _get_file_db():
+        return ifce.PM.get_top_patch_file_db()
+    def auto_update(self, events_so_far, args):
+        if (events_so_far & (self.REPOPULATE_EVENTS|self.UPDATE_EVENTS)) or self._file_db.is_current:
+            return 0
+        if self._file_db.applied_patch_count_change < 0:
+            return pm_ifce.E_POP
+        elif self._file_db.applied_patch_count_change > 0:
+            return pm_ifce.E_PUSH
+        else:
+            try:
+                args["fsdb_reset_only"].append(self)
+            except KeyError:
+                args["fsdb_reset_only"] = [self]
+        return pm_ifce.E_FILE_CHANGES
+
+class TopPatchFileTreeView(_GenericPatchFileTreeView):
+    MODEL = TopPatchFileTreeModel
     AUTO_EXPAND = True
     UI_DESCR = \
     '''
@@ -150,22 +230,6 @@ class TopPatchFileTreeView(_GenericPatchFileTreeView):
     '''
     def __init__(self, **kwargs):
         _GenericPatchFileTreeView.__init__(self, **kwargs)
-    @staticmethod
-    def _get_file_db():
-        return ifce.PM.get_top_patch_file_db()
-    def auto_update(self, events_so_far, args):
-        if (events_so_far & (self.REPOPULATE_EVENTS|self.UPDATE_EVENTS)) or self._file_db.is_current:
-            return 0
-        if self._file_db.applied_patch_count_change < 0:
-            return pm_ifce.E_POP
-        elif self._file_db.applied_patch_count_change > 0:
-            return pm_ifce.E_PUSH
-        else:
-            try:
-                args["fsdb_reset_only"].append(self)
-            except KeyError:
-                args["fsdb_reset_only"] = [self]
-        return pm_ifce.E_FILE_CHANGES
     def populate_action_groups(self):
         _GenericPatchFileTreeView.populate_action_groups(self)
         self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
@@ -216,7 +280,13 @@ class TopPatchFileTreeWidget(file_tree.FileTreeWidget):
     def get_menu_prefix():
         return ifce.PM.name
 
+class CombinedPatchFileTreeModel(TopPatchFileTreeModel):
+    @staticmethod
+    def _get_file_db():
+        return ifce.PM.get_combined_patch_file_db()
+
 class CombinedPatchFileTreeView(TopPatchFileTreeView):
+    MODEL = CombinedPatchFileTreeModel
     UI_DESCR = \
     '''
     <ui>
@@ -238,9 +308,6 @@ class CombinedPatchFileTreeView(TopPatchFileTreeView):
                  lambda _action=None: diff.CombinedPatchDiffPlusesDialog(file_paths=self.get_selected_filepaths()).show()
                 ),
             ])
-    @staticmethod
-    def _get_file_db():
-        return ifce.PM.get_combined_patch_file_db()
 
 class CombinedPatchFileTreeWidget(TopPatchFileTreeWidget):
     TREE_VIEW = CombinedPatchFileTreeView

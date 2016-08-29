@@ -31,13 +31,19 @@ FSTATUS_IGNORED = 'I'
 FSTATUS_MODIFIED_SET = set([FSTATUS_MODIFIED, FSTATUS_ADDED, FSTATUS_REMOVED])
 FSTATUS_CLEAN_SET = set([FSTATUS_IGNORED, None])
 
-STATUS_DECO_MAP = {
+_STATUS_DECO_MAP = {
     None: fsdb.Deco(pango.STYLE_NORMAL, 'black'),
     FSTATUS_MODIFIED: fsdb.Deco(pango.STYLE_NORMAL, 'blue'),
     FSTATUS_ADDED: fsdb.Deco(pango.STYLE_NORMAL, 'darkgreen'),
     FSTATUS_REMOVED: fsdb.Deco(pango.STYLE_NORMAL, 'red'),
     FSTATUS_IGNORED: fsdb.Deco(pango.STYLE_ITALIC, 'grey'),
 }
+
+class FileData(fsdb.FileData):
+    STATUS_DECO_MAP = _STATUS_DECO_MAP
+
+class DirData(fsdb.DirData):
+    STATUS_DECO_MAP = _STATUS_DECO_MAP
 
 # Contained File Relative Data
 CFRD = collections.namedtuple("CFRD", ["subdir_relpath", "name"])
@@ -65,7 +71,9 @@ def iterate_patchlib_file_data(patch_text):
 
 class TopPatchFileDb(fsdb.GenericTopPatchFileDb):
     class FileDir(fsdb.GenericTopPatchFileDb.FileDir):
-        CLEAN_STATUS_SET = frozenset([FSTATUS_MODIFIED, FSTATUS_ADDED, FSTATUS_REMOVED])
+        FILE_DATA = FileData
+        DIR_DATA = DirData
+            CLEAN_STATUS_SET = frozenset([FSTATUS_MODIFIED, FSTATUS_ADDED, FSTATUS_REMOVED])
         def _calculate_status(self):
             if not self._status_set:
                 return None

@@ -18,15 +18,38 @@ from gi.repository import Pango
 from . import fsdb
 from . import patch_db_ng
 
-STATUS_DECO_MAP = {
+_STATUS_DECO_MAP = {
     None: fsdb.Deco(Pango.Style.NORMAL, "black"),
     patch_db_ng.Presence.ADDED: fsdb.Deco(Pango.Style.NORMAL, "darkgreen"),
     patch_db_ng.Presence.REMOVED: fsdb.Deco(Pango.Style.NORMAL, "red"),
     patch_db_ng.Presence.EXTANT: fsdb.Deco(Pango.Style.NORMAL, "black"),
 }
 
+class FileData(fsdb.FileData):
+    STATUS_DECO_MAP = _STATUS_DECO_MAP
+    @property
+    def deco(self):
+        return self.STATUS_DECO_MAP[self.status.presence]
+
+class DirData(fsdb.DirData):
+    STATUS_DECO_MAP = _STATUS_DECO_MAP
+    @property
+    def deco(self):
+        return self.STATUS_DECO_MAP[self.status.presence]
+    @property
+    def clean_deco(self):
+        return self.STATUS_DECO_MAP[self.clean_status.presence]
+
 class _PatchFileDir(fsdb.GenericChangeFileDb.FileDir):
+    FILE_DATA = FileData
+    DIR_DATA = DirData
     def _calculate_status(self):
+        if not self._status_set:
+            validity = patch_db_ng.Validity.REFRESHED
+        else:
+            validity = max([s.validity for s in list(self._status_set)])
+        return patch_db_ng.FileStatus(None, validity)
+    def _calculate_clean_status(self):
         if not self._status_set:
             validity = patch_db_ng.Validity.REFRESHED
         else:

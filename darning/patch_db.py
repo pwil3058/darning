@@ -737,9 +737,9 @@ class PatchData(PickeExtensibleObject):
     def get_files_table(self):
         is_applied = self.is_applied()
         if is_applied:
-            table = [fsdb.Data(fde.path, FileStatus(fde.get_presence(), fde.get_applied_validity()), fde.related_file_data) for fde in self.files.values()]
+            table = [fsdb_darning.FileData(fde.path, FileStatus(fde.get_presence(), fde.get_applied_validity()), fde.related_file_data) for fde in self.files.values()]
         else:
-            table = [fsdb.Data(fde.path, FileStatus(fde.get_presence(), None), fde.related_file_data) for fde in self.files.values()]
+            table = [fsdb_darning.FileData(fde.path, FileStatus(fde.get_presence(), None), fde.related_file_data) for fde in self.files.values()]
         return table
     def get_table_row(self):
         if not self.is_applied():
@@ -812,7 +812,7 @@ class CombinedPatchData(PickeExtensibleObject):
             if file_data.was_ephemeral():
                 continue
             status = FileStatus(file_data.get_presence(), file_data.get_applied_validity())
-            table.append(fsdb.Data(file_data.path, status, None))
+            table.append(fsdb_darning.FileData(file_data.path, status, None))
         return table
     def get_files_digest(self):
         return utils.get_digest_for_file_list(self.files.keys())
@@ -1140,7 +1140,7 @@ def _get_combined_patch_file_table_old(_DB):
     table = []
     for filepath in sorted(file_map):
         data = file_map[filepath]
-        table.append(fsdb.Data(filepath, FileStatus(data.presence, data.validity), data.related_file_data))
+        table.append(fsdb_darning.FileData(filepath, FileStatus(data.presence, data.validity), data.related_file_data))
     return table
 
 def get_combined_patch_file_table():

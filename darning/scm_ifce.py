@@ -22,7 +22,7 @@ from . import enotify
 E_FILE_ADDED, E_FILE_DELETED, E_FILE_MODIFIED, E_FILE_CHANGES = enotify.new_event_flags_and_mask(3)
 E_FILE_MOVED = E_FILE_ADDED|E_FILE_DELETED
 
-E_INDEX_MOD, E_COMMIT, E_BACKOUT, E_BRANCH, E_TAG, E_PUSH, E_PULL, E_INIT, E_CLONE, E_CS_CHANGES = enotify.new_event_flags_and_mask(9)
+E_INDEX_MOD, E_COMMIT, E_BACKOUT, E_BRANCH, E_TAG, E_PUSH, E_PULL, E_INIT, E_CLONE, E_STASH, E_CS_CHANGES = enotify.new_event_flags_and_mask(10)
 
 E_CHECKOUT, E_BISECT, E_MERGE, E_UPDATE, E_WD_CHANGES = enotify.new_event_flags_and_mask(4)
 
@@ -81,11 +81,9 @@ class DummyTableData:
             yield row
 
 class _NULL_BACKEND:
-    from . import fsdb
     name = "os"
     cmd_label = "null"
     in_valid_pgnd = False
-    status_deco_map = fsdb.STATUS_DECO_MAP
     @staticmethod
     def copy_clean_version_to(filepath, target_name):
         '''
@@ -161,12 +159,9 @@ class _NULL_BACKEND:
         if the filepath is None
         '''
         return None
-    @classmethod
-    def get_status_deco(cls, status):
-        '''
-        Get the SCM specific decoration for the given status
-        '''
-        return cls.status_deco_map[status]
+    @staticmethod
+    def get_stashes_table_data():
+        return DummyTableData()
     @staticmethod
     def get_tags_table_data():
         return DummyTableData()

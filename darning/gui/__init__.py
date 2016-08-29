@@ -18,3 +18,4 @@ Library functions that are ony of interest GUI programs
 '''
 
 from . import auto_update
+from . import xtnl_edit

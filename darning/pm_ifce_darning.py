@@ -268,9 +268,6 @@ class Interface(pm_ifce.InterfaceMixin):
     def get_series_description():
         return patch_db.get_series_description()
     @staticmethod
-    def get_status_deco(status):
-        return fsdb_darning.STATUS_DECO_MAP[status.presence if status else None]
-    @staticmethod
     def get_status_icon(status, is_dir):
         import Gtk
         from .gui import icons

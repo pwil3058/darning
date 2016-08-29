@@ -83,7 +83,6 @@ def _get_enabled_extensions():
 @singleton
 class Mercurial(object):
     name = "hg"
-    status_deco_map = fsdb_hg_mq.STATUS_DECO_MAP
     @staticmethod
     def __getattr__(attr_name):
         if attr_name == "is_available":
@@ -343,12 +342,6 @@ class Mercurial(object):
         if file_path is None:
             assert revision is not None
         return revision
-    @classmethod
-    def get_status_deco(cls, status):
-        '''
-        Get the SCM specific decoration for the given status
-        '''
-        return cls.status_deco_map[status]
     @staticmethod
     def get_tags_data():
         if not ROOT():

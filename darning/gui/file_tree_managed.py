@@ -23,13 +23,13 @@ from ..cmd_result import CmdFailure
 from .. import os_utils
 from .. import scm_ifce
 from .. import pm_ifce
+from .. import enotify
 
 from . import gutils
 from . import ifce
 from . import actions
 from . import ws_actions
 from . import icons
-from . import text_edit
 from . import file_tree
 from . import dialogue
 from . import dooph_pm
@@ -37,9 +37,15 @@ from . import dooph_pm
 #          <menuitem action='pm_copy_files_to_top_patch'/>
 #          <menuitem action='pm_move_files_in_top_patch'/>
 
-class WSTreeView(file_tree.FileTreeView):
+class WSTreeModel(file_tree.FileTreeModel):
     UPDATE_EVENTS = os_utils.E_FILE_CHANGES|ifce.E_NEW_SCM|scm_ifce.E_FILE_CHANGES|pm_ifce.E_FILE_CHANGES|pm_ifce.E_PATCH_STACK_CHANGES|pm_ifce.E_PATCH_REFRESH|pm_ifce.E_POP|pm_ifce.E_PUSH|scm_ifce.E_WD_CHANGES
     AU_FILE_CHANGE_EVENT = scm_ifce.E_FILE_CHANGES|os_utils.E_FILE_CHANGES # event returned by auto_update() if changes found
+    @staticmethod
+    def _get_file_db():
+        return ifce.SCM.get_ws_file_db()
+
+class WSTreeView(file_tree.FileTreeView, enotify.Listener, ws_actions.WSListenerMixin):
+    MODEL = WSTreeModel
     UI_DESCR = \
     '''
     <ui>
@@ -49,14 +55,12 @@ class WSTreeView(file_tree.FileTreeView):
         </menu>
       </menubar>
       <popup name="files_popup">
-          <menuitem action="edit_files"/>
+          <menuitem action="delete_fs_items"/>
+          <menuitem action="new_file"/>
         <separator/>
-          <menuitem action="copy_files_selection"/>
-          <menuitem action="move_files_selection"/>
-          <menuitem action="rename_file"/>
-        <separator/>
-          <menuitem action="delete_files"/>
-        <separator/>
+          <menuitem action="copy_fs_items"/>
+          <menuitem action="move_fs_items"/>
+          <menuitem action="rename_fs_item"/>
       </popup>
       <popup name="scmic_files_popup"/>
       <popup name="pmic_files_popup">
@@ -76,9 +80,10 @@ class WSTreeView(file_tree.FileTreeView):
       </popup>
     </ui>
     '''
-    DEFAULT_POPUP = "/pmic_files_popup"
-    def __init__(self, busy_indicator=None, show_hidden=False, hide_clean=False):
-        file_tree.FileTreeView.__init__(self, busy_indicator=busy_indicator, show_hidden=show_hidden, hide_clean=hide_clean)
+    def __init__(self, show_hidden=False, hide_clean=False):
+        file_tree.FileTreeView.__init__(self, show_hidden=show_hidden, hide_clean=hide_clean)
+        enotify.Listener.__init__(self)
+        ws_actions.WSListenerMixin.__init__(self)
         self._update_popup_cb()
         self.add_notification_cb(pm_ifce.E_PATCH_STACK_CHANGES|ifce.E_NEW_PM|ifce.E_CHANGE_WD, self._update_popup_cb)
     def _update_popup_cb(self, **kwargs):
@@ -131,15 +136,6 @@ class WSTreeView(file_tree.FileTreeView):
                  lambda _action=None: self.pm_select_unsettled()
                 ),
             ])
-    @staticmethod
-    def _get_file_db():
-        return ifce.SCM.get_ws_file_db()
-    @classmethod
-    def _get_status_deco(cls, status=None):
-        try:
-            return ifce.SCM.get_status_deco(status)
-        except:
-            return ifce.SCM.get_status_deco(None)
     def pm_select_unsettled(self):
         unsettled = ifce.PM.get_outstanding_changes_below_top()
         filepaths = [filepath for filepath in unsettled.unrefreshed]
@@ -150,7 +146,6 @@ class WSFilesWidget(file_tree.FileTreeWidget):
     MENUBAR = "/scm_files_menubar"
     BUTTON_BAR_ACTIONS = ["show_hidden_files", "hide_clean_files"]
     TREE_VIEW = WSTreeView
-    SIZE = (240, 320)
     @staticmethod
     def get_menu_prefix():
         return ifce.SCM.name

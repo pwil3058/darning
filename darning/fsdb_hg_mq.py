@@ -1,4 +1,4 @@
-### Copyright (C) 2015 Peter Williams <peter_ono@users.sourceforge.net>
+### Copyright (C) 2015 Peter Williams <pwil3058@gmail.com>
 ###
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
@@ -36,7 +36,7 @@ FSTATUS_MODIFIED_SET = frozenset([FSTATUS_MODIFIED, FSTATUS_ADDED, FSTATUS_REMOV
 FSTATUS_CLEAN_SET = frozenset([FSTATUS_IGNORED, FSTATUS_CLEAN, None])
 FSTATUS_MARDUC_SET = frozenset([FSTATUS_MODIFIED, FSTATUS_ADDED, FSTATUS_REMOVED, FSTATUS_MISSING, FSTATUS_NOT_TRACKED, FSTATUS_CLEAN])
 
-STATUS_DECO_MAP = {
+_STATUS_DECO_MAP = {
     None: fsdb.Deco(Pango.Style.NORMAL, 'black'),
     FSTATUS_CLEAN: fsdb.Deco(Pango.Style.NORMAL, 'black'),
     FSTATUS_MODIFIED: fsdb.Deco(Pango.Style.NORMAL, 'blue'),
@@ -47,6 +47,12 @@ STATUS_DECO_MAP = {
     FSTATUS_NOT_TRACKED: fsdb.Deco(Pango.Style.ITALIC, 'cyan'),
     FSTATUS_IGNORED: fsdb.Deco(Pango.Style.ITALIC, 'grey'),
 }
+
+class FileData(fsdb.FileData):
+    STATUS_DECO_MAP = _STATUS_DECO_MAP
+
+class DirData(fsdb.DirData):
+    STATUS_DECO_MAP = _STATUS_DECO_MAP
 
 def get_qparent():
     return runext.run_get_cmd(["hg", "log", "--template", "{rev}", "-rqparent"], default=None)
@@ -83,23 +89,25 @@ def iterate_hg_file_data(file_data_text, related_file_data):
 
 class WsFileDb(fsdb.GenericSnapshotWsFileDb):
     class FileDir(fsdb.GenericSnapshotWsFileDb.FileDir):
+        FILE_DATA = FileData
+        DIR_DATA = DirData
         IGNORED_STATUS_SET = frozenset([FSTATUS_IGNORED])
         CLEAN_STATUS_SET = FSTATUS_CLEAN_SET
         SIGNIFICANT_DATA_SET = frozenset(list(FSTATUS_MODIFIED_SET) + [FSTATUS_NOT_TRACKED])
         def _get_initial_status(self):
             # TODO: fix status calculation to differentiate between MISSING and REMOVED
-            if not os.path.isdir(self._dir_path):
-                return FSTATUS_MISSING
-            elif FSTATUS_UNRESOLVED in self._file_status_snapshot.status_set:
+            if FSTATUS_UNRESOLVED in self._file_status_snapshot.status_set:
                 return FSTATUS_UNRESOLVED
             elif FSTATUS_MODIFIED_SET & self._file_status_snapshot.status_set:
                 return FSTATUS_MODIFIED
             elif FSTATUS_NOT_TRACKED in self._file_status_snapshot.status_set:
                 return FSTATUS_NOT_TRACKED
             return None
-    def __init__(self, **kwargs):
+    def __init__(self, name=None, dir_path=None, status=None, clean_status=None, **kwargs):
+        if dir_path and not os.path.isdir(dir_path):
+            status = clean_status = FSTATUS_MISSING
         self._cmd_rev = ["--rev", "qparent"] if get_qparent() else []
-        fsdb.GenericSnapshotWsFileDb.__init__(self, **kwargs)
+        fsdb.GenericSnapshotWsFileDb.__init__(self, name=None, dir_path=None, status=None, clean_status=None, **kwargs)
     def _get_file_data_text(self, h):
         file_data_text = runext.run_get_cmd(["hg", "status", "-marduiC"] + self._cmd_rev)
         h.update(file_data_text.encode())
@@ -124,6 +132,8 @@ class WsFileDb(fsdb.GenericSnapshotWsFileDb):
 
 class TopPatchFileDb(fsdb.GenericTopPatchFileDb):
     class FileDir(fsdb.GenericTopPatchFileDb.FileDir):
+        FILE_DATA = FileData
+        DIR_DATA = DirData
         CLEAN_STATUS_SET = frozenset([FSTATUS_MODIFIED, FSTATUS_ADDED, FSTATUS_REMOVED, FSTATUS_MISSING])
         def _calculate_status(self):
             if not self._status_set:

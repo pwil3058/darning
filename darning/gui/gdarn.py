@@ -50,7 +50,7 @@ class Darning(Gtk.Window, dialogue.BusyIndicator, actions.CAGandUIManager, enoti
         </menubar>
         <menubar name="gdarn_right_menubar">
             <menu name="gdarn_config" action="config_menu">
-              <menuitem action="config_allocate_editors"/>
+              <menuitem action="allocate_xtnl_editors"/>
               <menuitem action='config_auto_update'/>
             </menu>
         </menubar>

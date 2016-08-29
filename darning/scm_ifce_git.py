@@ -87,7 +87,7 @@ class TableData:
             yield row
 
 class BranchTableData(TableData):
-    RE = re.compile("([^ ]+)\s+([a-fA-F0-9]{7}[a-fA-F0-9]*)?\s*([^\s].*)")
+    RE = re.compile("(([^ (]+)|(\([^)]+\)))\s+([a-fA-F0-9]{7}[a-fA-F0-9]*)?\s*([^\s].*)")
     def _get_data_text(self, h):
         all_branches_text = runext.run_get_cmd(["git", "branch", "-v"], default="")
         h.update(all_branches_text.encode())
@@ -102,7 +102,7 @@ class BranchTableData(TableData):
         from .gui.branches import BranchListRow
         for line in self._lines:
             is_current = line[0]
-            name, rev, synopsis = self.RE.match(line[2:]).groups()
+            name, rev, synopsis = self.RE.match(line[2:]).group(1, 4, 5)
             is_merged = name in self._merged_branches
             yield BranchListRow(name=name, is_current=is_current, is_merged=is_merged, rev=rev, synopsis=synopsis)
 
@@ -165,11 +165,23 @@ class LogTableData(TableData):
             else:
                 yield LogListRow(commit=commit, abbrevcommit=abbrevcommit, author=author, when=when, subject=line)
 
+class StashTableData(TableData):
+    RE = re.compile("^(stash@{\d+}):\s*([^:]+):(.*)")
+    def _get_data_text(self, h):
+        text = runext.run_get_cmd(["git", "stash", "list"], default="")
+        h.update(text.encode())
+        return text
+    def _finalize(self, pdt):
+        self._lines = pdt.splitlines()
+    def iter_rows(self):
+        from .gui.stashes import StashListRow
+        for line in self._lines:
+            m = self.RE.match(line)
+            yield StashListRow(*m.groups())
+
 @singleton
 class Interface:
     name = "git"
-    INDEX_DECO_MAP = fsdb_git.INDEX_DECO_MAP
-    WD_DECO_MAP = fsdb_git.WD_DECO_MAP
     @staticmethod
     def __getattr__(attr_name):
         if attr_name == "is_available":
@@ -205,6 +217,10 @@ class Interface:
         else:
             cmd = ["git", "add", "--"] + file_list
         return _do_action_cmd(cmd, scm_ifce.E_INDEX_MOD|scm_ifce.E_FILE_CHANGES, None, [("Use -f if you really want to add them.", CmdResult.SUGGEST_FORCE)])
+    @staticmethod
+    def do_amend_commit(msg):
+        cmd = ['git', 'commit', '--amend', '-m', msg]
+        return _do_action_cmd(cmd, scm_ifce.E_INDEX_MOD|scm_ifce.E_COMMIT|scm_ifce.E_FILE_CHANGES, None, [])
     @staticmethod
     def do_checkout_branch(branch):
         cmd = ["git", "checkout", branch]
@@ -278,6 +294,13 @@ class Interface:
             cmd = ["git", "rm", "--"] + file_list
         return _do_action_cmd(cmd, scm_ifce.E_INDEX_MOD, None, [("or -f to force removal", CmdResult.SUGGEST_FORCE)])
     @staticmethod
+    def do_rename_file_in_index(file_path, destn, overwrite=False):
+        if overwrite:
+            cmd = ["git", "mv", "-f", file_path, destn]
+        else:
+            cmd = ["git", "mv", "-f", file_path, destn]
+        return _do_action_cmd(cmd, scm_ifce.E_INDEX_MOD, None, [("or -f to force", CmdResult.SUGGEST_OVERWRITE)])
+    @staticmethod
     def do_set_tag(tag, annotated=False, msg=None, signed=False, key_id=None, target=None, force=False):
         cmd = ["git", "tag"]
         if force:
@@ -292,6 +315,46 @@ class Interface:
         if target:
             cmd.append(target)
         return _do_action_cmd(cmd, scm_ifce.E_TAG, None, [("already exists", CmdResult.SUGGEST_FORCE)])
+    @staticmethod
+    def do_stash_apply(reinstate_index=False, stash=None):
+        cmd = ["git", "stash", "apply"]
+        if reinstate_index:
+            cmd.append("--index")
+        if stash:
+            cmd.append(stash)
+        return _do_action_cmd(cmd, scm_ifce.E_STASH|scm_ifce.E_FILE_CHANGES, None, [])
+    @staticmethod
+    def do_stash_branch(branch_name, stash=None):
+        cmd = ["git", "stash", "branch", branch_name]
+        if stash:
+            cmd.append(stash)
+        return _do_action_cmd(cmd, scm_ifce.E_STASH, None, [])
+    @staticmethod
+    def do_stash_drop(stash=None):
+        cmd = ["git", "stash", "drop"]
+        if stash:
+            cmd.append(stash)
+        return _do_action_cmd(cmd, scm_ifce.E_STASH, None, [])
+    @staticmethod
+    def do_stash_pop(reinstate_index=False, stash=None):
+        cmd = ["git", "stash", "pop"]
+        if reinstate_index:
+            cmd.append("--index")
+        if stash:
+            cmd.append(stash)
+        return _do_action_cmd(cmd, scm_ifce.E_STASH, None, [])
+    @staticmethod
+    def do_stash_save(keep_index=False, include_untracked=False, include_all=False, msg=None):
+        cmd = ["git", "stash", "save"]
+        if keep_index:
+            cmd.append("--keep-index")
+        if include_untracked:
+            cmd.append("--include-untracked")
+        if include_all:
+            cmd.append("--all")
+        if msg:
+            cmd.append(msg)
+        return _do_action_cmd(cmd, scm_ifce.E_STASH, None, [])
     @staticmethod
     def get_author_name_and_email():
         import email
@@ -335,7 +398,7 @@ class Interface:
     @staticmethod
     def get_file_status_digest():
         stdout = runext.run_get_cmd(["git", "status", "--porcelain", "--ignored", "--untracked=all"], default=None)
-        return None if stdout is None else hashlib.sha1(stdout.encode()).digest()
+        return None if stdout is None else hashlib.sha1(stdout).digest()
     @staticmethod
     def get_files_with_uncommitted_changes(files=None):
         cmd = ["git", "status", "--porcelain", "--untracked-files=no",]
@@ -368,8 +431,11 @@ class Interface:
             cmd.append(filepath)
         return runext.run_get_cmd(cmd).stdout.splitlines()[0][7:]
     @staticmethod
-    def get_status_deco(status):
-        return fsdb_git.WD_DECO_MAP[status]
+    def get_stash_diff(stash=None):
+        return runext.run_get_cmd(["git", "stash", "show", "-p"] + runext.OPTNL_ARG(stash), default="", do_rstrip=False)
+    @staticmethod
+    def get_stashes_table_data():
+        return StashTableData()
     @staticmethod
     def get_tags_table_data():
         return TagTableData()

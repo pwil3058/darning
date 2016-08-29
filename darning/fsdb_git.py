@@ -15,6 +15,7 @@
 
 import os
 import re
+import hashlib
 import collections
 
 from gi.repository import Pango
@@ -69,7 +70,7 @@ class FileStatus:
     CLEAN_SET = set([UNMODIFIED, MODIFIED, ADDED, DELETED, RENAMED, COPIED, IGNORED, None])
     SIGNIFICANT_SET = frozenset(MODIFIED_LIST + [NOT_TRACKED])
 
-WD_DECO_MAP = {
+_WD_DECO_MAP = {
         None: fsdb.Deco(Pango.Style.NORMAL, "black"),
         FileStatus.UNMODIFIED: fsdb.Deco(Pango.Style.NORMAL, "black"),
         FileStatus.WD_ONLY_MODIFIED: fsdb.Deco(Pango.Style.NORMAL, "blue"),
@@ -100,18 +101,23 @@ WD_DECO_MAP = {
     }
 
 # TODO: think about different deco map for the index
-INDEX_DECO_MAP = WD_DECO_MAP
 
 _FILE_DATA_RE = re.compile(r'(("([^"]+)")|(\S+))( -> (("([^"]+)")|(\S+)))?')
 
+class GitFileData(fsdb.FileData):
+    STATUS_DECO_MAP = _WD_DECO_MAP
+
+class GitDirData(fsdb.DirData):
+    STATUS_DECO_MAP = _WD_DECO_MAP
+
 def get_git_file_data(string):
     match = _FILE_DATA_RE.match(string[3:])
-    name = match.group(3) if match.group(3) else match.group(4)
+    path = match.group(3) if match.group(3) else match.group(4)
     if match.group(5):
         extra_data = fsdb.RFD(extradatamatch.group(8) if match.group(8) else match.group(9), '->')
     else:
         extra_data = None
-    return fsdb.Data(name, string[:2], extra_data)
+    return GitFileData(path, string[:2], extra_data)
 
 def iter_git_file_data_text(text, related_file_path_data):
     for line in text.splitlines():
@@ -122,14 +128,24 @@ def iter_git_file_data_text(text, related_file_path_data):
 
 class WsFileDb(fsdb.GenericSnapshotWsFileDb):
     class FileDir(fsdb.GenericSnapshotWsFileDb.FileDir):
+        DIR_DATA = GitDirData
+        FILE_DATA = GitFileData
         IGNORED_STATUS_SET = set([FileStatus.IGNORED])
         CLEAN_STATUS_SET = FileStatus.CLEAN_SET
         SIGNIFICANT_DATA_SET = FileStatus.SIGNIFICANT_SET
         ORDERED_DIR_STATUS_LIST = FileStatus.MODIFIED_LIST + [FileStatus.NOT_TRACKED]
+        ORDERED_DIR_CLEAN_STATUS_LIST = [x for x in FileStatus.MODIFIED_LIST if x not in FileStatus.CLEAN_SET] + [FileStatus.NOT_TRACKED]
         def _get_initial_status(self):
             if not self._file_status_snapshot.status_set:
                 return None
             for status in self.ORDERED_DIR_STATUS_LIST:
+                if status in self._file_status_snapshot.status_set:
+                    return status
+            return None
+        def _get_initial_clean_status(self):
+            if not self._file_status_snapshot.status_set:
+                return None
+            for status in self.ORDERED_DIR_CLEAN_STATUS_LIST:
                 if status in self._file_status_snapshot.status_set:
                     return status
             return None
@@ -155,8 +171,15 @@ class WsFileDb(fsdb.GenericSnapshotWsFileDb):
 
 class IndexFileDb(fsdb.GenericChangeFileDb):
     class FileDir(fsdb.GenericChangeFileDb.FileDir):
+        DIR_DATA = GitDirData
+        FILE_DATA = GitFileData
         CLEAN_STATUS_SET = FileStatus.CLEAN_SET
         def _calculate_status(self):
+            for status in FileStatus.MODIFIED_LIST + [FileStatus.NOT_TRACKED]:
+                if status in self._status_set:
+                    return status
+            return FileStatus.UNMODIFIED
+        def _calculate_clean_status(self):
             for status in FileStatus.MODIFIED_LIST + [FileStatus.NOT_TRACKED]:
                 if status in self._status_set:
                     return status

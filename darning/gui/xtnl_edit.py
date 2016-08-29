@@ -219,6 +219,7 @@ def edit_files_extern(file_list):
 
 class PeruserAllocationView(EditorAllocationView):
     EDEFF = PERUSER_GLOB_FILE_NAME
+
 class PeruserAllocationTable(EditorAllocationTable):
     VIEW = PeruserAllocationView
 
@@ -234,10 +235,10 @@ actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_actions(
     [
         ("allocate_xtnl_editors", Gtk.STOCK_PREFERENCES, _("_Editor Allocation"), "",
          _('Allocate editors to file types'),
-         lambda _action:  EditorAllocationDialog().show()
-        ("allocate_xtnl_editors", Gtk.STOCK_PREFERENCES, _("_Peruser Allocation"), "",
+         lambda _action=None:  EditorAllocationDialog(parent=dialogue.main_window).show()
+        ),
+        ("allocate_xtnl_perusers", Gtk.STOCK_PREFERENCES, _("_Peruser Allocation"), "",
          _("Allocate perusers to file types"),
          lambda _action=None: PeruserAllocationDialog(parent=dialogue.main_window).show()
-        ),
         ),
     ])
