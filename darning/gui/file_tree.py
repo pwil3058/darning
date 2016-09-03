@@ -174,6 +174,8 @@ class FileTreeModel(Gtk.TreeStore, enotify.Listener, auto_update.AutoUpdater, ac
                 return child_iter
             child_iter = self.iter_next(child_iter)
         return None
+    def get_fsi_path(self, model_iter):
+        return os.path.relpath(self[model_iter][0].path)
     def get_file_paths_in_dir(self, dir_path, show_hidden=False, hide_clean=False, recursive=True):
         # TODO: fix get_file_paths_in_dir() -- use model not db
         subdirs, files = self._file_db.dir_contents(dir_path, show_hidden=show_hidden, hide_clean=hide_clean)
@@ -193,7 +195,7 @@ class FileTreeModel(Gtk.TreeStore, enotify.Listener, auto_update.AutoUpdater, ac
         return False
     def on_row_expanded_cb(self, view, dir_iter, _dummy):
         if self._not_yet_populated(dir_iter):
-            self._populate_dir(self[dir_iter][0].path, dir_iter)
+            self._populate_dir(self.get_fsi_path(dir_iter), dir_iter)#(self[dir_iter][0].path, dir_iter)
             if self.iter_n_children(dir_iter) > 1:
                 self.remove_place_holder(dir_iter)
     def on_row_collapsed_cb(self, _view, dir_iter, _dummy):
@@ -492,20 +494,21 @@ class FileTreeView(tlview.View, actions.CAGandUIManager, dialogue.BusyIndicatorU
     def get_selected_fsi_path(self):
         store, selection = self.get_selection().get_selected_rows()
         assert len(selection) == 1
-        return store[selection[0]][0].path
+        return store.get_fsi_path(selection[0])#[selection[0]][0].path
     def get_selected_file_paths(self, expanded=True):
         store, selection = self.get_selection().get_selected_rows()
         file_path_list = list()
         for x in selection:
             if store[x][0].is_dir:
                 if expanded:
-                    file_path_list += self.model.get_file_paths_in_dir(store[x][0].path, show_hidden=store.show_hidden, hide_clean=store.hide_clean, recursive=True)
+                    #file_path_list += self.model.get_file_paths_in_dir(store[x][0].path, show_hidden=store.show_hidden, hide_clean=store.hide_clean, recursive=True)
+                    file_path_list += self.model.get_file_paths_in_dir(store.get_fsi_path(x), show_hidden=store.show_hidden, hide_clean=store.hide_clean, recursive=True)
             else:
-                file_path_list.append(store[x][0].path)
+                file_path_list.append(store.get_fsi_path(x))#[x][0].path)
         return file_path_list
     def get_selected_fsi_paths(self):
         store, selection = self.get_selection().get_selected_rows()
-        return [store[x][0].path for x in selection]
+        return [store.get_fsi_path(x) for x in selection]#[store[x][0].path for x in selection]
     def add_selected_fsi_paths_to_clipboard(self, clipboard=None):
         if not clipboard:
             clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
