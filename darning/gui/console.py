@@ -128,9 +128,8 @@ class ConsoleLogWidget(Gtk.VBox, dialogue.BusyIndicatorUser):
         text = entry.get_text_and_clear_to_history()
         if not text:
             return
-        self.show_busy()
-        result = runext.run_cmd_in_console(self, text)
-        self.unshow_busy()
+        with self.showing_busy():
+            result = runext.run_cmd_in_console(self, text)
         dialogue.report_any_problems(result)
         auto_update.trigger_auto_update()
 

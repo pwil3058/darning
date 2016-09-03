@@ -236,32 +236,30 @@ class TableView(tlview.ListView, actions.CAGandUIManager, dialogue.BusyIndicator
         self.columns_autosize()
         self.seln.unselect_all()
     def set_contents(self, **kwargs):
-        self.show_busy()
-        self._set_contents(**kwargs)
-        self.unshow_busy()
+        with self.showing_busy():
+            self._set_contents(**kwargs)
     def refresh_contents(self, **kwargs):
-        self.show_busy()
-        selected_keys = self.get_selected_keys()
-        visible_range = self.get_visible_range()
-        if visible_range is not None:
-            start = visible_range[0][0]
-            end = visible_range[1][0]
-            length = end - start + 1
-            middle_offset = length // 2
-            align = float(middle_offset) / float(length)
-            middle = start + middle_offset
-            middle_key = self.model.get_value(self.model.get_iter(middle), 0)
-        self._set_contents(**kwargs)
-        for key in selected_keys:
-            model_iter = self.model.find_named(lambda x: x[0] == key)
-            if model_iter is not None:
-                self.seln.select_iter(model_iter)
-        if visible_range is not None:
-            middle_iter = self.model.find_named(lambda x: x[0] == middle_key)
-            if middle_iter is not None:
-                middle = self.model.get_path(middle_iter)
-                self.scroll_to_cell(middle, use_align=True, row_align=align)
-        self.unshow_busy()
+        with self.showing_busy():
+            selected_keys = self.get_selected_keys()
+            visible_range = self.get_visible_range()
+            if visible_range is not None:
+                start = visible_range[0][0]
+                end = visible_range[1][0]
+                length = end - start + 1
+                middle_offset = length // 2
+                align = float(middle_offset) / float(length)
+                middle = start + middle_offset
+                middle_key = self.model.get_value(self.model.get_iter(middle), 0)
+            self._set_contents(**kwargs)
+            for key in selected_keys:
+                model_iter = self.model.find_named(lambda x: x[0] == key)
+                if model_iter is not None:
+                    self.seln.select_iter(model_iter)
+            if visible_range is not None:
+                middle_iter = self.model.find_named(lambda x: x[0] == middle_key)
+                if middle_iter is not None:
+                    middle = self.model.get_path(middle_iter)
+                    self.scroll_to_cell(middle, use_align=True, row_align=align)
     def get_contents(self):
         return [row for row in self.model.named()]
     def get_selected_data(self, columns=None):

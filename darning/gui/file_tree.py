@@ -126,9 +126,8 @@ class FileTreeModel(Gtk.TreeStore, enotify.Listener, auto_update.AutoUpdater, ac
         self.button_group["hide_clean_files"].set_active(new_value)
         self.update_dir("", None)
     def _toggle_show_buttons_cb(self, toggleaction):
-        self._view.show_busy()
-        self.update_dir("", None)
-        self._view.unshow_busy()
+        with self._view.showing_busy():
+            self.update_dir("", None)
     def insert_place_holder(self, dir_iter):
         self.append(dir_iter)
     def insert_place_holder_if_needed(self, dir_iter):
@@ -141,16 +140,14 @@ class FileTreeModel(Gtk.TreeStore, enotify.Listener, auto_update.AutoUpdater, ac
                 pass
         return self.remove(fsobj_iter)
     def repopulate(self, **kwargs):
-        self._view.show_busy()
-        self._file_db = self._get_file_db()
-        self.clear()
-        self._populate_dir("", self.get_iter_first())
-        self._view.unshow_busy()
+        with self._view.showing_busy():
+            self._file_db = self._get_file_db()
+            self.clear()
+            self._populate_dir("", self.get_iter_first())
     def update(self, fsdb_reset_only=False, **kwargs):
-        self._view.show_busy()
-        self._file_db = self._file_db.reset() if (fsdb_reset_only and self in fsdb_reset_only) else self._get_file_db()
-        self.update_dir("", None)
-        self._view.unshow_busy()
+        with self._view.showing_busy():
+            self._file_db = self._file_db.reset() if (fsdb_reset_only and self in fsdb_reset_only) else self._get_file_db()
+            self.update_dir("", None)
     def depopulate(self, dir_iter):
         child_iter = self.iter_children(dir_iter)
         if child_iter != None:
@@ -523,9 +520,8 @@ class FileTreeView(tlview.View, actions.CAGandUIManager, dialogue.BusyIndicatorU
                 suggestion = os.path.join(dir_path, "")
         new_file_path = dialogue.ask_file_path(_("New File Path"), suggestion=suggestion, existing=False, parent=self._parent)
         if new_file_path:
-            self.show_busy()
-            result = os_utils.os_create_file(new_file_path)
-            self.unshow_busy()
+            with self.showing_busy():
+                result = os_utils.os_create_file(new_file_path)
             dialogue.report_any_problems(result)
             if self.OPEN_NEW_FILES_FOR_EDIT:
                 xtnl_edit.edit_files_extern([new_file_path])
@@ -536,9 +532,8 @@ class FileTreeView(tlview.View, actions.CAGandUIManager, dialogue.BusyIndicatorU
             return
         force = False
         while True:
-            self.show_busy()
-            result = os_utils.os_delete_fs_items(fsi_paths, force=force)
-            self.unshow_busy()
+            with self.showing_busy():
+                result = os_utils.os_delete_fs_items(fsi_paths, force=force)
             if not force and result.suggests_force:
                 if dialogue.ask_force_or_cancel(result, parent=self._parent) == dialogue.Response.FORCE:
                     force = True

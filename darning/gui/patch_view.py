@@ -166,14 +166,12 @@ class Dialogue(dialogue.ListenerDialog):
         self.auc.toggle_action.set_active(False)
         dialog.destroy()
     def _update_display_cb(self, **kwargs):
-        self.show_busy()
-        self._widget.update()
-        self.refresh_action.set_sensitive(ifce.PM.is_top_patch(self._widget.patch_name))
-        self.unshow_busy()
+        with self.showing_busy():
+            self._widget.update()
+            self.refresh_action.set_sensitive(ifce.PM.is_top_patch(self._widget.patch_name))
     def _refresh_acb(self, _action):
-        self.show_busy()
-        result = ifce.PM.do_refresh_patch(self._widget.patch_name)
-        self.unshow_busy()
+        with self.showing_busy():
+            result = ifce.PM.do_refresh_patch(self._widget.patch_name)
         dialogue.report_any_problems(result)
     def _save_as_acb(self, _action):
         from . import recollect

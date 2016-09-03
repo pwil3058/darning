@@ -284,11 +284,11 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
                 self._applied_count += 1
             yield [patch_data.name, icon, markup]
     def repopulate_list(self, **kwargs):
-        dialogue.show_busy()
-        self.set_contents()
-        condns = get_applied_condns(self.seln)
-        condns |= ws_actions.get_in_pm_pgnd_condns()
-        self.action_groups.update_condns(condns)
+        with dialogue.showing_busy():
+            self.set_contents()
+            condns = get_applied_condns(self.seln)
+            condns |= ws_actions.get_in_pm_pgnd_condns()
+            self.action_groups.update_condns(condns)
 
 class List(table.TableWidget):
     VIEW = ListView

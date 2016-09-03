@@ -26,9 +26,8 @@ class DoOperationMixin:
         overwrite = False
         force = False
         while True:
-            self.show_busy()
-            result = do_op(source, target, overwrite=overwrite, force=force)
-            self.unshow_busy()
+            with self.showing_busy():
+                result = do_op(source, target, overwrite=overwrite, force=force)
             if (not overwrite and result.suggests_overwrite) or (not force and result.suggests_force):
                 resp = dialogue.ask_rename_overwrite_force_or_cancel(result, parent=self._parent)
                 if resp == Gtk.ResponseType.CANCEL:

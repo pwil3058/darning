@@ -60,9 +60,8 @@ def confirm_copy_or_move_opn(opn, file_paths, destn):
 def do_overwrite_or_rename(destn, do_op):
     overwrite = False
     while True:
-        dialogue.show_busy()
-        result = do_op(destn, overwrite=overwrite)
-        dialogue.unshow_busy()
+        with dialogue.showing_busy():
+            result = do_op(destn, overwrite=overwrite)
         if result.suggests(CmdResult.SUGGEST_OVERWRITE_OR_RENAME):
             resp = dialogue.ask_rename_overwrite_or_cancel(result, clarification=None)
             if resp == Gtk.ResponseType.CANCEL:
@@ -84,9 +83,8 @@ def do_absorb_force_refresh_overwrite_or_rename(destn, do_op, refresh_op):
     absorb = False
     refresh_tried = False
     while True:
-        dialogue.show_busy()
-        result = do_op(destn, absorb=absorb, force=force, overwrite=overwrite)
-        dialogue.unshow_busy()
+        with dialogue.showing_busy():
+            result = do_op(destn, absorb=absorb, force=force, overwrite=overwrite)
         if refresh_tried:
             result = result - result.SUGGEST_REFRESH
         if not (force or absorb) and result.suggests(result.SUGGEST_FORCE_ABSORB_OR_REFRESH):
@@ -122,9 +120,8 @@ def do_force_refresh_overwrite_or_rename(destn, do_op, refresh_op):
     overwrite = False
     refresh_tried = False
     while True:
-        dialogue.show_busy()
-        result = do_op(destn, force=force, overwrite=overwrite)
-        dialogue.unshow_busy()
+        with dialogue.showing_busy():
+            result = do_op(destn, force=force, overwrite=overwrite)
         if refresh_tried:
             result = result - result.SUGGEST_REFRESH
         if not force and result.suggests(result.SUGGEST_FORCE_OR_REFRESH):
@@ -157,9 +154,8 @@ def do_force_or_recover(do_op, recover_op):
     force = False
     recovery_tried = False
     while True:
-        dialogue.show_busy()
-        result = do_op(force=force)
-        dialogue.unshow_busy()
+        with dialogue.showing_busy():
+            result = do_op(force=force)
         if not force and result.suggests_force:
             if dialogue.ask_force_or_cancel(result) == dialogue.Response.FORCE:
                 force = True
@@ -168,9 +164,8 @@ def do_force_or_recover(do_op, recover_op):
             continue
         elif not recovery_tried and result.suggests_recover:
             if dialogue.ask_recover_or_cancel(result) == dialogue.Response.RECOVER:
-                dialogue.show_busy()
-                result = recover_op()
-                dialogue.unshow_busy()
+                with dialogue.showing_busy():
+                    result = recover_op()
                 if not result.is_ok:
                     return result
             else:
@@ -183,9 +178,8 @@ def do_force_or_refresh(do_op, refresh_op):
     force = False
     refresh_tried = False
     while True:
-        dialogue.show_busy()
-        result = do_op(force=force)
-        dialogue.unshow_busy()
+        with dialogue.showing_busy():
+            result = do_op(force=force)
         if refresh_tried:
             result = result - result.SUGGEST_REFRESH
         if not force and result.suggests(result.SUGGEST_FORCE_OR_REFRESH):
@@ -208,9 +202,8 @@ def do_force_refresh_or_absorb(do_op, refresh_op):
     force = False
     refresh_tried = False
     while True:
-        dialogue.show_busy()
-        result = do_op(absorb=absorb, force=force)
-        dialogue.unshow_busy()
+        with dialogue.showing_busy():
+            result = do_op(absorb=absorb, force=force)
         if refresh_tried:
             result = result - result.SUGGEST_REFRESH
         if not (absorb or force) and result.suggests(result.SUGGEST_FORCE_ABSORB_OR_REFRESH):
@@ -233,9 +226,8 @@ def do_force_refresh_or_absorb(do_op, refresh_op):
 def do_or_discard(do_op):
     discard = False
     while True:
-        dialogue.show_busy()
-        result = do_op(discard=discard)
-        dialogue.unshow_busy()
+        with dialogue.showing_busy():
+            result = do_op(discard=discard)
         if not discard and result.suggests_discard:
             resp = dialogue.ask_discard_or_cancel(result, clarification=None)
             if resp == Gtk.ResponseType.CANCEL:
@@ -250,9 +242,8 @@ def do_or_discard(do_op):
 def do_or_force(do_op):
     force = False
     while True:
-        dialogue.show_busy()
-        result = do_op(force=force)
-        dialogue.unshow_busy()
+        with dialogue.showing_busy():
+            result = do_op(force=force)
         if not force and result.suggests_force:
             resp = dialogue.ask_force_or_cancel(result, clarification=None)
             if resp == Gtk.ResponseType.CANCEL:

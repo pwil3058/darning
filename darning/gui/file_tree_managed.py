@@ -80,6 +80,7 @@ class WSTreeView(file_tree.FileTreeView, enotify.Listener, ws_actions.WSListener
       </popup>
     </ui>
     '''
+    DIRS_SELECTABLE = False
     def __init__(self, show_hidden=False, hide_clean=False):
         file_tree.FileTreeView.__init__(self, show_hidden=show_hidden, hide_clean=hide_clean)
         enotify.Listener.__init__(self)
@@ -103,30 +104,30 @@ class WSTreeView(file_tree.FileTreeView, enotify.Listener, ws_actions.WSListener
             [
                 ('pm_add_files_to_top_patch', Gtk.STOCK_ADD, _('_Add'), None,
                  _('Add the selected files to the top patch'),
-                 lambda _action=None: dooph_pm.pm_do_add_files(self.get_selected_filepaths())
+                 lambda _action=None: dooph_pm.pm_do_add_files(self.get_selected_fsi_paths())
                 ),
                 ('pm_move_files_in_top_patch', icons.STOCK_RENAME, _('_Move'), None,
                  _('Move the selected files within the top patch'),
-                 lambda _action=None: dooph_pm.pm_do_move_files(self.get_selected_filepaths())
+                 lambda _action=None: dooph_pm.pm_do_move_files(self.get_selected_fsi_paths())
                 ),
                 ('pm_edit_files_in_top_patch', Gtk.STOCK_EDIT, _('_Edit'), None,
                  _('Open the selected files for editing after adding them to the top patch'),
-                 lambda _action=None: dooph_pm.pm_do_edit_files(self.get_selected_filepaths())
+                 lambda _action=None: dooph_pm.pm_do_edit_files(self.get_selected_fsi_paths())
                 ),
                 ('pm_delete_files_in_top_patch', Gtk.STOCK_DELETE, _('_Delete'), None,
                  _('Add the selected files to the top patch and then delete them'),
-                 lambda _action=None: dooph_pm.pm_do_delete_files(self.get_selected_filepaths())
+                 lambda _action=None: dooph_pm.pm_do_delete_files(self.get_selected_fsi_paths())
                 ),
             ])
         self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
             [
                 ('pm_copy_file_to_top_patch', Gtk.STOCK_COPY, _('_Copy'), None,
                  _('Add a copy of the selected file to the top patch'),
-                 lambda _action=None: dooph_pm.pm_do_copy_file(self.get_selected_filepath())
+                 lambda _action=None: dooph_pm.pm_do_copy_file(self.get_selected_fsi_path())
                 ),
                 ('pm_rename_file_in_top_patch', icons.STOCK_RENAME, _('_Rename'), None,
                  _('Rename the selected file within the top patch'),
-                 lambda _action=None: dooph_pm.pm_do_rename_file(self.get_selected_filepath())
+                 lambda _action=None: dooph_pm.pm_do_rename_file(self.get_selected_fsi_path())
                 ),
             ])
         self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC].add_actions(

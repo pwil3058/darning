@@ -172,9 +172,8 @@ class AliasPathMenu(Gtk.MenuItem):
     def _enter_notify_even_cb(self, widget, _event):
         widget.set_submenu(self._build_submenu())
     def _item_activation_cb(self, _widget, newtgnd):
-        dialogue.show_busy()
-        result = self._item_activation_action(newtgnd)
-        dialogue.unshow_busy()
+        with dialogue.showing_busy():
+            result = self._item_activation_action(newtgnd)
         dialogue.report_any_problems(result)
 
 class AliasPathTable(table.EditedEntriesTable):

@@ -61,9 +61,8 @@ def generate_local_playground_menu():
     return PgndPathView.generate_alias_path_menu(_("Local Repositories"), lambda newtgnd: ifce.chdir(newtgnd))
 
 def change_pgnd_cb(_widget, repo):
-    dialogue.show_busy()
-    result = ifce.chdir(repo)
-    dialogue.unshow_busy()
+    with dialogue.showing_busy():
+        result = ifce.chdir(repo)
     dialogue.report_any_problems(result)
 
 def change_wd_acb(_arg):
@@ -71,9 +70,8 @@ def change_wd_acb(_arg):
     if open_dialog.run() == Gtk.ResponseType.OK:
         newpg = open_dialog.get_path()
         if newpg:
-            open_dialog.show_busy()
-            result = ifce.chdir(newpg)
-            open_dialog.unshow_busy()
+            with open_dialog.showing_busy():
+                result = ifce.chdir(newpg)
             open_dialog.report_any_problems(result)
     open_dialog.destroy()
 

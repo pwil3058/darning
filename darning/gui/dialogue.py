@@ -31,13 +31,16 @@ from ..config_data import APP_NAME
 
 main_window = None
 
-def show_busy():
-    if main_window is not None:
+@contextmanager
+def showing_busy():
+    if main_window is None:
+        yield
+    else:
         main_window.show_busy()
-
-def unshow_busy():
-    if main_window is not None:
-        main_window.unshow_busy()
+        try:
+            yield
+        finally:
+            main_window.unshow_busy()
 
 def is_busy():
     return main_window is None or main_window.is_busy
@@ -69,6 +72,13 @@ class BusyIndicator:
             if window is not None:
                 window.set_cursor(None)
                 gutils.yield_to_pending_events()
+    @contextmanager
+    def showing_busy(self):
+        self.show_busy()
+        try:
+            yield
+        except:
+            self.unshow_busy()
     @property
     def is_busy(self):
         return self._count > 0
@@ -76,16 +86,23 @@ class BusyIndicator:
 class BusyIndicatorUser:
     def __init__(self, busy_indicator=None):
         self._busy_indicator = busy_indicator
-    def show_busy(self):
+    def _show_busy(self):
         if self._busy_indicator is not None:
             self._busy_indicator.show_busy()
-        else:
-            show_busy()
-    def unshow_busy(self):
+        elif main_window is not None:
+            main_window.show_busy()
+    def _unshow_busy(self):
         if self._busy_indicator is not None:
             self._busy_indicator.unshow_busy()
-        else:
-            unshow_busy()
+        elif main_window is not None:
+            main_window.unshow_busy()
+    @contextmanager
+    def showing_busy(self):
+        self._show_busy()
+        try:
+            yield
+        except:
+            self._unshow_busy()
     def set_busy_indicator(self, busy_indicator=None):
         self._busy_indicator = busy_indicator
 
