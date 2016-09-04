@@ -21,7 +21,7 @@ import os
 
 from gi.repository import Gtk
 
-from ..cmd_result import CmdResult
+from .. import CmdResult
 
 from .. import utils
 
@@ -62,7 +62,7 @@ def do_overwrite_or_rename(destn, do_op):
     while True:
         with dialogue.showing_busy():
             result = do_op(destn, overwrite=overwrite)
-        if result.suggests(CmdResult.SUGGEST_OVERWRITE_OR_RENAME):
+        if result.suggests(CmdResult.Suggest.OVERWRITE_OR_RENAME):
             resp = dialogue.ask_rename_overwrite_or_cancel(result, clarification=None)
             if resp == Gtk.ResponseType.CANCEL:
                 return CmdResult.ok() # we don't want to be a nag
@@ -86,8 +86,8 @@ def do_absorb_force_refresh_overwrite_or_rename(destn, do_op, refresh_op):
         with dialogue.showing_busy():
             result = do_op(destn, absorb=absorb, force=force, overwrite=overwrite)
         if refresh_tried:
-            result = result - result.SUGGEST_REFRESH
-        if not (force or absorb) and result.suggests(result.SUGGEST_FORCE_ABSORB_OR_REFRESH):
+            result = result - result.Suggest.REFRESH
+        if not (force or absorb) and result.suggests(result.Suggest.FORCE_ABSORB_OR_REFRESH):
             resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
             if resp == Gtk.ResponseType.CANCEL:
                 return CmdResult.ok() # we don't want to be a nag
@@ -100,7 +100,7 @@ def do_absorb_force_refresh_overwrite_or_rename(destn, do_op, refresh_op):
                 result = refresh_op()
                 dialogue.report_any_problems(result)
             continue
-        elif not overwrite and result.suggests(CmdResult.SUGGEST_OVERWRITE_OR_RENAME):
+        elif not overwrite and result.suggests(CmdResult.Suggest.OVERWRITE_OR_RENAME):
             resp = dialogue.ask_rename_overwrite_or_cancel(result, clarification=None)
             if resp == Gtk.ResponseType.CANCEL:
                 return CmdResult.ok() # we don't want to be a nag
@@ -123,8 +123,8 @@ def do_force_refresh_overwrite_or_rename(destn, do_op, refresh_op):
         with dialogue.showing_busy():
             result = do_op(destn, force=force, overwrite=overwrite)
         if refresh_tried:
-            result = result - result.SUGGEST_REFRESH
-        if not force and result.suggests(result.SUGGEST_FORCE_OR_REFRESH):
+            result = result - result.Suggest.REFRESH
+        if not force and result.suggests(result.Suggest.FORCE_OR_REFRESH):
             resp = dialogue.ask_force_refresh_or_cancel(result, clarification=None)
             if resp == Gtk.ResponseType.CANCEL:
                 return CmdResult.ok() # we don't want to be a nag
@@ -135,7 +135,7 @@ def do_force_refresh_overwrite_or_rename(destn, do_op, refresh_op):
                 result = refresh_op()
                 dialogue.report_any_problems(result)
             continue
-        elif not overwrite and result.suggests(CmdResult.SUGGEST_OVERWRITE_OR_RENAME):
+        elif not overwrite and result.suggests(CmdResult.Suggest.OVERWRITE_OR_RENAME):
             resp = dialogue.ask_rename_overwrite_or_cancel(result, clarification=None)
             if resp == Gtk.ResponseType.CANCEL:
                 return CmdResult.ok() # we don't want to be a nag
@@ -181,8 +181,8 @@ def do_force_or_refresh(do_op, refresh_op):
         with dialogue.showing_busy():
             result = do_op(force=force)
         if refresh_tried:
-            result = result - result.SUGGEST_REFRESH
-        if not force and result.suggests(result.SUGGEST_FORCE_OR_REFRESH):
+            result = result - result.Suggest.REFRESH
+        if not force and result.suggests(result.Suggest.FORCE_OR_REFRESH):
             resp = dialogue.ask_force_refresh_or_cancel(result, clarification=None)
             if resp == Gtk.ResponseType.CANCEL:
                 return CmdResult.ok() # we don't want to be a nag
@@ -205,8 +205,8 @@ def do_force_refresh_or_absorb(do_op, refresh_op):
         with dialogue.showing_busy():
             result = do_op(absorb=absorb, force=force)
         if refresh_tried:
-            result = result - result.SUGGEST_REFRESH
-        if not (absorb or force) and result.suggests(result.SUGGEST_FORCE_ABSORB_OR_REFRESH):
+            result = result - result.Suggest.REFRESH
+        if not (absorb or force) and result.suggests(result.Suggest.FORCE_ABSORB_OR_REFRESH):
             resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
             if resp == Gtk.ResponseType.CANCEL:
                 return CmdResult.ok() # we don't want to be a nag

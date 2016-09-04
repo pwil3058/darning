@@ -15,7 +15,7 @@
 
 import os
 
-from ..cmd_result import CmdResult
+from .. import CmdResult
 from ..config_data import APP_NAME
 
 from .. import scm_ifce

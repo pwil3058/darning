@@ -24,7 +24,7 @@ import os
 import re
 import hashlib
 
-from .cmd_result import CmdResult
+from . import CmdResult
 from .utils import singleton
 
 from . import runext
@@ -216,7 +216,7 @@ class Interface:
             cmd = ["git", "add", "-f", "--"] + file_list
         else:
             cmd = ["git", "add", "--"] + file_list
-        return _do_action_cmd(cmd, scm_ifce.E_INDEX_MOD|scm_ifce.E_FILE_CHANGES, None, [("Use -f if you really want to add them.", CmdResult.SUGGEST_FORCE)])
+        return _do_action_cmd(cmd, scm_ifce.E_INDEX_MOD|scm_ifce.E_FILE_CHANGES, None, [("Use -f if you really want to add them.", CmdResult.Suggest.FORCE)])
     @staticmethod
     def do_amend_commit(msg):
         cmd = ['git', 'commit', '--amend', '-m', msg]
@@ -247,7 +247,7 @@ class Interface:
         cmd.append(branch)
         if target:
             cmd.append(target)
-        return _do_action_cmd(cmd, scm_ifce.E_BRANCH, None, [("already exists", CmdResult.SUGGEST_FORCE)])
+        return _do_action_cmd(cmd, scm_ifce.E_BRANCH, None, [("already exists", CmdResult.Suggest.FORCE)])
     @classmethod
     def do_import_patch(cls, patch_filepath):
         ok_to_import, msg = cls.is_ready_for_import()
@@ -292,14 +292,14 @@ class Interface:
             cmd = ["git", "rm", "-f", "--"] + file_list
         else:
             cmd = ["git", "rm", "--"] + file_list
-        return _do_action_cmd(cmd, scm_ifce.E_INDEX_MOD, None, [("or -f to force removal", CmdResult.SUGGEST_FORCE)])
+        return _do_action_cmd(cmd, scm_ifce.E_INDEX_MOD, None, [("or -f to force removal", CmdResult.Suggest.FORCE)])
     @staticmethod
     def do_rename_file_in_index(file_path, destn, overwrite=False):
         if overwrite:
             cmd = ["git", "mv", "-f", file_path, destn]
         else:
             cmd = ["git", "mv", "-f", file_path, destn]
-        return _do_action_cmd(cmd, scm_ifce.E_INDEX_MOD, None, [("or -f to force", CmdResult.SUGGEST_OVERWRITE)])
+        return _do_action_cmd(cmd, scm_ifce.E_INDEX_MOD, None, [("or -f to force", CmdResult.Suggest.OVERWRITE)])
     @staticmethod
     def do_set_tag(tag, annotated=False, msg=None, signed=False, key_id=None, target=None, force=False):
         cmd = ["git", "tag"]
@@ -314,7 +314,7 @@ class Interface:
         cmd.append(tag)
         if target:
             cmd.append(target)
-        return _do_action_cmd(cmd, scm_ifce.E_TAG, None, [("already exists", CmdResult.SUGGEST_FORCE)])
+        return _do_action_cmd(cmd, scm_ifce.E_TAG, None, [("already exists", CmdResult.Suggest.FORCE)])
     @staticmethod
     def do_stash_apply(reinstate_index=False, stash=None):
         cmd = ["git", "stash", "apply"]

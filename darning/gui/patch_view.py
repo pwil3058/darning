@@ -182,8 +182,8 @@ class Dialogue(dialogue.ListenerDialog):
             if export_filepath is None:
                 return
             if os.path.exists(export_filepath):
-                from ..cmd_result import CmdResult
-                problem = CmdResult.error(stderr=_("A file of that name already exists!!")) | CmdResult.SUGGEST_OVERWRITE_OR_RENAME
+                from .. import CmdResult
+                problem = CmdResult.error(stderr=_("A file of that name already exists!!")) | CmdResult.Suggest.OVERWRITE_OR_RENAME
                 response = dialogue.ask_rename_overwrite_or_cancel(problem)
                 if response == Gtk.ResponseType.CANCEL:
                     return

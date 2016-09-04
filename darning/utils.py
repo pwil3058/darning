@@ -33,7 +33,7 @@ from gi.repository import GObject
 
 # TODO: purify utils (i.e. minimize . imports)
 
-from .cmd_result import CmdResult
+from . import CmdResult
 from .config_data import HOME
 
 from . import options

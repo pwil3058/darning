@@ -25,7 +25,7 @@ from gi.repository import Gtk
 from gi.repository import Pango
 from gi.repository import GObject
 
-from ..cmd_result import CmdFailure
+from .. import CmdFailure
 
 from .. import utils
 from .. import runext

@@ -25,7 +25,7 @@ except ImportError:
     import ConfigParser as configparser
 
 from .config_data import APP_NAME, CONFIG_DIR_NAME
-from .cmd_result import CmdResult
+from . import CmdResult
 
 _GLOBAL_CFG_FILE = os.path.join(CONFIG_DIR_NAME, "options.cfg")
 GLOBAL_OPTIONS = configparser.SafeConfigParser()

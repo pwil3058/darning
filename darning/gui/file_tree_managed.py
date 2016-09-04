@@ -18,7 +18,7 @@ import os
 from gi.repository import Gtk
 from gi.repository import GObject
 
-from ..cmd_result import CmdFailure
+from .. import CmdFailure
 
 from .. import os_utils
 from .. import scm_ifce

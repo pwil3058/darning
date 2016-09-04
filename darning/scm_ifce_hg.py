@@ -19,7 +19,7 @@ import errno
 import hashlib
 import re
 
-from .cmd_result import CmdResult
+from . import CmdResult
 from .utils import singleton
 from . import enotify
 
@@ -43,10 +43,10 @@ SUGGEST_MERGE_OR_DISCARD_RE = re.compile("use 'hg merge' or 'hg update -C'")
 SUGGEST_DISCARD_RE = re.compile("use 'hg update -C")
 
 SUGGESTION_TABLE = (
-    (CmdResult.SUGGEST_FORCE, lambda x: bool(SUGGEST_FORCE_RE.search(x.stderr))),
-    (CmdResult.SUGGEST_RENAME, lambda x: bool(SUGGEST_RENAME_RE.search(x.stderr))),
-    (CmdResult.SUGGEST_MERGE_OR_DISCARD, lambda x: bool(SUGGEST_MERGE_OR_DISCARD_RE.search(x.stderr))),
-    (CmdResult.SUGGEST_DISCARD, lambda x: bool(SUGGEST_DISCARD_RE.search(x.stderr))),
+    (CmdResult.Suggest.FORCE, lambda x: bool(SUGGEST_FORCE_RE.search(x.stderr))),
+    (CmdResult.Suggest.RENAME, lambda x: bool(SUGGEST_RENAME_RE.search(x.stderr))),
+    (CmdResult.Suggest.MERGE_OR_DISCARD, lambda x: bool(SUGGEST_MERGE_OR_DISCARD_RE.search(x.stderr))),
+    (CmdResult.Suggest.DISCARD, lambda x: bool(SUGGEST_DISCARD_RE.search(x.stderr))),
 )
 
 def _run_do_cmd(cmd, input_text=None, sanitize_stderr=None):

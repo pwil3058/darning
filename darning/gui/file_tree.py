@@ -21,7 +21,7 @@ from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import GObject
 
-from ..cmd_result import CmdResult, CmdFailure
+from .. import CmdResult, CmdFailure
 
 from .. import utils
 from .. import fsdb

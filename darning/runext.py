@@ -21,7 +21,7 @@ import subprocess
 import shlex
 import select
 
-from .cmd_result import CmdResult, CmdFailure
+from . import CmdResult, CmdFailure
 
 IS_POSIX = os.name == "posix"
 IS_MSFT = os.name == "nt" or os.name == "dos"

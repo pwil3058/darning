@@ -17,7 +17,7 @@
 
 import sys
 
-from ..cmd_result import CmdResult
+from .. import CmdResult
 
 from . import cli_args
 from . import db_utils

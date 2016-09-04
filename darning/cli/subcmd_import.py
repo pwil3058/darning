@@ -18,7 +18,7 @@
 import os
 import sys
 
-from ..cmd_result import CmdResult
+from .. import CmdResult
 
 from .. import patchlib
 

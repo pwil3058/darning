@@ -27,7 +27,7 @@ from .. import pm_ifce
 from .. import scm_ifce
 from .. import enotify
 
-from ..cmd_result import CmdResult
+from .. import CmdResult
 
 from . import ifce
 from . import dialogue
@@ -200,8 +200,8 @@ def pm_do_export_named_patch(patch_name, suggestion=None, busy_indicator=None):
         with busy_indicator.showing_busy():
             result = ifce.PM.do_export_patch_as(patch_name, export_filename, force=force, overwrite=overwrite)
         if refresh_tried:
-            result = result - result.SUGGEST_REFRESH
-        if result.suggests(result.SUGGEST_FORCE_OR_REFRESH):
+            result = result - result.Suggest.REFRESH
+        if result.suggests(result.Suggest.FORCE_OR_REFRESH):
             resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
             if resp == Gtk.ResponseType.CANCEL:
                 return
@@ -241,8 +241,8 @@ def pm_do_fold_patch(patch_name):
         with dialogue.showing_busy():
             result = ifce.PM.do_fold_named_patch(patch_name, absorb=absorb, force=force)
         if refresh_tried:
-            result = result - result.SUGGEST_REFRESH
-        if not (absorb or force) and result.suggests(result.SUGGEST_FORCE_ABSORB_OR_REFRESH):
+            result = result - result.Suggest.REFRESH
+        if not (absorb or force) and result.suggests(result.Suggest.FORCE_ABSORB_OR_REFRESH):
             resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
             if resp == Gtk.ResponseType.CANCEL:
                 break
@@ -296,8 +296,8 @@ def pm_do_fold_external_patch():
         with dlg.showing_busy():
             result = ifce.PM.do_fold_epatch(epatch, absorb=absorb, force=force)
         if refresh_tried:
-            result = result - result.SUGGEST_REFRESH
-        if not (absorb or force) and result.suggests(result.SUGGEST_FORCE_ABSORB_OR_REFRESH):
+            result = result - result.Suggest.REFRESH
+        if not (absorb or force) and result.suggests(result.Suggest.FORCE_ABSORB_OR_REFRESH):
             resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
             if resp == Gtk.ResponseType.CANCEL:
                 break
@@ -337,7 +337,7 @@ def pm_do_import_external_patch():
         epatch.set_strip_level(dlg.get_strip_level())
         with dlg.showing_busy():
             result = ifce.PM.do_import_patch(epatch, dlg.get_as_name(), overwrite=overwrite)
-        if not overwrite and result.suggests(result.SUGGEST_OVERWRITE_OR_RENAME):
+        if not overwrite and result.suggests(result.Suggest.OVERWRITE_OR_RENAME):
             resp = dialogue.ask_rename_overwrite_or_cancel(result, clarification=None)
             if resp == Gtk.ResponseType.CANCEL:
                 break
@@ -417,8 +417,8 @@ def pm_do_push():
         with dialogue.showing_busy():
             result = ifce.PM.do_push_next_patch(absorb=absorb, force=force)
         if refresh_tried:
-            result = result - result.SUGGEST_REFRESH
-        if not (absorb or force) and result.suggests(result.SUGGEST_FORCE_ABSORB_OR_REFRESH):
+            result = result - result.Suggest.REFRESH
+        if not (absorb or force) and result.suggests(result.Suggest.FORCE_ABSORB_OR_REFRESH):
             resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
             if resp == Gtk.ResponseType.CANCEL:
                 return False
@@ -450,7 +450,7 @@ def pm_do_push_to(patch_name):
 def _launch_reconciliation_tool(file_a, file_b, file_c):
     from .. import options
     from .. import runext
-    from ..cmd_result import CmdResult
+    from .. import CmdResult
     reconciler = options.get("reconcile", "tool")
     if not reconciler:
         return CmdResult.warning(_("No reconciliation tool is defined.\n"))

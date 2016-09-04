@@ -19,7 +19,7 @@ import hashlib
 import re
 import time
 
-from .cmd_result import CmdResult
+from . import CmdResult
 
 from . import enotify
 
@@ -281,7 +281,7 @@ def set_patch_file_description(patch_file_path, description, overwrite=False):
             if overwrite:
                 patch_obj = patchlib.Patch()
             else:
-                return CmdResult.error(stderr=_("{0}: exists but is not a valid patch file".format(patch_file_path))) | CmdResult.SUGGEST_OVERWRITE
+                return CmdResult.error(stderr=_("{0}: exists but is not a valid patch file".format(patch_file_path))) | CmdResult.Suggest.OVERWRITE
     else:
         patch_obj = patchlib.Patch()
     patch_obj.set_description(description)
@@ -313,7 +313,7 @@ class InterfaceMixin:
             export_file_name = utils.convert_patchname_to_filename(patch_name)
         if not overwrite and os.path.exists(export_file_name):
             emsg = _("{0}: file already exists.\n").format(export_file_name)
-            return CmdResult.error(stderr=emsg) + CmdResult.SUGGEST_OVERWRITE_OR_RENAME
+            return CmdResult.error(stderr=emsg) + CmdResult.Suggest.OVERWRITE_OR_RENAME
         # NB we don't use shutil.copyfile() here as names may dictate (de)compression
         return utils.set_file_contents(export_file_name, cls.get_patch_text(patch_name))
     @classmethod

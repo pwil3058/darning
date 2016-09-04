@@ -28,7 +28,7 @@ import tempfile
 
 from contextlib import contextmanager
 
-from .cmd_result import CmdResult
+from . import CmdResult
 
 from . import ntuples
 from . import rctx as RCTX
@@ -1752,10 +1752,10 @@ def do_copy_file_to_top_patch(file_path, as_file_path, overwrite=False):
         if not overwrite:
             if as_file_path in top_patch.files_data:
                 RCTX.stderr.write(_("{0}: file already in patch.\n").format(rel_subdir(as_file_path)))
-                return CmdResult.ERROR | CmdResult.SUGGEST_RENAME | CmdResult.SUGGEST_OVERWRITE
+                return CmdResult.ERROR | CmdResult.Suggest.RENAME | CmdResult.Suggest.OVERWRITE
             if os.path.exists(as_file_path):
                 RCTX.stderr.write(_("{0}: file already exists.\n").format(rel_subdir(as_file_path)))
-                return CmdResult.ERROR | CmdResult.SUGGEST_RENAME | CmdResult.SUGGEST_OVERWRITE
+                return CmdResult.ERROR | CmdResult.Suggest.RENAME | CmdResult.Suggest.OVERWRITE
         try:
             try:
                 top_patch.get_file(as_file_path).copy_contents_from(file_path)
@@ -1775,7 +1775,7 @@ def do_create_new_patch(patch_name, description):
             patch = DB.create_new_patch(patch_name, description)
         except DarnItPatchExists:
             RCTX.stderr.write(_("patch \"{0}\" already exists.\n").format(patch_name))
-            return CmdResult.ERROR|CmdResult.SUGGEST_RENAME
+            return CmdResult.ERROR|CmdResult.Suggest.RENAME
         if old_top and old_top.needs_refresh:
             RCTX.stderr.write(_("Previous top patch (\"{0}\") needs refreshing.\n").format(old_top.name))
             return CmdResult.WARNING
@@ -1842,7 +1842,7 @@ def do_duplicate_patch(patch_name, as_patch_name, new_description):
     with open_db(mutable=True) as DB:
         if not utils.is_valid_dir_name(as_patch_name):
             RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(as_patch_name, utils.ALLOWED_DIR_NAME_CHARS_MSG))
-            return CmdResult.ERROR|CmdResult.SUGGEST_RENAME
+            return CmdResult.ERROR|CmdResult.Suggest.RENAME
         try:
             new_patch = DB.duplicate_named_patch(patch_name, as_patch_name, new_description)
         except DarnItUnknownPatch:
@@ -1851,11 +1851,11 @@ def do_duplicate_patch(patch_name, as_patch_name, new_description):
         except DarnItPatchNeedsRefresh as edata:
             RCTX.stderr.write(_('{0}: patch needs refresh.\n').format(patch_name))
             RCTX.stderr.write(_('Aborted.\n'))
-            return CmdResult.ERROR_SUGGEST_REFRESH
+            return CmdResult.ERROR | CmdResult.Suggest.REFRESH
         except DarnItPatchExists:
             RCTX.stderr.write(_('{0}: patch already in series.\n').format(as_patch_name))
             RCTX.stderr.write(_('Aborted.\n'))
-            return CmdResult.ERROR | CmdResult.SUGGEST_RENAME
+            return CmdResult.ERROR | CmdResult.Suggest.RENAME
         RCTX.stdout.write(_('{0}: patch duplicated as "{1}".\n').format(patch_name, new_patch.name))
         return CmdResult.OK
 
@@ -1905,13 +1905,13 @@ def do_import_patch(epatch, patch_name, overwrite=False, absorb=False, force=Fal
             patch = DB.get_named_patch(patch_name)
             if not overwrite:
                 RCTX.stderr.write(_('patch "{0}" already exists\n').format(patch_name))
-                result = CmdResult.ERROR | CmdResult.SUGGEST_RENAME
+                result = CmdResult.ERROR | CmdResult.Suggest.RENAME
                 if not patch.is_applied:
-                    result |= CmdResult.SUGGEST_OVERWRITE
+                    result |= CmdResult.Suggest.OVERWRITE
                 return result
             elif patch.is_applied:
                 RCTX.stderr.write(_('patch "{0}" already exists and is applied. Cannot be overwritten.\n').format(patch_name))
-                return CmdResult.ERROR | CmdResult.SUGGEST_RENAME
+                return CmdResult.ERROR | CmdResult.Suggest.RENAME
             else:
                 try:
                     DB.remove_patch(patch_name)
@@ -1919,7 +1919,7 @@ def do_import_patch(epatch, patch_name, overwrite=False, absorb=False, force=Fal
                     return CmdResult.ERROR
         elif not utils.is_valid_dir_name(patch_name):
             RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(patch_name, utils.ALLOWED_DIR_NAME_CHARS_MSG))
-            return CmdResult.ERROR|CmdResult.SUGGEST_RENAME
+            return CmdResult.ERROR|CmdResult.Suggest.RENAME
         descr = utils.make_utf8_compliant(epatch.get_description())
         top_patch = DB.top_patch
         patch = DB.create_new_patch(patch_name, descr)
@@ -1928,7 +1928,7 @@ def do_import_patch(epatch, patch_name, overwrite=False, absorb=False, force=Fal
         else:
             RCTX.stdout.write(_('{0}: patch inserted at start of series.\n').format(patch_name))
         result = patch.do_fold_epatch(epatch, absorb=absorb, force=force)
-        if result & CmdResult.SUGGEST_FORCE_OR_ABSORB:
+        if result & CmdResult.Suggest.FORCE_OR_ABSORB:
             DB.pop_top_patch()
             DB.remove_patch(patch)
         elif patch.needs_refresh:
@@ -1966,7 +1966,7 @@ def do_move_files_in_top_patch(file_paths, target_path, force=False, overwrite=F
                     RCTX.stderr.write(_("{0}: file already in patch.\n").format(rel_subdir(target_file_path)))
                 for target_file_path in tfps_exist:
                     RCTX.stderr.write(_("{0}: file already exists.\n").format(rel_subdir(target_file_path)))
-                return CmdResult.ERROR | CmdResult.SUGGEST_RENAME | CmdResult.SUGGEST_OVERWRITE
+                return CmdResult.ERROR | CmdResult.Suggest.RENAME | CmdResult.Suggest.OVERWRITE
         if not force:
             overlaps = DB.get_overlap_data(file_paths, top_patch)
             if len(overlaps) > 0:
@@ -2002,7 +2002,7 @@ def do_pop_top_patch(force=False):
             return CmdResult.ERROR
         except DarnItPatchNeedsRefresh:
             RCTX.stderr.write(_("Top patch (\"{0}\") needs to be refreshed.\n").format(DB.top_patch_name))
-            return CmdResult.ERROR_SUGGEST_FORCE_OR_REFRESH
+            return CmdResult.ERROR | CmdResult.Suggest.FORCE_OR_REFRESH
         if new_top_patch is None:
             RCTX.stdout.write(_("There are now no patches applied.\n"))
         else:
@@ -2058,10 +2058,10 @@ def do_rename_file_in_top_patch(file_path, new_file_path, force=False, overwrite
         if not overwrite:
             if new_file_path in top_patch.files_data:
                 RCTX.stderr.write(_("{0}: file already in patch.\n").format(rel_subdir(new_file_path)))
-                return CmdResult.ERROR | CmdResult.SUGGEST_RENAME | CmdResult.SUGGEST_OVERWRITE
+                return CmdResult.ERROR | CmdResult.Suggest.RENAME | CmdResult.Suggest.OVERWRITE
             if os.path.exists(new_file_path):
                 RCTX.stderr.write(_("{0}: file already exists.\n").format(rel_subdir(new_file_path)))
-                return CmdResult.ERROR | CmdResult.SUGGEST_RENAME | CmdResult.SUGGEST_OVERWRITE
+                return CmdResult.ERROR | CmdResult.Suggest.RENAME | CmdResult.Suggest.OVERWRITE
         if not force:
             overlaps = DB.get_overlap_data([file_path], top_patch)
             if len(overlaps) > 0:
@@ -2078,10 +2078,10 @@ def do_rename_patch(patch_name, new_name):
     with open_db(mutable=True) as DB:
         if DB.has_patch_with_name(new_name):
             RCTX.stderr.write(_('patch "{0}" already exists\n').format(new_name))
-            return CmdResult.ERROR|CmdResult.SUGGEST_RENAME
+            return CmdResult.ERROR|CmdResult.Suggest.RENAME
         elif not utils.is_valid_dir_name(new_name):
             RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(new_name, utils.ALLOWED_DIR_NAME_CHARS_MSG))
-            return CmdResult.ERROR|CmdResult.SUGGEST_RENAME
+            return CmdResult.ERROR|CmdResult.Suggest.RENAME
         patch = _get_patch(patch_name, DB)
         if patch is None:
             return CmdResult.ERROR
@@ -2093,15 +2093,15 @@ def do_restore_patch(patch_name, as_patch_name):
     with open_db(mutable=True) as DB:
         if not utils.is_valid_dir_name(as_patch_name):
             RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(as_patch_name, utils.ALLOWED_DIR_NAME_CHARS_MSG))
-            return CmdResult.ERROR|CmdResult.SUGGEST_RENAME
+            return CmdResult.ERROR|CmdResult.Suggest.RENAME
         try:
             patch = DB.restore_named_patch(patch_name, as_patch_name)
         except DarnItUnknownPatch:
             RCTX.stderr.write(_('{0}: is NOT available for restoration\n').format(patch_name))
-            return CmdResult.ERROR|CmdResult.SUGGEST_RENAME
+            return CmdResult.ERROR|CmdResult.Suggest.RENAME
         except DarnItPatchExists:
             RCTX.stderr.write(_('{0}: Already exists in database\n').format(as_patch_name))
-            return CmdResult.ERROR|CmdResult.SUGGEST_RENAME
+            return CmdResult.ERROR|CmdResult.Suggest.RENAME
         return CmdResult.OK
 
 def do_scm_absorb_applied_patches(force=False, with_timestamps=False):
@@ -2165,7 +2165,7 @@ def do_scm_absorb_applied_patches(force=False, with_timestamps=False):
                 return CmdResult.ERROR
             except DarnItPatchNeedsRefresh:
                 RCTX.stderr.write(_("Top patch (\"{0}\") needs to be refreshed.\n").format(DB.top_patch_name))
-                return CmdResult.ERROR_SUGGEST_FORCE_OR_REFRESH
+                return CmdResult.ERROR | CmdResult.Suggest.FORCE_OR_REFRESH
         ret_code = CmdResult.OK
         count = 0
         for patch_file_name in patch_file_names:
@@ -2206,7 +2206,7 @@ def do_select_guards(guards):
                 bad_guard_count += 1
         if bad_guard_count > 0:
             RCTX.stderr.write(_('Aborted.\n'))
-            return CmdResult.ERROR|CmdResult.SUGGEST_EDIT
+            return CmdResult.ERROR|CmdResult.Suggest.EDIT
         DB.selected_guards = set(guards)
         RCTX.stdout.write(_('{{{0}}}: is now the set of selected guards.\n').format(', '.join(sorted(DB.selected_guards))))
         return CmdResult.OK
@@ -2244,7 +2244,7 @@ def do_set_patch_guards_fm_list(patch_name, guards_list):
     if len(guards_list) != (len(pos_guards) + len(neg_guards)):
         RCTX.stderr.write(_('Guards must start with "+" or "-" and contain no whitespace.\n'))
         RCTX.stderr.write( _('Aborted.\n'))
-        return CmdResult.ERROR | CmdResult.SUGGEST_EDIT
+        return CmdResult.ERROR | CmdResult.Suggest.EDIT
     return do_set_patch_guards(patch_name, pos_guards, neg_guards)
 
 def do_set_patch_guards_fm_str(patch_name, guards_str):

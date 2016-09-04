@@ -17,7 +17,7 @@ import os
 import shutil
 import errno
 
-from .cmd_result import CmdResult
+from . import CmdResult
 
 from . import enotify
 
@@ -54,7 +54,7 @@ def check_for_overwrites(destn_file_paths):
         stderr = _("File(s):\n")
         for file_path in overwritten:
             stderr += "\t{0}\n".format(utils.quote_if_needed(file_path))
-        return CmdResult.error(stderr=stderr + _("will be overwritten!\n")) | CmdResult.SUGGEST_OVERWRITE_OR_RENAME
+        return CmdResult.error(stderr=stderr + _("will be overwritten!\n")) | CmdResult.Suggest.OVERWRITE_OR_RENAME
     return CmdResult.ok()
 
 def os_create_dir(dir_path):
@@ -104,7 +104,7 @@ def os_delete_fs_items(fsi_paths, events=E_FILE_DELETED, force=False):
             _CONSOLE_LOG.append_stdout(_('Deleted: {0}\n').format(fsi_path))
         except OSError as edata:
             if edata.errno == errno.ENOTEMPTY:
-                errorcode = CmdResult.ERROR_SUGGEST_FORCE
+                errorcode = CmdResult.ERROR | CmdResult.Suggest.FORCE
             errmsg = _("Error: {}: \"{}\"\n").format(edata.strerror, fsi_path)
             serr += errmsg
             _CONSOLE_LOG.append_stderr(errmsg)
@@ -120,7 +120,7 @@ def os_move_or_copy_fs_item(fsi_path, destn, opsym, overwrite=False, force=False
     if os.path.exists(new_path):
         if not overwrite:
             emsg = _("{0} \"{1}\" already exists.").format(_("Directory") if os.path.isdir(new_path) else _("File"), new_path)
-            result = CmdResult.error(omsg, emsg) | CmdResult.SUGGEST_OVERWRITE_OR_RENAME
+            result = CmdResult.error(omsg, emsg) | CmdResult.Suggest.OVERWRITE_OR_RENAME
             _CONSOLE_LOG.end_cmd(result)
             return result
         try:
@@ -132,7 +132,7 @@ def os_move_or_copy_fs_item(fsi_path, destn, opsym, overwrite=False, force=False
             else:
                 os.remove(new_path)
         except OSError as edata:
-            errorcode = CmdResult.ERROR_SUGGEST_FORCE if edata.errno == errno.ENOTEMPTY else CmdResult.ERROR
+            errorcode = CmdResult.ERROR | CmdResult.Suggest.FORCE if edata.errno == errno.ENOTEMPTY else CmdResult.ERROR
             errmsg = _("Error: {}: \"{}\" {} \"{}\"\n").format(edata.strerror, fsi_path, opsym, new_path)
             _CONSOLE_LOG.append_stderr(errmsg)
             return CmdResult(errorcode, "", errmsg)
@@ -182,7 +182,7 @@ def os_move_or_copy_fs_items(fsi_paths, destn, opsym, overwrite=False, force=Fal
         overwrites = [destn for (src, destn) in opn_paths_list if os.path.exists(destn)]
         if len(overwrites) > 0:
             emsg = _overwrite_msg(overwrites)
-            result = CmdResult.error(omsg, emsg) | CmdResult.SUGGEST_OVERWRITE_OR_RENAME
+            result = CmdResult.error(omsg, emsg) | CmdResult.Suggest.OVERWRITE_OR_RENAME
             _CONSOLE_LOG.end_cmd(result)
             return result
     failed_opns_str = ""
@@ -200,7 +200,7 @@ def os_move_or_copy_fs_items(fsi_paths, destn, opsym, overwrite=False, force=Fal
                 else:
                     os.remove(tgt)
             except OSError as edata:
-                rescode |= CmdResult.ERROR_SUGGEST_FORCE if edata.errno == errno.ENOTEMPTY else CmdResult.ERROR
+                rescode |= CmdResult.ERROR | CmdResult.Suggest.FORCE if edata.errno == errno.ENOTEMPTY else CmdResult.ERROR
                 serr = _("Error: {}: \"{}\" {} \"{}\"\n").format(edata.strerror, src, opsym, tgt)
                 _CONSOLE_LOG.append_stderr(serr)
                 failed_opns_str += serr

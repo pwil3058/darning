@@ -17,6 +17,7 @@ from . import i18n
 
 # temporary import of aipoed packages (to be rescinded) TODO
 from aipoed import enotify
+from aipoed import Result, CmdResult, ActionResult, Suggestion, CmdFailure
 
 # import SCM backend interfaces here
 from . import scm_ifce_git
