@@ -53,9 +53,9 @@ def format_file_data(PM, file_data):
     def status_to_str(status):
         return '{0}:{1}'.format(status.presence, VAL_MAP[status.validity])
     if file_data.related_file_data:
-        return '{0}: {1} {2} {3}\n'.format(status_to_str(file_data.status), PM.rel_subdir(file_data.name), file_data.related_file_data.relation, PM.rel_subdir(file_data.related_file_data.path))
+        return '{0}: {1} {2} {3}\n'.format(status_to_str(file_data.status), PM.rel_subdir(file_data.path), file_data.related_file_data.relation, PM.rel_subdir(file_data.related_file_data.path))
     else:
-        return '{0}: {1}\n'.format(status_to_str(file_data.status), PM.rel_subdir(file_data.name))
+        return '{0}: {1}\n'.format(status_to_str(file_data.status), PM.rel_subdir(file_data.path))
 
 def run_files(args):
     '''Execute the "files" sub command using the supplied args'''

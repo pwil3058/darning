@@ -45,9 +45,11 @@ from . import runext
 from . import utils
 from . import patchlib
 from . import fsdb
+from . import fsdb_darning
 from . import options
 from . import gitbase85
 from . import gitdelta
+from . import os_utils
 
 # A convenience tuple for sending an original and patched version of something
 _O_IP_PAIR = collections.namedtuple('_O_IP_PAIR', ['original_version', 'patched_version'])
@@ -466,11 +468,11 @@ class FileData(GenericFileData):
     def related_file_data(self):
         if self.came_from_path:
             if self.came_as_rename:
-                return fsdb.RFD(self.came_from_path, fsdb.Relation.MOVED_FROM)
+                return fsdb.RFD(self.came_from_path, os_utils.Relation.MOVED_FROM)
             else:
-                return fsdb.RFD(self.came_from_path, fsdb.Relation.COPIED_FROM)
+                return fsdb.RFD(self.came_from_path, os_utils.Relation.COPIED_FROM)
         elif self.renamed_to:
-            return fsdb.RFD(self.renamed_to, fsdb.Relation.MOVED_TO)
+            return fsdb.RFD(self.renamed_to, os_utils.Relation.MOVED_TO)
         return None
     def generate_diff_preamble(self, overlapping_patch, old_combined=False):
         if self.patch.is_applied():

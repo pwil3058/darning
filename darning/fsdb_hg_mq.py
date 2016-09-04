@@ -21,6 +21,7 @@ from . import fsdb
 from . import utils
 from . import patchlib
 from . import runext
+from . import os_utils
 
 FSTATUS_MODIFIED = 'M'
 FSTATUS_ADDED = 'A'
@@ -70,8 +71,8 @@ def iterate_hg_file_data(file_data_text, related_file_data):
                     next_line = next(lines)
                     if next_line[0] == FSTATUS_ORIGIN:
                         rfp = next_line[2:]
-                        reln = fsdb.Relation.COPIED_FROM if os.path.exists(rfp) else fsdb.Relation.MOVED_FROM
-                        if reln == fsdb.Relation.MOVED_FROM:
+                        reln = os_utils.Relation.COPIED_FROM if os.path.exists(rfp) else os_utils.Relation.MOVED_FROM
+                        if reln == os_utils.Relation.MOVED_FROM:
                             related_file_data.append((file_path, rfp))
                         yield (file_path, status, fsdb.RFD(path=rfp, relation=reln))
                         break
@@ -127,7 +128,7 @@ class WsFileDb(fsdb.GenericSnapshotWsFileDb):
             else:
                 stdout = runext.run_get_cmd(["hg", "status", related_file_path], default="")
                 status = stdout[:2] if stdout else None
-            fsd[related_file_path] = (status, fsdb.RFD(path=file_path, relation=fsdb.Relation.MOVED_TO))
+            fsd[related_file_path] = (status, fsdb.RFD(path=file_path, relation=os_utils.Relation.MOVED_TO))
         return fsdb.Snapshot(fsd)
 
 class TopPatchFileDb(fsdb.GenericTopPatchFileDb):
