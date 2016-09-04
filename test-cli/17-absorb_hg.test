@@ -23,7 +23,7 @@ $ hg commit -m "test"
 $ hg status -mard
 
 Initialise a playground and try again without creating a patch
-$ darn init --ng
+$ darn init
 
 Create a patch and add files
 $ darn new first --descr "First patch created."

@@ -21,7 +21,7 @@ $ darn new --descr='The first patch in the series.' first
 ! Valid database NOT found.
 
 Create a playground.
-$ darn init --ng --descr 'A short description of the patch series.'
+$ darn init --descr 'A short description of the patch series.'
 $ darn validate
 
 Now try again.

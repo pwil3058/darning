@@ -25,7 +25,7 @@ $ hg commit -m "test" > /dev/null
 $ hg status -mad
 
 Initialise a playground
-$ darn init --ng
+$ darn init
 $ darn new patch1 --descr "first patch"
 
 Modify some files tracked by hg

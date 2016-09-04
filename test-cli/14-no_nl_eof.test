@@ -17,7 +17,7 @@ Test correct treatment of files that are not terminated with a newline.
 
 Set up a file tree and initialise a playground therein
 $ darn_test_tree create
-$ darn init --ng
+$ darn init
 
 Create some files that are not terminated with newlines
 $ darn_test_tree modify --no_newline file1 file2

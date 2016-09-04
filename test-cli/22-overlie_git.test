@@ -31,7 +31,7 @@ $ git status --short
 > ?? file4
 
 Initialise a playground
-$ darn init --ng
+$ darn init
 $ darn new patch1 --descr "first patch"
 
 Modify some files tracked by git

@@ -9,8 +9,6 @@ SRCDIST:=darning-$(VERSION).tar.gz
 RPMDIST:=darning-$(subst -,_,$(VERSION))-$(RELEASE).noarch.rpm
 RPMSRC:=$(RPMBDIR)/SOURCES/$(SRCDIST)
 CLI_SRCS=darn $(wildcard darning/*.py) $(wildcard darning/cli/*.py)
-CLI_TEST_SCRIPTS_LEGACY=$(wildcard test-cli-legacy/*.test)
-CLI_TESTS_LEGACY=$(patsubst test-cli-legacy/%.test,test-cli-legacy/.%.ok, $(CLI_TEST_SCRIPTS_LEGACY))
 CLI_TEST_SCRIPTS=$(sort $(wildcard test-cli/*.test))
 CLI_TESTS=$(patsubst test-cli/%.test,test-cli/.%.ok, $(CLI_TEST_SCRIPTS))
 
@@ -51,17 +49,6 @@ install:
 	python3 setup.py install --prefix=$(PREFIX)
 	desktop-file-install darning.desktop --dir $(PREFIX)/share/applications
 	rm MANIFEST
-
-check-both: check-legacy check
-
-check-legacy: $(CLI_TESTS_LEGACY)
-
-test-cli-legacy/.%.ok: test-cli-legacy/%.test $(CLI_SRCS)
-	@LANG=C; LC_ALL=C; PATH="$(PWD):$(PATH)";	\
-	export LANG LC_ALL PATH;					\
-	cd $(@D);									\
-	./run.py $(<F)
-	@touch $@
 
 check: $(CLI_TESTS)
 

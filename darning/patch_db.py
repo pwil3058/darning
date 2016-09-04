@@ -25,6 +25,8 @@ import shutil
 import copy
 import difflib
 import tempfile
+import re
+import zlib
 
 from contextlib import contextmanager
 
@@ -39,10 +41,14 @@ from . import fsdb
 from . import patchlib
 from . import options
 from . import os_utils
+from . import runext
 
 from .pm_ifce import PatchState, FileStatus, Presence, Validity, MERGE_CRE, PatchTableRow, patch_timestamp_str
-from .patch_db_legacy import _O_IP_PAIR, _O_IP_S_TRIPLET, Failure, _tidy_text
-from .patch_db_legacy import OverlapData
+
+# A convenience tuple for sending an original and patched version of something
+_O_IP_PAIR = collections.namedtuple('_O_IP_PAIR', ['original_version', 'patched_version'])
+# A convenience tuple for sending original, patched and stashed versions of something
+_O_IP_S_TRIPLET = collections.namedtuple('_O_IP_S_TRIPLET', ['original_version', 'patched_version', 'stashed_version'])
 
 _DIR_PATH = ".darning.dbd"
 _BLOBS_DIR_PATH = os.path.join(_DIR_PATH, "blobs")
@@ -55,6 +61,20 @@ BLOB_DIR_PATH = lambda git_hash: os.path.join(_BLOBS_DIR_PATH, git_hash[:2])
 BLOB_PATH = lambda git_hash: os.path.join(_BLOBS_DIR_PATH, git_hash[:2], git_hash[2:])
 
 _SUB_DIR = None
+
+class Failure(object):
+    '''Report failure'''
+    def __init__(self, msg):
+        self._bool = False
+        self.msg = msg
+    def __bool__(self):
+        return self._bool
+    def __nonzero__(self):
+        return self._bool
+    def __str__(self):
+        return self.msg
+    def __repr__(self):
+        return _('Failure({0})').format(self.msg)
 
 def rel_subdir(file_path):
     return file_path if _SUB_DIR is None else os.path.relpath(file_path, _SUB_DIR)
@@ -105,6 +125,72 @@ def find_base_dir(dir_path=None, remember_sub_dir=False):
             if remember_sub_dir:
                 subdir_parts.insert(0, basename)
     return None
+
+def _tidy_text(text):
+    '''Return the given text with any trailing white space removed.
+    Also ensure there is a new line at the end of the lastline.'''
+    tidy_text = ''
+    for line in text.splitlines():
+        tidy_text += re.sub('[ \t]+$', '', line) + '\n'
+    return tidy_text
+
+def _do_apply_diff_to_file(filepath, diff, delete_empty=False):
+    patch_cmd_hdr = ['patch', '--merge', '--force', '-p1', '--batch', ]
+    patch_cmd = patch_cmd_hdr + (['--remove-empty-files', filepath] if delete_empty else [filepath])
+    result = runext.run_cmd(patch_cmd, input_text=str(diff).encode())
+    # move all but the first line of stdout to stderr
+    # drop first line so that reports can be made relative to subdir
+    olines = result.stdout.splitlines(True)
+    prefix = '{0}: '.format(rel_subdir(filepath))
+    # Put file name at start of line so they make sense on their own
+    if len(olines) > 1:
+        stderr = prefix + prefix.join(olines[1:] + result.stderr.splitlines(True))
+    elif result.stderr:
+        stderr = prefix + prefix.join(result.stderr.splitlines(True))
+    else:
+        stderr = ''
+    return CmdResult(result.ecode, '', stderr)
+
+class ZippedData(object):
+    ZLIB_COMPRESSION_LEVEL = 6
+    def __init__(self, data):
+        if data is not None:
+            try:
+                self.raw_len = len(data)
+                self.zipped_data = zlib.compress(bytes(data), self.ZLIB_COMPRESSION_LEVEL)
+            except TypeError as edata:
+                print("ZIP:", len(data), ":", data, "|")
+                raise edata
+        else:
+            self.raw_len = None
+            self.zipped_data = None
+    def __bool__(self):
+        return self.zipped_data is not None
+    @property
+    def raw_data(self):
+        return zlib.decompress(self.zipped_data)
+    @property
+    def zipped_len(self):
+        return len(self.zipped_data)
+
+class OverlapData(object):
+    def __init__(self, unrefreshed=None, uncommitted=None):
+         self.unrefreshed = {} if not unrefreshed else unrefreshed
+         self.uncommitted = set() if not uncommitted else set(uncommitted)
+    def __bool__(self):
+        return self.__len__() > 0
+    def __len__(self):
+        return len(self.unrefreshed) + len(self.uncommitted)
+    def report_and_abort(self):
+        for filepath in sorted(self.uncommitted):
+            rfilepath = rel_subdir(filepath)
+            RCTX.stderr.write(_('{0}: file has uncommitted SCM changes.\n').format(rfilepath))
+        for filepath in sorted(self.unrefreshed):
+            rfilepath = rel_subdir(filepath)
+            opatch = self.unrefreshed[filepath]
+            RCTX.stderr.write(_('{0}: file has unrefreshed changes in (applied) patch "{1}".\n').format(rfilepath, opatch.name))
+        RCTX.stderr.write(_('Aborted.\n'))
+        return CmdResult.ERROR | CmdResult.Suggest.FORCE_ABSORB_OR_REFRESH if len(self.unrefreshed) > 0 else CmdResult.ERROR | CmdResult.Suggest.FORCE_OR_ABSORB
 
 class _DataBaseData(mixins.PedanticSlotPickleMixin):
     __slots__ = ("selected_guards", "patch_series_data", "applied_patches_data", "combined_patch_data", "kept_patches")
@@ -281,7 +367,6 @@ def generate_diff_preamble(file_path, before, after, came_from=None):
     return patchlib.Preamble.parse_lines(generate_diff_preamble_lines(file_path, before, after, came_from))
 
 def generate_binary_diff_lines(before, after):
-    from .patch_db_legacy import ZippedData
     from . import gitdelta
     from . import gitbase85
     def _component_lines(fm_data, to_data):
@@ -711,7 +796,6 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
                 retval = CmdResult.WARNING
                 RCTX.stderr.write(_("Warning: \"{0}\": binary file's original has changed.\n").format(rel_subdir(self.path)))
         elif self.diff:
-            from .patch_db_legacy import _do_apply_diff_to_file
             result = _do_apply_diff_to_file(self.path, self.diff, delete_empty=self.darned is None)
             if os.path.exists(self.path):
                 if self.came_from:
@@ -1097,7 +1181,6 @@ class Patch(mixins.WrapperMixin):
                 atws_lines = diff_plus.report_trailing_whitespace()
                 if atws_lines:
                     RCTX.stderr.write(_("Added trailing white space to \"{1}\" at line(s) {{{2}}}.\n").format(rel_subdir(file_path), ", ".join([str(line) for line in atws_lines])))
-            from .patch_db_legacy import _do_apply_diff_to_file
             result = _do_apply_diff_to_file(file_path, diff_plus.diff, delete_empty=diff_plus.get_outcome() < 0)
             RCTX.stderr.write(result.stderr)
             if result.ecode == CmdResult.OK and result.stderr:

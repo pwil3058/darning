@@ -17,7 +17,7 @@ Test the 'darn diff' command on binary files.
 
 Set up a test file tree and initialise a playground therein
 $ darn_test_tree create
-$ darn init --ng
+$ darn init
 $ darn new first --descr "First patch"
 $ darn add binary1 dir1/binary1 dir2/binary1 dir2/subdir1/binary1 binary5 > /dev/null
 $ darn_test_tree modify binary1 dir1/binary1 dir2/binary1 dir2/subdir1/binary1

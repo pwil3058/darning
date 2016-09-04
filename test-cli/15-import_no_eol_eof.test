@@ -51,7 +51,7 @@ $ mkfile patch1
 < +Patch: "first"; Path: "file4"
 < \ No newline at end of file
 
-$ darn init --ng
+$ darn init
 $ darn_test_tree modify --no_newline file1 file2
 ! No patches applied.
 $ darn import patch1

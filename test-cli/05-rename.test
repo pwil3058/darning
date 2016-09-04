@@ -19,7 +19,7 @@ Create some test files.
 $ darn_test_tree create
 
 Make a playground and patch
-$ darn init --ng
+$ darn init
 $ darn new first
 $ darn add file4
 > file4: file added to patch "first".

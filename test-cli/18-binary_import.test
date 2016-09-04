@@ -96,7 +96,7 @@ $ mkfile patch2
 <
 
 
-$ darn init --ng
+$ darn init
 $ darn import patch1
 > patch1: patch inserted at start of series.
 > Patching binary file "binary1".

@@ -16,7 +16,7 @@
 Test the 'darn select' and 'darn guard' commands.
 
 Make a playground and patch
-$ darn init --ng
+$ darn init
 $ darn new patch1 --descr="a test patch"
 $ darn new patch2 --descr="a test patch"
 $ darn new patch3 --descr="a test patch"

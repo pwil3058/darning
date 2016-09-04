@@ -16,7 +16,7 @@
 Test the 'darn init' command.
 
 Test a valid initialization.
-$ darn init --ng --descr 'A short description of the patch series.'
+$ darn init --descr 'A short description of the patch series.'
 $ ls -a
 > .
 > ..
@@ -43,13 +43,13 @@ $ cat .darning.dbd/description
 > A short description of the patch series.
 
 Test invalid initialization in root directory of a playground.
-$ darn init --ng
+$ darn init
 ? 2
 ! Inside existing playground: ".".
 
 Test invalid initialization in a sub directory of a playground.
 $ mkdir subdir
 $ cd subdir
-$ darn init --ng
+$ darn init
 ? 2
 ! Inside existing playground: "..".

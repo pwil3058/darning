@@ -24,7 +24,7 @@ $ darn add file1 file2 nonexistent
 ! Valid database NOT found.
 
 Initialise a playground and try again without creating a patch
-$ darn init --ng
+$ darn init
 $ darn add file1 file2 nonexistent
 ? 2
 ! No patches applied.
