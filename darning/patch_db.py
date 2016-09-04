@@ -655,8 +655,8 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
         # The user has to be able to cope with the main file not existing (meld can)
         return _O_IP_PAIR(before, self.path)
     def get_table_row(self):
-        from . import fsdb_darning_ng
-        return fsdb_darning_ng.FileData(self.path, FileStatus(self.presence, self.validity), self.related_file_data)
+        from . import fsdb_darning
+        return fsdb_darning.FileData(self.path, FileStatus(self.presence, self.validity), self.related_file_data)
     def get_refresh_after_data(self, overlapping_file, with_timestamps=False):
         if overlapping_file is not None:
             efd = self.patch.database.clone_stored_content_data(overlapping_file.orig)
@@ -825,8 +825,8 @@ class CombinedFileData(mixins.WrapperMixin, FileDiffMixin):
         else:
             return os.path.exists(self.path)
     def get_table_row(self):
-        from . import fsdb_darning_ng
-        return fsdb_darning_ng.FileData(self.path, FileStatus(self.presence, self.validity), None)
+        from . import fsdb_darning
+        return fsdb_darning.FileData(self.path, FileStatus(self.presence, self.validity), None)
 
 class Patch(mixins.WrapperMixin):
     WRAPPED_ATTRIBUTES = _PatchData.__slots__

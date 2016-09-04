@@ -16,13 +16,13 @@
 from gi.repository import Pango
 
 from . import fsdb
-from . import patch_db_ng
+from . import patch_db
 
 _STATUS_DECO_MAP = {
     None: fsdb.Deco(Pango.Style.NORMAL, "black"),
-    patch_db_ng.Presence.ADDED: fsdb.Deco(Pango.Style.NORMAL, "darkgreen"),
-    patch_db_ng.Presence.REMOVED: fsdb.Deco(Pango.Style.NORMAL, "red"),
-    patch_db_ng.Presence.EXTANT: fsdb.Deco(Pango.Style.NORMAL, "black"),
+    patch_db.Presence.ADDED: fsdb.Deco(Pango.Style.NORMAL, "darkgreen"),
+    patch_db.Presence.REMOVED: fsdb.Deco(Pango.Style.NORMAL, "red"),
+    patch_db.Presence.EXTANT: fsdb.Deco(Pango.Style.NORMAL, "black"),
 }
 
 class FileData(fsdb.FileData):
@@ -33,11 +33,11 @@ class FileData(fsdb.FileData):
     @property
     def icon(self):
         from .gui import icons
-        if self.status.validity == patch_db_ng.Validity.REFRESHED:
+        if self.status.validity == patch_db.Validity.REFRESHED:
             return icons.STOCK_FILE_REFRESHED
-        elif self.status.validity == patch_db_ng.Validity.NEEDS_REFRESH:
+        elif self.status.validity == patch_db.Validity.NEEDS_REFRESH:
             return icons.STOCK_FILE_NEEDS_REFRESH
-        elif self.status.validity == patch_db_ng.Validity.UNREFRESHABLE:
+        elif self.status.validity == patch_db.Validity.UNREFRESHABLE:
             return icons.STOCK_FILE_UNREFRESHABLE
         else:
             return Gtk.STOCK_FILE
@@ -65,16 +65,16 @@ class _PatchFileDir(fsdb.GenericChangeFileDb.FileDir):
     DIR_DATA = DirData
     def _calculate_status(self):
         if not self._status_set:
-            validity = patch_db_ng.Validity.REFRESHED
+            validity = patch_db.Validity.REFRESHED
         else:
             validity = max([s.validity for s in list(self._status_set)])
-        return patch_db_ng.FileStatus(None, validity)
+        return patch_db.FileStatus(None, validity)
     def _calculate_clean_status(self):
         if not self._status_set:
-            validity = patch_db_ng.Validity.REFRESHED
+            validity = patch_db.Validity.REFRESHED
         else:
             validity = max([s.validity for s in list(self._status_set)])
-        return patch_db_ng.FileStatus(None, validity)
+        return patch_db.FileStatus(None, validity)
     def dirs_and_files(self, hide_clean=False, **kwargs):
         if hide_clean:
             dirs = filter((lambda x: x.status.validity), self._subdirs_data)
@@ -88,10 +88,10 @@ class TopPatchFileDb(fsdb.GenericTopPatchFileDb):
     FileDir = _PatchFileDir
     @staticmethod
     def _get_applied_patch_count():
-        return patch_db_ng.get_applied_patch_count()
+        return patch_db.get_applied_patch_count()
     @staticmethod
     def _get_patch_data_text(h):
-        patch_status_text = patch_db_ng.get_patch_file_table()
+        patch_status_text = patch_db.get_patch_file_table()
         h.update(str(patch_status_text).encode())
         return patch_status_text
     @staticmethod
@@ -101,7 +101,7 @@ class TopPatchFileDb(fsdb.GenericTopPatchFileDb):
 
 class CombinedPatchFileDb(TopPatchFileDb):
     def _get_patch_data_text(self, h):
-        patch_status_text = patch_db_ng.get_combined_patch_file_table()
+        patch_status_text = patch_db.get_combined_patch_file_table()
         h.update(str(patch_status_text).encode())
         return patch_status_text
 
@@ -115,9 +115,9 @@ class PatchFileDb(fsdb.GenericPatchFileDb):
         return h.digest() == self._db_hash_digest
     @staticmethod
     def _get_is_applied(patch_name):
-        return patch_db_ng.is_patch_applied(patch_name)
+        return patch_db.is_patch_applied(patch_name)
     def _get_patch_data_text(self, h):
-        patch_status_text = patch_db_ng.get_patch_file_table(self.patch_name)
+        patch_status_text = patch_db.get_patch_file_table(self.patch_name)
         h.update(str(patch_status_text).encode())
         return patch_status_text
     def _iterate_file_data(self, pdt):

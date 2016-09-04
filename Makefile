@@ -11,8 +11,8 @@ RPMSRC:=$(RPMBDIR)/SOURCES/$(SRCDIST)
 CLI_SRCS=darn $(wildcard darning/*.py) $(wildcard darning/cli/*.py)
 CLI_TEST_SCRIPTS_LEGACY=$(wildcard test-cli-legacy/*.test)
 CLI_TESTS_LEGACY=$(patsubst test-cli-legacy/%.test,test-cli-legacy/.%.ok, $(CLI_TEST_SCRIPTS_LEGACY))
-CLI_TEST_SCRIPTS_NG=$(sort $(wildcard test-cli-ng/*.test))
-CLI_TESTS_NG=$(patsubst test-cli-ng/%.test,test-cli-ng/.%.ok, $(CLI_TEST_SCRIPTS_NG))
+CLI_TEST_SCRIPTS=$(sort $(wildcard test-cli/*.test))
+CLI_TESTS=$(patsubst test-cli/%.test,test-cli/.%.ok, $(CLI_TEST_SCRIPTS))
 
 help:
 	@echo "Choices are:"
@@ -52,7 +52,7 @@ install:
 	desktop-file-install darning.desktop --dir $(PREFIX)/share/applications
 	rm MANIFEST
 
-check: check-legacy check-ng
+check-both: check-legacy check
 
 check-legacy: $(CLI_TESTS_LEGACY)
 
@@ -63,16 +63,16 @@ test-cli-legacy/.%.ok: test-cli-legacy/%.test $(CLI_SRCS)
 	./run.py $(<F)
 	@touch $@
 
-check-ng: $(CLI_TESTS_NG)
+check: $(CLI_TESTS)
 
-test-cli-ng/.%.ok: test-cli-ng/%.test $(CLI_SRCS)
+test-cli/.%.ok: test-cli/%.test $(CLI_SRCS)
 	@LANG=C; LC_ALL=C; PATH="$(PWD):$(PATH)";	\
 	export LANG LC_ALL PATH;					\
 	cd $(@D);									\
-	../test-cli-ng/run.py $(<F)
+	../test-cli/run.py $(<F)
 	@touch $@
 
 clean:
 	-rm *.rpm *.spec *.exe *.tar.gz MANIFEST
 	-rm -r build
-	-rm $(CLI_TESTS_LEGACY) $(CLI_TESTS_NG)
+	-rm $(CLI_TESTS_LEGACY) $(CLI_TESTS)
