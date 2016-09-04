@@ -22,13 +22,13 @@ import sys
 import atexit
 
 from .. import rctx
-from .. import patch_db
+from .. import patch_db_legacy
 from .. import patch_db_ng
 from .. import scm_ifce
 
 def get_pm_db():
     '''Change directory to the base direcory and open the database'''
-    for db in [patch_db, patch_db_ng]:
+    for db in [patch_db_legacy, patch_db_ng]:
         BASE_DIR = db.find_base_dir(remember_sub_dir=True)
         if BASE_DIR:
             os.chdir(BASE_DIR)

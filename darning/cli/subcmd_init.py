@@ -15,7 +15,7 @@
 
 '''Create a darning patch management system (persistent) database'''
 
-from .. import patch_db
+from .. import patch_db_legacy
 from .. import patch_db_ng
 
 from . import cli_args
@@ -46,7 +46,7 @@ def run_init(args):
     '''Execute the "init" sub command using the supplied args'''
     db_utils.set_report_context(verbose=True)
     if args.opt_legacy:
-        return patch_db.do_create_db(description=args.opt_description)
+        return patch_db_legacy.do_create_db(description=args.opt_description)
     elif args.opt_ng:
         return patch_db_ng.do_create_db(description=args.opt_description)
     else:

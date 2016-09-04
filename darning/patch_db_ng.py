@@ -41,8 +41,8 @@ from . import options
 from . import os_utils
 
 from .pm_ifce import PatchState, FileStatus, Presence, Validity, MERGE_CRE, PatchTableRow, patch_timestamp_str
-from .patch_db import _O_IP_PAIR, _O_IP_S_TRIPLET, Failure, _tidy_text
-from .patch_db import OverlapData
+from .patch_db_legacy import _O_IP_PAIR, _O_IP_S_TRIPLET, Failure, _tidy_text
+from .patch_db_legacy import OverlapData
 
 _DIR_PATH = ".darning.dbd"
 _BLOBS_DIR_PATH = os.path.join(_DIR_PATH, "blobs")
@@ -281,7 +281,7 @@ def generate_diff_preamble(file_path, before, after, came_from=None):
     return patchlib.Preamble.parse_lines(generate_diff_preamble_lines(file_path, before, after, came_from))
 
 def generate_binary_diff_lines(before, after):
-    from .patch_db import ZippedData
+    from .patch_db_legacy import ZippedData
     from . import gitdelta
     from . import gitbase85
     def _component_lines(fm_data, to_data):
@@ -711,7 +711,7 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
                 retval = CmdResult.WARNING
                 RCTX.stderr.write(_("Warning: \"{0}\": binary file's original has changed.\n").format(rel_subdir(self.path)))
         elif self.diff:
-            from .patch_db import _do_apply_diff_to_file
+            from .patch_db_legacy import _do_apply_diff_to_file
             result = _do_apply_diff_to_file(self.path, self.diff, delete_empty=self.darned is None)
             if os.path.exists(self.path):
                 if self.came_from:
@@ -1097,7 +1097,7 @@ class Patch(mixins.WrapperMixin):
                 atws_lines = diff_plus.report_trailing_whitespace()
                 if atws_lines:
                     RCTX.stderr.write(_("Added trailing white space to \"{1}\" at line(s) {{{2}}}.\n").format(rel_subdir(file_path), ", ".join([str(line) for line in atws_lines])))
-            from .patch_db import _do_apply_diff_to_file
+            from .patch_db_legacy import _do_apply_diff_to_file
             result = _do_apply_diff_to_file(file_path, diff_plus.diff, delete_empty=diff_plus.get_outcome() < 0)
             RCTX.stderr.write(result.stderr)
             if result.ecode == CmdResult.OK and result.stderr:
