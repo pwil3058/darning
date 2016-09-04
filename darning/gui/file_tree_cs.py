@@ -106,7 +106,7 @@ class PatchFilesDialog(dialogue.ListenerDialog, enotify.Listener):
                                        (Gtk.STOCK_CLOSE, Gtk.ResponseType.CLOSE))
         enotify.Listener.__init__(self)
         self.set_title(_('patch: %s files: %s') % (patch_name, utils.cwd_rel_home()))
-        self.add_notification_cb(ifce.E_CHANGE_WD, self._chwd_cb)
+        self.add_notification_cb(enotify.E_CHANGE_WD, self._chwd_cb)
         # file tree view wrapped in scrolled window
         self.file_tree = PatchFileTreeView(busy_indicator=self, patch_name=patch_name)
         self.file_tree.get_selection().set_mode(Gtk.SelectionMode.MULTIPLE)
@@ -122,7 +122,7 @@ class PatchFilesDialog(dialogue.ListenerDialog, enotify.Listener):
 
 
 class TopPatchFileTreeModel(file_tree.FileTreeModel):
-    REPOPULATE_EVENTS = ifce.E_CHANGE_WD|ifce.E_NEW_PM|pm_ifce.E_PATCH_STACK_CHANGES|pm_ifce.E_PUSH|pm_ifce.E_POP|pm_ifce.E_NEW_PATCH
+    REPOPULATE_EVENTS = enotify.E_CHANGE_WD|ifce.E_NEW_PM|pm_ifce.E_PATCH_STACK_CHANGES|pm_ifce.E_PUSH|pm_ifce.E_POP|pm_ifce.E_NEW_PATCH
     UPDATE_EVENTS = pm_ifce.E_FILE_CHANGES|pm_ifce.E_PATCH_REFRESH
     @staticmethod
     def _get_file_db():

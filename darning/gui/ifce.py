@@ -31,8 +31,6 @@ from .console import LOG, RCTX
 
 E_NEW_SCM, E_NEW_PM, E_NEW_SCM_OR_PM = enotify.new_event_flags_and_mask(2)
 
-E_CHANGE_WD = enotify.E_CHANGE_WD
-
 def report_backend_requirements(parent=None):
     dialogue.inform_user(pm_ifce.backend_requirements(), parent=parent)
 
@@ -60,10 +58,10 @@ def init(log=False):
     if log or PM.in_valid_pgnd:
         LOG.start_cmd(APP_NAME + " {0}\n".format(curdir))
         LOG.end_cmd()
-    # NB: need to send either E_CHANGE_WD or E_NEW_SCM_OR_PM to ensure action sates get set
+    # NB: need to send either enotify.E_CHANGE_WD or E_NEW_SCM_OR_PM to ensure action sates get set
     if not utils.samefile(CURDIR, curdir):
         CURDIR = curdir
-        enotify.notify_events(E_CHANGE_WD, new_wd=curdir)
+        enotify.notify_events(enotify.E_CHANGE_WD, new_wd=curdir)
     else:
         enotify.notify_events(E_NEW_SCM_OR_PM)
     from . import auto_update
@@ -134,7 +132,7 @@ def chdir(newdir):
     CURDIR = os.getcwd()
     LOG.start_cmd(_('New Playground: {0}\n').format(CURDIR))
     LOG.end_cmd(retval)
-    enotify.notify_events(E_CHANGE_WD, new_wd=CURDIR)
+    enotify.notify_events(enotify.E_CHANGE_WD, new_wd=CURDIR)
     return retval
 
 def check_interfaces(args):
@@ -162,7 +160,7 @@ def check_interfaces(args):
             recollect.set(APP_NAME, "last_pgnd", newdir)
         args["new_wd"] = curdir
         CURDIR = curdir
-        return E_CHANGE_WD # don't send ifce changes and wd change at the same time
+        return enotify.E_CHANGE_WD # don't send ifce changes and wd change at the same time
     return events
 
 def get_author_name_and_email():

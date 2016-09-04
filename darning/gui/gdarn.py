@@ -121,7 +121,7 @@ class Darning(Gtk.Window, dialogue.BusyIndicator, actions.CAGandUIManager, enoti
             vpane.add2(nbook)
         else:
             vpane.add2(console.LOG)
-        self.add_notification_cb(ifce.E_CHANGE_WD, self._change_pgnd_ncb)
+        self.add_notification_cb(enotify.E_CHANGE_WD, self._change_pgnd_ncb)
         self.show_all()
     def populate_action_groups(self):
         pass

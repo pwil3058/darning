@@ -86,7 +86,7 @@ class WSTreeView(file_tree.FileTreeView, enotify.Listener, ws_actions.WSListener
         enotify.Listener.__init__(self)
         ws_actions.WSListenerMixin.__init__(self)
         self._update_popup_cb()
-        self.add_notification_cb(pm_ifce.E_PATCH_STACK_CHANGES|ifce.E_NEW_PM|ifce.E_CHANGE_WD, self._update_popup_cb)
+        self.add_notification_cb(pm_ifce.E_PATCH_STACK_CHANGES|ifce.E_NEW_PM|enotify.E_CHANGE_WD, self._update_popup_cb)
     def _update_popup_cb(self, **kwargs):
         if ifce.PM.is_poppable:
             self.set_popup("/pmic_files_popup")

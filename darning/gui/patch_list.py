@@ -27,6 +27,7 @@ from .. import utils
 from .. import patchlib
 from .. import scm_ifce
 from .. import pm_ifce
+from .. import enotify
 
 from . import dialogue
 from . import gutils
@@ -84,7 +85,7 @@ def get_applied_condns(seln):
     return actions.MaskedCondns(cond, AC_APPLIED_MASK)
 
 class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
-    REPOPULATE_EVENTS = ifce.E_CHANGE_WD|ifce.E_NEW_PM
+    REPOPULATE_EVENTS = enotify.E_CHANGE_WD|ifce.E_NEW_PM
     UPDATE_EVENTS = pm_ifce.E_PATCH_LIST_CHANGES|pm_ifce.E_PATCH_REFRESH
     PopUp = "/patches_popup"
     class MODEL(table.MapManagedTableView.MODEL):

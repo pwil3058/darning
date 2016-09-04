@@ -224,11 +224,11 @@ class Interface:
     @staticmethod
     def do_checkout_branch(branch):
         cmd = ["git", "checkout", branch]
-        return _do_action_cmd(cmd, scm_ifce.E_BRANCH|ifce.E_CHANGE_WD, None, [])
+        return _do_action_cmd(cmd, scm_ifce.E_BRANCH|enotify.E_CHANGE_WD, None, [])
     @staticmethod
     def do_checkout_tag(tag):
         cmd = ["git", "checkout", tag]
-        return _do_action_cmd(cmd, scm_ifce.E_TAG|ifce.E_CHANGE_WD, None, [])
+        return _do_action_cmd(cmd, scm_ifce.E_TAG|enotify.E_CHANGE_WD, None, [])
     @staticmethod
     def do_clone_as(repo, tgtdir=None):
         cmd = ["git", "clone", repo]

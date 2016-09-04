@@ -436,7 +436,7 @@ class TopPatchDiffPlusesWidget(DiffPlusesWidget, enotify.Listener):
         self._file_paths = file_paths
         DiffPlusesWidget.__init__(self)
         enotify.Listener.__init__(self)
-        self.add_notification_cb(pm_ifce.E_PATCH_STACK_CHANGES|pm_ifce.E_FILE_CHANGES|ifce.E_CHANGE_WD, self._refresh_ecb)
+        self.add_notification_cb(pm_ifce.E_PATCH_STACK_CHANGES|pm_ifce.E_FILE_CHANGES|enotify.E_CHANGE_WD, self._refresh_ecb)
     def _refresh_ecb(self, **kwargs):
         self.update()
     def _get_diff_pluses(self):
@@ -521,7 +521,7 @@ class TopPatchDiffTextWidget(DiffTextWidget, enotify.Listener):
         self._file_paths = file_paths
         DiffTextWidget.__init__(self)
         enotify.Listener.__init__(self)
-        self.add_notification_cb(pm_ifce.E_PATCH_STACK_CHANGES|pm_ifce.E_FILE_CHANGES|ifce.E_CHANGE_WD, self._refresh_ecb)
+        self.add_notification_cb(pm_ifce.E_PATCH_STACK_CHANGES|pm_ifce.E_FILE_CHANGES|enotify.E_CHANGE_WD, self._refresh_ecb)
     def _refresh_ecb(self, **kwargs):
         self.update()
     def _get_diff_text(self):

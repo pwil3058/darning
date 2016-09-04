@@ -60,15 +60,15 @@ def _update_class_indep_pmic_cb(**kwargs):
     actions.CLASS_INDEP_AGS.update_condns(condns)
     actions.CLASS_INDEP_BGS.update_condns(condns)
 
-enotify.add_notification_cb(ifce.E_CHANGE_WD|ifce.E_NEW_SCM, _update_class_indep_scm_pgnd_cb)
-enotify.add_notification_cb(ifce.E_CHANGE_WD|ifce.E_NEW_PM, _update_class_indep_pm_pgnd_cb)
-enotify.add_notification_cb(pm_ifce.E_PATCH_STACK_CHANGES|ifce.E_NEW_PM|ifce.E_CHANGE_WD, _update_class_indep_pmic_cb)
+enotify.add_notification_cb(enotify.E_CHANGE_WD|ifce.E_NEW_SCM, _update_class_indep_scm_pgnd_cb)
+enotify.add_notification_cb(enotify.E_CHANGE_WD|ifce.E_NEW_PM, _update_class_indep_pm_pgnd_cb)
+enotify.add_notification_cb(pm_ifce.E_PATCH_STACK_CHANGES|ifce.E_NEW_PM|enotify.E_CHANGE_WD, _update_class_indep_pmic_cb)
 
 class WSListenerMixin:
     def __init__(self):
-        self.add_notification_cb(ifce.E_CHANGE_WD|ifce.E_NEW_SCM, self.scm_pgnd_conds_change_cb)
-        self.add_notification_cb(ifce.E_CHANGE_WD|ifce.E_NEW_PM, self.pm_pgnd_condns_change_cb)
-        self.add_notification_cb(pm_ifce.E_PATCH_STACK_CHANGES|ifce.E_NEW_PM|ifce.E_CHANGE_WD, self.pmic_condns_change_cb)
+        self.add_notification_cb(enotify.E_CHANGE_WD|ifce.E_NEW_SCM, self.scm_pgnd_conds_change_cb)
+        self.add_notification_cb(enotify.E_CHANGE_WD|ifce.E_NEW_PM, self.pm_pgnd_condns_change_cb)
+        self.add_notification_cb(pm_ifce.E_PATCH_STACK_CHANGES|ifce.E_NEW_PM|enotify.E_CHANGE_WD, self.pmic_condns_change_cb)
         self.init_action_states()
     def scm_pgnd_conds_change_cb(self, **kwargs):
         condns = get_in_scm_pgnd_condns()
