@@ -77,7 +77,7 @@ class BusyIndicator:
         self.show_busy()
         try:
             yield
-        except:
+        finally:
             self.unshow_busy()
     @property
     def is_busy(self):
@@ -101,7 +101,7 @@ class BusyIndicatorUser:
         self._show_busy()
         try:
             yield
-        except:
+        finally:
             self._unshow_busy()
     def set_busy_indicator(self, busy_indicator=None):
         self._busy_indicator = busy_indicator
