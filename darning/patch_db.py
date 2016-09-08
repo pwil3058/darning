@@ -33,7 +33,6 @@ from contextlib import contextmanager
 from aipoed import CmdResult
 from aipoed import os_utils
 from aipoed import runext
-from aipoed import fsdb
 
 from . import ntuples
 from . import rctx as RCTX
@@ -712,13 +711,14 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
             return _content_has_unresolved_merges(content)
     @property
     def related_file_data(self):
+        from aipoed.nmd_tuples import PathAndRelation as RFD
         if self.came_from:
             if self.came_from.as_rename:
-                return fsdb.RFD(self.came_from.file_path, os_utils.Relation.MOVED_FROM)
+                return RFD(self.came_from.file_path, os_utils.Relation.MOVED_FROM)
             else:
-                return fsdb.RFD(self.came_from.file_path, os_utils.Relation.COPIED_FROM)
+                return RFD(self.came_from.file_path, os_utils.Relation.COPIED_FROM)
         elif self.renamed_as:
-            return fsdb.RFD(self.renamed_as, os_utils.Relation.MOVED_TO)
+            return RFD(self.renamed_as, os_utils.Relation.MOVED_TO)
         return None
     def get_overlapping_file(self):
         for patch in self.patch.iterate_overlying_patches():
