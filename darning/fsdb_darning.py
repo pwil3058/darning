@@ -15,7 +15,8 @@
 
 from gi.repository import Pango
 
-from . import fsdb
+from aipoed import fsdb
+
 from . import patch_db
 
 _STATUS_DECO_MAP = {

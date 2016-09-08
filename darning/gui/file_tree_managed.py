@@ -18,20 +18,22 @@ import os
 from gi.repository import Gtk
 from gi.repository import GObject
 
-from .. import CmdFailure
+from aipoed import CmdFailure
+from aipoed import enotify
+from aipoed import os_utils
 
-from .. import os_utils
+from aipoed.gui import actions
+from aipoed.gui import dialogue
+from aipoed.gui import file_tree
+from aipoed.gui import xtnl_edit
+from aipoed.gui import gutils
+
 from .. import scm_ifce
 from .. import pm_ifce
-from .. import enotify
 
-from . import gutils
 from . import ifce
-from . import actions
 from . import ws_actions
 from . import icons
-from . import file_tree
-from . import dialogue
 from . import dooph_pm
 #          <menuitem action='peruse_files'/>
 #          <menuitem action='pm_copy_files_to_top_patch'/>

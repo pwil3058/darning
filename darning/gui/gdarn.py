@@ -19,24 +19,28 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
-from .. import utils
-from .. import enotify
+from aipoed import enotify
 
-from . import gutils
-from . import dialogue
+from aipoed.decorators import singleton
+
+from aipoed.gui import gutils
+from aipoed.gui import dialogue
+from aipoed.gui import actions
+from aipoed.gui import terminal
+
+from .. import utils
+
 from . import console
 from . import ifce
 from . import icons
-from . import actions
 from . import ws_actions
 from . import patch_list
 from . import file_tree_managed
 from . import file_tree_cs
-from . import terminal
 from . import config
 
-class Darning(Gtk.Window, dialogue.BusyIndicator, actions.CAGandUIManager, enotify.Listener, ws_actions.WSListenerMixin):
-    count = 0
+@singleton
+class Darning(dialogue.MainWindow, actions.CAGandUIManager, enotify.Listener, ws_actions.WSListenerMixin):
     UI_DESCR = '''
     <ui>
         <menubar name="gdarn_left_menubar">
@@ -74,14 +78,10 @@ class Darning(Gtk.Window, dialogue.BusyIndicator, actions.CAGandUIManager, enoti
     </ui>
     '''
     def __init__(self, dir_specified=False):
-        assert Darning.count == 0
-        Darning.count += 1
-        Gtk.Window.__init__(self, Gtk.WindowType.TOPLEVEL)
+        dialogue.MainWindow.__init__(self, Gtk.WindowType.TOPLEVEL)
         self.set_icon_from_file(icons.APP_ICON_FILE)
         self.connect("destroy", Gtk.main_quit)
         self._update_title()
-        dialogue.init(self)
-        dialogue.BusyIndicator.__init__(self)
         actions.CAGandUIManager.__init__(self)
         enotify.Listener.__init__(self)
         ws_actions.WSListenerMixin.__init__(self)

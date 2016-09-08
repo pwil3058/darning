@@ -23,7 +23,7 @@ from gi.repository import Gtk
 from gi.repository import Gio
 from gi.repository import GdkPixbuf
 
-from ..config_data import APP_NAME
+from .. import APP_NAME
 
 # find the icons directory
 # first look in the source directory (so that we can run uninstalled)

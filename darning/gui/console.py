@@ -20,13 +20,15 @@ from gi.repository import Gtk
 from gi.repository import Pango
 from gi.repository import GObject
 
-from .. import runext
+from aipoed import runext
+
+from aipoed.gui import dialogue
+from aipoed.gui import gutils
+from aipoed.gui import terminal
+
 from ..utils import singleton
 
-from . import dialogue
-from . import gutils
 from . import textview
-from . import terminal
 
 @singleton
 class ConsoleLog(textview.Widget):
@@ -90,9 +92,8 @@ class ConsoleLog(textview.Widget):
 
 @singleton
 class ConsoleLogWidget(Gtk.VBox, dialogue.BusyIndicatorUser):
-    def __init__(self, busy_indicator=None):
+    def __init__(self):
         Gtk.VBox.__init__(self)
-        dialogue.BusyIndicatorUser.__init__(self, busy_indicator)
         self._text_widget = ConsoleLog()
         if not terminal.AVAILABLE:
             hbox = Gtk.HBox()
@@ -124,13 +125,13 @@ class ConsoleLogWidget(Gtk.VBox, dialogue.BusyIndicatorUser):
     def append_entry(self, msg):
         return self._text_widget.append_entry(msg)
     def _cmd_entry_cb(self, entry):
-        from . import auto_update
+        from aipoed.gui import auto_update
         text = entry.get_text_and_clear_to_history()
         if not text:
             return
         with self.showing_busy():
             result = runext.run_cmd_in_console(self, text)
-        dialogue.report_any_problems(result)
+        dialogue.main_window.report_any_problems(result)
         auto_update.trigger_auto_update()
 
 LOG = ConsoleLogWidget()

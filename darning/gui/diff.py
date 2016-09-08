@@ -21,19 +21,20 @@ from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import Pango
 
-from .. import CmdResult, CmdFailure
+from aipoed import CmdResult, CmdFailure
+from aipoed import runext
+from aipoed import enotify
+
+from aipoed.gui import dialogue
+from aipoed.gui import gutils
 
 from .. import utils
 from .. import options
-from .. import runext
 from .. import patchlib
 from .. import pm_ifce
-from .. import enotify
 
-from . import dialogue
 from . import textview
 from . import ifce
-from . import gutils
 from . import icons
 
 class FileAndRefreshActions:
@@ -62,7 +63,7 @@ class FileAndRefreshActions:
             suggestion = self._save_file
         else:
             suggestion = os.getcwd()
-        self._save_file = dialogue.ask_file_path(_('Save as ...'), suggestion=suggestion, existing=False)
+        self._save_file = dialogue.main_window.ask_file_path(_('Save as ...'), suggestion=suggestion, existing=False)
         self._save_to_file()
     def _save_to_file(self):
         if not self._save_file:
@@ -70,7 +71,7 @@ class FileAndRefreshActions:
         try:
             fobj = open(self._save_file, 'w')
         except IOError as edata:
-            dialogue.report_any_problems(CmdResult.error(stderr=edata[1]))
+            dialogue.main_window.report_any_problems(CmdResult.error(stderr=edata[1]))
             self.check_set_save_sensitive()
             return
         text = self._get_text_to_save()
@@ -202,10 +203,10 @@ class TextWidget(textview.Widget):
         return self.view.get_buffer()
     @property
     def h_scrollbar(self):
-        return self._sw.get_hscrollbar()
+        return self._scrolled_window.get_hscrollbar()
     @property
     def v_scrollbar(self):
-        return self._sw.get_vscrollbar()
+        return self._scrolled_window.get_vscrollbar()
     def get_scrollbar_values(self):
         return (self.h_scrollbar.get_value(), self.h_scrollbar.get_value())
     def set_scrollbar_values(self, values):
@@ -246,7 +247,7 @@ class TextWidget(textview.Widget):
             fobj = open(self._save_file, "w")
         except IOError as edata:
             strerror = edata[1]
-            dialogue.report_any_problems(CmdResult.error(stderr=strerror))
+            dialogue.main_window.report_any_problems(CmdResult.error(stderr=strerror))
             self.check_set_save_sensitive()
             return
         text = self.bfr.get_text(self.bfr.get_start_iter(), self.bfr.get_end_iter())
@@ -287,7 +288,7 @@ class TextWidget(textview.Widget):
             suggestion = self._save_file
         else:
             suggestion = os.getcwd()
-        self._save_file = dialogue.ask_file_path(_("Save as ..."), suggestion=suggestion, existing=False)
+        self._save_file = dialogue.main_window.ask_file_path(_("Save as ..."), suggestion=suggestion, existing=False)
         self._save_to_file()
     def get_action_button_box(self, a_name_list):
         return gutils.ActionHButtonBox([self._action_group], action_name_list=a_name_list)
@@ -569,7 +570,7 @@ def launch_external_diff(file_a, file_b):
     return CmdResult.ok()
 
 #GLOBAL ACTIONS
-from . import actions
+from aipoed.gui import actions
 from . import ws_actions
 
 actions.CLASS_INDEP_AGS[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC].add_actions(

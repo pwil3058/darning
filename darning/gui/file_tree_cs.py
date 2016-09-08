@@ -18,18 +18,19 @@ import hashlib
 from gi.repository import Gtk
 from gi.repository import GObject
 
-from .. import pm_ifce
-from .. import enotify
+from aipoed.gui import actions
+from aipoed.gui import dialogue
+from aipoed.gui import file_tree
 
-from . import gutils
+from aipoed import enotify
+
+from .. import pm_ifce
+
 from . import ifce
-from . import actions
 from . import ws_actions
-from . import dialogue
 from . import icons
 from . import text_edit
 from . import diff
-from . import file_tree
 from . import dooph_pm
 
 class _GenericPatchFileTreeView(file_tree.FileTreeView, enotify.Listener, ws_actions.WSListenerMixin):
@@ -68,7 +69,7 @@ class PatchFileTreeView(file_tree.FileTreeView):
     </ui>
     '''
     DIRS_SELECTABLE = False
-    def __init__(self, busy_indicator=None, patch_name=None):
+    def __init__(self, patch_name=None):
         self._patch_name = patch_name
         file_tree.FileTreeView.__init__(self, show_hidden=True, hide_clean=False)
     @property
@@ -108,7 +109,7 @@ class PatchFilesDialog(dialogue.ListenerDialog, enotify.Listener):
         self.set_title(_('patch: %s files: %s') % (patch_name, utils.cwd_rel_home()))
         self.add_notification_cb(enotify.E_CHANGE_WD, self._chwd_cb)
         # file tree view wrapped in scrolled window
-        self.file_tree = PatchFileTreeView(busy_indicator=self, patch_name=patch_name)
+        self.file_tree = PatchFileTreeView(patch_name=patch_name)
         self.file_tree.get_selection().set_mode(Gtk.SelectionMode.MULTIPLE)
         self.file_tree.set_headers_visible(False)
         self.file_tree.set_size_request(240, 320)

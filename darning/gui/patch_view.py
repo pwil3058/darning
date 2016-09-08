@@ -22,17 +22,17 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
+from aipoed.gui import dialogue
+from aipoed.gui import gutils
+
 from .. import patchlib
 from .. import utils
 from .. import pm_ifce
 
 from . import textview
-from . import dialogue
 from . import icons
 from . import diff
-from . import gutils
 from . import ifce
-from . import gutils
 
 class Widget(Gtk.VBox):
     from ..pm_ifce import PatchState
@@ -141,7 +141,7 @@ class Widget(Gtk.VBox):
 class Dialogue(dialogue.ListenerDialog):
     AUTO_UPDATE_TD = gutils.TimeOutController.ToggleData("auto_update_toggle", _('Auto _Update'), _('Turn data auto update on/off'), Gtk.STOCK_REFRESH)
     def __init__(self, patch_name):
-        from ..config_data import APP_NAME
+        from .. import APP_NAME
         title = _(APP_NAME + ": Patch \"{0}\" : {1}").format(patch_name, utils.path_rel_home(os.getcwd()))
         dialogue.ListenerDialog.__init__(self, title=title, parent=dialogue.main_window, flags=Gtk.DialogFlags.DESTROY_WITH_PARENT)
         self._widget = Widget(patch_name)
@@ -172,19 +172,19 @@ class Dialogue(dialogue.ListenerDialog):
     def _refresh_acb(self, _action):
         with self.showing_busy():
             result = ifce.PM.do_refresh_patch(self._widget.patch_name)
-        dialogue.report_any_problems(result)
+        dialogue.main_window.report_any_problems(result)
     def _save_as_acb(self, _action):
         from . import recollect
         suggestion = os.path.basename(utils.convert_patchname_to_filename(self._widget.patch_name))
         export_filepath = os.path.join(recollect.get("export", "last_directory"), suggestion)
         while True:
-            export_filepath = dialogue.ask_file_path(_("Export as ..."), suggestion=export_filepath, existing=False)
+            export_filepath = dialogue.main_window.ask_file_path(_("Export as ..."), suggestion=export_filepath, existing=False)
             if export_filepath is None:
                 return
             if os.path.exists(export_filepath):
                 from .. import CmdResult
                 problem = CmdResult.error(stderr=_("A file of that name already exists!!")) | CmdResult.Suggest.OVERWRITE_OR_RENAME
-                response = dialogue.ask_rename_overwrite_or_cancel(problem)
+                response = dialogue.main_window.ask_rename_overwrite_or_cancel(problem)
                 if response == Gtk.ResponseType.CANCEL:
                     return
                 elif response == dialogue.Response.RENAME:
@@ -198,4 +198,4 @@ class Dialogue(dialogue.ListenerDialog):
             export_filepath = utils.path_rel_home(export_filepath)
         if export_filepath.startswith(os.pardir):
             export_filepath = os.path.abspath(export_filepath)
-        dialogue.report_any_problems(utils.set_file_contents(export_filepath, str(self._widget.epatch)))
+        dialogue.main_window.report_any_problems(utils.set_file_contents(export_filepath, str(self._widget.epatch)))

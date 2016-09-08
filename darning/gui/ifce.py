@@ -15,24 +15,26 @@
 
 import os
 
-from .. import CmdResult
-from ..config_data import APP_NAME
+from aipoed import CmdResult
+from aipoed import enotify
+
+from aipoed.gui import dialogue
+
+from .. import APP_NAME
 
 from .. import scm_ifce
 from .. import pm_ifce
 from .. import options
 from .. import utils
 from .. import rctx
-from .. import enotify
 
 from . import recollect
-from . import dialogue
 from .console import LOG, RCTX
 
 E_NEW_SCM, E_NEW_PM, E_NEW_SCM_OR_PM = enotify.new_event_flags_and_mask(2)
 
 def report_backend_requirements(parent=None):
-    dialogue.inform_user(pm_ifce.backend_requirements(), parent=parent)
+    dialogue.main_window.inform_user(pm_ifce.backend_requirements(), parent=parent)
 
 SCM = scm_ifce.get_ifce()
 PM = pm_ifce.get_ifce()

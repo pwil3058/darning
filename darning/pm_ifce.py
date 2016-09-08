@@ -19,9 +19,9 @@ import hashlib
 import re
 import time
 
-from . import CmdResult
+from aipoed import CmdResult
 
-from . import enotify
+from aipoed import enotify
 
 E_PUSH, E_POP, E_NEW_PATCH, E_PATCH_STACK_CHANGES = enotify.new_event_flags_and_mask(3)
 E_DELETE_PATCH, E_MODIFY_PATCH, E_MODIFY_GUARDS, E_PATCH_QUEUE_CHANGES = enotify.new_event_flags_and_mask(3)
@@ -88,7 +88,7 @@ def backend_requirements():
     return msg
 
 def report_backend_requirements(parent=None):
-    dialogue.inform_user(backend_requirements(), parent=parent)
+    dialogue.main_window.inform_user(backend_requirements(), parent=parent)
 
 def avail_backends(include_deprecated=False):
     if include_deprecated:

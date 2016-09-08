@@ -17,7 +17,7 @@
 
 import sys
 
-from .. import CmdResult
+from aipoed import CmdResult
 
 from . import cli_args
 from . import db_utils

@@ -18,6 +18,9 @@ Some script based testing has been undertaken.
 Requirements
 ------------
 
+This software requires the *pwil3058/aipoed* package to be installed and
+available via PYTHONPATH to work.  It is available from github.
+
 This software requires:
  * Python 2.7 or later
  * PyGTK2 2.24 or later

@@ -20,10 +20,11 @@ import collections
 
 from gi.repository import Pango
 
-from . import fsdb
+from aipoed import fsdb
+from aipoed import runext
+
 from . import utils
 from . import patchlib
-from . import runext
 
 class FileStatus:
     UNMODIFIED = '  '

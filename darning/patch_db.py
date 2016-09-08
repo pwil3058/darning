@@ -30,18 +30,18 @@ import zlib
 
 from contextlib import contextmanager
 
-from . import CmdResult
+from aipoed import CmdResult
+from aipoed import os_utils
+from aipoed import runext
+from aipoed import fsdb
 
 from . import ntuples
 from . import rctx as RCTX
 from . import utils
 from . import mixins
 from . import scm_ifce
-from . import fsdb
 from . import patchlib
 from . import options
-from . import os_utils
-from . import runext
 
 from .pm_ifce import PatchState, FileStatus, Presence, Validity, MERGE_CRE, PatchTableRow, patch_timestamp_str
 

@@ -17,7 +17,7 @@
 Provide an interface to SCM controlling source on which patches sit
 '''
 
-from . import enotify
+from aipoed import enotify
 
 E_FILE_ADDED, E_FILE_DELETED, E_FILE_MODIFIED, E_FILE_CHANGES = enotify.new_event_flags_and_mask(3)
 E_FILE_MOVED = E_FILE_ADDED|E_FILE_DELETED
@@ -48,7 +48,7 @@ def backend_requirements():
     return msg
 
 def report_backend_requirements(parent=None):
-    dialogue.inform_user(backend_requirements(), parent=parent)
+    dialogue.main_window.inform_user(backend_requirements(), parent=parent)
 
 def avail_backends():
     return list(_BACKEND.keys())

@@ -18,7 +18,7 @@
 import os
 import sys
 
-from .. import CmdResult
+from aipoed import CmdResult
 
 from .. import patchlib
 

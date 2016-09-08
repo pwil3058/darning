@@ -22,19 +22,20 @@ from gi.repository import GObject
 from gi.repository import Gtk
 from gi.repository import Gdk
 
-from .. import config_data
+from aipoed.gui import dialogue
+from aipoed.gui import gutils
+from aipoed.gui import tlview
+from aipoed.gui import table
+from aipoed.gui import actions
+from aipoed.gui import apath
+
+from .. import CONFIG_DIR_PATH
 from .. import utils
 
-from . import dialogue
-from . import gutils
-from . import tlview
-from . import table
-from . import actions
 from . import ifce
 from . import icons
-from . import apath
 
-SAVED_PGND_FILE_NAME = os.sep.join([config_data.CONFIG_DIR_NAME, "playgrounds"])
+SAVED_PGND_FILE_NAME = os.sep.join([CONFIG_DIR_PATH, "playgrounds"])
 
 class PgndPathView(apath.AliasPathView):
     SAVED_FILE_NAME = SAVED_PGND_FILE_NAME
@@ -61,9 +62,9 @@ def generate_local_playground_menu():
     return PgndPathView.generate_alias_path_menu(_("Local Repositories"), lambda newtgnd: ifce.chdir(newtgnd))
 
 def change_pgnd_cb(_widget, repo):
-    with dialogue.showing_busy():
+    with dialogue.main_window.showing_busy():
         result = ifce.chdir(repo)
-    dialogue.report_any_problems(result)
+    dialogue.main_window.report_any_problems(result)
 
 def change_wd_acb(_arg):
     open_dialog = WorkspaceOpenDialog()

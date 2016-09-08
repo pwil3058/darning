@@ -13,9 +13,12 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from . import CmdResult, CmdFailure
+from aipoed import CmdResult
+from aipoed import CmdFailure
 
-from . import enotify
+from aipoed import enotify
+
+from aipoed.decorators import singleton
 
 from . import pm_ifce
 from . import scm_ifce
@@ -24,7 +27,6 @@ from . import fsdb_darning
 from . import utils
 
 from .pm_ifce import PatchState
-from .utils import singleton
 
 from .gui.console import RCTX, LOG
 

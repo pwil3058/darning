@@ -33,8 +33,8 @@ from gi.repository import GObject
 
 # TODO: purify utils (i.e. minimize . imports)
 
-from . import CmdResult
-from .config_data import HOME
+from aipoed import CmdResult
+from aipoed import HOME
 
 from . import options
 

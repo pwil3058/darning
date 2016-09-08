@@ -24,10 +24,11 @@ try:
 except ImportError:
     import ConfigParser as configparser
 
-from .config_data import APP_NAME, CONFIG_DIR_NAME
-from . import CmdResult
+from aipoed import CmdResult
 
-_GLOBAL_CFG_FILE = os.path.join(CONFIG_DIR_NAME, "options.cfg")
+from . import APP_NAME, CONFIG_DIR_PATH
+
+_GLOBAL_CFG_FILE = os.path.join(CONFIG_DIR_PATH, "options.cfg")
 GLOBAL_OPTIONS = configparser.SafeConfigParser()
 
 def load_global_options():

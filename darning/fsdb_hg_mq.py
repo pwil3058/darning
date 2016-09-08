@@ -17,11 +17,12 @@ import os
 
 from gi.repository import Pango
 
-from . import fsdb
+from aipoed import fsdb
+from aipoed import runext
+from aipoed import os_utils
+
 from . import utils
 from . import patchlib
-from . import runext
-from . import os_utils
 
 FSTATUS_MODIFIED = 'M'
 FSTATUS_ADDED = 'A'

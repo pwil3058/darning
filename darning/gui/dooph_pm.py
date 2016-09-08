@@ -20,27 +20,29 @@ from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import GObject
 
-from ..config_data import APP_NAME
+from aipoed import enotify
+
+from aipoed import CmdResult
+
+from aipoed.gui import dialogue
+from aipoed.gui import actions
+from aipoed.gui import tlview
+from aipoed.gui import table
+from aipoed.gui import gutils
+
+from .. import APP_NAME
 
 from .. import utils
 from .. import pm_ifce
 from .. import scm_ifce
-from .. import enotify
-
-from .. import CmdResult
 
 from . import ifce
-from . import dialogue
-from . import dooph
-from . import actions
 from . import ws_actions
 from . import icons
 from . import text_edit
 from . import recollect
-from . import tlview
-from . import table
-from . import gutils
 from . import textview
+from . import dooph
 
 AC_POP_POSSIBLE = ws_actions.AC_PMIC
 AC_PUSH_POSSIBLE, AC_PUSH_POSSIBLE_MASK = actions.ActionCondns.new_flags_and_mask(1)
@@ -70,12 +72,12 @@ def pm_do_add_files(file_paths):
 
 def pm_do_add_new_file(open_for_edit=False):
     from .. import os_utils
-    new_file_path = dialogue.ask_file_path(_("Enter path for new file"), existing=False)
+    new_file_path = dialogue.main_window.ask_file_path(_("Enter path for new file"), existing=False)
     if not new_file_path:
         return
-    with dialogue.showing_busy():
+    with dialogue.main_window.showing_busy():
         result = os_utils.os_create_file(new_file_path)
-    dialogue.report_any_problems(result)
+    dialogue.main_window.report_any_problems(result)
     if not result.is_ok:
         return result
     result = pm_do_add_files([new_file_path])
@@ -90,11 +92,11 @@ def pm_change_wd():
     if not new_wd_path:
         return
     result = ifce.chdir(new_wd_path)
-    dialogue.report_any_problems(result)
+    dialogue.main_window.report_any_problems(result)
     if result.is_ok and not ifce.PM.in_valid_pgnd:
         msg = os.linesep.join([_("Directory {} has not been initialised.").format(new_wd_path),
                                _("Do you wish to initialise it?")])
-        if dialogue.ask_yes_no(msg, parent=dialogue.main_window):
+        if dialogue.main_window.ask_yes_no(msg, parent=dialogue.main_window):
             pm_do_initialize_curdir()
 
 def pm_do_copy_file(file_path):
@@ -115,14 +117,14 @@ def pm_do_create_new_pgnd():
     req_backend = ifce.choose_backend()
     if not req_backend:
         return CmdResult.ok()
-    new_pgnd_path = dialogue.ask_dir_path(_("Select/create playground .."))
+    new_pgnd_path = dialogue.main_window.ask_dir_path(_("Select/create playground .."))
     if new_pgnd_path is not None:
         result = ifce.create_new_playground(new_pgnd_path, req_backend)
-        dialogue.report_any_problems(result)
+        dialogue.main_window.report_any_problems(result)
         if not result.is_ok:
             return result
         result = ifce.chdir(new_pgnd_path)
-        dialogue.report_any_problems(result)
+        dialogue.main_window.report_any_problems(result)
         return result
     return CmdResult.ok()
 
@@ -130,22 +132,22 @@ def pm_do_delete_files(file_paths):
     if len(file_paths) == 0:
         return
     emsg = '\n'.join(file_paths + ["", _('Confirm delete selected file(s) in top patch?')])
-    if not dialogue.ask_ok_cancel(emsg):
+    if not dialogue.main_window.ask_ok_cancel(emsg):
         return
-    with dialogue.showing_busy():
+    with dialogue.main_window.showing_busy():
         result = ifce.PM.do_delete_files_in_top_patch(file_paths)
-    dialogue.report_any_problems(result)
+    dialogue.main_window.report_any_problems(result)
     return result
 
 def pm_do_drop_files(file_paths):
     if len(file_paths) == 0:
         return
     emsg = '\n'.join(file_paths + ["", _('Confirm drop selected file(s) from patch?')])
-    if not dialogue.ask_ok_cancel(emsg):
+    if not dialogue.main_window.ask_ok_cancel(emsg):
         return
-    with dialogue.showing_busy():
+    with dialogue.main_window.showing_busy():
         result = ifce.PM.do_drop_files_from_patch(file_paths, patch_name=None)
-    dialogue.report_any_problems(result)
+    dialogue.main_window.report_any_problems(result)
 
 def pm_do_duplicate_patch(patch_name):
     description = ifce.PM.get_patch_description(patch_name)
@@ -159,16 +161,16 @@ def pm_do_duplicate_patch(patch_name):
             with dialog.showing_busy():
                 result = ifce.PM.do_duplicate_patch(patch_name, as_patch_name, newdescription)
             if not refresh_tried and result.suggests_refresh:
-                resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
+                resp = dialogue.main_window.ask_force_refresh_absorb_or_cancel(result, clarification=None)
                 if resp == Gtk.ResponseType.CANCEL:
                     break
                 elif resp == dialogue.Response.REFRESH:
                     refresh_tried = True
-                    with dialogue.showing_busy():
+                    with dialogue.main_window.showing_busy():
                         result = ifce.PM.do_refresh_patch()
-                    dialogue.report_any_problems(result)
+                    dialogue.main_window.report_any_problems(result)
                 continue
-            dialogue.report_any_problems(result)
+            dialogue.main_window.report_any_problems(result)
             if result.suggests_rename:
                 continue
         break
@@ -190,7 +192,7 @@ def pm_do_export_named_patch(patch_name, suggestion=None, busy_indicator=None):
     if not os.path.dirname(suggestion):
         suggestion = os.path.join(recollect.get("export", "last_directory"), suggestion)
     PROMPT = _("Export as ...")
-    export_filename = dialogue.ask_file_path(PROMPT, suggestion=suggestion, existing=False)
+    export_filename = dialogue.main_window.ask_file_path(PROMPT, suggestion=suggestion, existing=False)
     if export_filename is None:
         return
     force = False
@@ -202,7 +204,7 @@ def pm_do_export_named_patch(patch_name, suggestion=None, busy_indicator=None):
         if refresh_tried:
             result = result - result.Suggest.REFRESH
         if result.suggests(result.Suggest.FORCE_OR_REFRESH):
-            resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
+            resp = dialogue.main_window.ask_force_refresh_absorb_or_cancel(result, clarification=None)
             if resp == Gtk.ResponseType.CANCEL:
                 return
             elif resp == dialogue.Response.FORCE:
@@ -211,39 +213,39 @@ def pm_do_export_named_patch(patch_name, suggestion=None, busy_indicator=None):
                 refresh_tried = True
                 with busy_indicator.showing_busy():
                     result = ifce.PM.do_refresh_patch()
-                dialogue.report_any_problems(result)
+                dialogue.main_window.report_any_problems(result)
             continue
         elif result.suggests_rename:
-            resp = dialogue.ask_rename_overwrite_or_cancel(result, clarification=None)
+            resp = dialogue.main_window.ask_rename_overwrite_or_cancel(result, clarification=None)
             if resp == Gtk.ResponseType.CANCEL:
                 return
             elif resp == dialogue.Response.OVERWRITE:
                 overwrite = True
             elif resp == dialogue.Response.RENAME:
-                export_filename = dialogue.ask_file_path(PROMPT, suggestion=export_filename, existing=False)
+                export_filename = dialogue.main_window.ask_file_path(PROMPT, suggestion=export_filename, existing=False)
                 if export_filename is None:
                     return
             continue
-        dialogue.report_any_problems(result)
+        dialogue.main_window.report_any_problems(result)
         recollect.set("export", "last_directory", os.path.dirname(export_filename))
         break
 
 def pm_do_extdiff_for_file(file_path, patch_name=None):
     from . import diff
     files = ifce.PM.get_extdiff_files_for(file_path=file_path, patch_name=patch_name)
-    dialogue.report_any_problems(diff.launch_external_diff(files.original_version, files.patched_version))
+    dialogue.main_window.report_any_problems(diff.launch_external_diff(files.original_version, files.patched_version))
 
 def pm_do_fold_patch(patch_name):
     refresh_tried = False
     force = False
     absorb = False
     while True:
-        with dialogue.showing_busy():
+        with dialogue.main_window.showing_busy():
             result = ifce.PM.do_fold_named_patch(patch_name, absorb=absorb, force=force)
         if refresh_tried:
             result = result - result.Suggest.REFRESH
         if not (absorb or force) and result.suggests(result.Suggest.FORCE_ABSORB_OR_REFRESH):
-            resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
+            resp = dialogue.main_window.ask_force_refresh_absorb_or_cancel(result, clarification=None)
             if resp == Gtk.ResponseType.CANCEL:
                 break
             elif resp == dialogue.Response.FORCE:
@@ -252,14 +254,14 @@ def pm_do_fold_patch(patch_name):
                 absorb = True
             elif resp == dialogue.Response.REFRESH:
                 refresh_tried = True
-                with dialogue.showing_busy():
+                with dialogue.main_window.showing_busy():
                     patch_file_list = ifce.PM.get_filepaths_in_named_patch(patch_name)
                     top_patch_file_list = ifce.PM.get_filepaths_in_top_patch(patch_file_list)
                     file_paths = [file_path for file_path in patch_file_list if file_path not in top_patch_file_list]
                     result = ifce.PM.do_refresh_overlapped_files(file_paths)
-                dialogue.report_any_problems(result)
+                dialogue.main_window.report_any_problems(result)
             continue
-        dialogue.report_any_problems(result)
+        dialogue.main_window.report_any_problems(result)
         break
 
 def pm_do_fold_to_patch(patch_name):
@@ -267,24 +269,24 @@ def pm_do_fold_to_patch(patch_name):
         next_patch = ifce.PM.get_next_patch()
         if not next_patch:
             return
-        with dialogue.showing_busy():
+        with dialogue.main_window.showing_busy():
             result = ifce.PM.do_fold_named_patch(next_patch)
         if not result.is_ok:
-            dialogue.report_any_problems(result)
+            dialogue.main_window.report_any_problems(result)
             return
         if patch_name == next_patch:
             return
 
 def pm_do_fold_external_patch():
     from .. import patchlib
-    patch_file_path = dialogue.ask_file_path(_("Select patch file to be folded"))
+    patch_file_path = dialogue.main_window.ask_file_path(_("Select patch file to be folded"))
     if patch_file_path is None:
         return
     try:
         epatch = patchlib.Patch.parse_text_file(patch_file_path)
     except patchlib.ParseError as edata:
         result = CmdResult.error(stderr="{0}: {1}: {2}\n".format(patch_file_path, edata.lineno, edata.message))
-        dialogue.report_any_problems(result)
+        dialogue.main_window.report_any_problems(result)
         return
     force = False
     absorb = False
@@ -298,7 +300,7 @@ def pm_do_fold_external_patch():
         if refresh_tried:
             result = result - result.Suggest.REFRESH
         if not (absorb or force) and result.suggests(result.Suggest.FORCE_ABSORB_OR_REFRESH):
-            resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
+            resp = dialogue.main_window.ask_force_refresh_absorb_or_cancel(result, clarification=None)
             if resp == Gtk.ResponseType.CANCEL:
                 break
             elif resp == dialogue.Response.FORCE:
@@ -307,13 +309,13 @@ def pm_do_fold_external_patch():
                 absorb = True
             elif resp == dialogue.Response.REFRESH:
                 refresh_tried = True
-                with dialogue.showing_busy():
+                with dialogue.main_window.showing_busy():
                     top_patch_file_list = ifce.PM.get_filepaths_in_top_patch()
                     file_paths = [file_path for file_path in epatch.get_file_paths(epatch.num_strip_levels) if file_path not in top_patch_file_list]
                     result = ifce.PM.do_refresh_overlapped_files(file_paths)
-                dialogue.report_any_problems(result)
+                dialogue.main_window.report_any_problems(result)
             continue
-        dialogue.report_any_problems(result)
+        dialogue.main_window.report_any_problems(result)
         break
     dlg.destroy()
 
@@ -321,14 +323,14 @@ def pm_do_import_external_patch():
     from . import recollect
     suggestion = recollect.get("import", "last_directory")
     from .. import patchlib
-    patch_file_path = dialogue.ask_file_path(_("Select patch file to be imported"))
+    patch_file_path = dialogue.main_window.ask_file_path(_("Select patch file to be imported"))
     if patch_file_path is None:
         return
     try:
         epatch = patchlib.Patch.parse_text_file(patch_file_path)
     except patchlib.ParseError as edata:
         result = CmdResult.error(stderr="{0}: {1}: {2}\n".format(patch_file_path, edata.lineno, edata.message))
-        dialogue.report_any_problems(result)
+        dialogue.main_window.report_any_problems(result)
         return
     overwrite = False
     dlg = ImportPatchDialog(epatch, parent=dialogue.main_window)
@@ -338,7 +340,7 @@ def pm_do_import_external_patch():
         with dlg.showing_busy():
             result = ifce.PM.do_import_patch(epatch, dlg.get_as_name(), overwrite=overwrite)
         if not overwrite and result.suggests(result.Suggest.OVERWRITE_OR_RENAME):
-            resp = dialogue.ask_rename_overwrite_or_cancel(result, clarification=None)
+            resp = dialogue.main_window.ask_rename_overwrite_or_cancel(result, clarification=None)
             if resp == Gtk.ResponseType.CANCEL:
                 break
             elif resp == dialogue.Response.OVERWRITE:
@@ -346,7 +348,7 @@ def pm_do_import_external_patch():
             else:
                 resp = dlg.run()
             continue
-        dialogue.report_any_problems(result)
+        dialogue.main_window.report_any_problems(result)
         if result.suggests_rename:
             resp = dlg.run()
         else:
@@ -358,7 +360,7 @@ def pm_do_initialize_curdir():
     if not req_backend:
         return
     result = ifce.init_current_dir(req_backend)
-    dialogue.report_any_problems(result)
+    dialogue.main_window.report_any_problems(result)
 
 def pm_do_move_files(file_paths):
     destn = dooph.ask_destination(file_paths)
@@ -367,7 +369,7 @@ def pm_do_move_files(file_paths):
     do_op = lambda destn, force=False, overwrite=False : ifce.PM.do_move_files(file_paths, destn, force=force, overwrite=overwrite)
     refresh_op = lambda : ifce.PM.do_refresh_overlapped_files(file_paths)
     result = dooph.do_force_refresh_overwrite_or_rename(destn, do_op, refresh_op)
-    dialogue.report_any_problems(result)
+    dialogue.main_window.report_any_problems(result)
     return result
 
 def pm_do_new_patch():
@@ -375,7 +377,7 @@ def pm_do_new_patch():
     while dlg.run() == Gtk.ResponseType.OK:
         with dlg.showing_busy():
             result = ifce.PM.do_create_new_patch(dlg.get_new_patch_name(), dlg.get_descr())
-        dialogue.report_any_problems(result)
+        dialogue.main_window.report_any_problems(result)
         if not result.suggests_rename:
             break
     dlg.destroy()
@@ -383,19 +385,19 @@ def pm_do_new_patch():
 def pm_do_pop():
     refresh_tried = False
     while True:
-        with dialogue.showing_busy():
+        with dialogue.main_window.showing_busy():
             result = ifce.PM.do_pop_top_patch()
         if not refresh_tried and result.suggests_refresh:
-            resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
+            resp = dialogue.main_window.ask_force_refresh_absorb_or_cancel(result, clarification=None)
             if resp == Gtk.ResponseType.CANCEL:
                 return False
             elif resp == dialogue.Response.REFRESH:
                 refresh_tried = True
-                with dialogue.showing_busy():
+                with dialogue.main_window.showing_busy():
                     result = ifce.PM.do_refresh_patch()
-                dialogue.report_any_problems(result)
+                dialogue.main_window.report_any_problems(result)
             continue
-        dialogue.report_any_problems(result)
+        dialogue.main_window.report_any_problems(result)
         break
     return result.is_ok
 
@@ -414,12 +416,12 @@ def pm_do_push():
     absorb = True
     refresh_tried = False
     while True:
-        with dialogue.showing_busy():
+        with dialogue.main_window.showing_busy():
             result = ifce.PM.do_push_next_patch(absorb=absorb, force=force)
         if refresh_tried:
             result = result - result.Suggest.REFRESH
         if not (absorb or force) and result.suggests(result.Suggest.FORCE_ABSORB_OR_REFRESH):
-            resp = dialogue.ask_force_refresh_absorb_or_cancel(result, clarification=None)
+            resp = dialogue.main_window.ask_force_refresh_absorb_or_cancel(result, clarification=None)
             if resp == Gtk.ResponseType.CANCEL:
                 return False
             elif resp == dialogue.Response.FORCE:
@@ -428,12 +430,12 @@ def pm_do_push():
                 absorb = True
             elif resp == dialogue.Response.REFRESH:
                 refresh_tried = True
-                with dialogue.showing_busy():
+                with dialogue.main_window.showing_busy():
                     file_paths = ifce.PM.get_filepaths_in_next_patch()
                     result = ifce.PM.do_refresh_overlapped_files(file_paths)
-                dialogue.report_any_problems(result)
+                dialogue.main_window.report_any_problems(result)
             continue
-        dialogue.report_any_problems(result)
+        dialogue.main_window.report_any_problems(result)
         break
     return result.is_ok
 
@@ -462,23 +464,23 @@ def _launch_reconciliation_tool(file_a, file_b, file_c):
 
 def pm_do_reconcile_file(file_path):
     file_paths = ifce.PM.get_reconciliation_paths(file_path=file_path)
-    dialogue.report_any_problems(_launch_reconciliation_tool(file_paths.original_version, file_paths.patched_version, file_paths.stashed_version))
+    dialogue.main_window.report_any_problems(_launch_reconciliation_tool(file_paths.original_version, file_paths.patched_version, file_paths.stashed_version))
 
 def pm_do_refresh_top_patch():
-    with dialogue.showing_busy():
+    with dialogue.main_window.showing_busy():
         result = ifce.PM.do_refresh_patch()
-    dialogue.report_any_problems(result)
+    dialogue.main_window.report_any_problems(result)
 
 def pm_do_refresh_named_patch(patch_name):
-    with dialogue.showing_busy():
+    with dialogue.main_window.showing_busy():
         result = ifce.PM.do_refresh_patch(patch_name)
-    dialogue.report_any_problems(result)
+    dialogue.main_window.report_any_problems(result)
 
 def pm_do_remove_patch(patch_name):
-    if dialogue.ask_ok_cancel(_("Confirm remove \"{0}\" patch?").format(patch_name)):
-        with dialogue.showing_busy():
+    if dialogue.main_window.ask_ok_cancel(_("Confirm remove \"{0}\" patch?").format(patch_name)):
+        with dialogue.main_window.showing_busy():
             result = ifce.PM.do_remove_patch(patch_name)
-        dialogue.report_any_problems(result)
+        dialogue.main_window.report_any_problems(result)
 
 def pm_do_rename_file(file_path):
     destn = dooph.ask_destination([file_path])
@@ -487,7 +489,7 @@ def pm_do_rename_file(file_path):
     do_op = lambda destn, force=False, overwrite=False : ifce.PM.do_rename_file_in_top_patch(file_path, destn, force=force, overwrite=overwrite)
     refresh_op = lambda : ifce.PM.do_refresh_overlapped_files([file_path])
     result = dooph.do_force_refresh_overwrite_or_rename(destn, do_op, refresh_op)
-    dialogue.report_any_problems(result)
+    dialogue.main_window.report_any_problems(result)
     return result
 
 def pm_do_rename_patch(patch_name):
@@ -496,9 +498,9 @@ def pm_do_rename_patch(patch_name):
         new_name = dialog.entry.get_text()
         if patch_name == new_name:
             break
-        with dialogue.showing_busy():
+        with dialogue.main_window.showing_busy():
             result = ifce.PM.do_rename_patch(patch_name, new_name)
-        dialogue.report_any_problems(result)
+        dialogue.main_window.report_any_problems(result)
         if not result.suggests_rename:
             break
     dialog.destroy()
@@ -508,7 +510,7 @@ def pm_do_restore_patch():
     while dlg.run() == Gtk.ResponseType.OK:
         with dlg.showing_busy():
             result = ifce.PM.do_restore_patch(dlg.get_restore_patch_name(), dlg.get_as_name())
-        dialogue.report_any_problems(result)
+        dialogue.main_window.report_any_problems(result)
         if not result.suggests_rename:
             break
     dlg.destroy()
@@ -520,9 +522,9 @@ def pm_do_select_guards():
         response = dialog.run()
         if response == Gtk.ResponseType.OK:
             selected_guards = dialog.entry.get_text()
-            with dialogue.showing_busy():
+            with dialogue.main_window.showing_busy():
                 result = ifce.PM.do_select_guards(selected_guards)
-            dialogue.report_any_problems(result)
+            dialogue.main_window.report_any_problems(result)
             if result.suggests_edit:
                 continue
             dialog.destroy()
@@ -537,9 +539,9 @@ def pm_do_set_guards_on_patch(patch_name):
         response = dialog.run()
         if response == Gtk.ResponseType.OK:
             guards = dialog.entry.get_text()
-            with dialogue.showing_busy():
+            with dialogue.main_window.showing_busy():
                 result = ifce.PM.do_set_patch_guards(patch_name, guards)
-            dialogue.report_any_problems(result)
+            dialogue.main_window.report_any_problems(result)
             if result.suggests_edit:
                 continue
             dialog.destroy()
@@ -548,9 +550,9 @@ def pm_do_set_guards_on_patch(patch_name):
         break
 
 def scm_do_absorb_applied_patches():
-    with dialogue.showing_busy():
+    with dialogue.main_window.showing_busy():
         result = ifce.PM.do_scm_absorb_applied_patches()
-    dialogue.report_any_problems(result)
+    dialogue.main_window.report_any_problems(result)
     return result.is_ok
 
 actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_actions(
@@ -652,7 +654,7 @@ actions.CLASS_INDEP_AGS[AC_ALL_APPLIED_REFRESHED | ws_actions.AC_IN_SCM_PGND | w
     ]
 )
 
-class NewSeriesDescrDialog(dialogue.BusyDialog):
+class NewSeriesDescrDialog(dialogue.Dialog):
     class Widget(text_edit.DbMessageWidget):
         UI_DESCR = \
         """
@@ -681,7 +683,7 @@ class NewSeriesDescrDialog(dialogue.BusyDialog):
     def __init__(self, parent=None):
         flags = Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT
         title = _("Patch Series Description: %s -- gdarn") % utils.path_rel_home(os.getcwd())
-        dialogue.BusyDialog.__init__(self, title, parent, flags,
+        dialogue.Dialog.__init__(self, title, parent, flags,
                                  (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
                                   Gtk.STOCK_OK, Gtk.ResponseType.OK))
         if not parent:
@@ -734,7 +736,7 @@ class DuplicatePatchDialog(NewSeriesDescrDialog):
     def get_new_patch_name(self):
         return self.new_name_entry.get_text()
 
-class SeriesDescrEditDialog(dialogue.BusyDialog):
+class SeriesDescrEditDialog(dialogue.Dialog):
     class Widget(text_edit.DbMessageWidget):
         UI_DESCR = \
         """
@@ -769,7 +771,7 @@ class SeriesDescrEditDialog(dialogue.BusyDialog):
     def __init__(self, parent=None):
         flags = ~Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT
         title = _("Series Description: {0} -- gdarn").format(utils.path_rel_home(os.getcwd()))
-        dialogue.BusyDialog.__init__(self, title, parent, flags, None)
+        dialogue.Dialog.__init__(self, title, parent, flags, None)
         if not parent:
             self.set_icon_from_file(icons.APP_ICON_FILE)
         self.edit_descr_widget = self.Widget()
@@ -794,12 +796,12 @@ class SeriesDescrEditDialog(dialogue.BusyDialog):
         if response_id == Gtk.ResponseType.CLOSE:
             if self.edit_descr_widget.view.get_buffer().get_modified():
                 qtn = "\n".join([_("Unsaved changes to summary will be lost."), _("Close anyway?")])
-                if dialogue.ask_yes_no(qtn):
+                if dialogue.main_window.ask_yes_no(qtn):
                     self.destroy()
             else:
                 self.destroy()
 
-class PatchDescrEditDialog(dialogue.BusyDialog):
+class PatchDescrEditDialog(dialogue.Dialog):
     class Widget(text_edit.DbMessageWidget):
         UI_DESCR = """
             <ui>
@@ -834,7 +836,7 @@ class PatchDescrEditDialog(dialogue.BusyDialog):
     def __init__(self, patch, parent=None):
         flags = ~Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT
         title = _("Patch: {0} : {1} -- gdarn").format(patch, utils.path_rel_home(os.getcwd()))
-        dialogue.BusyDialog.__init__(self, title, parent, flags, None)
+        dialogue.Dialog.__init__(self, title, parent, flags, None)
         if not parent:
             self.set_icon_from_file(icons.APP_ICON_FILE)
         self.edit_descr_widget = self.Widget(patch)
@@ -859,16 +861,16 @@ class PatchDescrEditDialog(dialogue.BusyDialog):
         if response_id == Gtk.ResponseType.CLOSE:
             if self.edit_descr_widget.view.get_buffer().get_modified():
                 qtn = "\n".join([_("Unsaved changes to summary will be lost."), _("Close anyway?")])
-                if dialogue.ask_yes_no(qtn):
+                if dialogue.main_window.ask_yes_no(qtn):
                     self.destroy()
             else:
                 self.destroy()
 
-class ImportPatchDialog(dialogue.BusyDialog):
+class ImportPatchDialog(dialogue.Dialog):
     def __init__(self, epatch, parent=None):
         flags = ~Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT
         title = _("Import Patch: {0} : {1} -- gdarn").format(epatch.source_name, utils.path_rel_home(os.getcwd()))
-        dialogue.BusyDialog.__init__(self, title, parent, flags, None)
+        dialogue.Dialog.__init__(self, title, parent, flags, None)
         if not parent:
             self.set_icon_from_file(icons.APP_ICON_FILE)
         self.epatch = epatch
@@ -926,7 +928,7 @@ class FoldPatchDialog(ImportPatchDialog):
         self.set_title( _("Fold Patch: {0} : {1} -- gdarn").format(epatch.source_name, utils.path_rel_home(os.getcwd())))
         self.namebox.hide()
 
-class RestorePatchDialog(dialogue.BusyDialog):
+class RestorePatchDialog(dialogue.Dialog):
     _KEYVAL_ESCAPE = Gdk.keyval_from_name("Escape")
     class Table(table.EditedEntriesTable):
         class VIEW(table.EditedEntriesTable.VIEW):
@@ -985,7 +987,7 @@ class RestorePatchDialog(dialogue.BusyDialog):
         def _fetch_contents():
             return [[name] for name in ifce.PM.get_kept_patch_names()]
     def __init__(self, parent):
-        dialogue.BusyDialog.__init__(self, title=_("gdarn: Restore Patch"), parent=parent,
+        dialogue.Dialog.__init__(self, title=_("gdarn: Restore Patch"), parent=parent,
                                  flags=Gtk.DialogFlags.MODAL|Gtk.DialogFlags.DESTROY_WITH_PARENT,
                                  buttons=(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
                                           Gtk.STOCK_OK, Gtk.ResponseType.OK)

@@ -13,11 +13,23 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from . import i18n
+import os
+import gettext
 
-# temporary import of aipoed packages (to be rescinded) TODO
-from aipoed import enotify
-from aipoed import Result, CmdResult, ActionResult, Suggestion, CmdFailure
+
+HOME = os.path.expanduser("~")
+APP_NAME = "darning"
+CONFIG_DIR_PATH = os.sep.join([HOME, "." + APP_NAME + ".d"])
+
+if not os.path.exists(CONFIG_DIR_PATH):
+    os.mkdir(CONFIG_DIR_PATH, 0o775)
+
+ISSUES_URL = "<https://github.com/pwil3058/darning/issues>"
+
+from aipoed import i18n
+
+# Lets tell those details to gettext
+gettext.install(APP_NAME, localedir=i18n.find_locale_dir())
 
 # import SCM backend interfaces here
 from . import scm_ifce_git

@@ -21,26 +21,28 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 from gi.repository import GObject
 
+from aipoed import enotify
+
+from aipoed.gui import dialogue
+from aipoed.gui import gutils
+from aipoed.gui import tlview
+from aipoed.gui import actions
+from aipoed.gui import table
+from aipoed.gui import auto_update
+
 from ..pm_ifce import PatchState
 
 from .. import utils
 from .. import patchlib
 from .. import scm_ifce
 from .. import pm_ifce
-from .. import enotify
 
-from . import dialogue
-from . import gutils
 from . import icons
 from . import ifce
 from . import text_edit
-from . import tlview
-from . import actions
 from . import ws_actions
-from . import table
 from . import textview
 from . import patch_view
-from . import auto_update
 from . import dooph_pm
 
 from .dooph_pm import AC_POP_POSSIBLE, AC_PUSH_POSSIBLE
@@ -168,11 +170,11 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
       </popup>
     </ui>
     """
-    def __init__(self, busy_indicator=None, size_req=None):
+    def __init__(self, size_req=None):
         self.last_import_dir = None
         self._hash_data = None
         self._applied_count = 0
-        table.MapManagedTableView.__init__(self, busy_indicator=busy_indicator, size_req=size_req)
+        table.MapManagedTableView.__init__(self, size_req=size_req)
         auto_update.AutoUpdater.__init__(self)
         self.get_selection().connect("changed", self._selection_changed_cb)
         self.add_notification_cb(self.REPOPULATE_EVENTS, self.repopulate_list)
@@ -285,7 +287,7 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
                 self._applied_count += 1
             yield [patch_data.name, icon, markup]
     def repopulate_list(self, **kwargs):
-        with dialogue.showing_busy():
+        with dialogue.main_window.showing_busy():
             self.set_contents()
             condns = get_applied_condns(self.seln)
             condns |= ws_actions.get_in_pm_pgnd_condns()
@@ -293,6 +295,6 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
 
 class List(table.TableWidget):
     VIEW = ListView
-    def __init__(self, busy_indicator=None):
-        table.TableWidget.__init__(self, scroll_bar=True, busy_indicator=busy_indicator, size_req=None)
+    def __init__(self):
+        table.TableWidget.__init__(self, scroll_bar=True, size_req=None)
         self.header.lhs.pack_start(self.view.ui_manager.get_widget("/patch_list_menubar"), expand=True, fill=True, padding=0)

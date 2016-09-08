@@ -25,36 +25,17 @@ from gi.repository import Gtk
 from gi.repository import Pango
 from gi.repository import GObject
 
-from .. import CmdFailure
+from aipoed import CmdFailure
+
+from aipoed.gui import actions
+from aipoed.gui import dialogue
+from aipoed.gui import gutils
 
 from .. import utils
-from .. import runext
 
 from . import textview
-from . import gutils
-from . import dialogue
 from . import ifce
 from . import config
-from . import actions
-
-def _edit_files_extern(file_list, ed_assigns):
-    def _launch_editor(filelist, edstr=config.DEFAULT_EDITOR):
-        cmd = shlex.split(edstr) + filelist
-        if cmd[0] in config.EDITORS_THAT_NEED_A_TERMINAL:
-            if config.DEFAULT_TERMINAL == "gnome-terminal":
-                flag = '-x'
-            else:
-                flag = '-e'
-            cmd = [config.DEFAULT_TERMINAL, flag] + cmd
-        return runext.run_cmd_in_bgnd(cmd)
-    for edstr in list(ed_assigns.keys()):
-        _launch_editor(ed_assigns[edstr], edstr)
-
-def edit_files_extern(file_list):
-    return _edit_files_extern(file_list, config.assign_extern_editors(file_list))
-
-def peruse_files_extern(file_list):
-    return _edit_files_extern(file_list, config.assign_extern_perusers(file_list))
 
 class MessageWidget(textview.Widget, actions.CAGandUIManager):
     UI_DESCR = ''
@@ -109,7 +90,7 @@ class MessageWidget(textview.Widget, actions.CAGandUIManager):
         self.action_groups.update_condns(mcondn)
     @staticmethod
     def _inform_user_data_problem():
-        dialogue.inform_user(_('Unable to determine user\'s data'), parent=self._parent)
+        dialogue.main_window.inform_user(_('Unable to determine user\'s data'), parent=self._parent)
     def _insert_sign_off_acb(self, _action=None):
         data = ifce.get_author_name_and_email()
         if data:
@@ -130,7 +111,7 @@ class MessageWidget(textview.Widget, actions.CAGandUIManager):
             self._inform_user_data_problem()
     def _ok_to_overwrite_summary(self):
         if self.bfr.get_char_count():
-            return dialogue.ask_ok_cancel(_('Buffer contents will be destroyed. Continue?'))
+            return dialogue.main_window.ask_ok_cancel(_('Buffer contents will be destroyed. Continue?'))
         return True
     def save_text_to_file(self, file_name=None):
         if not file_name:
@@ -142,14 +123,14 @@ class MessageWidget(textview.Widget, actions.CAGandUIManager):
             self._save_file_name = file_name
             self._save_file_digest = self.digest
         except IOError:
-            dialogue.alert_user(_('Save failed!'))
+            dialogue.main_window.alert_user(_('Save failed!'))
     def _save_text_to_file_acb(self, _action=None):
         self.save_text_to_file()
     def _save_text_as_acb(self, _action=None):
-        fname = dialogue.ask_file_path(_('Enter file name'), existing=False, suggestion=self._save_file_name)
+        fname = dialogue.main_window.ask_file_path(_('Enter file name'), existing=False, suggestion=self._save_file_name)
         if fname and os.path.exists(fname) and not utils.samefile(fname, self._save_file_name):
             if not utils.samefile(fname, ifce.SCM.get_default_commit_save_file()):
-                if not dialogue.ask_ok_cancel(os.linesep.join([fname, _('\nFile exists. Overwrite?')])):
+                if not dialogue.main_window.ask_ok_cancel(os.linesep.join([fname, _('\nFile exists. Overwrite?')])):
                     return
         self.save_text_to_file(file_name=fname)
     def load_text_fm_file(self, file_name=None, already_checked=False):
@@ -164,23 +145,23 @@ class MessageWidget(textview.Widget, actions.CAGandUIManager):
             self._save_file_name = file_name
             self._save_file_digest = self.digest
         except IOError:
-            dialogue.alert_user(_('Load from file failed!'))
+            dialogue.main_window.alert_user(_('Load from file failed!'))
     def _load_text_fm_file_acb(self, _action=None):
         self.load_text_fm_file()
     def _load_text_from_acb(self, _action=None):
         if not self._ok_to_overwrite_summary():
             return
-        fname = dialogue.ask_file_path(_('Enter file name'), existing=True)
+        fname = dialogue.main_window.ask_file_path(_('Enter file name'), existing=True)
         self.load_text_fm_file(file_name=fname, already_checked=True)
     def _insert_text_from_acb(self, _action=None):
-        file_name = dialogue.ask_file_path(_('Enter file name'), existing=True)
+        file_name = dialogue.main_window.ask_file_path(_('Enter file name'), existing=True)
         if file_name is not None:
             try:
                 text = open(file_name, 'rb').read()
                 self.bfr.insert_at_cursor(text)
                 self.bfr.set_modified(True)
             except IOError:
-                dialogue.alert_user(_('Insert at cursor from file failed!'))
+                dialogue.main_window.alert_user(_('Insert at cursor from file failed!'))
     def get_auto_save(self):
         return self.save_toggle_action.get_active()
     def set_auto_save(self, active=True):
@@ -235,7 +216,7 @@ class DbMessageWidget(MessageWidget):
         text = self.bfr.get_text(self.bfr.get_start_iter(), self.bfr.get_end_iter())
         result = self.set_text_in_db(text)
         if not result.is_ok:
-            dialogue.report_any_problems(result)
+            dialogue.main_window.report_any_problems(result)
         else:
             # get the tidied up version of the text
             self.load_text_fm_db(False)
@@ -246,7 +227,7 @@ class DbMessageWidget(MessageWidget):
             if clear_digest:
                 self._save_file_digest = None
         except CmdFailure as failure:
-            dialogue.report_failure(failure)
+            dialogue.main_window.report_failure(failure)
     def _reload_text_acb(self, *args):
         if self._ok_to_overwrite_summary():
             self.load_text_fm_db()

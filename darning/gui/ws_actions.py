@@ -21,11 +21,13 @@ import collections
 
 from gi.repository import Gtk
 
+from aipoed import enotify
+
+from aipoed.gui import actions
+
 from .. import scm_ifce
 from .. import pm_ifce
-from .. import enotify
 
-from . import actions
 from . import ifce
 
 AC_NOT_IN_PM_PGND, AC_IN_PM_PGND, AC_IN_PM_PGND_MASK = actions.ActionCondns.new_flags_and_mask(2)

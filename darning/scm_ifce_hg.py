@@ -19,23 +19,24 @@ import errno
 import hashlib
 import re
 
-from . import CmdResult
-from .utils import singleton
-from . import enotify
+from aipoed import CmdResult
+from aipoed import enotify
+from aipoed import runext
 
-from . import runext
+from aipoed.decorators import singleton
+
+# Some generalized lambdas for constructing commands
+from aipoed.runext import OPTNL_FLAG
+from aipoed.runext import OPTNL_FLAGS
+from aipoed.runext import OPTNL_FLAG_WITH_ARG
+from aipoed.runext import OPTNL_ARG
+from aipoed.runext import OPTNL_ARG_LIST
+
 from . import scm_ifce
 from . import utils
 from . import fsdb_hg_mq
 
 # TODO: replace "rollback" with "commit --amend"
-
-# Some generalized lambdas for constructing commands
-from .runext import OPTNL_FLAG
-from .runext import OPTNL_FLAGS
-from .runext import OPTNL_FLAG_WITH_ARG
-from .runext import OPTNL_ARG
-from .runext import OPTNL_ARG_LIST
 
 SUGGEST_FORCE_RE = re.compile("(use -f to force|not overwriting - file exists)")
 SUGGEST_RENAME_RE = re.compile("already exists")

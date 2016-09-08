@@ -24,15 +24,15 @@ import os
 import re
 import hashlib
 
-from . import CmdResult
-from .utils import singleton
+from aipoed import CmdResult
+from aipoed.decorators import singleton
+from aipoed import runext
+from aipoed import enotify
 
-from . import runext
 from . import scm_ifce
 from . import utils
 from . import patchlib
 from . import fsdb_git
-from . import enotify
 
 from .gui import ifce
 
