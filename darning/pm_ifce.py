@@ -182,7 +182,7 @@ class _NULL_BACKEND:
         return ""
     @staticmethod
     def get_combined_patch_file_db():
-        from . import fsdb
+        from aipoed.gui import fsdb
         return fsdb.NullFileDb()
     @staticmethod
     def get_default_new_patch_save_file():
@@ -204,7 +204,7 @@ class _NULL_BACKEND:
         return ""
     @staticmethod
     def get_patch_file_db(patch_name):
-        from . import fsdb
+        from aipoed.gui import fsdb
         return fsdb.NullFileDb()
     @staticmethod
     def get_patch_file_path(patch_name):
@@ -235,7 +235,7 @@ class _NULL_BACKEND:
         return ""
     @staticmethod
     def get_top_patch_file_db():
-        from . import fsdb
+        from aipoed.gui import fsdb
         return fsdb.NullFileDb()
     @staticmethod
     def get_ws_update_clean_up_ready(applied_count=None):

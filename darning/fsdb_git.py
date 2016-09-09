@@ -20,8 +20,9 @@ import collections
 
 from gi.repository import Pango
 
-from aipoed import fsdb
 from aipoed import runext
+
+from aipoed.gui import fsdb
 
 from . import utils
 from . import patchlib

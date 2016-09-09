@@ -138,7 +138,7 @@ class _NULL_BACKEND:
         return []
     @staticmethod
     def get_index_file_db():
-        from . import fsdb
+        from aipoed.gui import fsdb
         return fsdb.NullFileDb()
     @staticmethod
     def get_parents_data(rev=None):
@@ -170,7 +170,7 @@ class _NULL_BACKEND:
         '''
         Get the SCM view of the current directory
         '''
-        from . import fsdb
+        from aipoed.gui import fsdb
         return fsdb.OsFileDb()
     @staticmethod
     def is_ready_for_import():

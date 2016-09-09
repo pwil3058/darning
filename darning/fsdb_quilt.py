@@ -18,7 +18,8 @@ import runext
 import pango
 import collections
 
-from . import fsdb
+from aipoed.gui import fsdb
+
 from . import utils
 from . import patchlib
 from . import quilt_utils
