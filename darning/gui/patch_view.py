@@ -25,7 +25,6 @@ from gi.repository import Gtk
 from aipoed.gui import dialogue
 from aipoed.gui import gutils
 
-from .. import patchlib
 from .. import utils
 from .. import pm_ifce
 

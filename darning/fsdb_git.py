@@ -25,7 +25,6 @@ from aipoed import runext
 from aipoed.gui import fsdb
 
 from . import utils
-from . import patchlib
 
 class FileStatus:
     UNMODIFIED = '  '

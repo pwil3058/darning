@@ -33,8 +33,8 @@ from .console import LOG, RCTX
 
 E_NEW_SCM, E_NEW_PM, E_NEW_SCM_OR_PM = enotify.new_event_flags_and_mask(2)
 
-def report_backend_requirements(parent=None):
-    dialogue.main_window.inform_user(pm_ifce.backend_requirements(), parent=parent)
+def report_backend_requirements():
+    dialogue.main_window.inform_user(pm_ifce.backend_requirements())
 
 SCM = scm_ifce.get_ifce()
 PM = pm_ifce.get_ifce()

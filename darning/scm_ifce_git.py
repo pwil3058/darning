@@ -29,9 +29,10 @@ from aipoed.decorators import singleton
 from aipoed import runext
 from aipoed import enotify
 
+from aipoed.patch_diff import patchlib
+
 from . import scm_ifce
 from . import utils
-from . import patchlib
 from . import fsdb_git
 
 from .gui import ifce

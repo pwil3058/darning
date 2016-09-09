@@ -20,10 +20,11 @@ from gi.repository import Pango
 from aipoed import runext
 from aipoed import os_utils
 
+from aipoed.patch_diff import patchlib
+
 from aipoed.gui import fsdb
 
 from . import utils
-from . import patchlib
 
 FSTATUS_MODIFIED = 'M'
 FSTATUS_ADDED = 'A'

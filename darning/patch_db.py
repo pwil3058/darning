@@ -35,12 +35,13 @@ from aipoed import os_utils
 from aipoed import runext
 from aipoed import options
 
+from aipoed.patch_diff import patchlib
+
 from . import ntuples
 from . import rctx as RCTX
 from . import utils
 from . import mixins
 from . import scm_ifce
-from . import patchlib
 
 from .pm_ifce import PatchState, FileStatus, Presence, Validity, MERGE_CRE, PatchTableRow, patch_timestamp_str
 
@@ -366,8 +367,8 @@ def generate_diff_preamble(file_path, before, after, came_from=None):
     return patchlib.Preamble.parse_lines(generate_diff_preamble_lines(file_path, before, after, came_from))
 
 def generate_binary_diff_lines(before, after):
-    from . import gitdelta
-    from . import gitbase85
+    from aipoed.patch_diff import gitdelta
+    from aipoed.patch_diff import gitbase85
     def _component_lines(fm_data, to_data):
         delta = None
         if fm_data.raw_len and to_data.raw_len:
@@ -1158,7 +1159,7 @@ class Patch(mixins.WrapperMixin):
                         retval = CmdResult.ERROR
                         RCTX.stderr.write("{0}: {1}\n".format(rel_subdir(file_path), edata))
                 elif diff_plus.is_compatible_with(utils.get_git_hash_for_file(file_path)):
-                    from . import gitdelta
+                    from aipoed.patch_diff import gitdelta
                     contents = open(file_path, "rb").read()
                     try:
                         new_contents = gitdelta.patch_delta(contents, diff_plus.diff.forward.data_raw)

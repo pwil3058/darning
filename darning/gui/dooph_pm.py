@@ -96,7 +96,7 @@ def pm_change_wd():
     if result.is_ok and not ifce.PM.in_valid_pgnd:
         msg = os.linesep.join([_("Directory {} has not been initialised.").format(new_wd_path),
                                _("Do you wish to initialise it?")])
-        if dialogue.main_window.ask_yes_no(msg, parent=dialogue.main_window):
+        if dialogue.main_window.ask_yes_no(msg):
             pm_do_initialize_curdir()
 
 def pm_do_copy_file(file_path):
@@ -278,7 +278,7 @@ def pm_do_fold_to_patch(patch_name):
             return
 
 def pm_do_fold_external_patch():
-    from .. import patchlib
+    from aipoed.patch_diff import patchlib
     patch_file_path = dialogue.main_window.ask_file_path(_("Select patch file to be folded"))
     if patch_file_path is None:
         return
@@ -322,7 +322,7 @@ def pm_do_fold_external_patch():
 def pm_do_import_external_patch():
     from . import recollect
     suggestion = recollect.get("import", "last_directory")
-    from .. import patchlib
+    from aipoed.patch_diff import patchlib
     patch_file_path = dialogue.main_window.ask_file_path(_("Select patch file to be imported"))
     if patch_file_path is None:
         return

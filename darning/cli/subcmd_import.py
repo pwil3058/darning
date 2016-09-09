@@ -20,7 +20,7 @@ import sys
 
 from aipoed import CmdResult
 
-from .. import patchlib
+from aipoed.patch_diff import patchlib
 
 from . import cli_args
 from . import db_utils

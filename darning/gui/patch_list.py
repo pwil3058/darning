@@ -33,7 +33,6 @@ from aipoed.gui import auto_update
 from ..pm_ifce import PatchState
 
 from .. import utils
-from .. import patchlib
 from .. import scm_ifce
 from .. import pm_ifce
 

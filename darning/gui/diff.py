@@ -26,11 +26,12 @@ from aipoed import runext
 from aipoed import enotify
 from aipoed import options
 
+from aipoed.patch_diff import patchlib
+
 from aipoed.gui import dialogue
 from aipoed.gui import gutils
 
 from .. import utils
-from .. import patchlib
 from .. import pm_ifce
 
 from . import textview

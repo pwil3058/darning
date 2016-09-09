@@ -90,7 +90,7 @@ class MessageWidget(textview.Widget, actions.CAGandUIManager):
         self.action_groups.update_condns(mcondn)
     @staticmethod
     def _inform_user_data_problem():
-        dialogue.main_window.inform_user(_('Unable to determine user\'s data'), parent=self._parent)
+        dialogue.main_window.inform_user(_('Unable to determine user\'s data'))
     def _insert_sign_off_acb(self, _action=None):
         data = ifce.get_author_name_and_email()
         if data:
