@@ -20,16 +20,20 @@ import gettext
 HOME = os.path.expanduser("~")
 APP_NAME = "darning"
 CONFIG_DIR_PATH = os.sep.join([HOME, "." + APP_NAME + ".d"])
+PGND_CONFIG_DIR_PATH = os.sep.join([os.curdir, "." + APP_NAME + ".d"])
 
 if not os.path.exists(CONFIG_DIR_PATH):
     os.mkdir(CONFIG_DIR_PATH, 0o775)
 
 ISSUES_URL = "<https://github.com/pwil3058/darning/issues>"
 
-from aipoed import i18n
+import aipoed
 
 # Lets tell those details to gettext
-gettext.install(APP_NAME, localedir=i18n.find_locale_dir())
+gettext.install(APP_NAME, localedir=aipoed.i18n.find_locale_dir())
+
+aipoed.options.initialize(CONFIG_DIR_PATH, PGND_CONFIG_DIR_PATH)
+from . import option_defs
 
 # import SCM backend interfaces here
 from . import scm_ifce_git

@@ -18,10 +18,9 @@
 
 import sys
 
-from darning import i18n
+import darning.cli
 
 from darning.cli import cli_args
-import darning.cli
 
 ARGS = cli_args.PARSER.parse_args()
 

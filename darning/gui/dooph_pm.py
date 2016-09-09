@@ -71,7 +71,7 @@ def pm_do_add_files(file_paths):
     return dooph.do_force_refresh_or_absorb(do_op, refresh_op)
 
 def pm_do_add_new_file(open_for_edit=False):
-    from .. import os_utils
+    from aipoed import os_utils
     new_file_path = dialogue.main_window.ask_file_path(_("Enter path for new file"), existing=False)
     if not new_file_path:
         return
@@ -450,9 +450,9 @@ def pm_do_push_to(patch_name):
             break
 
 def _launch_reconciliation_tool(file_a, file_b, file_c):
-    from .. import options
-    from .. import runext
-    from .. import CmdResult
+    from aipoed import options
+    from aipoed import runext
+    from aipoed import CmdResult
     reconciler = options.get("reconcile", "tool")
     if not reconciler:
         return CmdResult.warning(_("No reconciliation tool is defined.\n"))

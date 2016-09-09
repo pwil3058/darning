@@ -17,6 +17,7 @@ import os
 
 from aipoed import CmdResult
 from aipoed import enotify
+from aipoed import options
 
 from aipoed.gui import dialogue
 
@@ -24,7 +25,6 @@ from .. import APP_NAME
 
 from .. import scm_ifce
 from .. import pm_ifce
-from .. import options
 from .. import utils
 from .. import rctx
 
@@ -66,7 +66,7 @@ def init(log=False):
         enotify.notify_events(enotify.E_CHANGE_WD, new_wd=curdir)
     else:
         enotify.notify_events(E_NEW_SCM_OR_PM)
-    from . import auto_update
+    from aipoed.gui import auto_update
     auto_update.set_initialize_event_flags(check_interfaces)
     return CmdResult.ok()
 

@@ -35,8 +35,7 @@ from gi.repository import GObject
 
 from aipoed import CmdResult
 from aipoed import HOME
-
-from . import options
+from aipoed import options
 
 def singleton(aClass):
     def onCall(*args, **kwargs):
@@ -145,7 +144,7 @@ def get_file_contents(srcfile, decompress=True):
     decompression as indicated by filename's suffix.
     '''
     if decompress:
-        from . import runext
+        from aipoed import runext
         _root, ext = os.path.splitext(srcfile)
         res = 0
         if ext == '.gz':

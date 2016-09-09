@@ -33,6 +33,7 @@ from contextlib import contextmanager
 from aipoed import CmdResult
 from aipoed import os_utils
 from aipoed import runext
+from aipoed import options
 
 from . import ntuples
 from . import rctx as RCTX
@@ -40,7 +41,6 @@ from . import utils
 from . import mixins
 from . import scm_ifce
 from . import patchlib
-from . import options
 
 from .pm_ifce import PatchState, FileStatus, Presence, Validity, MERGE_CRE, PatchTableRow, patch_timestamp_str
 

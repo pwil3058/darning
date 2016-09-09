@@ -26,7 +26,7 @@ from aipoed.gui import dialogue
 from aipoed.gui import gutils
 from aipoed.gui import terminal
 
-from ..utils import singleton
+from aipoed.decorators import singleton
 
 from . import textview
 

@@ -23,7 +23,6 @@ import os
 
 import darning.version
 
-from darning import i18n
 from darning.cli import db_utils
 
 PARSER = argparse.ArgumentParser(description=_('Provide a "darning" test file tree.'))

@@ -24,12 +24,12 @@ from gi.repository import Pango
 from aipoed import CmdResult, CmdFailure
 from aipoed import runext
 from aipoed import enotify
+from aipoed import options
 
 from aipoed.gui import dialogue
 from aipoed.gui import gutils
 
 from .. import utils
-from .. import options
 from .. import patchlib
 from .. import pm_ifce
 
