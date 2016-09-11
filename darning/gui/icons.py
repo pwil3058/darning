@@ -61,6 +61,7 @@ STOCK_TAG = APP_NAME + "_stock_tag"
 STOCK_FILE_REFRESHED = APP_NAME + "_stock_file_refreshed"
 STOCK_FILE_NEEDS_REFRESH = APP_NAME + "_stock_file_needs_refresh"
 STOCK_FILE_UNREFRESHABLE = APP_NAME + "_stock_file_unrefreshable"
+STOCK_FILE_PROBLEM = STOCK_FILE_UNREFRESHABLE
 
 _STOCK_ITEMS_OWN_PNG = [
     (STOCK_APPLIED, _("Applied"), 0, 0, None),

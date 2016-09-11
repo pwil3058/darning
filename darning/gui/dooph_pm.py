@@ -231,7 +231,7 @@ def pm_do_export_named_patch(patch_name, suggestion=None, busy_indicator=None):
         break
 
 def pm_do_extdiff_for_file(file_path, patch_name=None):
-    from . import diff
+    from aipoed.patch_dif.gui import diff
     files = ifce.PM.get_extdiff_files_for(file_path=file_path, patch_name=patch_name)
     dialogue.main_window.report_any_problems(diff.launch_external_diff(files.original_version, files.patched_version))
 
@@ -583,7 +583,7 @@ actions.CLASS_INDEP_AGS[ws_actions.AC_PMIC | ws_actions.AC_IN_PM_PGND].add_actio
          _("Add a new file to the top applied patch"),
          lambda _action=None: pm_do_add_new_file()
         ),
-        ("pm_refresh_top_patch", icons.STOCK_REFRESH_PATCH, None, None,
+        ("pm_refresh_top_patch", icons.STOCK_REFRESH_PATCH, _("Refresh"), None,
          _("Refresh the top patch"),
          lambda _action=None: pm_do_refresh_top_patch()
         ),
@@ -600,7 +600,7 @@ actions.CLASS_INDEP_AGS[AC_POP_POSSIBLE | ws_actions.AC_IN_PM_PGND].add_actions(
          _("Pop all applied patches"),
          lambda _action=None: pm_do_pop_all()
         ),
-        ("pm_fold_external_patch", icons.STOCK_FOLD_PATCH, None, None,
+        ("pm_fold_external_patch", icons.STOCK_FOLD_PATCH, _("Fold"), None,
          _("Fold an external patch into the top applied patch"),
          lambda _action=None: pm_do_fold_external_patch()
         ),
@@ -622,7 +622,7 @@ actions.CLASS_INDEP_AGS[AC_PUSH_POSSIBLE | ws_actions.AC_IN_PM_PGND].add_actions
 
 actions.CLASS_INDEP_AGS[ws_actions.AC_IN_PM_PGND].add_actions(
     [
-        ("pm_new_patch", icons.STOCK_NEW_PATCH, None, None,
+        ("pm_new_patch", icons.STOCK_NEW_PATCH, _("New Patch"), None,
          _("Create a new patch"),
          lambda _action=None: pm_do_new_patch()
         ),
@@ -630,11 +630,11 @@ actions.CLASS_INDEP_AGS[ws_actions.AC_IN_PM_PGND].add_actions(
          _("Restore a previously removed patch behind the top applied patch"),
          lambda _action=None: pm_do_restore_patch()
         ),
-        ("pm_import_patch", icons.STOCK_IMPORT_PATCH, None, None,
+        ("pm_import_patch", icons.STOCK_IMPORT_PATCH, _("Import"), None,
          _("Import an external patch behind the top applied patch"),
          lambda _action=None: pm_do_import_external_patch()
         ),
-        ("pm_select_guards", icons.STOCK_PATCH_GUARD_SELECT, None, None,
+        ("pm_select_guards", icons.STOCK_PATCH_GUARD_SELECT, _("Select"), None,
          _("Select which guards are in force"),
          lambda _action=None: pm_do_select_guards()
         ),

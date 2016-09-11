@@ -25,12 +25,13 @@ from gi.repository import Gtk
 from aipoed.gui import dialogue
 from aipoed.gui import gutils
 
+from aipoed.patch_diff.gui import diff
+
 from .. import utils
 from .. import pm_ifce
 
 from . import textview
 from . import icons
-from . import diff
 from . import ifce
 
 class Widget(Gtk.VBox):

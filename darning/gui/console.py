@@ -160,3 +160,4 @@ class ReportContext:
         self.stderr.text = ''
 
 RCTX = ReportContext()
+

@@ -30,7 +30,7 @@ from . import ifce
 from . import ws_actions
 from . import icons
 from . import text_edit
-from . import diff
+from . import pm_diff
 from . import dooph_pm
 
 class _GenericPatchFileTreeView(file_tree.FileTreeView, enotify.Listener, ws_actions.WSListenerMixin):
@@ -85,7 +85,7 @@ class PatchFileTreeView(file_tree.FileTreeView):
             [
                 ('pm_patch_diff_selected_files', icons.STOCK_DIFF, _('_Diff'), None,
                  _('Display the diff for selected files'),
-                 lambda _action=None: diff.NamedPatchDiffPlusesDialog(patch_name=self._patch_name, file_paths=self.get_selected_fsi_paths()).show()
+                 lambda _action=None: pm_diff.NamedPatchDiffPlusesDialog(patch_name=self._patch_name, file_paths=self.get_selected_fsi_paths()).show()
                 ),
             ])
         self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
@@ -177,7 +177,7 @@ class TopPatchFileTreeView(_GenericPatchFileTreeView):
                 ),
                 ('pm_diff_selected_files', icons.STOCK_DIFF, _('_Diff'), None,
                  _('Display the diff for selected files'),
-                 lambda _action=None: diff.TopPatchDiffPlusesDialog(file_paths=self.get_selected_fsi_paths()).show()
+                 lambda _action=None: pm_diff.TopPatchDiffPlusesDialog(file_paths=self.get_selected_fsi_paths()).show()
                 ),
                 ('pm_drop_selected_files', Gtk.STOCK_REMOVE, _('_Drop'), None,
                  _('Drop/remove the selected files from the top patch'),
@@ -243,7 +243,7 @@ class CombinedPatchFileTreeView(TopPatchFileTreeView):
             [
                 ('combined_patch_diff_selected_files', icons.STOCK_DIFF, _('_Diff'), None,
                  _('Display the combined diff for selected file'),
-                 lambda _action=None: diff.CombinedPatchDiffPlusesDialog(file_paths=self.get_selected_fsi_paths()).show()
+                 lambda _action=None: pm_diff.CombinedPatchDiffPlusesDialog(file_paths=self.get_selected_fsi_paths()).show()
                 ),
             ])
 
