@@ -44,7 +44,7 @@ class WSTreeModel(file_tree.FileTreeModel):
     AU_FILE_CHANGE_EVENT = scm_ifce.E_FILE_CHANGES|os_utils.E_FILE_CHANGES # event returned by auto_update() if changes found
     @staticmethod
     def _get_file_db():
-        return ifce.SCM.get_ws_file_db()
+        return ifce.SCM.get_wd_file_db()
 
 class WSTreeView(file_tree.FileTreeView, enotify.Listener, ws_actions.WSListenerMixin):
     MODEL = WSTreeModel

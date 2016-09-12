@@ -31,6 +31,8 @@ from aipoed import enotify
 
 from aipoed.patch_diff import patchlib
 
+from aipoed.gui import table
+
 from . import scm_ifce
 from . import utils
 from . import fsdb_git
@@ -38,7 +40,7 @@ from . import fsdb_git
 from .gui import ifce
 
 def _do_action_cmd(cmd, success_emask, fail_emask, eflag_modifiers):
-    from .gui import console
+    from aipoed.gui import console
     # TODO: improve _do_action_cmd() and move to runext
     result = runext.run_cmd_in_console(console.LOG, cmd)
     if result.is_ok:
@@ -57,37 +59,7 @@ def _do_action_cmd(cmd, success_emask, fail_emask, eflag_modifiers):
                 eflags |= suggestion
         return CmdResult(eflags, result.stdout, result.stderr)
 
-class TableData:
-    def __init__(self, **kwargs):
-        self._kwargs = kwargs
-        h = hashlib.sha1()
-        pdt = self._get_data_text(h)
-        self._db_hash_digest = h.digest()
-        self._current_text_digest = None
-        self._finalize(pdt)
-    def __getattr__(self, name):
-        if name == "is_current": return self._is_current()
-    def _finalize(self, pdt):
-        assert False, "_finalize() must be defined in child"
-    def _is_current(self):
-        h = hashlib.sha1()
-        self._current_text = self._get_data_text(h)
-        self._current_text_digest = h.digest()
-        return self._current_text_digest == self._db_hash_digest
-    def reset(self):
-        if self._current_text_digest is None:
-            return self.__class__(**self._kwargs)
-        if self._current_text_digest != self._db_hash_digest:
-            self._db_hash_digest = self._current_text_digest
-            self._finalize(self._current_text)
-        return self
-    def _get_data_text(self, h):
-        assert False, "_get_data_text() must be defined in child"
-    def iter_rows(self):
-        for row in self._rows:
-            yield row
-
-class BranchTableData(TableData):
+class BranchTableData(table.TableData):
     RE = re.compile("(([^ (]+)|(\([^)]+\)))\s+([a-fA-F0-9]{7}[a-fA-F0-9]*)?\s*([^\s].*)")
     def _get_data_text(self, h):
         all_branches_text = runext.run_get_cmd(["git", "branch", "-v"], default="")
@@ -107,7 +79,7 @@ class BranchTableData(TableData):
             is_merged = name in self._merged_branches
             yield BranchListRow(name=name, is_current=is_current, is_merged=is_merged, rev=rev, synopsis=synopsis)
 
-class TagTableData(TableData):
+class TagTableData(table.TableData):
     def _get_data_text(self, h):
         text = runext.run_get_cmd(["git", "tag"], default="")
         h.update(text.encode())
@@ -126,7 +98,7 @@ class TagTableData(TableData):
         for line in self._lines:
             yield TagListRow(name=line, annotation=self._get_annotation(line))
 
-class RemoteRepoTableData(TableData):
+class RemoteRepoTableData(table.TableData):
     _VREMOTE_RE = re.compile(r"(\S+)\s+(\S+)\s*(\S*)")
     def _get_data_text(self, h):
         text = runext.run_get_cmd(["git", "remote", "-v"], default="")
@@ -144,7 +116,7 @@ class RemoteRepoTableData(TableData):
                 assert name == m.group(1)
                 yield RemotesListRow(name=name, inbound_url=inbound_url, outbound_url=m.group(2))
 
-class LogTableData(TableData):
+class LogTableData(table.TableData):
     def _get_data_text(self, h):
         text = runext.run_get_cmd(["git", "log", "--pretty=format:%H%n%h%n%an%n%cr%n%s"], default="")
         h.update(text.encode())
@@ -166,7 +138,7 @@ class LogTableData(TableData):
             else:
                 yield LogListRow(commit=commit, abbrevcommit=abbrevcommit, author=author, when=when, subject=line)
 
-class StashTableData(TableData):
+class StashTableData(table.TableData):
     RE = re.compile("^(stash@{\d+}):\s*([^:]+):(.*)")
     def _get_data_text(self, h):
         text = runext.run_get_cmd(["git", "stash", "list"], default="")
@@ -441,7 +413,7 @@ class Interface:
     def get_tags_table_data():
         return TagTableData()
     @staticmethod
-    def get_ws_file_db():
+    def get_wd_file_db():
         return fsdb_git.WsFileDb()
     @staticmethod
     def is_ready_for_import():

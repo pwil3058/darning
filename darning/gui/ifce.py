@@ -29,7 +29,7 @@ from .. import utils
 from .. import rctx
 
 from . import recollect
-from .console import LOG, RCTX
+from aipoed.gui.console import LOG, RCTX
 
 E_NEW_SCM, E_NEW_PM, E_NEW_SCM_OR_PM = enotify.new_event_flags_and_mask(2)
 

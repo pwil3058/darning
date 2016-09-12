@@ -84,6 +84,7 @@ class _NULL_BACKEND:
     name = "os"
     cmd_label = "null"
     in_valid_pgnd = False
+    pgnd_is_mutable = False
     @staticmethod
     def copy_clean_version_to(filepath, target_name):
         '''
@@ -166,7 +167,7 @@ class _NULL_BACKEND:
     def get_tags_table_data():
         return DummyTableData()
     @staticmethod
-    def get_ws_file_db():
+    def get_wd_file_db():
         '''
         Get the SCM view of the current directory
         '''
