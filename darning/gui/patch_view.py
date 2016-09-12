@@ -1,4 +1,4 @@
-### Copyright (C) 2011 Peter Williams <peter_ono@users.sourceforge.net>
+### Copyright (C) 2011-2016 Peter Williams <pwil3058@gmail.com>
 ###
 ### This program is free software; you can redistribute it and/or modify
 ### it under the terms of the GNU General Public License as published by
@@ -26,6 +26,7 @@ from aipoed.gui import dialogue
 from aipoed.gui import gutils
 
 from aipoed.patch_diff.gui import diff
+from aipoed.patch_diff.gui import patch_view
 
 from .. import utils
 from .. import pm_ifce
@@ -34,7 +35,7 @@ from . import textview
 from . import icons
 from . import ifce
 
-class Widget(Gtk.VBox):
+class Widget(patch_view.PatchWidget):
     from ..pm_ifce import PatchState
     status_icons = {
         PatchState.NOT_APPLIED : Gtk.STOCK_REMOVE,
@@ -48,65 +49,15 @@ class Widget(Gtk.VBox):
         PatchState.APPLIED_NEEDS_REFRESH : _('This patch is applied but refresh is NOT up to date.'),
         PatchState.APPLIED_UNREFRESHABLE : _('This patch is applied but has problems (e.g. unresolved merge errosr) that prevent it being refreshed.'),
     }
-    class TWSDisplay(diff.TwsLineCountDisplay):
-        LABEL = _('File(s) that add TWS: ')
     def __init__(self, patch_name):
-        Gtk.VBox.__init__(self)
         self.patch_name = patch_name
-        self.epatch = self.get_epatch()
+        patch_view.PatchWidget.__init__(self, self.get_epatch(), patch_name)
         #
         self.status_icon = Gtk.Image.new_from_stock(self.status_icons[self.epatch.state], Gtk.IconSize.BUTTON)
-        self.status_box = Gtk.HBox()
         self.status_box.add(self.status_icon)
         self.status_box.show_all()
-        #gutils.set_widget_tooltip_text(self.status_box, self.status_tooltips[self.epatch.state])
         self.status_box.set_tooltip_text(self.status_tooltips[self.epatch.state])
-        self.tws_display = self.TWSDisplay()
-        self.tws_display.set_value(len(self.epatch.report_trailing_whitespace()))
-        hbox = Gtk.HBox()
-        hbox.pack_start(self.status_box, expand=False, fill=True, padding=0)
-        hbox.pack_start(Gtk.Label(self.patch_name), expand=False, fill=True, padding=0)
-        hbox.pack_end(self.tws_display, expand=False, fill=True, padding=0)
-        self.pack_start(hbox, expand=False, fill=True, padding=0)
-        #
-        pane = Gtk.VPaned()
-        self.pack_start(pane, expand=True, fill=True, padding=0)
-        #
-        self.header_nbook = Gtk.Notebook()
-        self.header_nbook.popup_enable()
-        pane.add1(self._framed(_('Header'), self.header_nbook))
-        #
-        self.description = textview.Widget()
-        self.description.set_contents(self.epatch.get_description())
-        self.description.view.set_editable(False)
-        self.description.view.set_cursor_visible(False)
-        self.header_nbook.append_page(self.description, Gtk.Label(_('Description')))
-        #
-        self.diffstats = textview.Widget()
-        self.diffstats.set_contents(self.epatch.get_header_diffstat())
-        self.diffstats.view.set_editable(False)
-        self.diffstats.view.set_cursor_visible(False)
-        self.header_nbook.append_page(self.diffstats, Gtk.Label(_('Diff Statistics')))
-        #
-        self.comments = textview.Widget(aspect_ratio=0.1)
-        self.comments.set_contents(self.epatch.get_comments())
-        self.comments.view.set_editable(False)
-        self.comments.view.set_cursor_visible(False)
-        self.header_nbook.append_page(self.comments, Gtk.Label(_('Comments')))
-        #
-        self.diffs_nbook = diff.DiffPlusNotebook(self.epatch.diff_pluses)
-        pane.add2(self._framed(_('File Diffs'), self.diffs_nbook))
-        #
         self.show_all()
-    def get_patch_text(self):
-        # handle the case where our patch file gets deleted
-        try:
-            return ifce.PM.get_patch_text(self.patch_name)
-        except IOError as edata:
-            if edata.errno == 2:
-                return str(self.epatch)
-            else:
-                raise
     def get_epatch(self):
         epatch = ifce.PM.get_textpatch(self.patch_name)
         self.text_digest = epatch.get_hash_digest()
@@ -114,29 +65,9 @@ class Widget(Gtk.VBox):
     @property
     def is_applied(self):
         return ifce.PM.is_patch_applied(self.patch_name)
-    @staticmethod
-    def _framed(label, widget):
-        frame = Gtk.Frame(label=label)
-        frame.add(widget)
-        return frame
     def update(self):
         epatch = ifce.PM.get_textpatch(self.patch_name)
-        digest = epatch.get_hash_digest()
-        if digest == self.text_digest:
-            return
-        self.text_digest = digest
-        self.epatch = epatch
-        self.status_box.remove(self.status_icon)
-        self.status_icon = Gtk.Image.new_from_stock(self.status_icons[self.epatch.state], Gtk.IconSize.BUTTON)
-        self.status_box.add(self.status_icon)
-        self.status_box.show_all()
-#        gutils.set_widget_tooltip_text(self.status_box, self.status_tooltips[self.epatch.state])
-        self.status_box.set_tooltip_text(self.status_tooltips[self.epatch.state])
-        self.tws_display.set_value(len(self.epatch.report_trailing_whitespace()))
-        self.comments.set_contents(self.epatch.get_comments())
-        self.description.set_contents(self.epatch.get_description())
-        self.diffstats.set_contents(self.epatch.get_header_diffstat())
-        self.diffs_nbook.set_diff_pluses(self.epatch.diff_pluses)
+        self.set_patch(epatch)
 
 class Dialogue(dialogue.ListenerDialog):
     AUTO_UPDATE_TD = gutils.TimeOutController.ToggleData("auto_update_toggle", _('Auto _Update'), _('Turn data auto update on/off'), Gtk.STOCK_REFRESH)
