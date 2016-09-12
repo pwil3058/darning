@@ -51,7 +51,7 @@ SUGGESTION_TABLE = (
 )
 
 def _run_do_cmd(cmd, input_text=None, sanitize_stderr=None):
-    from .gui import console
+    from aipoed.gui import console
     result = runext.run_cmd_in_console(console=console.LOG, cmd=cmd, input_text=input_text, sanitize_stderr=sanitize_stderr)
     return result.mapped_for_suggestions(SUGGESTION_TABLE)
 

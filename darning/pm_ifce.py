@@ -266,7 +266,7 @@ class _NULL_BACKEND:
         return
 
 def generic_delete_files(file_paths):
-    from . import os_utils
+    from aipoed import os_utils
     return os_utils.os_delete_files(file_paths, events=E_FILE_DELETED)
 
 def set_patch_file_description(patch_file_path, description, overwrite=False):
@@ -318,7 +318,7 @@ class InterfaceMixin:
         return utils.set_file_contents(export_file_name, cls.get_patch_text(patch_name))
     @classmethod
     def do_set_patch_description(cls, patch_name, description, overwrite=False):
-        from .gui import console
+        from aipoed.gui import console
         result = set_patch_file_description(cls.get_patch_file_path(patch_name), description, overwrite=overwrite)
         if result.is_ok:
             console.LOG.append_entry(_("set description for \"{0}\" patch.\n{1}\n").format(patch_name, description))

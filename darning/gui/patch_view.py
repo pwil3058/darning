@@ -31,7 +31,6 @@ from aipoed.patch_diff.gui import patch_view
 from .. import utils
 from .. import pm_ifce
 
-from . import textview
 from . import icons
 from . import ifce
 

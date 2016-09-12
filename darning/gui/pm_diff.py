@@ -36,7 +36,6 @@ from aipoed.gui import gutils
 from .. import utils
 from .. import pm_ifce
 
-from . import textview
 from . import ifce
 from . import icons
 

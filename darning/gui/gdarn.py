@@ -27,10 +27,10 @@ from aipoed.gui import gutils
 from aipoed.gui import dialogue
 from aipoed.gui import actions
 from aipoed.gui import terminal
+from aipoed.gui import console
 
 from .. import utils
 
-from . import console
 from . import ifce
 from . import icons
 from . import ws_actions

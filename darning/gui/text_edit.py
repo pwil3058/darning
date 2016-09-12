@@ -30,10 +30,10 @@ from aipoed import CmdFailure
 from aipoed.gui import actions
 from aipoed.gui import dialogue
 from aipoed.gui import gutils
+from aipoed.gui import textview
 
 from .. import utils
 
-from . import textview
 from . import ifce
 from . import config
 

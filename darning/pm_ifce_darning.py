@@ -20,6 +20,8 @@ from aipoed import enotify
 
 from aipoed.decorators import singleton
 
+from aipoed.gui.console import RCTX, LOG
+
 from . import pm_ifce
 from . import scm_ifce
 from . import patch_db
@@ -27,8 +29,6 @@ from . import fsdb_darning
 from . import utils
 
 from .pm_ifce import PatchState
-
-from .gui.console import RCTX, LOG
 
 def _RUN_DO(cmd_text, cmd_do, events, e_always=True):
     RCTX.reset()

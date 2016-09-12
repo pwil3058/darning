@@ -40,7 +40,6 @@ from . import icons
 from . import ifce
 from . import text_edit
 from . import ws_actions
-from . import textview
 from . import patch_view
 from . import dooph_pm
 

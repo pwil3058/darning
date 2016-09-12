@@ -29,6 +29,7 @@ from aipoed.gui import actions
 from aipoed.gui import tlview
 from aipoed.gui import table
 from aipoed.gui import gutils
+from aipoed.gui import textview
 
 from .. import APP_NAME
 
@@ -41,7 +42,6 @@ from . import ws_actions
 from . import icons
 from . import text_edit
 from . import recollect
-from . import textview
 from . import dooph
 
 AC_POP_POSSIBLE = ws_actions.AC_PMIC
