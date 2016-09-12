@@ -1320,6 +1320,12 @@ class TextPatch(patchlib.Patch):
                 self.state = PatchState.APPLIED_UNREFRESHABLE
         if with_stats:
             self.set_header_diffstat(strip_level=self.num_strip_levels)
+    def get_hash_digest(self):
+        import hashlib
+        h = hashlib.sha1()
+        h.update(str(self).encode())
+        h.update(str(self.state).encode())
+        return h.digest()
 
 class CombinedPatch(mixins.WrapperMixin):
     WRAPPED_ATTRIBUTES = _CombinedPatchData.__slots__

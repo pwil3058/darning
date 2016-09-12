@@ -66,8 +66,13 @@ class Widget(patch_view.PatchWidget):
     def is_applied(self):
         return ifce.PM.is_patch_applied(self.patch_name)
     def update(self):
-        epatch = ifce.PM.get_textpatch(self.patch_name)
-        self.set_patch(epatch)
+        self.set_patch(ifce.PM.get_textpatch(self.patch_name))
+        icon = self.status_icon
+        self.status_box.remove(self.status_icon)
+        self.status_icon = Gtk.Image.new_from_stock(self.status_icons[self.epatch.state], Gtk.IconSize.BUTTON)
+        self.status_box.add(self.status_icon)
+        self.status_box.set_tooltip_text(self.status_tooltips[self.epatch.state])
+        self.status_box.show_all()
 
 class Dialogue(dialogue.ListenerDialog):
     AUTO_UPDATE_TD = gutils.TimeOutController.ToggleData("auto_update_toggle", _('Auto _Update'), _('Turn data auto update on/off'), Gtk.STOCK_REFRESH)
