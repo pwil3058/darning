@@ -675,7 +675,6 @@ class NewSeriesDescrDialog(dialogue.Dialog):
         def __init__(self):
             text_edit.DbMessageWidget.__init__(self)
         def populate_action_groups(self):
-            text_edit.DbMessageWidget.populate_action_groups(self)
             self.action_groups[0].add_actions(
                 [
                     ("load_menu", None, _("_File")),
@@ -759,7 +758,6 @@ class SeriesDescrEditDialog(dialogue.Dialog):
             self.view.set_editable(True)
             self.load_text_fm_db()
         def populate_action_groups(self):
-            text_edit.DbMessageWidget.populate_action_groups(self)
             self.action_groups[0].add_actions(
                 [
                     ("load_menu", None, _("_File")),
@@ -824,7 +822,6 @@ class PatchDescrEditDialog(dialogue.Dialog):
             self._patch = patch
             self.load_text_fm_db()
         def populate_action_groups(self):
-            text_edit.DbMessageWidget.populate_action_groups(self)
             self.action_groups[0].add_actions(
                 [
                     ("load_menu", None, _("_File")),

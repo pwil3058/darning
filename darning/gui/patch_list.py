@@ -180,7 +180,6 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
         self.register_auto_update_cb(self._auto_update_list_cb)
         self.repopulate_list()
     def populate_action_groups(self):
-        table.MapManagedTableView.populate_action_groups(self)
         self.action_groups[actions.AC_DONT_CARE].add_action(Gtk.Action("menu_patch_list", _("Patch _List"), None, None))
         self.action_groups[ws_actions.AC_IN_PM_PGND].add_actions(
             [

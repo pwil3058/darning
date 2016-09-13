@@ -204,7 +204,6 @@ class DbMessageWidget(MessageWidget):
         self.save_button = gutils.creat_button_from_action(self.action_groups.get_action("text_edit_save"), use_underline=False)
         self.reload_button = gutils.creat_button_from_action(self.action_groups.get_action("text_edit_load"), use_underline=False)
     def populate_action_groups(self):
-        MessageWidget.populate_action_groups(self)
         self.action_groups[actions.AC_DONT_CARE].add_actions(
             [
                 ("text_edit_save", Gtk.STOCK_SAVE, _('_Save'), "",

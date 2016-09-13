@@ -80,7 +80,6 @@ class PatchFileTreeView(file_tree.FileTreeView):
         self._patch_name = new_patch_name
         self.repopulate()
     def populate_action_groups(self):
-        _GenericPatchFileTreeView.populate_action_groups(self)
         self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
             [
                 ('pm_patch_diff_selected_files', icons.STOCK_DIFF, _('_Diff'), None,
@@ -168,7 +167,6 @@ class TopPatchFileTreeView(_GenericPatchFileTreeView):
     def __init__(self, **kwargs):
         _GenericPatchFileTreeView.__init__(self, **kwargs)
     def populate_action_groups(self):
-        _GenericPatchFileTreeView.populate_action_groups(self)
         self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
             [
                 ('pm_edit_files', Gtk.STOCK_EDIT, _('_Edit'), None,
@@ -238,7 +236,6 @@ class CombinedPatchFileTreeView(TopPatchFileTreeView):
     '''
     DIRS_SELECTABLE = False
     def populate_action_groups(self):
-        TopPatchFileTreeView.populate_action_groups(self)
         self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
             [
                 ('combined_patch_diff_selected_files', icons.STOCK_DIFF, _('_Diff'), None,

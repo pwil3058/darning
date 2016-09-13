@@ -97,7 +97,6 @@ class WSTreeView(file_tree.FileTreeView, enotify.Listener, ws_actions.WSListener
         else:
             self.set_popup(self.DEFAULT_POPUP)
     def populate_action_groups(self):
-        file_tree.FileTreeView.populate_action_groups(self)
         self.action_groups[actions.AC_DONT_CARE].add_actions(
             [
                 ("scm_files_menu_files", None, _("_Files")),
