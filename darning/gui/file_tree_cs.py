@@ -29,7 +29,6 @@ from .. import pm_ifce
 from . import ifce
 from . import ws_actions
 from . import icons
-from . import text_edit
 from . import pm_diff
 from . import dooph_pm
 

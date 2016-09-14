@@ -30,6 +30,8 @@ from aipoed.gui import tlview
 from aipoed.gui import table
 from aipoed.gui import gutils
 from aipoed.gui import textview
+from aipoed.gui import xtnl_edit
+from aipoed.gui import text_edit
 
 from .. import APP_NAME
 
@@ -40,7 +42,6 @@ from .. import scm_ifce
 from . import ifce
 from . import ws_actions
 from . import icons
-from . import text_edit
 from . import recollect
 from . import dooph
 
@@ -82,8 +83,7 @@ def pm_do_add_new_file(open_for_edit=False):
         return result
     result = pm_do_add_files([new_file_path])
     if result.is_ok and open_for_edit:
-        from . import text_edit
-        text_edit.edit_files_extern([new_file_path])
+        xtnl_edit.edit_files_extern([new_file_path])
     return result
 
 def pm_change_wd():
@@ -182,7 +182,7 @@ def pm_do_edit_files(file_paths):
     new_file_paths = ifce.PM.get_filepaths_not_in_patch(None, file_paths)
     if new_file_paths and not pm_do_add_files(new_file_paths).is_ok:
         return
-    text_edit.edit_files_extern(file_paths)
+    xtnl_edit.edit_files_extern(file_paths)
 
 def pm_do_export_named_patch(patch_name, suggestion=None, busy_indicator=None):
     if busy_indicator is None:
@@ -672,6 +672,7 @@ class NewSeriesDescrDialog(dialogue.Dialog):
               </toolbar>
             </ui>
         """
+        get_user_name_and_email = lambda _self: ifce.get_author_name_and_email()
         def __init__(self):
             text_edit.DbMessageWidget.__init__(self)
         def populate_action_groups(self):
@@ -753,6 +754,7 @@ class SeriesDescrEditDialog(dialogue.Dialog):
               </toolbar>
             </ui>
         """
+        get_user_name_and_email = lambda _self: ifce.get_author_name_and_email()
         def __init__(self):
             text_edit.DbMessageWidget.__init__(self)
             self.view.set_editable(True)
@@ -816,12 +818,14 @@ class PatchDescrEditDialog(dialogue.Dialog):
               </toolbar>
             </ui>
         """
+        get_user_name_and_email = lambda _self: ifce.get_author_name_and_email()
         def __init__(self, patch):
             text_edit.DbMessageWidget.__init__(self)
             self.view.set_editable(True)
             self._patch = patch
             self.load_text_fm_db()
         def populate_action_groups(self):
+            print("PAG")
             self.action_groups[0].add_actions(
                 [
                     ("load_menu", None, _("_File")),
