@@ -112,7 +112,7 @@ mw.report_any_problems(result)
 
 open_dialog = None
 if not ifce.PM.in_valid_pgnd and ARGS.playground is None:
-    last_pgnd = recollect.get(config_data.APP_NAME, "last_pgnd")
+    last_pgnd = recollect.get(APP_NAME, "last_pgnd")
     open_dialog = config.PgndOpenDialog(suggestion=last_pgnd)
     if open_dialog.run() == Gtk.ResponseType.OK:
         wspath = open_dialog.get_path()

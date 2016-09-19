@@ -1,13 +1,13 @@
 VERSION=$(shell python3 darning/version.py)
 RELEASE=1
+PROCESSOR=$(shel uname -p)
+OS="linux"
 
-RPMBDIR=~/rpmbuild
 PREFIX=/usr
 
 SRCS:=$(git ls-tree --full-tree -r --name-only HEAD)
-SRCDIST:=darning-$(VERSION).tar.gz
-RPMDIST:=darning-$(subst -,_,$(VERSION))-$(RELEASE).noarch.rpm
-RPMSRC:=$(RPMBDIR)/SOURCES/$(SRCDIST)
+SRCDIST:=dist/darning-$(VERSION).tar.gz
+SRCDIST:=dist/darning-$(VERSION).$(OS)-$(PROCESSOR).tar.gz
 CLI_SRCS=darn $(wildcard darning/*.py) $(wildcard darning/cli/*.py)
 CLI_TEST_SCRIPTS=$(sort $(wildcard test-cli/*.test))
 CLI_TESTS=$(patsubst test-cli/%.test,test-cli/.%.ok, $(CLI_TEST_SCRIPTS))
@@ -15,35 +15,22 @@ CLI_TESTS=$(patsubst test-cli/%.test,test-cli/.%.ok, $(CLI_TEST_SCRIPTS))
 help:
 	@echo "Choices are:"
 	@echo "	make sdist"
-	@echo "	make rpm"
+	@echo "	make bdist"
 	@echo "	make all_dist"
 	@echo "	make install"
 	@echo "	make clean"
 
-all_dist: $(SRCDIST)  $(WINDIST) $(RPMDIST)
-
-darning.spec: setup.py Makefile setup.cfg darning/version.py
-	python3 setup.py bdist_rpm --build-requires python3 --spec-only --dist-dir .
-	echo "%{_prefix}" >> darning.spec
-	sed -i \
-		-e 's/^\(python3 setup.py install.*\)/\1\ndesktop-file-install darning.desktop --dir $$RPM_BUILD_ROOT%{_datadir}\/applications/' \
-		-e 's/-f INSTALLED_FILES//' \
-		darning.spec
+all_dist: $(SRCDIST) $(BDIST)
 
 sdist: $(SRCDIST)
 
 $(SRCDIST): $(SRCS)
-	python3 setup.py sdist --dist-dir .
-	rm MANIFEST
+	python3 setup.py sdist
 
-rpm: $(RPMDIST)
+bdist: $(BDIST)
 
-$(RPMSRC): $(SRCDIST)
-	cp $(SRCDIST) $(RPMSRC)
-
-$(RPMDIST): $(RPMSRC) darning.spec
-	rpmbuild -bb darning.spec
-	cp $(RPMBDIR)/RPMS/noarch/$(RPMDIST) .
+$(BDDIST): $(SRCS)
+	python3 setup.py bdist
 
 install:
 	python3 setup.py install --prefix=$(PREFIX)
@@ -62,4 +49,5 @@ test-cli/.%.ok: test-cli/%.test $(CLI_SRCS)
 clean:
 	-rm *.rpm *.spec *.exe *.tar.gz MANIFEST
 	-rm -r build
+	-rm -r dist
 	-rm $(CLI_TESTS_LEGACY) $(CLI_TESTS)
