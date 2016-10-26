@@ -41,7 +41,7 @@ from . import ntuples
 from . import rctx as RCTX
 from . import utils
 from . import mixins
-from . import scm_ifce
+from .wsm.scm import ifce as scm_ifce
 
 from .pm_ifce import PatchState, FileStatus, Presence, Validity, MERGE_CRE, PatchTableRow, patch_timestamp_str
 

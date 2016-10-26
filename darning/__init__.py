@@ -36,6 +36,8 @@ aipoed.options.initialize(CONFIG_DIR_PATH, PGND_CONFIG_DIR_PATH)
 from . import option_defs
 
 # import SCM backend interfaces here
+from .wsm.git import git_ifce
+from .wsm.hg import hg_ifce
 from . import scm_ifce_git
 from . import scm_ifce_hg
 
