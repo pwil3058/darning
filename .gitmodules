@@ -1,0 +1,6 @@
+[submodule "pixmaps"]
+	path = pixmaps
+	url = git@github.com:pwil3058/gwsmpixmaps.git
+[submodule "darning/wsm"]
+	path = darning/wsm
+	url = git@github.com:pwil3058/pysm_wsm.git
