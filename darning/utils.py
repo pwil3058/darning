@@ -33,9 +33,9 @@ from gi.repository import GObject
 
 # TODO: purify utils (i.e. minimize . imports)
 
-from aipoed import CmdResult
-from aipoed import HOME
-from aipoed import options
+from .wsm.bab import CmdResult
+from .wsm.bab import HOME
+from .wsm.bab import options
 
 def singleton(aClass):
     def onCall(*args, **kwargs):
@@ -144,7 +144,7 @@ def get_file_contents(srcfile, decompress=True):
     decompression as indicated by filename's suffix.
     '''
     if decompress:
-        from aipoed import runext
+        from .wsm.bab import runext
         _root, ext = os.path.splitext(srcfile)
         res = 0
         if ext == '.gz':

@@ -21,9 +21,9 @@ import os
 
 from gi.repository import Gtk
 
-from aipoed import CmdResult
+from ..wsm.bab import CmdResult
 
-from aipoed.gui import dialogue
+from ..wsm.gtx import dialogue
 
 from .. import utils
 

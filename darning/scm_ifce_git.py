@@ -24,14 +24,14 @@ import os
 import re
 import hashlib
 
-from aipoed import CmdResult
-from aipoed.decorators import singleton
-from aipoed import runext
-from aipoed import enotify
+from .wsm.bab import CmdResult
+from .wsm.bab.decorators import singleton
+from .wsm.bab import runext
+from .wsm.bab import enotify
 
-from aipoed.patch_diff import patchlib
+from .wsm.patch_diff import patchlib
 
-from aipoed.gui import table
+from .wsm.gtx import table
 
 from . import scm_ifce
 from . import utils
@@ -40,7 +40,7 @@ from . import fsdb_git
 from .gui import ifce
 
 def _do_action_cmd(cmd, success_emask, fail_emask, eflag_modifiers):
-    from aipoed.gui import console
+    from .wsm.gtx import console
     # TODO: improve _do_action_cmd() and move to runext
     result = runext.run_cmd_in_console(console.LOG, cmd)
     if result.is_ok:

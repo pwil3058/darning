@@ -18,11 +18,11 @@ import hashlib
 from gi.repository import Gtk
 from gi.repository import GObject
 
-from aipoed.gui import actions
-from aipoed.gui import dialogue
-from aipoed.gui import file_tree
+from ..wsm.gtx import actions
+from ..wsm.gtx import dialogue
+from ..wsm.gtx import file_tree
 
-from aipoed import enotify
+from ..wsm.bab import enotify
 
 from .. import pm_ifce
 

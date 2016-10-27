@@ -30,12 +30,12 @@ import zlib
 
 from contextlib import contextmanager
 
-from aipoed import CmdResult
-from aipoed import os_utils
-from aipoed import runext
-from aipoed import options
+from .wsm.bab import CmdResult
+from .wsm.bab import os_utils
+from .wsm.bab import runext
+from .wsm.bab import options
 
-from aipoed.patch_diff import patchlib
+from .wsm.patch_diff import patchlib
 
 from . import ntuples
 from . import rctx as RCTX
@@ -367,8 +367,8 @@ def generate_diff_preamble(file_path, before, after, came_from=None):
     return patchlib.Preamble.parse_lines(generate_diff_preamble_lines(file_path, before, after, came_from))
 
 def generate_binary_diff_lines(before, after):
-    from aipoed.patch_diff import gitdelta
-    from aipoed.patch_diff import gitbase85
+    from .wsm.patch_diff import gitdelta
+    from .wsm.patch_diff import gitbase85
     def _component_lines(fm_data, to_data):
         delta = None
         if fm_data.raw_len and to_data.raw_len:
@@ -712,7 +712,7 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
             return _content_has_unresolved_merges(content)
     @property
     def related_file_data(self):
-        from aipoed.nmd_tuples import PathAndRelation as RFD
+        from .wsm.bab.nmd_tuples import PathAndRelation as RFD
         if self.came_from:
             if self.came_from.as_rename:
                 return RFD(self.came_from.file_path, os_utils.Relation.MOVED_FROM)
@@ -1159,7 +1159,7 @@ class Patch(mixins.WrapperMixin):
                         retval = CmdResult.ERROR
                         RCTX.stderr.write("{0}: {1}\n".format(rel_subdir(file_path), edata))
                 elif diff_plus.is_compatible_with(utils.get_git_hash_for_file(file_path)):
-                    from aipoed.patch_diff import gitdelta
+                    from .wsm.patch_diff import gitdelta
                     contents = open(file_path, "rb").read()
                     try:
                         new_contents = gitdelta.patch_delta(contents, diff_plus.diff.forward.data_raw)

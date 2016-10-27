@@ -22,12 +22,12 @@ from gi.repository import GObject
 from gi.repository import Gtk
 from gi.repository import Gdk
 
-from aipoed.gui import dialogue
-from aipoed.gui import gutils
-from aipoed.gui import tlview
-from aipoed.gui import table
-from aipoed.gui import actions
-from aipoed.gui import apath
+from ..wsm.gtx import dialogue
+from ..wsm.gtx import gutils
+from ..wsm.gtx import tlview
+from ..wsm.gtx import table
+from ..wsm.gtx import actions
+from ..wsm.gtx import apath
 
 from .. import CONFIG_DIR_PATH
 from .. import utils

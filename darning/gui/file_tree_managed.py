@@ -18,15 +18,15 @@ import os
 from gi.repository import Gtk
 from gi.repository import GObject
 
-from aipoed import CmdFailure
-from aipoed import enotify
-from aipoed import os_utils
+from ..wsm.bab import CmdFailure
+from ..wsm.bab import enotify
+from ..wsm.bab import os_utils
 
-from aipoed.gui import actions
-from aipoed.gui import dialogue
-from aipoed.gui import file_tree
-from aipoed.gui import xtnl_edit
-from aipoed.gui import gutils
+from ..wsm.gtx import actions
+from ..wsm.gtx import dialogue
+from ..wsm.gtx import file_tree
+from ..wsm.gtx import xtnl_edit
+from ..wsm.gtx import gutils
 
 from .. import scm_ifce
 from .. import pm_ifce

@@ -20,9 +20,9 @@ import collections
 
 from gi.repository import Pango
 
-from aipoed import runext
+from .wsm.bab import runext
 
-from aipoed.gui import fsdb
+from .wsm.gtx import fsdb
 
 from . import utils
 
@@ -136,14 +136,14 @@ class WsFileDb(fsdb.GenericSnapshotWsFileDb):
         SIGNIFICANT_DATA_SET = FileStatus.SIGNIFICANT_SET
         ORDERED_DIR_STATUS_LIST = FileStatus.MODIFIED_LIST + [FileStatus.NOT_TRACKED]
         ORDERED_DIR_CLEAN_STATUS_LIST = [x for x in FileStatus.MODIFIED_LIST if x not in FileStatus.CLEAN_SET] + [FileStatus.NOT_TRACKED]
-        def _get_initial_status(self):
+        def _get_initial_status(self, *args):
             if not self._file_status_snapshot.status_set:
                 return None
             for status in self.ORDERED_DIR_STATUS_LIST:
                 if status in self._file_status_snapshot.status_set:
                     return status
             return None
-        def _get_initial_clean_status(self):
+        def _get_initial_clean_status(self, *args):
             if not self._file_status_snapshot.status_set:
                 return None
             for status in self.ORDERED_DIR_CLEAN_STATUS_LIST:

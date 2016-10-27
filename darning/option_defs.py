@@ -15,7 +15,7 @@
 
 '''Manage configurable options'''
 
-from aipoed.options import define, Defn, str_to_bool
+from .wsm.bab.options import define, Defn, str_to_bool
 
 define("pop", "drop_added_tws", Defn(str_to_bool, True, _("Remove added trailing white space (TWS) from patch after pop")))
 define("push", "drop_added_tws", Defn(str_to_bool, True, _("Remove added trailing white space (TWS) from patch before push")))

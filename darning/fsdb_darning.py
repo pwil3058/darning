@@ -15,7 +15,7 @@
 
 from gi.repository import Pango
 
-from aipoed.gui import fsdb
+from .wsm.gtx import fsdb
 
 from . import patch_db
 

@@ -22,11 +22,11 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
-from aipoed.gui import dialogue
-from aipoed.gui import gutils
+from ..wsm.gtx import dialogue
+from ..wsm.gtx import gutils
 
-from aipoed.patch_diff.gui import diff
-from aipoed.patch_diff.gui import patch_view
+from ..wsm.patch_diff_gui import diff
+from ..wsm.patch_diff_gui import patch_view
 
 from .. import utils
 from .. import pm_ifce

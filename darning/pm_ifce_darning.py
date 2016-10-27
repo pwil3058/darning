@@ -13,14 +13,14 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from aipoed import CmdResult
-from aipoed import CmdFailure
+from .wsm.bab import CmdResult
+from .wsm.bab import CmdFailure
 
-from aipoed import enotify
+from .wsm.bab import enotify
 
-from aipoed.decorators import singleton
+from .wsm.bab.decorators import singleton
 
-from aipoed.gui.console import RCTX, LOG
+from .wsm.gtx.console import RCTX, LOG
 
 from . import pm_ifce
 from . import scm_ifce

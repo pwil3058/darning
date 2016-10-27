@@ -19,9 +19,9 @@ import hashlib
 import re
 import time
 
-from aipoed import CmdResult
+from .wsm.bab import CmdResult
 
-from aipoed import enotify
+from .wsm.bab import enotify
 
 E_PUSH, E_POP, E_NEW_PATCH, E_PATCH_STACK_CHANGES = enotify.new_event_flags_and_mask(3)
 E_DELETE_PATCH, E_MODIFY_PATCH, E_MODIFY_GUARDS, E_PATCH_QUEUE_CHANGES = enotify.new_event_flags_and_mask(3)
@@ -31,7 +31,7 @@ E_FILE_ADDED, E_FILE_DELETED, E_PATCH_REFRESH, E_FILE_CHANGES = enotify.new_even
 E_FILE_MOVED = E_FILE_ADDED|E_FILE_DELETED
 
 class Presence(object):
-    from aipoed.patch_diff import patchlib
+    from .wsm.patch_diff import patchlib
     ADDED = patchlib.FilePathPlus.ADDED
     REMOVED = patchlib.FilePathPlus.DELETED
     EXTANT = patchlib.FilePathPlus.EXTANT
@@ -182,7 +182,7 @@ class _NULL_BACKEND:
         return ""
     @staticmethod
     def get_combined_patch_file_db():
-        from aipoed.gui import fsdb
+        from .wsm.gtx import fsdb
         return fsdb.NullFileDb()
     @staticmethod
     def get_default_new_patch_save_file():
@@ -204,7 +204,7 @@ class _NULL_BACKEND:
         return ""
     @staticmethod
     def get_patch_file_db(patch_name):
-        from aipoed.gui import fsdb
+        from .wsm.gtx import fsdb
         return fsdb.NullFileDb()
     @staticmethod
     def get_patch_file_path(patch_name):
@@ -235,7 +235,7 @@ class _NULL_BACKEND:
         return ""
     @staticmethod
     def get_top_patch_file_db():
-        from aipoed.gui import fsdb
+        from .wsm.gtx import fsdb
         return fsdb.NullFileDb()
     @staticmethod
     def get_ws_update_clean_up_ready(applied_count=None):
@@ -266,11 +266,11 @@ class _NULL_BACKEND:
         return
 
 def generic_delete_files(file_paths):
-    from aipoed import os_utils
+    from .wsm.bab import os_utils
     return os_utils.os_delete_files(file_paths, events=E_FILE_DELETED)
 
 def set_patch_file_description(patch_file_path, description, overwrite=False):
-    from aipoed.patch_diff import patchlib
+    from .wsm.patch_diff import patchlib
     from . import utils
     if os.path.isfile(patch_file_path):
         try:
@@ -290,7 +290,7 @@ def set_patch_file_description(patch_file_path, description, overwrite=False):
 
 def get_patch_file_description(patch_file_path):
     assert os.path.isfile(patch_file_path), _("Patch file \"{0}\" does not exist\n").format(patch_file_path)
-    from aipoed.patch_diff import patchlib
+    from .wsm.patch_diff import patchlib
     from . import utils
     pobj = patchlib.Patch.parse_text(utils.get_file_contents(patch_file_path))
     return pobj.get_description()
@@ -318,7 +318,7 @@ class InterfaceMixin:
         return utils.set_file_contents(export_file_name, cls.get_patch_text(patch_name))
     @classmethod
     def do_set_patch_description(cls, patch_name, description, overwrite=False):
-        from aipoed.gui import console
+        from .wsm.gtx import console
         result = set_patch_file_description(cls.get_patch_file_path(patch_name), description, overwrite=overwrite)
         if result.is_ok:
             console.LOG.append_entry(_("set description for \"{0}\" patch.\n{1}\n").format(patch_name, description))

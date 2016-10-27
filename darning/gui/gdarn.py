@@ -19,15 +19,15 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
-from aipoed import enotify
+from ..wsm.bab import enotify
 
-from aipoed.decorators import singleton
+from ..wsm.bab.decorators import singleton
 
-from aipoed.gui import gutils
-from aipoed.gui import dialogue
-from aipoed.gui import actions
-from aipoed.gui import terminal
-from aipoed.gui import console
+from ..wsm.gtx import gutils
+from ..wsm.gtx import dialogue
+from ..wsm.gtx import actions
+from ..wsm.gtx import terminal
+from ..wsm.gtx import console
 
 from .. import utils
 

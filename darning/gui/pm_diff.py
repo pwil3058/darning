@@ -21,17 +21,17 @@ from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import Pango
 
-from aipoed import CmdResult, CmdFailure
-from aipoed import runext
-from aipoed import enotify
-from aipoed import options
+from ..wsm.bab import CmdResult, CmdFailure
+from ..wsm.bab import runext
+from ..wsm.bab import enotify
+from ..wsm.bab import options
 
-from aipoed.patch_diff import patchlib
+from ..wsm.patch_diff import patchlib
 
-from aipoed.patch_diff.gui import diff
+from ..wsm.patch_diff_gui import diff
 
-from aipoed.gui import dialogue
-from aipoed.gui import gutils
+from ..wsm.gtx import dialogue
+from ..wsm.gtx import gutils
 
 from .. import utils
 from .. import pm_ifce
@@ -142,7 +142,7 @@ class NamedPatchDiffTextDialog(_DiffDialog):
     DIFFS_WIDGET = NamedPatchDiffTextWidget
 
 #GLOBAL ACTIONS
-from aipoed.gui import actions
+from ..wsm.gtx import actions
 from . import ws_actions
 
 actions.CLASS_INDEP_AGS[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC].add_actions(

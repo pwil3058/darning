@@ -20,18 +20,18 @@ from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import GObject
 
-from aipoed import enotify
+from ..wsm.bab import enotify
 
-from aipoed import CmdResult
+from ..wsm.bab import CmdResult
 
-from aipoed.gui import dialogue
-from aipoed.gui import actions
-from aipoed.gui import tlview
-from aipoed.gui import table
-from aipoed.gui import gutils
-from aipoed.gui import textview
-from aipoed.gui import xtnl_edit
-from aipoed.gui import text_edit
+from ..wsm.gtx import dialogue
+from ..wsm.gtx import actions
+from ..wsm.gtx import tlview
+from ..wsm.gtx import table
+from ..wsm.gtx import gutils
+from ..wsm.gtx import textview
+from ..wsm.gtx import xtnl_edit
+from ..wsm.gtx import text_edit
 
 from .. import APP_NAME
 
@@ -72,7 +72,7 @@ def pm_do_add_files(file_paths):
     return dooph.do_force_refresh_or_absorb(do_op, refresh_op)
 
 def pm_do_add_new_file(open_for_edit=False):
-    from aipoed import os_utils
+    from ..wsm.bab import os_utils
     new_file_path = dialogue.main_window.ask_file_path(_("Enter path for new file"), existing=False)
     if not new_file_path:
         return
@@ -231,7 +231,7 @@ def pm_do_export_named_patch(patch_name, suggestion=None, busy_indicator=None):
         break
 
 def pm_do_extdiff_for_file(file_path, patch_name=None):
-    from aipoed.patch_dif.gui import diff
+    from ..wsm.patch_diff_gui import diff
     files = ifce.PM.get_extdiff_files_for(file_path=file_path, patch_name=patch_name)
     dialogue.main_window.report_any_problems(diff.launch_external_diff(files.original_version, files.patched_version))
 
@@ -278,7 +278,7 @@ def pm_do_fold_to_patch(patch_name):
             return
 
 def pm_do_fold_external_patch():
-    from aipoed.patch_diff import patchlib
+    from ..wsm.patch_diff import patchlib
     patch_file_path = dialogue.main_window.ask_file_path(_("Select patch file to be folded"))
     if patch_file_path is None:
         return
@@ -322,7 +322,7 @@ def pm_do_fold_external_patch():
 def pm_do_import_external_patch():
     from . import recollect
     suggestion = recollect.get("import", "last_directory")
-    from aipoed.patch_diff import patchlib
+    from ..wsm.patch_diff import patchlib
     patch_file_path = dialogue.main_window.ask_file_path(_("Select patch file to be imported"))
     if patch_file_path is None:
         return
@@ -450,9 +450,9 @@ def pm_do_push_to(patch_name):
             break
 
 def _launch_reconciliation_tool(file_a, file_b, file_c):
-    from aipoed import options
-    from aipoed import runext
-    from aipoed import CmdResult
+    from ..wsm.bab import options
+    from ..wsm.bab import runext
+    from ..wsm.bab import CmdResult
     reconciler = options.get("reconcile", "tool")
     if not reconciler:
         return CmdResult.warning(_("No reconciliation tool is defined.\n"))

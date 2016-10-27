@@ -15,9 +15,6 @@ Some script based testing has been undertaken.
 Requirements
 ------------
 
-This software requires the *pwil3058/aipoed* package to be installed
-and/or available via PYTHONPATH to work.  It is available from github.
-
 This software requires:
  * Python 3.5 or later
  * PyGObject 3.0 or later

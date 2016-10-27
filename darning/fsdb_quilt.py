@@ -18,9 +18,9 @@ import runext
 import pango
 import collections
 
-from aipoed.patch_diff import patchlib
+from .wsm.patch_diff import patchlib
 
-from aipoed.gui import fsdb
+from .wsm.gtx import fsdb
 
 from . import utils
 from . import quilt_utils

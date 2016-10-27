@@ -1,39 +1,24 @@
-### Copyright (C) 2005-2016 Peter Williams <pwil3058@gmail.com>
-###
-### This program is free software; you can redistribute it and/or modify
-### it under the terms of the GNU General Public License as published by
-### the Free Software Foundation; version 2 of the License only.
-###
-### This program is distributed in the hope that it will be useful,
-### but WITHOUT ANY WARRANTY; without even the implied warranty of
-### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-### GNU General Public License for more details.
-###
-### You should have received a copy of the GNU General Public License
-### along with this program; if not, write to the Free Software
-### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
-
-import os
-import sys
-import collections
+# Copyright (C) 2005-2016 Peter Williams <pwil3058@gmail.com>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; version 2 of the License only.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
-from gi.repository import Gio
-from gi.repository import GdkPixbuf
 
-from aipoed.gui import icons
-
-from .. import APP_NAME
-
-# find the icons directory
-# first look in the source directory (so that we can run uninstalled)
-_libdir = icons.find_app_icon_directory(APP_NAME)
-
-APP_ICON = APP_NAME
-APP_ICON_FILE = os.path.join(os.path.dirname(_libdir), APP_ICON + os.extsep + "png")
-APP_ICON_PIXBUF = GdkPixbuf.Pixbuf.new_from_file(APP_ICON_FILE)
+from ..wsm.gtx import icons
+from ..wsm.gtx.icons import APP_NAME, APP_ICON_FILE
 
 STOCK_APPLIED = APP_NAME + "_stock_applied"
 STOCK_APPLIED_NEEDS_REFRESH = APP_NAME + "_stock_applied_needs_refresh"
@@ -80,7 +65,7 @@ _STOCK_ITEMS_OWN_PNG = [
     (STOCK_FILE_UNREFRESHABLE, _("Unrefreshable"), 0, 0, None),
 ]
 
-icons.add_own_stock_icons(APP_NAME, _STOCK_ITEMS_OWN_PNG, icons.find_app_icon_directory)
+icons.add_own_stock_icons(_STOCK_ITEMS_OWN_PNG)
 
 # Icons that have to be designed eventually (using GtK stock in the meantime)
 STOCK_BACKOUT = Gtk.STOCK_MEDIA_REWIND

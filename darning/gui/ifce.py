@@ -15,11 +15,11 @@
 
 import os
 
-from aipoed import CmdResult
-from aipoed import enotify
-from aipoed import options
+from ..wsm.bab import CmdResult
+from ..wsm.bab import enotify
+from ..wsm.bab import options
 
-from aipoed.gui import dialogue
+from ..wsm.gtx import dialogue
 
 from .. import APP_NAME
 
@@ -29,7 +29,7 @@ from .. import utils
 from .. import rctx
 
 from . import recollect
-from aipoed.gui.console import LOG, RCTX
+from ..wsm.gtx.console import LOG, RCTX
 
 E_NEW_SCM, E_NEW_PM, E_NEW_SCM_OR_PM = enotify.new_event_flags_and_mask(2)
 
@@ -66,7 +66,7 @@ def init(log=False):
         enotify.notify_events(enotify.E_CHANGE_WD, new_wd=curdir)
     else:
         enotify.notify_events(E_NEW_SCM_OR_PM)
-    from aipoed.gui import auto_update
+    from ..wsm.gtx import auto_update
     auto_update.set_initialize_event_flags(check_interfaces)
     return CmdResult.ok()
 

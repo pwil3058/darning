@@ -17,7 +17,7 @@
 Provide an interface to SCM controlling source on which patches sit
 '''
 
-from aipoed import enotify
+from .wsm.bab import enotify
 
 E_FILE_ADDED, E_FILE_DELETED, E_FILE_MODIFIED, E_FILE_CHANGES = enotify.new_event_flags_and_mask(3)
 E_FILE_MOVED = E_FILE_ADDED|E_FILE_DELETED
@@ -139,7 +139,7 @@ class _NULL_BACKEND:
         return []
     @staticmethod
     def get_index_file_db():
-        from aipoed.gui import fsdb
+        from .wsm.gtx import fsdb
         return fsdb.NullFileDb()
     @staticmethod
     def get_parents_data(rev=None):
@@ -171,7 +171,7 @@ class _NULL_BACKEND:
         '''
         Get the SCM view of the current directory
         '''
-        from aipoed.gui import fsdb
+        from .wsm.gtx import fsdb
         return fsdb.OsFileDb()
     @staticmethod
     def is_ready_for_import():

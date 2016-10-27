@@ -18,9 +18,9 @@
 import os
 import sys
 
-from aipoed import CmdResult
+from ..wsm.bab import CmdResult
 
-from aipoed.patch_diff import patchlib
+from ..wsm.patch_diff import patchlib
 
 from . import cli_args
 from . import db_utils

@@ -21,14 +21,14 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 from gi.repository import GObject
 
-from aipoed import enotify
+from ..wsm.bab import enotify
 
-from aipoed.gui import dialogue
-from aipoed.gui import gutils
-from aipoed.gui import tlview
-from aipoed.gui import actions
-from aipoed.gui import table
-from aipoed.gui import auto_update
+from ..wsm.gtx import dialogue
+from ..wsm.gtx import gutils
+from ..wsm.gtx import tlview
+from ..wsm.gtx import actions
+from ..wsm.gtx import table
+from ..wsm.gtx import auto_update
 
 from ..pm_ifce import PatchState
 

@@ -19,18 +19,18 @@ import errno
 import hashlib
 import re
 
-from aipoed import CmdResult
-from aipoed import enotify
-from aipoed import runext
+from .wsm.bab import CmdResult
+from .wsm.bab import enotify
+from .wsm.bab import runext
 
-from aipoed.decorators import singleton
+from .wsm.bab.decorators import singleton
 
 # Some generalized lambdas for constructing commands
-from aipoed.runext import OPTNL_FLAG
-from aipoed.runext import OPTNL_FLAGS
-from aipoed.runext import OPTNL_FLAG_WITH_ARG
-from aipoed.runext import OPTNL_ARG
-from aipoed.runext import OPTNL_ARG_LIST
+from .wsm.bab.runext import OPTNL_FLAG
+from .wsm.bab.runext import OPTNL_FLAGS
+from .wsm.bab.runext import OPTNL_FLAG_WITH_ARG
+from .wsm.bab.runext import OPTNL_ARG
+from .wsm.bab.runext import OPTNL_ARG_LIST
 
 from . import scm_ifce
 from . import utils
@@ -51,7 +51,7 @@ SUGGESTION_TABLE = (
 )
 
 def _run_do_cmd(cmd, input_text=None, sanitize_stderr=None):
-    from aipoed.gui import console
+    from .wsm.gtx import console
     result = runext.run_cmd_in_console(console=console.LOG, cmd=cmd, input_text=input_text, sanitize_stderr=sanitize_stderr)
     return result.mapped_for_suggestions(SUGGESTION_TABLE)
 

@@ -15,12 +15,9 @@
 
 '''Remember stuff for the GUI. Sizes, positions, etc.'''
 
-from aipoed.gui import recollect
-from aipoed.gui.recollect import define, set, get, Defn
+from ..wsm.gtx.recollect import define, set, get, Defn
 
-from .. import CONFIG_DIR_PATH, APP_NAME
-
-recollect.initialize(CONFIG_DIR_PATH)
+from .. import APP_NAME
 
 define(APP_NAME, "last_pgnd", Defn(str, ""))
 
@@ -30,4 +27,3 @@ define("main_window", "hpaned_position", Defn(int, -1))
 
 define("export", "last_directory", Defn(str, ""))
 define("import", "last_directory", Defn(str, ""))
-

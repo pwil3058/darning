@@ -17,12 +17,12 @@ import os
 
 from gi.repository import Pango
 
-from aipoed import runext
-from aipoed import os_utils
+from .wsm.bab import runext
+from .wsm.bab import os_utils
 
-from aipoed.patch_diff import patchlib
+from .wsm.patch_diff import patchlib
 
-from aipoed.gui import fsdb
+from .wsm.gtx import fsdb
 
 from . import utils
 
@@ -98,7 +98,7 @@ class WsFileDb(fsdb.GenericSnapshotWsFileDb):
         IGNORED_STATUS_SET = frozenset([FSTATUS_IGNORED])
         CLEAN_STATUS_SET = FSTATUS_CLEAN_SET
         SIGNIFICANT_DATA_SET = frozenset(list(FSTATUS_MODIFIED_SET) + [FSTATUS_NOT_TRACKED])
-        def _get_initial_status(self):
+        def _get_initial_status(self, *args):
             # TODO: fix status calculation to differentiate between MISSING and REMOVED
             if FSTATUS_UNRESOLVED in self._file_status_snapshot.status_set:
                 return FSTATUS_UNRESOLVED
