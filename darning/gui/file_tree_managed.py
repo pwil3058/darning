@@ -28,6 +28,9 @@ from ..wsm.gtx import file_tree
 from ..wsm.gtx import xtnl_edit
 from ..wsm.gtx import gutils
 
+from ..wsm import pm
+from ..wsm import scm
+
 from .. import scm_ifce
 from .. import pm_ifce
 
@@ -40,8 +43,8 @@ from . import dooph_pm
 #          <menuitem action='pm_move_files_in_top_patch'/>
 
 class WSTreeModel(file_tree.FileTreeModel):
-    UPDATE_EVENTS = os_utils.E_FILE_CHANGES|ifce.E_NEW_SCM|scm_ifce.E_FILE_CHANGES|pm_ifce.E_FILE_CHANGES|pm_ifce.E_PATCH_STACK_CHANGES|pm_ifce.E_PATCH_REFRESH|pm_ifce.E_POP|pm_ifce.E_PUSH|scm_ifce.E_WD_CHANGES
-    AU_FILE_CHANGE_EVENT = scm_ifce.E_FILE_CHANGES|os_utils.E_FILE_CHANGES # event returned by auto_update() if changes found
+    UPDATE_EVENTS = os_utils.E_FILE_CHANGES|scm.E_NEW_SCM|scm.E_FILE_CHANGES|pm.E_FILE_CHANGES|pm.E_PATCH_STACK_CHANGES|pm.E_PATCH_REFRESH|pm.E_POP|pm.E_PUSH|scm.E_WD_CHANGES
+    AU_FILE_CHANGE_EVENT = scm.E_FILE_CHANGES|os_utils.E_FILE_CHANGES # event returned by auto_update() if changes found
     @staticmethod
     def _get_file_db():
         return ifce.SCM.get_wd_file_db()
@@ -88,7 +91,7 @@ class WSTreeView(file_tree.FileTreeView, enotify.Listener, ws_actions.WSListener
         enotify.Listener.__init__(self)
         ws_actions.WSListenerMixin.__init__(self)
         self._update_popup_cb()
-        self.add_notification_cb(pm_ifce.E_PATCH_STACK_CHANGES|ifce.E_NEW_PM|enotify.E_CHANGE_WD, self._update_popup_cb)
+        self.add_notification_cb(pm.E_PATCH_STACK_CHANGES|pm.E_NEW_PM|enotify.E_CHANGE_WD, self._update_popup_cb)
     def _update_popup_cb(self, **kwargs):
         if ifce.PM.is_poppable:
             self.set_popup("/pmic_files_popup")

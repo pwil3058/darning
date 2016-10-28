@@ -21,14 +21,7 @@ import time
 
 from .wsm.bab import CmdResult
 
-from .wsm.bab import enotify
-
-E_PUSH, E_POP, E_NEW_PATCH, E_PATCH_STACK_CHANGES = enotify.new_event_flags_and_mask(3)
-E_DELETE_PATCH, E_MODIFY_PATCH, E_MODIFY_GUARDS, E_PATCH_QUEUE_CHANGES = enotify.new_event_flags_and_mask(3)
-E_PATCH_LIST_CHANGES = E_PATCH_STACK_CHANGES|E_PATCH_QUEUE_CHANGES
-
-E_FILE_ADDED, E_FILE_DELETED, E_PATCH_REFRESH, E_FILE_CHANGES = enotify.new_event_flags_and_mask(3)
-E_FILE_MOVED = E_FILE_ADDED|E_FILE_DELETED
+from .wsm import pm
 
 class Presence(object):
     from .wsm.patch_diff import patchlib
@@ -267,7 +260,7 @@ class _NULL_BACKEND:
 
 def generic_delete_files(file_paths):
     from .wsm.bab import os_utils
-    return os_utils.os_delete_files(file_paths, events=E_FILE_DELETED)
+    return os_utils.os_delete_files(file_paths, events=pm.EFILE_DELETED)
 
 def set_patch_file_description(patch_file_path, description, overwrite=False):
     from .wsm.patch_diff import patchlib

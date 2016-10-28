@@ -28,6 +28,8 @@ from ..wsm.gtx import gutils
 from ..wsm.patch_diff_gui import diff
 from ..wsm.patch_diff_gui import patch_view
 
+from ..wsm import pm
+
 from .. import utils
 from .. import pm_ifce
 
@@ -95,7 +97,7 @@ class Dialogue(dialogue.ListenerDialog):
         self.action_area.pack_start(save_button, expand=True, fill=True, padding=0)
         self.add_buttons(Gtk.STOCK_CLOSE, Gtk.ResponseType.CLOSE)
         self.connect("response", self._close_cb)
-        self.add_notification_cb(pm_ifce.E_PATCH_LIST_CHANGES|pm_ifce.E_FILE_CHANGES, self._update_display_cb)
+        self.add_notification_cb(pm.E_PATCH_LIST_CHANGES|pm.E_FILE_CHANGES, self._update_display_cb)
         self.show_all()
     def _close_cb(self, dialog, response_id):
         self.auc.toggle_action.set_active(False)

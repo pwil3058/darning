@@ -17,20 +17,6 @@
 Provide an interface to SCM controlling source on which patches sit
 '''
 
-from .wsm.bab import enotify
-
-E_FILE_ADDED, E_FILE_DELETED, E_FILE_MODIFIED, E_FILE_CHANGES = enotify.new_event_flags_and_mask(3)
-E_FILE_MOVED = E_FILE_ADDED|E_FILE_DELETED
-
-E_INDEX_MOD, E_COMMIT, E_BACKOUT, E_BRANCH, E_TAG, E_PUSH, E_PULL, E_INIT, E_CLONE, E_STASH, E_CS_CHANGES = enotify.new_event_flags_and_mask(10)
-
-E_CHECKOUT, E_BISECT, E_MERGE, E_UPDATE, E_WD_CHANGES = enotify.new_event_flags_and_mask(4)
-
-E_PGND_RC_CHANGED, E_USER_RC_CHANGED, E_RC_CHANGED = enotify.new_event_flags_and_mask(2)
-
-E_LOG = enotify.new_event_flag()
-E_REMOTE = enotify.new_event_flag()
-
 _BACKEND = {}
 _MISSING_BACKEND = {}
 

@@ -24,6 +24,8 @@ from ..wsm.gtx import file_tree
 
 from ..wsm.bab import enotify
 
+from ..wsm import pm
+
 from .. import pm_ifce
 
 from . import ifce
@@ -39,8 +41,8 @@ class _GenericPatchFileTreeView(file_tree.FileTreeView, enotify.Listener, ws_act
         ws_actions.WSListenerMixin.__init__(self)
 
 class PatchFileTreeModel(file_tree.FileTreeModel):
-    REPOPULATE_EVENTS = pm_ifce.E_POP|pm_ifce.E_PUSH|pm_ifce.E_PATCH_STACK_CHANGES
-    UPDATE_EVENTS = pm_ifce.E_PATCH_REFRESH|pm_ifce.E_FILE_CHANGES
+    REPOPULATE_EVENTS = pm.E_POP|pm.E_PUSH|pm.E_PATCH_STACK_CHANGES
+    UPDATE_EVENTS = pm.E_PATCH_REFRESH|pm.E_FILE_CHANGES
     def auto_update(self, _events_so_far, _args):
         if not self._file_db.is_current:
             self.update(fsdb_reset_only=[self])
@@ -121,8 +123,8 @@ class PatchFilesDialog(dialogue.ListenerDialog, enotify.Listener):
 
 
 class TopPatchFileTreeModel(file_tree.FileTreeModel):
-    REPOPULATE_EVENTS = enotify.E_CHANGE_WD|ifce.E_NEW_PM|pm_ifce.E_PATCH_STACK_CHANGES|pm_ifce.E_PUSH|pm_ifce.E_POP|pm_ifce.E_NEW_PATCH
-    UPDATE_EVENTS = pm_ifce.E_FILE_CHANGES|pm_ifce.E_PATCH_REFRESH
+    REPOPULATE_EVENTS = enotify.E_CHANGE_WD|pm.E_NEW_PM|pm.E_PATCH_STACK_CHANGES|pm.E_PUSH|pm.E_POP|pm.E_NEW_PATCH
+    UPDATE_EVENTS = pm.E_FILE_CHANGES|pm.E_PATCH_REFRESH
     @staticmethod
     def _get_file_db():
         return ifce.PM.get_top_patch_file_db()
@@ -130,15 +132,15 @@ class TopPatchFileTreeModel(file_tree.FileTreeModel):
         if (events_so_far & (self.REPOPULATE_EVENTS|self.UPDATE_EVENTS)) or self._file_db.is_current:
             return 0
         if self._file_db.applied_patch_count_change < 0:
-            return pm_ifce.E_POP
+            return pm.E_POP
         elif self._file_db.applied_patch_count_change > 0:
-            return pm_ifce.E_PUSH
+            return pm.E_PUSH
         else:
             try:
                 args["fsdb_reset_only"].append(self)
             except KeyError:
                 args["fsdb_reset_only"] = [self]
-        return pm_ifce.E_FILE_CHANGES
+        return pm.E_FILE_CHANGES
 
 class TopPatchFileTreeView(_GenericPatchFileTreeView):
     MODEL = TopPatchFileTreeModel

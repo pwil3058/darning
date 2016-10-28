@@ -31,7 +31,10 @@ from .. import rctx
 from . import recollect
 from ..wsm.gtx.console import LOG, RCTX
 
-E_NEW_SCM, E_NEW_PM, E_NEW_SCM_OR_PM = enotify.new_event_flags_and_mask(2)
+from ..wsm.pm import E_NEW_PM
+from ..wsm.scm import E_NEW_SCM
+
+E_NEW_SCM_OR_PM = E_NEW_SCM | E_NEW_PM
 
 def report_backend_requirements():
     dialogue.main_window.inform_user(pm_ifce.backend_requirements())

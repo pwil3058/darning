@@ -33,6 +33,8 @@ from ..wsm.patch_diff_gui import diff
 from ..wsm.gtx import dialogue
 from ..wsm.gtx import gutils
 
+from ..wsm import pm
+
 from .. import utils
 from .. import pm_ifce
 
@@ -44,7 +46,7 @@ class TopPatchDiffPlusesWidget(diff.DiffPlusesWidget, enotify.Listener):
         self._file_paths = file_paths
         diff.DiffPlusesWidget.__init__(self)
         enotify.Listener.__init__(self)
-        self.add_notification_cb(pm_ifce.E_PATCH_STACK_CHANGES|pm_ifce.E_FILE_CHANGES|enotify.E_CHANGE_WD, self._refresh_ecb)
+        self.add_notification_cb(pm.E_PATCH_STACK_CHANGES|pm.E_FILE_CHANGES|enotify.E_CHANGE_WD, self._refresh_ecb)
     def _refresh_ecb(self, **kwargs):
         self.update()
     def _get_diff_pluses(self):
@@ -104,7 +106,7 @@ class TopPatchDiffTextWidget(diff.DiffTextsWidget, enotify.Listener):
         self._file_paths = file_paths
         diff.DiffTextsWidget.__init__(self)
         enotify.Listener.__init__(self)
-        self.add_notification_cb(pm_ifce.E_PATCH_STACK_CHANGES|pm_ifce.E_FILE_CHANGES|enotify.E_CHANGE_WD, self._refresh_ecb)
+        self.add_notification_cb(pm.E_PATCH_STACK_CHANGES|pm.E_FILE_CHANGES|enotify.E_CHANGE_WD, self._refresh_ecb)
     def _refresh_ecb(self, **kwargs):
         self.update()
     def _get_diff_text(self):

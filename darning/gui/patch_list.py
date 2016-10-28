@@ -30,6 +30,8 @@ from ..wsm.gtx import actions
 from ..wsm.gtx import table
 from ..wsm.gtx import auto_update
 
+from ..wsm import pm
+
 from ..pm_ifce import PatchState
 
 from .. import utils
@@ -84,8 +86,8 @@ def get_applied_condns(seln):
     return actions.MaskedCondns(cond, AC_APPLIED_MASK)
 
 class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
-    REPOPULATE_EVENTS = enotify.E_CHANGE_WD|ifce.E_NEW_PM
-    UPDATE_EVENTS = pm_ifce.E_PATCH_LIST_CHANGES|pm_ifce.E_PATCH_REFRESH
+    REPOPULATE_EVENTS = enotify.E_CHANGE_WD|pm.E_NEW_PM
+    UPDATE_EVENTS = pm.E_PATCH_LIST_CHANGES|pm.E_PATCH_REFRESH
     PopUp = "/patches_popup"
     class MODEL(table.MapManagedTableView.MODEL):
         ROW = collections.namedtuple("ROW",    ["name", "icon", "markup"])
@@ -264,12 +266,12 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
             return 0
         napplied = ifce.PM.get_applied_patch_count()
         if napplied < self._applied_count:
-            return pm_ifce.E_POP
+            return pm.E_POP
         elif napplied > self._applied_count:
-            return pm_ifce.E_PUSH
+            return pm.E_PUSH
         elif napplied != 0 and not self._table_db.is_current:
             args["pld_reset_only"] = True
-            return pm_ifce.E_PATCH_LIST_CHANGES
+            return pm.E_PATCH_LIST_CHANGES
         return 0
     def _get_table_db(self):
         return ifce.PM.get_patch_list_data()

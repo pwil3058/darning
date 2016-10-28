@@ -33,6 +33,9 @@ from ..wsm.gtx import textview
 from ..wsm.gtx import xtnl_edit
 from ..wsm.gtx import text_edit
 
+from ..wsm import pm
+from ..wsm import scm
+
 from .. import APP_NAME
 
 from .. import utils
@@ -57,14 +60,14 @@ def _update_class_indep_pushable_cb(**kwargs):
     actions.CLASS_INDEP_AGS.update_condns(condns)
     actions.CLASS_INDEP_BGS.update_condns(condns)
 
-enotify.add_notification_cb(enotify.E_CHANGE_WD|pm_ifce.E_PATCH_LIST_CHANGES, _update_class_indep_pushable_cb)
+enotify.add_notification_cb(enotify.E_CHANGE_WD|pm.E_PATCH_LIST_CHANGES, _update_class_indep_pushable_cb)
 
 def _update_class_indep_absorbable_cb(**kwargs):
     condns = actions.MaskedCondns(AC_ALL_APPLIED_REFRESHED if ifce.PM.all_applied_patches_refreshed else 0, AC_ALL_APPLIED_REFRESHED)
     actions.CLASS_INDEP_AGS.update_condns(condns)
     actions.CLASS_INDEP_BGS.update_condns(condns)
 
-enotify.add_notification_cb(enotify.E_CHANGE_WD|scm_ifce.E_FILE_CHANGES|pm_ifce.E_FILE_CHANGES|pm_ifce.E_PATCH_LIST_CHANGES, _update_class_indep_absorbable_cb)
+enotify.add_notification_cb(enotify.E_CHANGE_WD|scm.E_FILE_CHANGES|pm.E_FILE_CHANGES|pm.E_PATCH_LIST_CHANGES, _update_class_indep_absorbable_cb)
 
 def pm_do_add_files(file_paths):
     do_op = lambda absorb=False, force=False : ifce.PM.do_add_files_to_top_patch(file_paths, absorb=absorb, force=force)

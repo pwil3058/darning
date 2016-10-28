@@ -22,8 +22,9 @@ from .wsm.bab.decorators import singleton
 
 from .wsm.gtx.console import RCTX, LOG
 
+from .wsm import pm
+
 from . import pm_ifce
-from . import scm_ifce
 from . import patch_db
 from .gui import fsdb_darning
 from . import utils
@@ -86,33 +87,33 @@ class Interface(pm_ifce.InterfaceMixin):
         else:
             cmd_str = "add {0}\n".format(utils.quoted_join(file_paths))
         cmd_do = lambda: patch_db.do_add_files_to_top_patch(file_paths, absorb=absorb, force=force)
-        events = pm_ifce.E_FILE_ADDED|pm_ifce.E_PATCH_REFRESH if (absorb or force) else pm_ifce.E_FILE_ADDED
+        events = pm.E_FILE_ADDED|pm.E_PATCH_REFRESH if (absorb or force) else pm.E_FILE_ADDED
         return _RUN_DO(cmd_str, cmd_do, events, False)
     @staticmethod
     def do_copy_file_to_top_patch(file_path, as_file_path, overwrite=False):
         tmpl = "copy --overwrite {0} {1}\n" if overwrite else "copy {0} {1}\n"
         cmd_str = tmpl.format(utils.quote_if_needed(file_path), utils.quote_if_needed(as_file_path))
-        return _RUN_DO(cmd_str, lambda: patch_db.do_copy_file_to_top_patch(file_path, as_file_path, overwrite=overwrite), pm_ifce.E_FILE_ADDED)
+        return _RUN_DO(cmd_str, lambda: patch_db.do_copy_file_to_top_patch(file_path, as_file_path, overwrite=overwrite), pm.E_FILE_ADDED)
     @staticmethod
     def do_create_new_patch(patch_name, descr):
         cmd_str = _("new patch {0} --msg \"{1}\"\n").format(utils.quote_if_needed(patch_name), descr)
-        return _RUN_DO(cmd_str, lambda: patch_db.do_create_new_patch(patch_name, descr), pm_ifce.E_NEW_PATCH|pm_ifce.E_PUSH, False)
+        return _RUN_DO(cmd_str, lambda: patch_db.do_create_new_patch(patch_name, descr), pm.E_NEW_PATCH|pm.E_PUSH, False)
     @staticmethod
     def do_delete_files_in_top_patch(file_paths):
         cmd_str = "delete {0}\n".format(utils.quoted_join(file_paths))
-        return _RUN_DO(cmd_str, lambda: patch_db.do_delete_files_in_top_patch(file_paths), pm_ifce.E_FILE_DELETED)
+        return _RUN_DO(cmd_str, lambda: patch_db.do_delete_files_in_top_patch(file_paths), pm.E_FILE_DELETED)
     @staticmethod
     def do_drop_files_from_patch(file_paths, patch_name=None):
         if patch_name is None:
             cmd_str = "drop {0}\n".format(utils.quoted_join(file_paths))
         else:
             cmd_stre ="drop --patch={0} {1}\n".format(utils.quote_if_needed(patch_name), utils.quoted_join(file_paths))
-        return _RUN_DO(cmd_str, lambda: patch_db.do_drop_files_fm_patch(patch_name, file_paths), pm_ifce.E_FILE_DELETED|pm_ifce.E_DELETE_PATCH, False)
+        return _RUN_DO(cmd_str, lambda: patch_db.do_drop_files_fm_patch(patch_name, file_paths), pm.E_FILE_DELETED|pm.E_DELETE_PATCH, False)
     @staticmethod
     def do_duplicate_patch(patch_name, as_patch_name, new_description):
         cmd_str = "duplicate patch {0} as {1}".format(utils.quote_if_needed(patch_name), utils.quote_if_needed(as_patch_name))
         cmd_str += " --msg \"{0}\"\n".format(new_description)
-        return _RUN_DO(cmd_str, lambda: patch_db.do_duplicate_patch(patch_name, as_patch_name, new_description), pm_ifce.E_NEW_PATCH, False)
+        return _RUN_DO(cmd_str, lambda: patch_db.do_duplicate_patch(patch_name, as_patch_name, new_description), pm.E_NEW_PATCH, False)
     @staticmethod
     def do_import_patch(epatch, as_patchname, overwrite=False):
         RCTX.reset()
@@ -120,15 +121,15 @@ class Interface(pm_ifce.InterfaceMixin):
             cmd_str = "import --overwrite {0} as {1}\n".format(utils.quote_if_needed(epatch.source_name), utils.quote_if_needed(as_patchname))
         else:
             cmd_str = "import {0} as {1}\n".format(utils.quote_if_needed(epatch.source_name), utils.quote_if_needed(as_patchname))
-        return _RUN_DO(cmd_str, lambda: patch_db.do_import_patch(epatch, as_patchname, overwrite=overwrite), pm_ifce.E_NEW_PATCH|pm_ifce.E_PUSH)
+        return _RUN_DO(cmd_str, lambda: patch_db.do_import_patch(epatch, as_patchname, overwrite=overwrite), pm.E_NEW_PATCH|pm.E_PUSH)
     @staticmethod
     def do_fold_epatch(epatch, absorb=False, force=False):
         cmd_str = "fold --file {0}\n".format(utils.quote_if_needed(epatch.source_name))
-        return _RUN_DO(cmd_str, lambda: patch_db.do_fold_epatch(epatch, absorb=absorb, force=force), pm_ifce.E_FILE_CHANGES)
+        return _RUN_DO(cmd_str, lambda: patch_db.do_fold_epatch(epatch, absorb=absorb, force=force), pm.E_FILE_CHANGES)
     @staticmethod
     def do_fold_named_patch(patch_name, absorb=False, force=False):
         cmd_str = "fold --patch {0}\n".format(utils.quote_if_needed(patch_name))
-        return _RUN_DO(cmd_str, lambda: patch_db.do_fold_named_patch(patch_name, absorb=absorb, force=force), pm_ifce.E_FILE_CHANGES|pm_ifce.E_DELETE_PATCH, False)
+        return _RUN_DO(cmd_str, lambda: patch_db.do_fold_named_patch(patch_name, absorb=absorb, force=force), pm.E_FILE_CHANGES|pm.E_DELETE_PATCH, False)
     @staticmethod
     def do_move_files(file_paths, destn_path, force=False, overwrite=False):
         if force:
@@ -141,10 +142,10 @@ class Interface(pm_ifce.InterfaceMixin):
         else:
             tmpl = "move {0} {1}\n"
         cmd_str = tmpl.format(utils.quoted_join(file_paths), utils.quote_if_needed(destn_path))
-        return _RUN_DO(cmd_str, lambda: patch_db.do_move_files_in_top_patch(file_paths, destn_path, force=force, overwrite=overwrite), pm_ifce.E_FILE_ADDED|pm_ifce.E_FILE_DELETED)
+        return _RUN_DO(cmd_str, lambda: patch_db.do_move_files_in_top_patch(file_paths, destn_path, force=force, overwrite=overwrite), pm.E_FILE_ADDED|pm.E_FILE_DELETED)
     @staticmethod
     def do_pop_top_patch():
-        return _RUN_DO("pop\n", lambda: patch_db.do_unapply_top_patch(), pm_ifce.E_POP, False)
+        return _RUN_DO("pop\n", lambda: patch_db.do_unapply_top_patch(), pm.E_POP, False)
     @staticmethod
     def do_push_next_patch(absorb=False, force=False):
         if absorb:
@@ -153,15 +154,15 @@ class Interface(pm_ifce.InterfaceMixin):
             cmd_str = "push --force\n"
         else:
             cmd_str = "push\n"
-        return _RUN_DO(cmd_str, lambda: patch_db.do_apply_next_patch(absorb=absorb, force=force), pm_ifce.E_PUSH, False)
+        return _RUN_DO(cmd_str, lambda: patch_db.do_apply_next_patch(absorb=absorb, force=force), pm.E_PUSH, False)
     @staticmethod
     def do_refresh_patch(patch_name=None):
         cmd_str = "refresh {0}\n".format(utils.quote_if_needed(patch_name)) if patch_name else "refresh\n"
-        return _RUN_DO(cmd_str, lambda: patch_db.do_refresh_patch(patch_name), pm_ifce.E_PATCH_REFRESH)
+        return _RUN_DO(cmd_str, lambda: patch_db.do_refresh_patch(patch_name), pm.E_PATCH_REFRESH)
     @staticmethod
     def do_remove_patch(patch_name):
         cmd_str = "remove patch: {0}\n".format(utils.quote_if_needed(patch_name))
-        return _RUN_DO(cmd_str, lambda: patch_db.do_remove_patch(patch_name), pm_ifce.E_DELETE_PATCH)
+        return _RUN_DO(cmd_str, lambda: patch_db.do_remove_patch(patch_name), pm.E_DELETE_PATCH)
     @staticmethod
     def do_rename_file_in_top_patch(file_path, new_file_path, force=False, overwrite=False):
         if force:
@@ -174,11 +175,11 @@ class Interface(pm_ifce.InterfaceMixin):
         else:
             tmpl = "rename {0} {1}\n"
         cmd_str = tmpl.format(utils.quote_if_needed(file_path), utils.quote_if_needed(new_file_path))
-        return _RUN_DO(cmd_str, lambda: patch_db.do_rename_file_in_top_patch(file_path, new_file_path, force=force, overwrite=overwrite), pm_ifce.E_FILE_ADDED|pm_ifce.E_FILE_DELETED)
+        return _RUN_DO(cmd_str, lambda: patch_db.do_rename_file_in_top_patch(file_path, new_file_path, force=force, overwrite=overwrite), pm.E_FILE_ADDED|pm.E_FILE_DELETED)
     @staticmethod
     def do_rename_patch(patch_name, new_name):
         cmd_str = "rename patch {0} to {1}\n".format(utils.quote_if_needed(patch_name), utils.quote_if_needed(new_name))
-        return _RUN_DO(cmd_str, lambda: patch_db.do_rename_patch(patch_name, new_name), pm_ifce.E_MODIFY_PATCH, False)
+        return _RUN_DO(cmd_str, lambda: patch_db.do_rename_patch(patch_name, new_name), pm.E_MODIFY_PATCH, False)
     @staticmethod
     def do_restore_patch(patch_name, as_patch_name=''):
         if not as_patch_name:
@@ -186,23 +187,23 @@ class Interface(pm_ifce.InterfaceMixin):
             cmd_str = "restore {0}\n".format(utils.quote_if_needed(patch_name))
         else:
             cmd_str = "restore {0} as {1}\n".format(utils.quote_if_needed(patch_name), utils.quote_if_needed(as_patch_name))
-        return _RUN_DO(cmd_str, lambda: patch_db.do_restore_patch(patch_name, as_patch_name), pm_ifce.E_NEW_PATCH, False)
+        return _RUN_DO(cmd_str, lambda: patch_db.do_restore_patch(patch_name, as_patch_name), pm.E_NEW_PATCH, False)
     @staticmethod
     def do_scm_absorb_applied_patches():
         # notify events regardless of return value as partial success is possible
-        return _RUN_DO("absorb\n", lambda: patch_db.do_scm_absorb_applied_patches(), pm_ifce.E_POP)
+        return _RUN_DO("absorb\n", lambda: patch_db.do_scm_absorb_applied_patches(), pm.E_POP)
     @staticmethod
     def do_select_guards(guards_str):
         cmd_str = "select {0}\n".format(guards_str)
-        return _RUN_DO(cmd_str, lambda:patch_db.do_select_guards(guards_str.split()), pm_ifce.E_MODIFY_GUARDS, False)
+        return _RUN_DO(cmd_str, lambda:patch_db.do_select_guards(guards_str.split()), pm.E_MODIFY_GUARDS, False)
     @staticmethod
     def do_set_patch_description(patch_name, descr, overwrite=False):
         cmd_str = "set patch description {0} --msg \"{1}\"\n".format(utils.quote_if_needed(patch_name), descr)
-        return _RUN_DO(cmd_str, lambda: patch_db.do_set_patch_description(patch_name, descr), pm_ifce.E_MODIFY_PATCH)
+        return _RUN_DO(cmd_str, lambda: patch_db.do_set_patch_description(patch_name, descr), pm.E_MODIFY_PATCH)
     @staticmethod
     def do_set_patch_guards(patch_name, guards_str):
         cmd_str = "set guards {0} {1}\n".format(utils.quote_if_needed(patch_name), guards_str)
-        return _RUN_DO(cmd_str, lambda: patch_db.do_set_patch_guards_fm_str(patch_name, guards_str), pm_ifce.E_MODIFY_PATCH, False)
+        return _RUN_DO(cmd_str, lambda: patch_db.do_set_patch_guards_fm_str(patch_name, guards_str), pm.E_MODIFY_PATCH, False)
     @staticmethod
     def do_set_series_description(text):
         cmd_str = "set series description --msg \"{0}\"\n".format(text)
