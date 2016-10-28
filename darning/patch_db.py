@@ -741,7 +741,8 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
         # The user has to be able to cope with the main file not existing (meld can)
         return _O_IP_PAIR(before, self.path)
     def get_table_row(self):
-        from . import fsdb_darning
+        # TODO: get rid of need to import fsdb_darning
+        from .gui import fsdb_darning
         return fsdb_darning.FileData(self.path, FileStatus(self.presence, self.validity), self.related_file_data)
     def get_refresh_after_data(self, overlapping_file, with_timestamps=False):
         if overlapping_file is not None:
@@ -910,7 +911,7 @@ class CombinedFileData(mixins.WrapperMixin, FileDiffMixin):
         else:
             return os.path.exists(self.path)
     def get_table_row(self):
-        from . import fsdb_darning
+        from .gui import fsdb_darning
         return fsdb_darning.FileData(self.path, FileStatus(self.presence, self.validity), None)
 
 class Patch(mixins.WrapperMixin):

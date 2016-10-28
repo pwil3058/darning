@@ -25,7 +25,7 @@ from .wsm.gtx.console import RCTX, LOG
 from . import pm_ifce
 from . import scm_ifce
 from . import patch_db
-from . import fsdb_darning
+from .gui import fsdb_darning
 from . import utils
 
 from .pm_ifce import PatchState

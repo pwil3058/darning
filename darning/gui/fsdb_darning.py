@@ -15,9 +15,9 @@
 
 from gi.repository import Pango
 
-from .wsm.gtx import fsdb
+from ..wsm.gtx import fsdb
 
-from . import patch_db
+from .. import patch_db
 
 _STATUS_DECO_MAP = {
     None: fsdb.Deco(Pango.Style.NORMAL, "black"),
