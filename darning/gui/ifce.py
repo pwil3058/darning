@@ -23,7 +23,7 @@ from ..wsm.gtx import dialogue
 
 from .. import APP_NAME
 
-from .. import scm_ifce
+from ..wsm.scm_gui import ifce as scm_ifce
 from .. import pm_ifce
 from .. import utils
 from .. import rctx

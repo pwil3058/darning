@@ -35,8 +35,6 @@ from ..wsm import pm
 from ..pm_ifce import PatchState
 
 from .. import utils
-from .. import scm_ifce
-from .. import pm_ifce
 
 from . import icons
 from . import ifce

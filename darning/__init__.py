@@ -37,11 +37,9 @@ ISSUES_VERSION = __version__
 
 from . import option_defs
 
-# import SCM backend interfaces here
+# import SCM CLI level backend interfaces here
 from .wsm.git import git_ifce
 from .wsm.hg import hg_ifce
-from . import scm_ifce_git
-from . import scm_ifce_hg
 
 # import PM backend interfaces here
 from . import pm_ifce_darning

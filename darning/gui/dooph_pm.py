@@ -40,7 +40,7 @@ from .. import APP_NAME
 
 from .. import utils
 from .. import pm_ifce
-from .. import scm_ifce
+from ..wsm.scm_gui import ifce as scm_ifce
 
 from . import ifce
 from . import ws_actions

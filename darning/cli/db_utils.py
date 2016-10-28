@@ -23,7 +23,6 @@ import atexit
 
 from .. import rctx
 from .. import patch_db
-from .. import scm_ifce
 
 def get_pm_db():
     '''Change directory to the base direcory and open the database'''

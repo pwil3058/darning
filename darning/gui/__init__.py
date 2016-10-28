@@ -22,5 +22,5 @@ from .. import APP_NAME, CONFIG_DIR_PATH
 from ..wsm.gtx import auto_update
 
 # Import SCM back ends that we're interested in
-#from ..wsm.git_gui import ifce
-#from ..wsm.hg_gui import hg_gui_ifce
+from ..wsm.git_gui import ifce as git_gui_ifce
+from ..wsm.hg_gui import hg_gui_ifce

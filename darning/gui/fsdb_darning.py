@@ -33,7 +33,7 @@ class FileData(fsdb.FileData):
         return self.STATUS_DECO_MAP[self.status.presence]
     @property
     def icon(self):
-        from .gui import icons
+        from . import icons
         if self.status.validity == patch_db.Validity.REFRESHED:
             return icons.STOCK_FILE_REFRESHED
         elif self.status.validity == patch_db.Validity.NEEDS_REFRESH:
