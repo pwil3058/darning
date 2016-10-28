@@ -31,11 +31,12 @@ from .wsm.bab import enotify
 
 from .wsm.patch_diff import patchlib
 
+from .wsm.git_gui import fsdb_git
+
 from .wsm.gtx import table
 
 from . import scm_ifce
 from . import utils
-from . import fsdb_git
 
 from .gui import ifce
 

@@ -32,9 +32,10 @@ from .wsm.bab.runext import OPTNL_FLAG_WITH_ARG
 from .wsm.bab.runext import OPTNL_ARG
 from .wsm.bab.runext import OPTNL_ARG_LIST
 
+from .wsm.hg_gui import fsdb_hg_mq
+
 from . import scm_ifce
 from . import utils
-from . import fsdb_hg_mq
 
 # TODO: replace "rollback" with "commit --amend"
 
