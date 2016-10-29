@@ -32,7 +32,7 @@ from ..wsm.gtx import auto_update
 
 from ..wsm import pm
 
-from ..pm_ifce import PatchState
+from ..wsm.pm import PatchState
 
 from .. import utils
 

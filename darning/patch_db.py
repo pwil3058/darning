@@ -43,7 +43,8 @@ from . import utils
 from . import mixins
 from .wsm.scm import ifce as scm_ifce
 
-from .pm_ifce import PatchState, FileStatus, Presence, Validity, MERGE_CRE, PatchTableRow, patch_timestamp_str
+from .wsm.pm import PatchState, FileStatus, Presence, Validity, PatchTableRow
+from .pm_ifce import MERGE_CRE, patch_timestamp_str
 
 # A convenience tuple for sending an original and patched version of something
 _O_IP_PAIR = collections.namedtuple('_O_IP_PAIR', ['original_version', 'patched_version'])

@@ -23,27 +23,6 @@ from .wsm.bab import CmdResult
 
 from .wsm import pm
 
-class Presence(object):
-    from .wsm.patch_diff import patchlib
-    ADDED = patchlib.FilePathPlus.ADDED
-    REMOVED = patchlib.FilePathPlus.DELETED
-    EXTANT = patchlib.FilePathPlus.EXTANT
-
-class Validity(object):
-    REFRESHED, NEEDS_REFRESH, UNREFRESHABLE = range(3)
-
-class FileStatus(collections.namedtuple("FileStatus", ["presence", "validity"])):
-    def __str__(self):
-        return self.presence
-
-class PatchState(object):
-    NOT_APPLIED = " "
-    APPLIED_REFRESHED = "+"
-    APPLIED_NEEDS_REFRESH = "?"
-    APPLIED_UNREFRESHABLE = "!"
-
-PatchTableRow = collections.namedtuple("PatchTableRow", ["name", "state", "pos_guards", "neg_guards"])
-
 def patch_timestamp_tz_str(tz_seconds=None):
     '''Return the timezone as a string suitable for use in patch header'''
     if tz_seconds is None:

@@ -29,7 +29,7 @@ from . import patch_db
 from .gui import fsdb_darning
 from . import utils
 
-from .pm_ifce import PatchState
+from .wsm.pm import PatchState
 
 def _RUN_DO(cmd_text, cmd_do, events, e_always=True):
     RCTX.reset()

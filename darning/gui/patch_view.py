@@ -37,7 +37,7 @@ from . import icons
 from . import ifce
 
 class Widget(patch_view.PatchWidget):
-    from ..pm_ifce import PatchState
+    from ..wsm.pm import PatchState
     status_icons = {
         PatchState.NOT_APPLIED : Gtk.STOCK_REMOVE,
         PatchState.APPLIED_REFRESHED : icons.STOCK_APPLIED,
