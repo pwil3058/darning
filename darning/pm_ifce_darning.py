@@ -42,7 +42,7 @@ def _RUN_DO(cmd_text, cmd_do, events, e_always=True):
 
 class PatchListData(pm_ifce.PatchListData):
     def _finalize(self, pdt):
-        self._patches_data, self._selected_guards = pdt
+        self._rows, self._selected_guards = pdt
     def _get_data_text(self, h):
         patches_data = patch_db.get_patch_table_data()
         selected_guards = patch_db.get_selected_guards()

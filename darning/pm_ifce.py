@@ -23,6 +23,8 @@ from .wsm.bab import CmdResult
 
 from .wsm import pm
 
+from .wsm.gtx import table
+
 def patch_timestamp_tz_str(tz_seconds=None):
     '''Return the timezone as a string suitable for use in patch header'''
     if tz_seconds is None:
@@ -81,45 +83,14 @@ def get_ifce(dirpath=None):
 def create_new_playground(pgdir, backend):
     return _BACKEND[backend].create_new_playground(pgdir)
 
-class PatchListData:
-    def __init__(self, **kwargs):
-        self._kwargs = kwargs
-        h = hashlib.sha1()
-        pdt = self._get_data_text(h)
-        self._db_hash_digest = h.digest()
-        self._current_text_digest = None
-        self._finalize(pdt)
-    def __getattr__(self, name):
-        if name == "is_current": return self._is_current()
-        if name == "selected_guards": return self._selected_guards
-        raise AttributeError(name)
-    def _finalize(self, pdt):
-        assert False, "_finalize() must be defined in child"
-    def _is_current(self):
-        h = hashlib.sha1()
-        self._current_text = self._get_data_text(h)
-        self._current_text_digest = h.digest()
-        return self._current_text_digest == self._db_hash_digest
-    def reset(self):
-        if self._current_text_digest is None:
-            return self.__class__(**self._kwargs)
-        if self._current_text_digest != self._db_hash_digest:
-            self._db_hash_digest = self._current_text_digest
-            self._finalize(self._current_text)
-        return self
-    def _get_data_text(self, h):
-        assert False, "_get_data_text() must be defined in child"
-    def iter_rows(self):
-        for patch_data in self._patches_data:
-            yield patch_data
+class PatchListData(table.TableData):
+    @property
+    def selected_guards(self):
+        return self._selected_guards
 
-class NullPatchListData:
-    def __getattr__(self, name):
-        if name == "is_current": return True
-        if name == "selected_guards": return []
-    def reset(self):
-        pass
-    def iter_rows(self):
+class NullPatchListData(table.NullTableData):
+    @property
+    def selected_guards(self):
         return []
 
 class _NULL_BACKEND:
