@@ -29,7 +29,7 @@ from .. import utils
 from .. import rctx
 
 from . import recollect
-from ..wsm.gtx.console import LOG, RCTX
+from ..wsm.gtx.console import LOG
 
 from ..wsm.pm import E_NEW_PM
 from ..wsm.scm import E_NEW_SCM
@@ -48,7 +48,6 @@ def init(log=False):
     global SCM
     global PM
     global CURDIR
-    rctx.reset(RCTX.stdout, RCTX.stderr)
     options.load_global_options()
     PM = pm_ifce.get_ifce()
     if PM.in_valid_pgnd:

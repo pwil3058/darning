@@ -20,6 +20,11 @@ Library functions that are ony of interest GUI programs
 from .. import APP_NAME, CONFIG_DIR_PATH
 
 from ..wsm.gtx import auto_update
+from ..wsm.gtx.console import RCTX
+from .. import rctx
+
+rctx.reset(RCTX.stdout, RCTX.stderr)
+
 
 # Import SCM back ends that we're interested in
 from ..wsm.git_gui import ifce as git_gui_ifce
