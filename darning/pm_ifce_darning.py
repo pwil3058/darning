@@ -23,8 +23,9 @@ from .wsm.bab.decorators import singleton
 from .wsm.gtx.console import RCTX, LOG
 
 from .wsm import pm
+from .wsm import pm_gui
 
-from . import pm_ifce
+from .wsm.pm_gui import ifce as pm_gui_ifce
 from . import patch_db
 from .gui import fsdb_darning
 from . import utils
@@ -40,20 +41,19 @@ def _RUN_DO(cmd_text, cmd_do, events, e_always=True):
         enotify.notify_events(events)
     return result
 
-class PatchListData(pm_ifce.PatchListData):
+class PatchListData(pm_gui.PatchListData):
     def _finalize(self, pdt):
         self._rows, self._selected_guards = pdt
     def _get_data_text(self, h):
         patches_data = patch_db.get_patch_table_data()
         selected_guards = patch_db.get_selected_guards()
-        # the only thing that can really change unexpectably is the patch state BUT ...
         for patch_data in patches_data:
             h.update(str(patch_data).encode())
         h.update(str(selected_guards).encode())
         return (patches_data, selected_guards)
 
 @singleton
-class Interface(pm_ifce.InterfaceMixin):
+class Interface(pm_gui.InterfaceMixin):
     name = "darning"
     cmd_label = "darning"
     has_add_files = False
@@ -62,6 +62,7 @@ class Interface(pm_ifce.InterfaceMixin):
     has_refresh_non_top = True
     is_available = True
     is_deprecated = False
+    pgnd_is_mutable = True
     @staticmethod
     def __getattr__(attr_name):
         if attr_name == "in_valid_pgnd": return patch_db.find_base_dir() is not None
@@ -294,4 +295,5 @@ class Interface(pm_ifce.InterfaceMixin):
     def is_top_patch(patch_name):
         return patch_db.is_top_patch(patch_name)
 
-pm_ifce.add_backend(Interface())
+PM = Interface()
+pm_gui_ifce.add_backend(PM)

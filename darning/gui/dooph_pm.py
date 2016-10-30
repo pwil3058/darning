@@ -39,7 +39,6 @@ from ..wsm import scm
 from .. import APP_NAME
 
 from .. import utils
-from .. import pm_ifce
 from ..wsm.scm_gui import ifce as scm_ifce
 
 from . import ifce
@@ -828,7 +827,6 @@ class PatchDescrEditDialog(dialogue.Dialog):
             self._patch = patch
             self.load_text_fm_db()
         def populate_action_groups(self):
-            print("PAG")
             self.action_groups[0].add_actions(
                 [
                     ("load_menu", None, _("_File")),

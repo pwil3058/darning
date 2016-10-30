@@ -26,8 +26,6 @@ from ..wsm.bab import enotify
 
 from ..wsm import pm
 
-from .. import pm_ifce
-
 from . import ifce
 from . import ws_actions
 from . import icons

@@ -36,7 +36,6 @@ from ..wsm.gtx import gutils
 from ..wsm import pm
 
 from .. import utils
-from .. import pm_ifce
 
 from . import ifce
 from . import icons

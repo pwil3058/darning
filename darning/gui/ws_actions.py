@@ -28,8 +28,6 @@ from ..wsm.gtx import actions
 from ..wsm import scm
 from ..wsm import pm
 
-from .. import pm_ifce
-
 from . import ifce
 
 AC_NOT_IN_PM_PGND, AC_IN_PM_PGND, AC_IN_PM_PGND_MASK = actions.ActionCondns.new_flags_and_mask(2)
