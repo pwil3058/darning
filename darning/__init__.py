@@ -40,6 +40,3 @@ from . import option_defs
 # import SCM CLI level backend interfaces here
 from .wsm.git import git_ifce
 from .wsm.hg import hg_ifce
-
-# import PM backend interfaces here
-from . import pm_ifce_darning

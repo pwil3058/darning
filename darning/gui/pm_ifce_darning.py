@@ -13,24 +13,24 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from .wsm.bab import CmdResult
-from .wsm.bab import CmdFailure
+from ..wsm.bab import CmdResult
+from ..wsm.bab import CmdFailure
 
-from .wsm.bab import enotify
+from ..wsm.bab import enotify
 
-from .wsm.bab.decorators import singleton
+from ..wsm.bab.decorators import singleton
 
-from .wsm.gtx.console import RCTX, LOG
+from ..wsm.gtx.console import RCTX, LOG
 
-from .wsm import pm
-from .wsm import pm_gui
+from ..wsm import pm
+from ..wsm import pm_gui
 
-from .wsm.pm_gui import ifce as pm_gui_ifce
-from . import patch_db
-from .gui import fsdb_darning
-from . import utils
+from ..wsm.pm_gui import ifce as pm_gui_ifce
+from .. import patch_db
+from . import fsdb_darning
+from .. import utils
 
-from .wsm.pm import PatchState
+from ..wsm.pm import PatchState
 
 def _RUN_DO(cmd_text, cmd_do, events, e_always=True):
     RCTX.reset()
@@ -182,7 +182,7 @@ class Interface(pm_gui.InterfaceMixin):
         cmd_str = "rename patch {0} to {1}\n".format(utils.quote_if_needed(patch_name), utils.quote_if_needed(new_name))
         return _RUN_DO(cmd_str, lambda: patch_db.do_rename_patch(patch_name, new_name), pm.E_MODIFY_PATCH, False)
     @staticmethod
-    def do_restore_patch(patch_name, as_patch_name=''):
+    def do_restore_patch(patch_name, as_patch_name=""):
         if not as_patch_name:
             as_patch_name = patch_name
             cmd_str = "restore {0}\n".format(utils.quote_if_needed(patch_name))
