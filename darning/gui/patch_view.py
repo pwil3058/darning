@@ -29,11 +29,11 @@ from ..wsm.patch_diff_gui import diff
 from ..wsm.patch_diff_gui import patch_view
 
 from ..wsm import pm
+from ..wsm.pm_gui import ifce as pm_gui_ifce
 
 from .. import utils
 
 from . import icons
-from . import ifce
 
 class Widget(patch_view.PatchWidget):
     from ..wsm.pm import PatchState
@@ -59,14 +59,14 @@ class Widget(patch_view.PatchWidget):
         self.status_box.set_tooltip_text(self.status_tooltips[self.epatch.state])
         self.show_all()
     def get_epatch(self):
-        epatch = ifce.PM.get_textpatch(self.patch_name)
+        epatch = pm_gui_ifce.PM.get_textpatch(self.patch_name)
         self.text_digest = epatch.get_hash_digest()
         return epatch
     @property
     def is_applied(self):
-        return ifce.PM.is_patch_applied(self.patch_name)
+        return pm_gui_ifce.PM.is_patch_applied(self.patch_name)
     def update(self):
-        self.set_patch(ifce.PM.get_textpatch(self.patch_name))
+        self.set_patch(pm_gui_ifce.PM.get_textpatch(self.patch_name))
         icon = self.status_icon
         self.status_box.remove(self.status_icon)
         self.status_icon = Gtk.Image.new_from_stock(self.status_icons[self.epatch.state], Gtk.IconSize.BUTTON)
@@ -84,7 +84,7 @@ class Dialogue(dialogue.ListenerDialog):
         self.vbox.pack_start(self._widget, expand=True, fill=True, padding=0)
         self.refresh_action = Gtk.Action('patch_view_refresh', _('_Refresh'), _('Refresh this patch in database.'), icons.STOCK_REFRESH_PATCH)
         self.refresh_action.connect('activate', self._refresh_acb)
-        self.refresh_action.set_sensitive(ifce.PM.is_top_patch(self._widget.patch_name))
+        self.refresh_action.set_sensitive(pm_gui_ifce.PM.is_top_patch(self._widget.patch_name))
         refresh_button = gutils.ActionButton(self.refresh_action)
         self.auc = gutils.TimeOutController(toggle_data=self.AUTO_UPDATE_TD, function=self._update_display_cb, is_on=False, interval=10000)
         self.action_area.pack_start(gutils.ActionCheckButton(self.auc.toggle_action), expand=True, fill=True, padding=0)
@@ -104,10 +104,10 @@ class Dialogue(dialogue.ListenerDialog):
     def _update_display_cb(self, **kwargs):
         with self.showing_busy():
             self._widget.update()
-            self.refresh_action.set_sensitive(ifce.PM.is_top_patch(self._widget.patch_name))
+            self.refresh_action.set_sensitive(pm_gui_ifce.PM.is_top_patch(self._widget.patch_name))
     def _refresh_acb(self, _action):
         with self.showing_busy():
-            result = ifce.PM.do_refresh_patch(self._widget.patch_name)
+            result = pm_gui_ifce.PM.do_refresh_patch(self._widget.patch_name)
         dialogue.main_window.report_any_problems(result)
     def _save_as_acb(self, _action):
         from . import recollect

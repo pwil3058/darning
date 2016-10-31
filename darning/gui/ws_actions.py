@@ -28,24 +28,25 @@ from ..wsm.gtx import actions
 from ..wsm import scm
 from ..wsm import pm
 
-from . import ifce
+from ..wsm.scm_gui import ifce as scm_gui_ifce
+from ..wsm.pm_gui import ifce as pm_gui_ifce
 
 AC_NOT_IN_PM_PGND, AC_IN_PM_PGND, AC_IN_PM_PGND_MASK = actions.ActionCondns.new_flags_and_mask(2)
 AC_NOT_IN_SCM_PGND, AC_IN_SCM_PGND, AC_IN_SCM_PGND_MASK = actions.ActionCondns.new_flags_and_mask(2)
 AC_NOT_PMIC, AC_PMIC, AC_PMIC_MASK = actions.ActionCondns.new_flags_and_mask(2)
 
 def get_in_pm_pgnd_condns():
-    if ifce.PM.in_valid_pgnd:
+    if pm_gui_ifce.PM.in_valid_pgnd:
         conds = AC_IN_PM_PGND
     else:
         conds = AC_NOT_IN_PM_PGND
     return actions.MaskedCondns(conds, AC_IN_PM_PGND_MASK)
 
 def get_in_scm_pgnd_condns():
-    return actions.MaskedCondns(AC_IN_SCM_PGND if ifce.SCM.in_valid_pgnd else AC_NOT_IN_SCM_PGND, AC_IN_SCM_PGND_MASK)
+    return actions.MaskedCondns(AC_IN_SCM_PGND if scm_gui_ifce.SCM.in_valid_pgnd else AC_NOT_IN_SCM_PGND, AC_IN_SCM_PGND_MASK)
 
 def get_pmic_condns():
-    return actions.MaskedCondns(AC_PMIC if ifce.PM.is_poppable else AC_NOT_PMIC, AC_PMIC_MASK)
+    return actions.MaskedCondns(AC_PMIC if pm_gui_ifce.PM.is_poppable else AC_NOT_PMIC, AC_PMIC_MASK)
 
 def _update_class_indep_pm_pgnd_cb(**kwargs):
     condns = get_in_pm_pgnd_condns()

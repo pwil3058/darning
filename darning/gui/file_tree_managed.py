@@ -30,8 +30,9 @@ from ..wsm.gtx import gutils
 
 from ..wsm import pm
 from ..wsm import scm
+from ..wsm.pm_gui import ifce as pm_gui_ifce
+from ..wsm.scm_gui import ifce as scm_gui_ifce
 
-from . import ifce
 from . import ws_actions
 from . import icons
 from . import dooph_pm
@@ -44,7 +45,7 @@ class WSTreeModel(file_tree.FileTreeModel):
     AU_FILE_CHANGE_EVENT = scm.E_FILE_CHANGES|os_utils.E_FILE_CHANGES # event returned by auto_update() if changes found
     @staticmethod
     def _get_file_db():
-        return ifce.SCM.get_wd_file_db()
+        return scm_gui_ifce.SCM.get_wd_file_db()
 
 class WSTreeView(file_tree.FileTreeView, enotify.Listener, ws_actions.WSListenerMixin):
     MODEL = WSTreeModel
@@ -90,9 +91,9 @@ class WSTreeView(file_tree.FileTreeView, enotify.Listener, ws_actions.WSListener
         self._update_popup_cb()
         self.add_notification_cb(pm.E_PATCH_STACK_CHANGES|pm.E_NEW_PM|enotify.E_CHANGE_WD, self._update_popup_cb)
     def _update_popup_cb(self, **kwargs):
-        if ifce.PM.is_poppable:
+        if pm_gui_ifce.PM.is_poppable:
             self.set_popup("/pmic_files_popup")
-        elif ifce.SCM.in_valid_pgnd:
+        elif scm_gui_ifce.SCM.in_valid_pgnd:
             self.set_popup("/scmic_files_popup")
         else:
             self.set_popup(self.DEFAULT_POPUP)
@@ -139,7 +140,7 @@ class WSTreeView(file_tree.FileTreeView, enotify.Listener, ws_actions.WSListener
                 ),
             ])
     def pm_select_unsettled(self):
-        unsettled = ifce.PM.get_outstanding_changes_below_top()
+        unsettled = pm_gui_ifce.PM.get_outstanding_changes_below_top()
         filepaths = [filepath for filepath in unsettled.unrefreshed]
         filepaths += [filepath for filepath in unsettled.uncommitted]
         self.select_filepaths(filepaths)
@@ -150,4 +151,4 @@ class WSFilesWidget(file_tree.FileTreeWidget):
     TREE_VIEW = WSTreeView
     @staticmethod
     def get_menu_prefix():
-        return ifce.SCM.name
+        return scm_gui_ifce.SCM.name

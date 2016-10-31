@@ -33,11 +33,11 @@ from ..wsm.gtx import auto_update
 from ..wsm import pm
 
 from ..wsm.pm import PatchState
+from ..wsm.pm_gui import ifce as pm_gui_ifce
 
 from .. import utils
 
 from . import icons
-from . import ifce
 from . import ws_actions
 from . import patch_view
 from . import dooph_pm
@@ -76,8 +76,8 @@ def get_applied_condns(seln):
         return actions.MaskedCondns(actions.AC_DONT_CARE, AC_APPLIED_MASK)
     patchname = model.get_patch_name(model_iter)
     if model.get_patch_is_applied(model_iter):
-        cond = AC_APPLIED_TOP if ifce.PM.is_top_patch(patchname) else AC_APPLIED_NOT_TOP
-    elif ifce.PM.is_blocked_by_guard(patchname):
+        cond = AC_APPLIED_TOP if pm_gui_ifce.PM.is_top_patch(patchname) else AC_APPLIED_NOT_TOP
+    elif pm_gui_ifce.PM.is_blocked_by_guard(patchname):
         cond = AC_UNAPPLIED_BLOCKED
     else:
         cond = AC_UNAPPLIED_NOT_BLOCKED
@@ -262,7 +262,7 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
     def _auto_update_list_cb(self, events_so_far, args):
         if (events_so_far & (self.REPOPULATE_EVENTS|self.UPDATE_EVENTS)):
             return 0
-        napplied = ifce.PM.get_applied_patch_count()
+        napplied = pm_gui_ifce.PM.get_applied_patch_count()
         if napplied < self._applied_count:
             return pm.E_POP
         elif napplied > self._applied_count:
@@ -272,7 +272,7 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
             return pm.E_PATCH_LIST_CHANGES
         return 0
     def _get_table_db(self):
-        return ifce.PM.get_patch_list_data()
+        return pm_gui_ifce.PM.get_patch_list_data()
     def _fetch_contents(self, pld_reset_only=False, **kwargs):
         self.action_groups.update_condns(dooph_pm.get_pushable_condns())
         self._applied_count = 0

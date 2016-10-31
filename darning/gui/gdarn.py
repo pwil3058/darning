@@ -31,7 +31,6 @@ from ..wsm.gtx import console
 
 from .. import utils
 
-from . import ifce
 from . import icons
 from . import ws_actions
 from . import patch_list

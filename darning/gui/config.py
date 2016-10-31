@@ -29,10 +29,11 @@ from ..wsm.gtx import table
 from ..wsm.gtx import actions
 from ..wsm.gtx import apath
 
+from ..wsm.pm_gui import pm_wspce
+
 from .. import CONFIG_DIR_PATH
 from .. import utils
 
-from . import ifce
 from . import icons
 
 SAVED_PGND_FILE_NAME = os.sep.join([CONFIG_DIR_PATH, "playgrounds"])
@@ -59,11 +60,11 @@ def ask_working_directory_path(parent=None):
 
 
 def generate_local_playground_menu():
-    return PgndPathView.generate_alias_path_menu(_("Local Repositories"), lambda newtgnd: ifce.chdir(newtgnd))
+    return PgndPathView.generate_alias_path_menu(_("Local Repositories"), lambda newtgnd: pm_wspce.chdir(newtgnd))
 
 def change_pgnd_cb(_widget, repo):
     with dialogue.main_window.showing_busy():
-        result = ifce.chdir(repo)
+        result = pm_wspce.chdir(repo)
     dialogue.main_window.report_any_problems(result)
 
 def change_wd_acb(_arg):
@@ -72,7 +73,7 @@ def change_wd_acb(_arg):
         newpg = open_dialog.get_path()
         if newpg:
             with open_dialog.showing_busy():
-                result = ifce.chdir(newpg)
+                result = pm_wspce.chdir(newpg)
             open_dialog.report_any_problems(result)
     open_dialog.destroy()
 

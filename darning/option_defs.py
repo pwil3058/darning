@@ -15,6 +15,7 @@
 
 '''Manage configurable options'''
 
+from .wsm.bab import options
 from .wsm.bab.options import define, Defn, str_to_bool
 
 define("pop", "drop_added_tws", Defn(str_to_bool, True, _("Remove added trailing white space (TWS) from patch after pop")))

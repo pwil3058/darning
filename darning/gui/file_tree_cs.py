@@ -25,8 +25,8 @@ from ..wsm.gtx import file_tree
 from ..wsm.bab import enotify
 
 from ..wsm import pm
+from ..wsm.pm_gui import ifce as pm_gui_ifce
 
-from . import ifce
 from . import ws_actions
 from . import icons
 from . import pm_diff
@@ -47,7 +47,7 @@ class PatchFileTreeModel(file_tree.FileTreeModel):
         # NB Don't trigger any events as nobody else cares
         return 0
     def _get_file_db(self):
-        return ifce.PM.get_patch_file_db(self._view._patch_name)
+        return pm_gui_ifce.PM.get_patch_file_db(self._view._patch_name)
 
 class PatchFileTreeView(file_tree.FileTreeView):
     MODEL = PatchFileTreeModel
@@ -125,7 +125,7 @@ class TopPatchFileTreeModel(file_tree.FileTreeModel):
     UPDATE_EVENTS = pm.E_FILE_CHANGES|pm.E_PATCH_REFRESH
     @staticmethod
     def _get_file_db():
-        return ifce.PM.get_top_patch_file_db()
+        return pm_gui_ifce.PM.get_top_patch_file_db()
     def auto_update(self, events_so_far, args):
         if (events_so_far & (self.REPOPULATE_EVENTS|self.UPDATE_EVENTS)) or self._file_db.is_current:
             return 0
@@ -212,12 +212,12 @@ class TopPatchFileTreeWidget(file_tree.FileTreeWidget):
     SIZE = (240, 320)
     @staticmethod
     def get_menu_prefix():
-        return ifce.PM.name
+        return pm_gui_ifce.PM.name
 
 class CombinedPatchFileTreeModel(TopPatchFileTreeModel):
     @staticmethod
     def _get_file_db():
-        return ifce.PM.get_combined_patch_file_db()
+        return pm_gui_ifce.PM.get_combined_patch_file_db()
 
 class CombinedPatchFileTreeView(TopPatchFileTreeView):
     MODEL = CombinedPatchFileTreeModel
