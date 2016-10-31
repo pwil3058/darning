@@ -72,9 +72,8 @@ class Interface(pm_gui.InterfaceMixin):
         raise AttributeError(attr_name)
     @staticmethod
     def create_new_playground(dir_path=None):
-        from .gui.ifce import E_NEW_PM
         cmd_str = "init {0}\n".format(dir_path) if dir_path else "init\n"
-        events = E_NEW_PM if not dir_path else 0
+        events = pm.E_NEW_PM if not dir_path else 0
         return _RUN_DO(cmd_str, lambda: patch_db.do_create_db(dir_path), events)
     @staticmethod
     def dir_is_in_valid_pgnd(dir_path=None):

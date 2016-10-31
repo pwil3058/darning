@@ -29,6 +29,8 @@ from ..wsm.gtx import actions
 from ..wsm.gtx import terminal
 from ..wsm.gtx import console
 
+from ..wsm.pm_gui import pm_wspce
+
 from .. import utils
 
 from . import icons
@@ -36,7 +38,6 @@ from . import ws_actions
 from . import patch_list
 from . import file_tree_managed
 from . import file_tree_cs
-from . import config
 
 @singleton
 class Darning(dialogue.MainWindow, actions.CAGandUIManager, enotify.Listener, ws_actions.WSListenerMixin):
@@ -44,7 +45,7 @@ class Darning(dialogue.MainWindow, actions.CAGandUIManager, enotify.Listener, ws
     <ui>
         <menubar name="gdarn_left_menubar">
             <menu name="gdarn_pgnd" action="actions_wd_menu">
-              <menuitem action="pm_change_working_directory"/>
+              <menuitem action="pm_change_wd"/>
               <menuitem action="pm_create_new_pgnd"/>
               <menuitem action="pm_init_cwd"/>
               <menuitem action='pm_edit_series_descr'/>
@@ -89,7 +90,7 @@ class Darning(dialogue.MainWindow, actions.CAGandUIManager, enotify.Listener, ws
         self.add(vbox)
         mbar_box = Gtk.HBox()
         menubar = self.ui_manager.get_widget("/gdarn_left_menubar")
-        menubar.insert(config.generate_local_playground_menu(), 1)
+        menubar.insert(pm_wspce.generate_local_playground_menu(), 1)
         mbar_box.pack_start(menubar, expand=True, fill=True, padding=0)
         mbar_box.pack_end(self.ui_manager.get_widget("/gdarn_right_menubar"), expand=False, fill=True, padding=0)
         vbox.pack_start(mbar_box, expand=False, fill=True, padding=0)

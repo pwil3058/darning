@@ -72,7 +72,7 @@ def report_exception(exc_data, parent=None):
 try:
     from darning.gui import gdarn
     from darning.wsm.pm_gui import ifce
-    from darning.gui import config
+    from darning.wsm.pm_gui import pm_wspce
     from darning.gui import recollect
 except Exception:
     report_exception(sys.exc_info())
@@ -112,7 +112,7 @@ mw.show()
 open_dialog = None
 if not ifce.PM.in_valid_pgnd and ARGS.playground is None:
     last_pgnd = recollect.get(APP_NAME, "last_pgnd")
-    open_dialog = config.PgndOpenDialog(suggestion=last_pgnd)
+    open_dialog = pm_wspce.PgndOpenDialog(suggestion=last_pgnd)
     if open_dialog.run() == Gtk.ResponseType.OK:
         wspath = open_dialog.get_path()
         if wspath:
