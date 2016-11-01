@@ -25,6 +25,8 @@ from ..wsm.bab import CmdResult, CmdFailure
 from ..wsm.bab import runext
 from ..wsm.bab import enotify
 from ..wsm.bab import options
+from ..wsm.bab import utils
+
 
 from ..wsm.patch_diff import patchlib
 
@@ -35,8 +37,6 @@ from ..wsm.gtx import gutils
 
 from ..wsm import pm
 from ..wsm.pm_gui import ifce as pm_gui_ifce
-
-from .. import utils
 
 from . import icons
 

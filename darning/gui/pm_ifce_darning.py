@@ -17,6 +17,7 @@ from ..wsm.bab import CmdResult
 from ..wsm.bab import CmdFailure
 
 from ..wsm.bab import enotify
+from ..wsm.bab import utils
 
 from ..wsm.bab.decorators import singleton
 
@@ -25,12 +26,12 @@ from ..wsm.gtx.console import RCTX, LOG
 from ..wsm import pm
 from ..wsm import pm_gui
 
+from ..wsm.pm import PatchState
+
 from ..wsm.pm_gui import ifce as pm_gui_ifce
+
 from .. import patch_db
 from . import fsdb_darning
-from .. import utils
-
-from ..wsm.pm import PatchState
 
 def _RUN_DO(cmd_text, cmd_do, events, e_always=True):
     RCTX.reset()

@@ -22,6 +22,7 @@ from gi.repository import Gtk
 from gi.repository import GObject
 
 from ..wsm.bab import enotify
+from ..wsm.bab import utils
 
 from ..wsm.gtx import dialogue
 from ..wsm.gtx import gutils
@@ -34,8 +35,6 @@ from ..wsm import pm
 
 from ..wsm.pm import PatchState
 from ..wsm.pm_gui import ifce as pm_gui_ifce
-
-from .. import utils
 
 from . import icons
 from . import ws_actions

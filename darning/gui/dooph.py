@@ -22,10 +22,9 @@ import os
 from gi.repository import Gtk
 
 from ..wsm.bab import CmdResult
+from ..wsm.bab import utils
 
 from ..wsm.gtx import dialogue
-
-from .. import utils
 
 def ask_destination(file_paths):
     prompt = _("Enter destination path:")

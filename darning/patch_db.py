@@ -34,12 +34,12 @@ from .wsm.bab import CmdResult
 from .wsm.bab import os_utils
 from .wsm.bab import runext
 from .wsm.bab import options
+from .wsm.bab import utils
 
 from .wsm.patch_diff import patchlib
 
 from . import ntuples
 from . import rctx as RCTX
-from . import utils
 from . import mixins
 from .wsm.scm import ifce as scm_ifce
 
@@ -86,6 +86,13 @@ def rel_basedir(file_path):
     elif _SUB_DIR is not None:
         file_path = os.path.join(_SUB_DIR, file_path)
     return file_path
+
+# TODO: do we really need is_valid_dir_name()
+_VALID_DIR_NAME_CRE = re.compile('^[ \w.-]+$')
+ALLOWED_DIR_NAME_CHARS_MSG = _('Only alphanumeric characters plus " ", "_", "-" and "." are allowed.')
+
+def is_valid_dir_name(dirname):
+    return _VALID_DIR_NAME_CRE.match(dirname) is not None
 
 # Probably don't need this but hold on to it for the time being
 #def prepend_subdir(file_paths):
@@ -1933,7 +1940,7 @@ def do_drop_files_fm_patch(patch_name, file_paths):
 
 def do_duplicate_patch(patch_name, as_patch_name, new_description):
     with open_db(mutable=True) as DB:
-        if not utils.is_valid_dir_name(as_patch_name):
+        if not is_valid_dir_name(as_patch_name):
             RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(as_patch_name, utils.ALLOWED_DIR_NAME_CHARS_MSG))
             return CmdResult.ERROR|CmdResult.Suggest.RENAME
         try:
@@ -2010,7 +2017,7 @@ def do_import_patch(epatch, patch_name, overwrite=False, absorb=False, force=Fal
                     DB.remove_patch(patch_name)
                 except DarnItPatchError:
                     return CmdResult.ERROR
-        elif not utils.is_valid_dir_name(patch_name):
+        elif not is_valid_dir_name(patch_name):
             RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(patch_name, utils.ALLOWED_DIR_NAME_CHARS_MSG))
             return CmdResult.ERROR|CmdResult.Suggest.RENAME
         descr = utils.make_utf8_compliant(epatch.get_description())
@@ -2172,7 +2179,7 @@ def do_rename_patch(patch_name, new_name):
         if DB.has_patch_with_name(new_name):
             RCTX.stderr.write(_('patch "{0}" already exists\n').format(new_name))
             return CmdResult.ERROR|CmdResult.Suggest.RENAME
-        elif not utils.is_valid_dir_name(new_name):
+        elif not is_valid_dir_name(new_name):
             RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(new_name, utils.ALLOWED_DIR_NAME_CHARS_MSG))
             return CmdResult.ERROR|CmdResult.Suggest.RENAME
         patch = _get_patch(patch_name, DB)
@@ -2184,7 +2191,7 @@ def do_rename_patch(patch_name, new_name):
 
 def do_restore_patch(patch_name, as_patch_name):
     with open_db(mutable=True) as DB:
-        if not utils.is_valid_dir_name(as_patch_name):
+        if not is_valid_dir_name(as_patch_name):
             RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(as_patch_name, utils.ALLOWED_DIR_NAME_CHARS_MSG))
             return CmdResult.ERROR|CmdResult.Suggest.RENAME
         try:

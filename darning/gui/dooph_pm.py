@@ -21,6 +21,7 @@ from gi.repository import Gdk
 from gi.repository import GObject
 
 from ..wsm.bab import enotify
+from ..wsm.bab import utils
 
 from ..wsm.bab import CmdResult
 
@@ -38,7 +39,6 @@ from ..wsm import scm
 
 from .. import APP_NAME
 
-from .. import utils
 from ..wsm.scm_gui import ifce as scm_ifce
 from ..wsm.pm_gui import ifce as pm_gui_ifce
 from ..wsm.pm_gui import pm_wspce

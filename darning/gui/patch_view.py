@@ -22,6 +22,8 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
+from ..wsm.bab import utils
+
 from ..wsm.gtx import dialogue
 from ..wsm.gtx import gutils
 
@@ -30,8 +32,6 @@ from ..wsm.patch_diff_gui import patch_view
 
 from ..wsm import pm
 from ..wsm.pm_gui import ifce as pm_gui_ifce
-
-from .. import utils
 
 from . import icons
 

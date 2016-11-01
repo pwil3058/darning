@@ -20,6 +20,8 @@ gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
 from ..wsm.bab import enotify
+from ..wsm.bab import utils
+
 
 from ..wsm.bab.decorators import singleton
 
@@ -30,8 +32,6 @@ from ..wsm.gtx import terminal
 from ..wsm.gtx import console
 
 from ..wsm.pm_gui import pm_wspce
-
-from .. import utils
 
 from . import icons
 from . import ws_actions
