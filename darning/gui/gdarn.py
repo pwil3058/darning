@@ -33,7 +33,8 @@ from ..wsm.gtx import console
 
 from ..wsm.pm_gui import pm_wspce
 
-from . import icons
+from ..wsm.gtx import icons
+
 from . import ws_actions
 from . import patch_list
 from . import file_tree_managed

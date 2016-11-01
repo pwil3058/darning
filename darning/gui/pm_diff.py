@@ -38,7 +38,7 @@ from ..wsm.gtx import gutils
 from ..wsm import pm
 from ..wsm.pm_gui import ifce as pm_gui_ifce
 
-from . import icons
+from ..wsm import wsm_icons
 
 class TopPatchDiffPlusesWidget(diff.DiffPlusesWidget, enotify.Listener):
     def __init__(self, file_paths=None, num_strip_levels=1):
@@ -148,23 +148,23 @@ from . import ws_actions
 
 actions.CLASS_INDEP_AGS[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC].add_actions(
     [
-        ("pm_top_patch_diff_text", icons.STOCK_DIFF, _("_Diff"), None,
+        ("pm_top_patch_diff_text", wsm_icons.STOCK_DIFF, _("_Diff"), None,
          _("Display the diff for all files in the top patch"),
          lambda _action=None: TopPatchDiffTextDialog(parent=dialogue.main_window).show()
         ),
-        ("pm_top_patch_diff_pluses", icons.STOCK_DIFF, _("_Diff"), None,
+        ("pm_top_patch_diff_pluses", wsm_icons.STOCK_DIFF, _("_Diff"), None,
          _("Display the diff for all files in the top patch"),
          lambda _action=None: TopPatchDiffPlusesDialog(parent=dialogue.main_window).show()
         ),
-        ("pm_top_patch_extdiff", icons.STOCK_DIFF, _('E_xtdiff'), None,
+        ("pm_top_patch_extdiff", wsm_icons.STOCK_DIFF, _('E_xtdiff'), None,
          _('Launch extdiff for all files in patch'),
          lambda _action=None: scm_gui_ifce.PM.launch_extdiff_for_top_patch()
         ),
-        ("pm_combined_patch_diff_text", icons.STOCK_DIFF, _("Combined Diff"), "",
+        ("pm_combined_patch_diff_text", wsm_icons.STOCK_DIFF, _("Combined Diff"), "",
          _("View the combined diff for all files in all currently applied patches"),
          lambda _action=None: CombinedPatchDiffTextDialog(parent=dialogue.main_window).show()
         ),
-        ("pm_combined_patch_diff_pluses", icons.STOCK_DIFF, _("Combined Diff"), "",
+        ("pm_combined_patch_diff_pluses", wsm_icons.STOCK_DIFF, _("Combined Diff"), "",
          _("View the combined diff for all files in all currently applied patches"),
          lambda _action=None: CombinedPatchDiffPlusesDialog(parent=dialogue.main_window).show()
         ),

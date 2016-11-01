@@ -27,6 +27,7 @@ from ..wsm.bab import CmdResult
 
 from ..wsm.gtx import dialogue
 from ..wsm.gtx import actions
+from ..wsm.gtx import icons
 from ..wsm.gtx import tlview
 from ..wsm.gtx import table
 from ..wsm.gtx import gutils
@@ -36,6 +37,7 @@ from ..wsm.gtx import text_edit
 
 from ..wsm import pm
 from ..wsm import scm
+from ..wsm import wsm_icons
 
 from .. import APP_NAME
 
@@ -44,7 +46,6 @@ from ..wsm.pm_gui import ifce as pm_gui_ifce
 from ..wsm.pm_gui import pm_wspce
 
 from . import ws_actions
-from . import icons
 from . import recollect
 from . import dooph
 
@@ -547,7 +548,7 @@ def scm_do_absorb_applied_patches():
 
 actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_actions(
     [
-        ("pm_create_new_pgnd", icons.STOCK_NEW_PLAYGROUND, _("_New"), "",
+        ("pm_create_new_pgnd", wsm_icons.STOCK_NEW_PLAYGROUND, _("_New"), "",
          _("Create a new intitialized playground"),
          lambda _action=None: pm_do_create_new_pgnd()
         ),
@@ -556,7 +557,7 @@ actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_actions(
 
 actions.CLASS_INDEP_AGS[ws_actions.AC_NOT_IN_PM_PGND].add_actions(
     [
-        ("pm_init_cwd", icons.STOCK_INIT, _("_Initialize"), "",
+        ("pm_init_cwd", wsm_icons.STOCK_INIT, _("_Initialize"), "",
          _("Create a patch series in the current directory"),
          lambda _action=None: pm_do_initialize_curdir()
         ),
@@ -569,7 +570,7 @@ actions.CLASS_INDEP_AGS[ws_actions.AC_PMIC | ws_actions.AC_IN_PM_PGND].add_actio
          _("Add a new file to the top applied patch"),
          lambda _action=None: pm_do_add_new_file()
         ),
-        ("pm_refresh_top_patch", icons.STOCK_REFRESH_PATCH, _("Refresh"), None,
+        ("pm_refresh_top_patch", wsm_icons.STOCK_REFRESH_PATCH, _("Refresh"), None,
          _("Refresh the top patch"),
          lambda _action=None: pm_do_refresh_top_patch()
         ),
@@ -578,15 +579,15 @@ actions.CLASS_INDEP_AGS[ws_actions.AC_PMIC | ws_actions.AC_IN_PM_PGND].add_actio
 
 actions.CLASS_INDEP_AGS[AC_POP_POSSIBLE | ws_actions.AC_IN_PM_PGND].add_actions(
     [
-        ("pm_pop", icons.STOCK_POP_PATCH, _("Pop"), None,
+        ("pm_pop", wsm_icons.STOCK_POP_PATCH, _("Pop"), None,
          _("Pop the top applied patch"),
          lambda _action=None: pm_do_pop()
         ),
-        ("pm_pop_all", icons.STOCK_POP_PATCH, _("Pop All"), None,
+        ("pm_pop_all", wsm_icons.STOCK_POP_PATCH, _("Pop All"), None,
          _("Pop all applied patches"),
          lambda _action=None: pm_do_pop_all()
         ),
-        ("pm_fold_external_patch", icons.STOCK_FOLD_PATCH, _("Fold"), None,
+        ("pm_fold_external_patch", wsm_icons.STOCK_FOLD_PATCH, _("Fold"), None,
          _("Fold an external patch into the top applied patch"),
          lambda _action=None: pm_do_fold_external_patch()
         ),
@@ -595,11 +596,11 @@ actions.CLASS_INDEP_AGS[AC_POP_POSSIBLE | ws_actions.AC_IN_PM_PGND].add_actions(
 
 actions.CLASS_INDEP_AGS[AC_PUSH_POSSIBLE | ws_actions.AC_IN_PM_PGND].add_actions(
     [
-        ("pm_push", icons.STOCK_PUSH_PATCH, _("Push"), None,
+        ("pm_push", wsm_icons.STOCK_PUSH_PATCH, _("Push"), None,
          _("Apply the next unapplied patch"),
          lambda _action=None: pm_do_push()
         ),
-        ("pm_push_all", icons.STOCK_PUSH_PATCH, _("Push All"), None,
+        ("pm_push_all", wsm_icons.STOCK_PUSH_PATCH, _("Push All"), None,
          _("Apply all unguarded unapplied patches."),
          lambda _action=None: pm_do_push_all()
         ),
@@ -608,19 +609,19 @@ actions.CLASS_INDEP_AGS[AC_PUSH_POSSIBLE | ws_actions.AC_IN_PM_PGND].add_actions
 
 actions.CLASS_INDEP_AGS[ws_actions.AC_IN_PM_PGND].add_actions(
     [
-        ("pm_new_patch", icons.STOCK_NEW_PATCH, _("New Patch"), None,
+        ("pm_new_patch", wsm_icons.STOCK_NEW_PATCH, _("New Patch"), None,
          _("Create a new patch"),
          lambda _action=None: pm_do_new_patch()
         ),
-        ("pm_restore_patch", icons.STOCK_IMPORT_PATCH, _("Restore Patch"), None,
+        ("pm_restore_patch", wsm_icons.STOCK_IMPORT_PATCH, _("Restore Patch"), None,
          _("Restore a previously removed patch behind the top applied patch"),
          lambda _action=None: pm_do_restore_patch()
         ),
-        ("pm_import_patch", icons.STOCK_IMPORT_PATCH, _("Import"), None,
+        ("pm_import_patch", wsm_icons.STOCK_IMPORT_PATCH, _("Import"), None,
          _("Import an external patch behind the top applied patch"),
          lambda _action=None: pm_do_import_external_patch()
         ),
-        ("pm_select_guards", icons.STOCK_PATCH_GUARD_SELECT, _("Select"), None,
+        ("pm_select_guards", wsm_icons.STOCK_PATCH_GUARD_SELECT, _("Select"), None,
          _("Select which guards are in force"),
          lambda _action=None: pm_do_select_guards()
         ),
@@ -633,7 +634,7 @@ actions.CLASS_INDEP_AGS[ws_actions.AC_IN_PM_PGND].add_actions(
 
 actions.CLASS_INDEP_AGS[AC_ALL_APPLIED_REFRESHED | ws_actions.AC_IN_SCM_PGND | ws_actions.AC_IN_PM_PGND].add_actions(
     [
-        ("pm_scm_absorb_applied_patches", icons.STOCK_FINISH_PATCH, _("Absorb All"), None,
+        ("pm_scm_absorb_applied_patches", wsm_icons.STOCK_FINISH_PATCH, _("Absorb All"), None,
          _("Absorb all applied patches into underlying SCM repository"),
          lambda _action=None: scm_do_absorb_applied_patches()
         ),

@@ -33,15 +33,15 @@ from ..wsm.patch_diff_gui import patch_view
 from ..wsm import pm
 from ..wsm.pm_gui import ifce as pm_gui_ifce
 
-from . import icons
+from ..wsm import wsm_icons
 
 class Widget(patch_view.PatchWidget):
     from ..wsm.pm import PatchState
     status_icons = {
         PatchState.NOT_APPLIED : Gtk.STOCK_REMOVE,
-        PatchState.APPLIED_REFRESHED : icons.STOCK_APPLIED,
-        PatchState.APPLIED_NEEDS_REFRESH : icons.STOCK_APPLIED_NEEDS_REFRESH,
-        PatchState.APPLIED_UNREFRESHABLE : icons.STOCK_APPLIED_UNREFRESHABLE,
+        PatchState.APPLIED_REFRESHED : wsm_icons.STOCK_APPLIED,
+        PatchState.APPLIED_NEEDS_REFRESH : wsm_icons.STOCK_APPLIED_NEEDS_REFRESH,
+        PatchState.APPLIED_UNREFRESHABLE : wsm_icons.STOCK_APPLIED_UNREFRESHABLE,
     }
     status_tooltips = {
         PatchState.NOT_APPLIED : _('This patch is not applied.'),
@@ -82,7 +82,7 @@ class Dialogue(dialogue.ListenerDialog):
         dialogue.ListenerDialog.__init__(self, title=title, parent=dialogue.main_window, flags=Gtk.DialogFlags.DESTROY_WITH_PARENT)
         self._widget = Widget(patch_name)
         self.vbox.pack_start(self._widget, expand=True, fill=True, padding=0)
-        self.refresh_action = Gtk.Action('patch_view_refresh', _('_Refresh'), _('Refresh this patch in database.'), icons.STOCK_REFRESH_PATCH)
+        self.refresh_action = Gtk.Action('patch_view_refresh', _('_Refresh'), _('Refresh this patch in database.'), wsm_icons.STOCK_REFRESH_PATCH)
         self.refresh_action.connect('activate', self._refresh_acb)
         self.refresh_action.set_sensitive(pm_gui_ifce.PM.is_top_patch(self._widget.patch_name))
         refresh_button = gutils.ActionButton(self.refresh_action)

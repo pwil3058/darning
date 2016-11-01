@@ -33,8 +33,9 @@ from ..wsm import scm
 from ..wsm.pm_gui import ifce as pm_gui_ifce
 from ..wsm.scm_gui import ifce as scm_gui_ifce
 
+from ..wsm import wsm_icons
+
 from . import ws_actions
-from . import icons
 from . import dooph_pm
 #          <menuitem action='peruse_files'/>
 #          <menuitem action='pm_copy_files_to_top_patch'/>
@@ -108,7 +109,7 @@ class WSTreeView(file_tree.FileTreeView, enotify.Listener, ws_actions.WSListener
                  _('Add the selected files to the top patch'),
                  lambda _action=None: dooph_pm.pm_do_add_files(self.get_selected_fsi_paths())
                 ),
-                ('pm_move_files_in_top_patch', icons.STOCK_RENAME, _('_Move'), None,
+                ('pm_move_files_in_top_patch', wsm_icons.STOCK_RENAME, _('_Move'), None,
                  _('Move the selected files within the top patch'),
                  lambda _action=None: dooph_pm.pm_do_move_files(self.get_selected_fsi_paths())
                 ),
@@ -127,7 +128,7 @@ class WSTreeView(file_tree.FileTreeView, enotify.Listener, ws_actions.WSListener
                  _('Add a copy of the selected file to the top patch'),
                  lambda _action=None: dooph_pm.pm_do_copy_file(self.get_selected_fsi_path())
                 ),
-                ('pm_rename_file_in_top_patch', icons.STOCK_RENAME, _('_Rename'), None,
+                ('pm_rename_file_in_top_patch', wsm_icons.STOCK_RENAME, _('_Rename'), None,
                  _('Rename the selected file within the top patch'),
                  lambda _action=None: dooph_pm.pm_do_rename_file(self.get_selected_fsi_path())
                 ),

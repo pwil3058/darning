@@ -33,13 +33,13 @@ class FileData(fsdb.FileData):
         return self.STATUS_DECO_MAP[self.status.presence]
     @property
     def icon(self):
-        from . import icons
+        from ..wsm import wsm_icons
         if self.status.validity == patch_db.Validity.REFRESHED:
-            return icons.STOCK_FILE_REFRESHED
+            return wsm_icons.STOCK_FILE_REFRESHED
         elif self.status.validity == patch_db.Validity.NEEDS_REFRESH:
-            return icons.STOCK_FILE_NEEDS_REFRESH
+            return wsm_icons.STOCK_FILE_NEEDS_REFRESH
         elif self.status.validity == patch_db.Validity.UNREFRESHABLE:
-            return icons.STOCK_FILE_UNREFRESHABLE
+            return wsm_icons.STOCK_FILE_UNREFRESHABLE
         else:
             return Gtk.STOCK_FILE
     @property

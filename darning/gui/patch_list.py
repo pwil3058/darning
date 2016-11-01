@@ -32,11 +32,11 @@ from ..wsm.gtx import table
 from ..wsm.gtx import auto_update
 
 from ..wsm import pm
+from ..wsm import wsm_icons
 
 from ..wsm.pm import PatchState
 from ..wsm.pm_gui import ifce as pm_gui_ifce
 
-from . import icons
 from . import ws_actions
 from . import patch_view
 from . import dooph_pm
@@ -58,9 +58,9 @@ def patch_markup(patch_data, selected_guards):
 
 STATUS_ICONS = {
     PatchState.NOT_APPLIED : None,
-    PatchState.APPLIED_REFRESHED : icons.STOCK_APPLIED,
-    PatchState.APPLIED_NEEDS_REFRESH : icons.STOCK_APPLIED_NEEDS_REFRESH,
-    PatchState.APPLIED_UNREFRESHABLE : icons.STOCK_APPLIED_UNREFRESHABLE,
+    PatchState.APPLIED_REFRESHED : wsm_icons.STOCK_APPLIED,
+    PatchState.APPLIED_NEEDS_REFRESH : wsm_icons.STOCK_APPLIED_NEEDS_REFRESH,
+    PatchState.APPLIED_UNREFRESHABLE : wsm_icons.STOCK_APPLIED_UNREFRESHABLE,
 }
 
 AC_APPLIED, AC_UNAPPLIED, AC_APPLIED_FLAG, AC_APPLIED_NOT_FLAG, AC_APPLIED_MASK = actions.ActionCondns.new_flags_and_mask(4)
@@ -192,7 +192,7 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
                  _("Edit the selected patch's description"),
                  lambda _action=None: dooph_pm.PatchDescrEditDialog(self.get_selected_patch(), parent=None).show()
                 ),
-                ("patch_list_patch_view", icons.STOCK_DIFF, _("Details"), None,
+                ("patch_list_patch_view", wsm_icons.STOCK_DIFF, _("Details"), None,
                  _("View the selected patch's details"),
                  lambda _action=None: patch_view.Dialogue(self.get_selected_patch()).show()
                 ),
@@ -203,11 +203,11 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
             ])
         self.action_groups[actions.AC_SELN_UNIQUE | ws_actions.AC_IN_PM_PGND].add_actions(
             [
-                ("pm_set_patch_guards", icons.STOCK_PATCH_GUARD, None, None,
+                ("pm_set_patch_guards", wsm_icons.STOCK_PATCH_GUARD, None, None,
                  _("Set guards on the selected patch"),
                  lambda _action=None: dooph_pm.pm_do_set_guards_on_patch(self.get_selected_patch())
                 ),
-                ("patch_list_rename", icons.STOCK_RENAME, _("Rename"), None,
+                ("patch_list_rename", wsm_icons.STOCK_RENAME, _("Rename"), None,
                  _("Rename the selected patch"),
                  lambda _action=None: dooph_pm.pm_do_rename_patch(self.get_selected_patch())
                 ),
@@ -218,7 +218,7 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
             ])
         self.action_groups[actions.AC_SELN_UNIQUE | AC_PUSH_POSSIBLE | ws_actions.AC_IN_PM_PGND | AC_UNAPPLIED_NOT_BLOCKED].add_actions(
             [
-                ("patch_list_push_to", icons.STOCK_PUSH_PATCH, _("Push To"), None,
+                ("patch_list_push_to", wsm_icons.STOCK_PUSH_PATCH, _("Push To"), None,
                  _("Apply all unguarded unapplied patches up to the selected patch."),
                  lambda _action=None: dooph_pm.pm_do_push_to(self.get_selected_patch())
                 ),
@@ -232,21 +232,21 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
             ])
         self.action_groups[actions.AC_SELN_UNIQUE | AC_POP_POSSIBLE | ws_actions.AC_IN_PM_PGND | AC_APPLIED_NOT_TOP].add_actions(
             [
-                ("patch_list_pop_to", icons.STOCK_POP_PATCH, _("Pop To"), None,
+                ("patch_list_pop_to", wsm_icons.STOCK_POP_PATCH, _("Pop To"), None,
                  _("Apply all applied patches down to the selected patch."),
                  lambda _action=None: dooph_pm.pm_do_pop_to(self.get_selected_patch())
                 ),
             ])
         self.action_groups[actions.AC_SELN_UNIQUE | AC_POP_POSSIBLE | ws_actions.AC_IN_PM_PGND | AC_APPLIED].add_actions(
             [
-                ("patch_list_refresh_selected", icons.STOCK_PUSH_PATCH, _("Refresh"), None,
+                ("patch_list_refresh_selected", wsm_icons.STOCK_PUSH_PATCH, _("Refresh"), None,
                  _("Refresh the selected patch."),
                  lambda _action=None: dooph_pm.pm_do_refresh_named_patch(self.get_selected_patch())
                 ),
             ])
         self.action_groups[actions.AC_SELN_UNIQUE | AC_POP_POSSIBLE | ws_actions.AC_IN_PM_PGND | AC_UNAPPLIED].add_actions(
             [
-                ("patch_list_fold_selected", icons.STOCK_FOLD_PATCH, _("Fold"), None,
+                ("patch_list_fold_selected", wsm_icons.STOCK_FOLD_PATCH, _("Fold"), None,
                  _("Fold the selected patch into the top applied patch."),
                  lambda _action=None: dooph_pm.pm_do_fold_patch(self.get_selected_patch())
                 ),

@@ -27,8 +27,9 @@ from ..wsm.bab import enotify
 from ..wsm import pm
 from ..wsm.pm_gui import ifce as pm_gui_ifce
 
+from ..wsm import wsm_icons
+
 from . import ws_actions
-from . import icons
 from . import pm_diff
 from . import dooph_pm
 
@@ -81,14 +82,14 @@ class PatchFileTreeView(file_tree.FileTreeView):
     def populate_action_groups(self):
         self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
             [
-                ('pm_patch_diff_selected_files', icons.STOCK_DIFF, _('_Diff'), None,
+                ('pm_patch_diff_selected_files', wsm_icons.STOCK_DIFF, _('_Diff'), None,
                  _('Display the diff for selected files'),
                  lambda _action=None: pm_diff.NamedPatchDiffPlusesDialog(patch_name=self._patch_name, file_paths=self.get_selected_fsi_paths()).show()
                 ),
             ])
         self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
             [
-                ('pm_patch_extdiff_selected_file', icons.STOCK_DIFF, _('E_xtDiff'), None,
+                ('pm_patch_extdiff_selected_file', wsm_icons.STOCK_DIFF, _('E_xtDiff'), None,
                  _('Launch external diff viewer for selected file'),
                  lambda _action=None: dooph_pm.pm_do_extdiff_for_file(self.get_selected_fsi_path(), patch_name=self._patch_name)
                 ),
@@ -172,7 +173,7 @@ class TopPatchFileTreeView(_GenericPatchFileTreeView):
                  _('Edit the selected file(s)'),
                  lambda _action=None: dooph_pm.pm_do_edit_files(self.get_selected_fsi_paths())
                 ),
-                ('pm_diff_selected_files', icons.STOCK_DIFF, _('_Diff'), None,
+                ('pm_diff_selected_files', wsm_icons.STOCK_DIFF, _('_Diff'), None,
                  _('Display the diff for selected files'),
                  lambda _action=None: pm_diff.TopPatchDiffPlusesDialog(file_paths=self.get_selected_fsi_paths()).show()
                 ),
@@ -187,7 +188,7 @@ class TopPatchFileTreeView(_GenericPatchFileTreeView):
             ])
         self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
             [
-                ('pm_reconcile_selected_file', icons.STOCK_MERGE, _('_Reconcile'), None,
+                ('pm_reconcile_selected_file', wsm_icons.STOCK_MERGE, _('_Reconcile'), None,
                  _('Launch reconciliation tool for the selected file'),
                  lambda _action=None: dooph_pm.pm_do_reconcile_file(self.get_selected_fsi_path())
                 ),
@@ -195,11 +196,11 @@ class TopPatchFileTreeView(_GenericPatchFileTreeView):
                  _('Add a copy of the selected file to the top patch'),
                  lambda _action=None: dooph_pm.pm_do_copy_file(self.get_selected_fsi_path())
                 ),
-                ('pm_rename_file', icons.STOCK_RENAME, _('_Rename'), None,
+                ('pm_rename_file', wsm_icons.STOCK_RENAME, _('_Rename'), None,
                  _('Rename the selected file within the top patch'),
                  lambda _action=None: dooph_pm.pm_do_rename_file(self.get_selected_fsi_path())
                 ),
-                ('pm_extdiff_selected_file', icons.STOCK_DIFF, _('E_xtDiff'), None,
+                ('pm_extdiff_selected_file', wsm_icons.STOCK_DIFF, _('E_xtDiff'), None,
                  _('Launch external diff viewer for selected file'),
                  lambda _action=None: dooph_pm.pm_do_extdiff_for_file(self.get_selected_fsi_path(), patch_name=None)
                 ),
@@ -237,7 +238,7 @@ class CombinedPatchFileTreeView(TopPatchFileTreeView):
     def populate_action_groups(self):
         self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
             [
-                ('combined_patch_diff_selected_files', icons.STOCK_DIFF, _('_Diff'), None,
+                ('combined_patch_diff_selected_files', wsm_icons.STOCK_DIFF, _('_Diff'), None,
                  _('Display the combined diff for selected file'),
                  lambda _action=None: pm_diff.CombinedPatchDiffPlusesDialog(file_paths=self.get_selected_fsi_paths()).show()
                 ),
