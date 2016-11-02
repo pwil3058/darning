@@ -31,11 +31,12 @@ from ..wsm.gtx import gutils
 from ..wsm import pm
 from ..wsm import scm
 from ..wsm.pm_gui import ifce as pm_gui_ifce
+from ..wsm.pm_gui import actions as pm_actions
 from ..wsm.scm_gui import ifce as scm_gui_ifce
+from ..wsm.scm_gui import actions as scm_actions
 
 from ..wsm import wsm_icons
 
-from . import ws_actions
 from . import dooph_pm
 #          <menuitem action='peruse_files'/>
 #          <menuitem action='pm_copy_files_to_top_patch'/>
@@ -48,7 +49,7 @@ class WSTreeModel(file_tree.FileTreeModel):
     def _get_file_db():
         return scm_gui_ifce.SCM.get_wd_file_db()
 
-class WSTreeView(file_tree.FileTreeView, enotify.Listener, ws_actions.WSListenerMixin):
+class WSTreeView(file_tree.FileTreeView, enotify.Listener, scm_actions.WDListenerMixin, pm_actions.WDListenerMixin):
     MODEL = WSTreeModel
     UI_DESCR = \
     '''
@@ -88,7 +89,8 @@ class WSTreeView(file_tree.FileTreeView, enotify.Listener, ws_actions.WSListener
     def __init__(self, show_hidden=False, hide_clean=False):
         file_tree.FileTreeView.__init__(self, show_hidden=show_hidden, hide_clean=hide_clean)
         enotify.Listener.__init__(self)
-        ws_actions.WSListenerMixin.__init__(self)
+        scm_actions.WDListenerMixin.__init__(self)
+        pm_actions.WDListenerMixin.__init__(self)
         self._update_popup_cb()
         self.add_notification_cb(pm.E_PATCH_STACK_CHANGES|pm.E_NEW_PM|enotify.E_CHANGE_WD, self._update_popup_cb)
     def _update_popup_cb(self, **kwargs):
@@ -103,7 +105,7 @@ class WSTreeView(file_tree.FileTreeView, enotify.Listener, ws_actions.WSListener
             [
                 ("scm_files_menu_files", None, _("_Files")),
             ])
-        self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
+        self.action_groups[pm_actions.AC_IN_PM_PGND + pm_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
             [
                 ('pm_add_files_to_top_patch', Gtk.STOCK_ADD, _('_Add'), None,
                  _('Add the selected files to the top patch'),
@@ -122,7 +124,7 @@ class WSTreeView(file_tree.FileTreeView, enotify.Listener, ws_actions.WSListener
                  lambda _action=None: dooph_pm.pm_do_delete_files(self.get_selected_fsi_paths())
                 ),
             ])
-        self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
+        self.action_groups[pm_actions.AC_IN_PM_PGND + pm_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
             [
                 ('pm_copy_file_to_top_patch', Gtk.STOCK_COPY, _('_Copy'), None,
                  _('Add a copy of the selected file to the top patch'),
@@ -133,7 +135,7 @@ class WSTreeView(file_tree.FileTreeView, enotify.Listener, ws_actions.WSListener
                  lambda _action=None: dooph_pm.pm_do_rename_file(self.get_selected_fsi_path())
                 ),
             ])
-        self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC].add_actions(
+        self.action_groups[pm_actions.AC_IN_PM_PGND + pm_actions.AC_PMIC].add_actions(
             [
                 ('pm_select_unsettled', None, _('Select _Unsettled'), None,
                  _('Select files that are unrefreshed in patches below top or have uncommitted SCM changes not covered by an applied patch'),

@@ -32,16 +32,17 @@ from ..wsm.gtx import terminal
 from ..wsm.gtx import console
 
 from ..wsm.pm_gui import pm_wspce
+from ..wsm.pm_gui import actions as pm_actions
+from ..wsm.scm_gui import actions as scm_actions
 
 from ..wsm.gtx import icons
 
-from . import ws_actions
 from . import patch_list
 from . import file_tree_managed
 from . import file_tree_cs
 
 @singleton
-class Darning(dialogue.MainWindow, actions.CAGandUIManager, enotify.Listener, ws_actions.WSListenerMixin):
+class Darning(dialogue.MainWindow, actions.CAGandUIManager, enotify.Listener, scm_actions.WDListenerMixin, pm_actions.WDListenerMixin):
     UI_DESCR = '''
     <ui>
         <menubar name="gdarn_left_menubar">
@@ -85,7 +86,8 @@ class Darning(dialogue.MainWindow, actions.CAGandUIManager, enotify.Listener, ws
         self._update_title()
         actions.CAGandUIManager.__init__(self)
         enotify.Listener.__init__(self)
-        ws_actions.WSListenerMixin.__init__(self)
+        scm_actions.WDListenerMixin.__init__(self)
+        pm_actions.WDListenerMixin.__init__(self)
         self.ui_manager.add_ui_from_string(Darning.UI_DESCR)
         vbox = Gtk.VBox()
         self.add(vbox)
@@ -130,3 +132,12 @@ class Darning(dialogue.MainWindow, actions.CAGandUIManager, enotify.Listener, ws
         self.set_title("gdarn: %s" % utils.path_rel_home(os.getcwd()))
     def _change_pgnd_ncb(self, *args,**kwargs):
         self._update_title()
+
+
+actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_actions(
+    [
+        ("config_menu", None, _("Configuration")),
+        ("actions_wd_menu", None, _('_Working Directory')),
+        ("actions_quit", Gtk.STOCK_QUIT, _('_Quit'), "",
+         _('Quit'), Gtk.main_quit),
+    ])

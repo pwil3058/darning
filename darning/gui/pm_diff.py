@@ -144,9 +144,9 @@ class NamedPatchDiffTextDialog(_DiffDialog):
 
 #GLOBAL ACTIONS
 from ..wsm.gtx import actions
-from . import ws_actions
+from ..wsm.pm_gui import actions as pm_actions
 
-actions.CLASS_INDEP_AGS[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC].add_actions(
+actions.CLASS_INDEP_AGS[pm_actions.AC_IN_PM_PGND + pm_actions.AC_PMIC].add_actions(
     [
         ("pm_top_patch_diff_text", wsm_icons.STOCK_DIFF, _("_Diff"), None,
          _("Display the diff for all files in the top patch"),

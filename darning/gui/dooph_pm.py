@@ -42,14 +42,15 @@ from ..wsm import wsm_icons
 from .. import APP_NAME
 
 from ..wsm.scm_gui import ifce as scm_ifce
+from ..wsm.scm_gui import actions as scm_actions
 from ..wsm.pm_gui import ifce as pm_gui_ifce
+from ..wsm.pm_gui import actions as pm_actions
 from ..wsm.pm_gui import pm_wspce
 
-from . import ws_actions
 from . import recollect
 from . import dooph
 
-AC_POP_POSSIBLE = ws_actions.AC_PMIC
+AC_POP_POSSIBLE = pm_actions.AC_PMIC
 AC_PUSH_POSSIBLE, AC_PUSH_POSSIBLE_MASK = actions.ActionCondns.new_flags_and_mask(1)
 AC_ALL_APPLIED_REFRESHED, AC_ALL_APPLIED_REFRESHED_MASK = actions.ActionCondns.new_flags_and_mask(1)
 
@@ -555,7 +556,7 @@ actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_actions(
     ]
 )
 
-actions.CLASS_INDEP_AGS[ws_actions.AC_NOT_IN_PM_PGND].add_actions(
+actions.CLASS_INDEP_AGS[pm_actions.AC_NOT_IN_PM_PGND].add_actions(
     [
         ("pm_init_cwd", wsm_icons.STOCK_INIT, _("_Initialize"), "",
          _("Create a patch series in the current directory"),
@@ -564,7 +565,7 @@ actions.CLASS_INDEP_AGS[ws_actions.AC_NOT_IN_PM_PGND].add_actions(
     ]
 )
 
-actions.CLASS_INDEP_AGS[ws_actions.AC_PMIC | ws_actions.AC_IN_PM_PGND].add_actions(
+actions.CLASS_INDEP_AGS[pm_actions.AC_PMIC | pm_actions.AC_IN_PM_PGND].add_actions(
     [
         ("pm_add_new_file", Gtk.STOCK_NEW, _("New"), None,
          _("Add a new file to the top applied patch"),
@@ -577,7 +578,7 @@ actions.CLASS_INDEP_AGS[ws_actions.AC_PMIC | ws_actions.AC_IN_PM_PGND].add_actio
     ]
 )
 
-actions.CLASS_INDEP_AGS[AC_POP_POSSIBLE | ws_actions.AC_IN_PM_PGND].add_actions(
+actions.CLASS_INDEP_AGS[AC_POP_POSSIBLE | pm_actions.AC_IN_PM_PGND].add_actions(
     [
         ("pm_pop", wsm_icons.STOCK_POP_PATCH, _("Pop"), None,
          _("Pop the top applied patch"),
@@ -594,7 +595,7 @@ actions.CLASS_INDEP_AGS[AC_POP_POSSIBLE | ws_actions.AC_IN_PM_PGND].add_actions(
     ]
 )
 
-actions.CLASS_INDEP_AGS[AC_PUSH_POSSIBLE | ws_actions.AC_IN_PM_PGND].add_actions(
+actions.CLASS_INDEP_AGS[AC_PUSH_POSSIBLE | pm_actions.AC_IN_PM_PGND].add_actions(
     [
         ("pm_push", wsm_icons.STOCK_PUSH_PATCH, _("Push"), None,
          _("Apply the next unapplied patch"),
@@ -607,7 +608,7 @@ actions.CLASS_INDEP_AGS[AC_PUSH_POSSIBLE | ws_actions.AC_IN_PM_PGND].add_actions
     ]
 )
 
-actions.CLASS_INDEP_AGS[ws_actions.AC_IN_PM_PGND].add_actions(
+actions.CLASS_INDEP_AGS[pm_actions.AC_IN_PM_PGND].add_actions(
     [
         ("pm_new_patch", wsm_icons.STOCK_NEW_PATCH, _("New Patch"), None,
          _("Create a new patch"),
@@ -632,7 +633,7 @@ actions.CLASS_INDEP_AGS[ws_actions.AC_IN_PM_PGND].add_actions(
     ]
 )
 
-actions.CLASS_INDEP_AGS[AC_ALL_APPLIED_REFRESHED | ws_actions.AC_IN_SCM_PGND | ws_actions.AC_IN_PM_PGND].add_actions(
+actions.CLASS_INDEP_AGS[AC_ALL_APPLIED_REFRESHED | scm_actions.AC_IN_SCM_PGND | pm_actions.AC_IN_PM_PGND].add_actions(
     [
         ("pm_scm_absorb_applied_patches", wsm_icons.STOCK_FINISH_PATCH, _("Absorb All"), None,
          _("Absorb all applied patches into underlying SCM repository"),

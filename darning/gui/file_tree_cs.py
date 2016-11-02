@@ -26,18 +26,20 @@ from ..wsm.bab import enotify
 
 from ..wsm import pm
 from ..wsm.pm_gui import ifce as pm_gui_ifce
+from ..wsm.pm_gui import actions as pm_actions
+from ..wsm.scm_gui import actions as scm_actions
 
 from ..wsm import wsm_icons
 
-from . import ws_actions
 from . import pm_diff
 from . import dooph_pm
 
-class _GenericPatchFileTreeView(file_tree.FileTreeView, enotify.Listener, ws_actions.WSListenerMixin):
+class _GenericPatchFileTreeView(file_tree.FileTreeView, enotify.Listener, scm_actions.WDListenerMixin, pm_actions.WDListenerMixin):
     def __init__(self, **kwargs):
         file_tree.FileTreeView.__init__(self, **kwargs)
         enotify.Listener.__init__(self)
-        ws_actions.WSListenerMixin.__init__(self)
+        scm_actions.WDListenerMixin.__init__(self) 
+        pm_actions.WDListenerMixin.__init__(self)
 
 class PatchFileTreeModel(file_tree.FileTreeModel):
     REPOPULATE_EVENTS = pm.E_POP|pm.E_PUSH|pm.E_PATCH_STACK_CHANGES
@@ -80,21 +82,21 @@ class PatchFileTreeView(file_tree.FileTreeView):
         self._patch_name = new_patch_name
         self.repopulate()
     def populate_action_groups(self):
-        self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
+        self.action_groups[pm_actions.AC_IN_PM_PGND + pm_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
             [
                 ('pm_patch_diff_selected_files', wsm_icons.STOCK_DIFF, _('_Diff'), None,
                  _('Display the diff for selected files'),
                  lambda _action=None: pm_diff.NamedPatchDiffPlusesDialog(patch_name=self._patch_name, file_paths=self.get_selected_fsi_paths()).show()
                 ),
             ])
-        self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
+        self.action_groups[pm_actions.AC_IN_PM_PGND + pm_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
             [
                 ('pm_patch_extdiff_selected_file', wsm_icons.STOCK_DIFF, _('E_xtDiff'), None,
                  _('Launch external diff viewer for selected file'),
                  lambda _action=None: dooph_pm.pm_do_extdiff_for_file(self.get_selected_fsi_path(), patch_name=self._patch_name)
                 ),
             ])
-        self.action_groups[ws_actions.AC_IN_PM_PGND].add_actions(
+        self.action_groups[pm_actions.AC_IN_PM_PGND].add_actions(
             [
                 ("menu_files", None, _('_Files')),
             ])
@@ -167,7 +169,7 @@ class TopPatchFileTreeView(_GenericPatchFileTreeView):
     def __init__(self, **kwargs):
         _GenericPatchFileTreeView.__init__(self, **kwargs)
     def populate_action_groups(self):
-        self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
+        self.action_groups[pm_actions.AC_IN_PM_PGND + pm_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
             [
                 ('pm_edit_files', Gtk.STOCK_EDIT, _('_Edit'), None,
                  _('Edit the selected file(s)'),
@@ -186,7 +188,7 @@ class TopPatchFileTreeView(_GenericPatchFileTreeView):
                  lambda _action=None: dooph_pm.pm_do_delete_files(self.get_selected_fsi_paths())
                 ),
             ])
-        self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
+        self.action_groups[pm_actions.AC_IN_PM_PGND + pm_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
             [
                 ('pm_reconcile_selected_file', wsm_icons.STOCK_MERGE, _('_Reconcile'), None,
                  _('Launch reconciliation tool for the selected file'),
@@ -236,7 +238,7 @@ class CombinedPatchFileTreeView(TopPatchFileTreeView):
     '''
     DIRS_SELECTABLE = False
     def populate_action_groups(self):
-        self.action_groups[ws_actions.AC_IN_PM_PGND + ws_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
+        self.action_groups[pm_actions.AC_IN_PM_PGND + pm_actions.AC_PMIC + actions.AC_SELN_MADE].add_actions(
             [
                 ('combined_patch_diff_selected_files', wsm_icons.STOCK_DIFF, _('_Diff'), None,
                  _('Display the combined diff for selected file'),
