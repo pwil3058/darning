@@ -41,8 +41,6 @@ from ..wsm.pm_gui import actions as pm_actions
 from . import patch_view
 from . import dooph_pm
 
-from .dooph_pm import AC_POP_POSSIBLE, AC_PUSH_POSSIBLE
-
 def patch_markup(patch_data, selected_guards):
     markup = patch_data.name
     for guard in patch_data.pos_guards:
@@ -216,7 +214,7 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
                  lambda _action=None: dooph_pm.pm_do_duplicate_patch(self.get_selected_patch())
                 ),
             ])
-        self.action_groups[actions.AC_SELN_UNIQUE | AC_PUSH_POSSIBLE | pm_actions.AC_IN_PM_PGND | AC_UNAPPLIED_NOT_BLOCKED].add_actions(
+        self.action_groups[actions.AC_SELN_UNIQUE | pm_actions.AC_PUSH_POSSIBLE | pm_actions.AC_IN_PM_PGND | AC_UNAPPLIED_NOT_BLOCKED].add_actions(
             [
                 ("patch_list_push_to", wsm_icons.STOCK_PUSH_PATCH, _("Push To"), None,
                  _("Apply all unguarded unapplied patches up to the selected patch."),
@@ -230,21 +228,21 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
                  lambda _action=None: dooph_pm.pm_do_remove_patch(self.get_selected_patch())
                 ),
             ])
-        self.action_groups[actions.AC_SELN_UNIQUE | AC_POP_POSSIBLE | pm_actions.AC_IN_PM_PGND | AC_APPLIED_NOT_TOP].add_actions(
+        self.action_groups[actions.AC_SELN_UNIQUE | pm_actions.AC_POP_POSSIBLE | pm_actions.AC_IN_PM_PGND | AC_APPLIED_NOT_TOP].add_actions(
             [
                 ("patch_list_pop_to", wsm_icons.STOCK_POP_PATCH, _("Pop To"), None,
                  _("Apply all applied patches down to the selected patch."),
                  lambda _action=None: dooph_pm.pm_do_pop_to(self.get_selected_patch())
                 ),
             ])
-        self.action_groups[actions.AC_SELN_UNIQUE | AC_POP_POSSIBLE | pm_actions.AC_IN_PM_PGND | AC_APPLIED].add_actions(
+        self.action_groups[actions.AC_SELN_UNIQUE | pm_actions.AC_POP_POSSIBLE | pm_actions.AC_IN_PM_PGND | AC_APPLIED].add_actions(
             [
                 ("patch_list_refresh_selected", wsm_icons.STOCK_PUSH_PATCH, _("Refresh"), None,
                  _("Refresh the selected patch."),
                  lambda _action=None: dooph_pm.pm_do_refresh_named_patch(self.get_selected_patch())
                 ),
             ])
-        self.action_groups[actions.AC_SELN_UNIQUE | AC_POP_POSSIBLE | pm_actions.AC_IN_PM_PGND | AC_UNAPPLIED].add_actions(
+        self.action_groups[actions.AC_SELN_UNIQUE | pm_actions.AC_POP_POSSIBLE | pm_actions.AC_IN_PM_PGND | AC_UNAPPLIED].add_actions(
             [
                 ("patch_list_fold_selected", wsm_icons.STOCK_FOLD_PATCH, _("Fold"), None,
                  _("Fold the selected patch into the top applied patch."),
@@ -273,7 +271,8 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
     def _get_table_db(self):
         return pm_gui_ifce.PM.get_patch_list_data()
     def _fetch_contents(self, pld_reset_only=False, **kwargs):
-        self.action_groups.update_condns(dooph_pm.get_pushable_condns())
+        # TODO: allow pm_actions mixin to handle pushable conditions
+        self.action_groups.update_condns(pm_actions.get_pushable_condns())
         self._applied_count = 0
         for patch_data in table.MapManagedTableView._fetch_contents(self, pld_reset_only=pld_reset_only, **kwargs):
             icon = STATUS_ICONS[patch_data.state]

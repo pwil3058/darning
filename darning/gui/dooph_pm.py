@@ -50,27 +50,6 @@ from ..wsm.scm_gui import actions as scm_actions
 from . import recollect
 from . import dooph
 
-AC_POP_POSSIBLE = pm_actions.AC_PMIC
-AC_PUSH_POSSIBLE, AC_PUSH_POSSIBLE_MASK = actions.ActionCondns.new_flags_and_mask(1)
-AC_ALL_APPLIED_REFRESHED, AC_ALL_APPLIED_REFRESHED_MASK = actions.ActionCondns.new_flags_and_mask(1)
-
-def get_pushable_condns():
-    return actions.MaskedCondns(AC_PUSH_POSSIBLE if pm_gui_ifce.PM.is_pushable else 0, AC_PUSH_POSSIBLE)
-
-def _update_class_indep_pushable_cb(**kwargs):
-    condns = get_pushable_condns()
-    actions.CLASS_INDEP_AGS.update_condns(condns)
-    actions.CLASS_INDEP_BGS.update_condns(condns)
-
-enotify.add_notification_cb(enotify.E_CHANGE_WD|pm.E_PATCH_LIST_CHANGES, _update_class_indep_pushable_cb)
-
-def _update_class_indep_absorbable_cb(**kwargs):
-    condns = actions.MaskedCondns(AC_ALL_APPLIED_REFRESHED if pm_gui_ifce.PM.all_applied_patches_refreshed else 0, AC_ALL_APPLIED_REFRESHED)
-    actions.CLASS_INDEP_AGS.update_condns(condns)
-    actions.CLASS_INDEP_BGS.update_condns(condns)
-
-enotify.add_notification_cb(enotify.E_CHANGE_WD|scm.E_FILE_CHANGES|pm.E_FILE_CHANGES|pm.E_PATCH_LIST_CHANGES, _update_class_indep_absorbable_cb)
-
 def pm_do_add_files(file_paths):
     do_op = lambda absorb=False, force=False : pm_gui_ifce.PM.do_add_files_to_top_patch(file_paths, absorb=absorb, force=force)
     refresh_op = lambda : pm_gui_ifce.PM.do_refresh_overlapped_files(file_paths)
@@ -578,7 +557,7 @@ actions.CLASS_INDEP_AGS[pm_actions.AC_PMIC | pm_actions.AC_IN_PM_PGND].add_actio
     ]
 )
 
-actions.CLASS_INDEP_AGS[AC_POP_POSSIBLE | pm_actions.AC_IN_PM_PGND].add_actions(
+actions.CLASS_INDEP_AGS[pm_actions.AC_POP_POSSIBLE | pm_actions.AC_IN_PM_PGND].add_actions(
     [
         ("pm_pop", wsm_icons.STOCK_POP_PATCH, _("Pop"), None,
          _("Pop the top applied patch"),
@@ -595,7 +574,7 @@ actions.CLASS_INDEP_AGS[AC_POP_POSSIBLE | pm_actions.AC_IN_PM_PGND].add_actions(
     ]
 )
 
-actions.CLASS_INDEP_AGS[AC_PUSH_POSSIBLE | pm_actions.AC_IN_PM_PGND].add_actions(
+actions.CLASS_INDEP_AGS[pm_actions.AC_PUSH_POSSIBLE | pm_actions.AC_IN_PM_PGND].add_actions(
     [
         ("pm_push", wsm_icons.STOCK_PUSH_PATCH, _("Push"), None,
          _("Apply the next unapplied patch"),
@@ -633,7 +612,7 @@ actions.CLASS_INDEP_AGS[pm_actions.AC_IN_PM_PGND].add_actions(
     ]
 )
 
-actions.CLASS_INDEP_AGS[AC_ALL_APPLIED_REFRESHED | scm_actions.AC_IN_SCM_PGND | pm_actions.AC_IN_PM_PGND].add_actions(
+actions.CLASS_INDEP_AGS[pm_actions.AC_ALL_APPLIED_REFRESHED | scm_actions.AC_IN_SCM_PGND | pm_actions.AC_IN_PM_PGND].add_actions(
     [
         ("pm_scm_absorb_applied_patches", wsm_icons.STOCK_FINISH_PATCH, _("Absorb All"), None,
          _("Absorb all applied patches into underlying SCM repository"),
