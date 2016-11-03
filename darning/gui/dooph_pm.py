@@ -41,11 +41,11 @@ from ..wsm import wsm_icons
 
 from .. import APP_NAME
 
-from ..wsm.scm_gui import ifce as scm_ifce
-from ..wsm.scm_gui import actions as scm_actions
 from ..wsm.pm_gui import ifce as pm_gui_ifce
 from ..wsm.pm_gui import actions as pm_actions
 from ..wsm.pm_gui import pm_wspce
+
+from ..wsm.scm_gui import actions as scm_actions
 
 from . import recollect
 from . import dooph
@@ -541,7 +541,7 @@ def pm_do_set_guards_on_patch(patch_name):
             dialog.destroy()
         break
 
-def scm_do_absorb_applied_patches():
+def pm_do_scm_absorb_applied_patches():
     with dialogue.main_window.showing_busy():
         result = pm_gui_ifce.PM.do_scm_absorb_applied_patches()
     dialogue.main_window.report_any_problems(result)
@@ -637,7 +637,7 @@ actions.CLASS_INDEP_AGS[AC_ALL_APPLIED_REFRESHED | scm_actions.AC_IN_SCM_PGND | 
     [
         ("pm_scm_absorb_applied_patches", wsm_icons.STOCK_FINISH_PATCH, _("Absorb All"), None,
          _("Absorb all applied patches into underlying SCM repository"),
-         lambda _action=None: scm_do_absorb_applied_patches()
+         lambda _action=None: pm_do_scm_absorb_applied_patches()
         ),
     ]
 )
@@ -670,7 +670,7 @@ class NewSeriesDescrDialog(dialogue.Dialog):
                 ])
     def __init__(self, parent=None):
         flags = Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT
-        title = _("Patch Series Description: %s -- gdarn") % utils.path_rel_home(os.getcwd())
+        title = _("Patch Series Description: {0} -- {1}").format(utils.path_rel_home(os.getcwd()), APP_NAME)
         dialogue.Dialog.__init__(self, title, parent, flags,
                                  (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
                                   Gtk.STOCK_OK, Gtk.ResponseType.OK))
@@ -695,7 +695,7 @@ class NewSeriesDescrDialog(dialogue.Dialog):
 class NewPatchDialog(NewSeriesDescrDialog):
     def __init__(self, parent=None):
         NewSeriesDescrDialog.__init__(self, parent=parent)
-        self.set_title(_("New Patch: {0} -- gdarn").format(utils.path_rel_home(os.getcwd())))
+        self.set_title(_("New Patch: {0} -- {1}").format(utils.path_rel_home(os.getcwd()), APP_NAME))
         self.hbox = Gtk.HBox()
         self.hbox.pack_start(Gtk.Label(_("New Patch Name:")), expand=False, fill=False, padding=0)
         self.new_name_entry = Gtk.Entry()
@@ -710,7 +710,7 @@ class NewPatchDialog(NewSeriesDescrDialog):
 class DuplicatePatchDialog(NewSeriesDescrDialog):
     def __init__(self, patch_name, olddescr, parent=None):
         NewSeriesDescrDialog.__init__(self, parent=parent)
-        self.set_title(_("Duplicate Patch: {0}: {1} -- gdarn").format(patch_name, utils.path_rel_home(os.getcwd())))
+        self.set_title(_("Duplicate Patch: {0}: {1} -- {2}").format(patch_name, utils.path_rel_home(os.getcwd()), APP_NAME))
         self.hbox = Gtk.HBox()
         self.hbox.pack_start(Gtk.Label(_("Duplicate Patch Name:")), expand=False, fill=False, padding=0)
         self.new_name_entry = Gtk.Entry()
@@ -758,7 +758,7 @@ class SeriesDescrEditDialog(dialogue.Dialog):
             return pm_gui_ifce.PM.do_set_series_description(text)
     def __init__(self, parent=None):
         flags = ~Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT
-        title = _("Series Description: {0} -- gdarn").format(utils.path_rel_home(os.getcwd()))
+        title = _("Series Description: {0} -- {1}").format(utils.path_rel_home(os.getcwd()), APP_NAME)
         dialogue.Dialog.__init__(self, title, parent, flags, None)
         if not parent:
             self.set_icon_from_file(icons.APP_ICON_FILE)
@@ -825,7 +825,7 @@ class PatchDescrEditDialog(dialogue.Dialog):
             return pm_gui_ifce.PM.do_set_patch_description(self._patch, text)
     def __init__(self, patch, parent=None):
         flags = ~Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT
-        title = _("Patch: {0} : {1} -- gdarn").format(patch, utils.path_rel_home(os.getcwd()))
+        title = _("Patch: {0} : {1} -- {2}").format(patch, utils.path_rel_home(os.getcwd()), APP_NAME)
         dialogue.Dialog.__init__(self, title, parent, flags, None)
         if not parent:
             self.set_icon_from_file(icons.APP_ICON_FILE)
@@ -860,7 +860,7 @@ class PatchDescrEditDialog(dialogue.Dialog):
 class ImportPatchDialog(dialogue.Dialog):
     def __init__(self, epatch, parent=None):
         flags = ~Gtk.DialogFlags.MODAL | Gtk.DialogFlags.DESTROY_WITH_PARENT
-        title = _("Import Patch: {0} : {1} -- gdarn").format(epatch.source_name, utils.path_rel_home(os.getcwd()))
+        title = _("Import Patch: {0} : {1} -- {2}").format(epatch.source_name, utils.path_rel_home(os.getcwd()), APP_NAME)
         dialogue.Dialog.__init__(self, title, parent, flags, None)
         if not parent:
             self.set_icon_from_file(icons.APP_ICON_FILE)
@@ -916,7 +916,7 @@ class ImportPatchDialog(dialogue.Dialog):
 class FoldPatchDialog(ImportPatchDialog):
     def __init__(self, epatch, parent=None):
         ImportPatchDialog.__init__(self, epatch, parent)
-        self.set_title( _("Fold Patch: {0} : {1} -- gdarn").format(epatch.source_name, utils.path_rel_home(os.getcwd())))
+        self.set_title( _("Fold Patch: {0} : {1} -- {2}").format(epatch.source_name, utils.path_rel_home(os.getcwd()), APP_NAME))
         self.namebox.hide()
 
 class RestorePatchDialog(dialogue.Dialog):
@@ -978,7 +978,7 @@ class RestorePatchDialog(dialogue.Dialog):
         def _fetch_contents():
             return [[name] for name in pm_gui_ifce.PM.get_kept_patch_names()]
     def __init__(self, parent):
-        dialogue.Dialog.__init__(self, title=_("gdarn: Restore Patch"), parent=parent,
+        dialogue.Dialog.__init__(self, title=_("{0}: Restore Patch").format(APP_NAME), parent=parent,
                                  flags=Gtk.DialogFlags.MODAL|Gtk.DialogFlags.DESTROY_WITH_PARENT,
                                  buttons=(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
                                           Gtk.STOCK_OK, Gtk.ResponseType.OK)
