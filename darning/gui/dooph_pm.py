@@ -51,7 +51,7 @@ from . import recollect
 from . import dooph
 
 def pm_do_create_new_pgnd():
-    req_backend = pm_gui_ifce.choose_backend()
+    req_backend = pm_gui_ifce.choose_backend(dialogue.main_window)
     if not req_backend:
         return CmdResult.ok()
     new_pgnd_path = dialogue.main_window.ask_dir_path(_("Select/create playground .."))
@@ -259,7 +259,7 @@ def pm_do_import_external_patch():
     dlg.destroy()
 
 def pm_do_initialize_curdir():
-    req_backend = pm_gui_ifce.choose_backend()
+    req_backend = pm_gui_ifce.choose_backend(dialogue.main_window)
     if not req_backend:
         return
     result = pm_gui_ifce.init_current_dir(req_backend)
