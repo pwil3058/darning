@@ -50,40 +50,6 @@ from ..wsm.scm_gui import actions as scm_actions
 from . import recollect
 from . import dooph
 
-def pm_do_add_files(file_paths):
-    do_op = lambda absorb=False, force=False : pm_gui_ifce.PM.do_add_files_to_top_patch(file_paths, absorb=absorb, force=force)
-    refresh_op = lambda : pm_gui_ifce.PM.do_refresh_overlapped_files(file_paths)
-    return dooph.do_force_refresh_or_absorb(do_op, refresh_op)
-
-def pm_do_add_new_file(open_for_edit=False):
-    from ..wsm.bab import os_utils
-    new_file_path = dialogue.main_window.ask_file_path(_("Enter path for new file"), existing=False)
-    if not new_file_path:
-        return
-    with dialogue.main_window.showing_busy():
-        result = os_utils.os_create_file(new_file_path)
-    dialogue.main_window.report_any_problems(result)
-    if not result.is_ok:
-        return result
-    result = pm_do_add_files([new_file_path])
-    if result.is_ok and open_for_edit:
-        xtnl_edit.edit_files_extern([new_file_path])
-    return result
-
-def pm_do_copy_file(file_path):
-    destn = dooph.ask_destination([file_path])
-    if not destn:
-        return
-    do_op = lambda destn, overwrite=False : pm_gui_ifce.PM.do_copy_file_to_top_patch(file_path, destn, overwrite=overwrite)
-    return dooph.do_overwrite_or_rename(destn, do_op)
-
-def pm_do_copy_files(file_paths):
-    destn = dooph.ask_destination(file_paths)
-    if not destn:
-        return
-    do_op = lambda destn, overwrite=False : pm_gui_ifce.PM.do_copy_files(file_paths, destn, overwrite=overwrite)
-    return dooph.do_overwrite_or_rename(destn, do_op)
-
 def pm_do_create_new_pgnd():
     req_backend = pm_gui_ifce.choose_backend()
     if not req_backend:
@@ -98,27 +64,6 @@ def pm_do_create_new_pgnd():
         dialogue.main_window.report_any_problems(result)
         return result
     return CmdResult.ok()
-
-def pm_do_delete_files(file_paths):
-    if len(file_paths) == 0:
-        return
-    emsg = '\n'.join(file_paths + ["", _('Confirm delete selected file(s) in top patch?')])
-    if not dialogue.main_window.ask_ok_cancel(emsg):
-        return
-    with dialogue.main_window.showing_busy():
-        result = pm_gui_ifce.PM.do_delete_files_in_top_patch(file_paths)
-    dialogue.main_window.report_any_problems(result)
-    return result
-
-def pm_do_drop_files(file_paths):
-    if len(file_paths) == 0:
-        return
-    emsg = '\n'.join(file_paths + ["", _('Confirm drop selected file(s) from patch?')])
-    if not dialogue.main_window.ask_ok_cancel(emsg):
-        return
-    with dialogue.main_window.showing_busy():
-        result = pm_gui_ifce.PM.do_drop_files_from_patch(file_paths, patch_name=None)
-    dialogue.main_window.report_any_problems(result)
 
 def pm_do_duplicate_patch(patch_name):
     description = pm_gui_ifce.PM.get_patch_description(patch_name)
@@ -146,14 +91,6 @@ def pm_do_duplicate_patch(patch_name):
                 continue
         break
     dialog.destroy()
-
-def pm_do_edit_files(file_paths):
-    if len(file_paths) == 0:
-        return
-    new_file_paths = pm_gui_ifce.PM.get_filepaths_not_in_patch(None, file_paths)
-    if new_file_paths and not pm_do_add_files(new_file_paths).is_ok:
-        return
-    xtnl_edit.edit_files_extern(file_paths)
 
 def pm_do_export_named_patch(patch_name, suggestion=None, busy_indicator=None):
     if busy_indicator is None:
@@ -200,11 +137,6 @@ def pm_do_export_named_patch(patch_name, suggestion=None, busy_indicator=None):
         dialogue.main_window.report_any_problems(result)
         recollect.set("export", "last_directory", os.path.dirname(export_filename))
         break
-
-def pm_do_extdiff_for_file(file_path, patch_name=None):
-    from ..wsm.patch_diff_gui import diff
-    files = pm_gui_ifce.PM.get_extdiff_files_for(file_path=file_path, patch_name=patch_name)
-    dialogue.main_window.report_any_problems(diff.launch_external_diff(files.original_version, files.patched_version))
 
 def pm_do_fold_patch(patch_name):
     refresh_tried = False
@@ -333,16 +265,6 @@ def pm_do_initialize_curdir():
     result = pm_gui_ifce.init_current_dir(req_backend)
     dialogue.main_window.report_any_problems(result)
 
-def pm_do_move_files(file_paths):
-    destn = dooph.ask_destination(file_paths)
-    if not destn:
-        return
-    do_op = lambda destn, force=False, overwrite=False : pm_gui_ifce.PM.do_move_files(file_paths, destn, force=force, overwrite=overwrite)
-    refresh_op = lambda : pm_gui_ifce.PM.do_refresh_overlapped_files(file_paths)
-    result = dooph.do_force_refresh_overwrite_or_rename(destn, do_op, refresh_op)
-    dialogue.main_window.report_any_problems(result)
-    return result
-
 def pm_do_new_patch():
     dlg = NewPatchDialog(parent=dialogue.main_window)
     while dlg.run() == Gtk.ResponseType.OK:
@@ -420,23 +342,6 @@ def pm_do_push_to(patch_name):
         if not pm_do_push():
             break
 
-def _launch_reconciliation_tool(file_a, file_b, file_c):
-    from ..wsm.bab import options
-    from ..wsm.bab import runext
-    from ..wsm.bab import CmdResult
-    reconciler = options.get("reconcile", "tool")
-    if not reconciler:
-        return CmdResult.warning(_("No reconciliation tool is defined.\n"))
-    try:
-        runext.run_cmd_in_bgnd([reconciler, file_a, file_b, file_c])
-    except OSError as edata:
-        return CmdResult.error(stderr=_("Error lanuching reconciliation tool \"{0}\": {1}\n").format(reconciler, edata.strerror))
-    return CmdResult.ok()
-
-def pm_do_reconcile_file(file_path):
-    file_paths = pm_gui_ifce.PM.get_reconciliation_paths(file_path=file_path)
-    dialogue.main_window.report_any_problems(_launch_reconciliation_tool(file_paths.original_version, file_paths.patched_version, file_paths.stashed_version))
-
 def pm_do_refresh_top_patch():
     with dialogue.main_window.showing_busy():
         result = pm_gui_ifce.PM.do_refresh_patch()
@@ -452,16 +357,6 @@ def pm_do_remove_patch(patch_name):
         with dialogue.main_window.showing_busy():
             result = pm_gui_ifce.PM.do_remove_patch(patch_name)
         dialogue.main_window.report_any_problems(result)
-
-def pm_do_rename_file(file_path):
-    destn = dooph.ask_destination([file_path])
-    if not destn:
-        return
-    do_op = lambda destn, force=False, overwrite=False : pm_gui_ifce.PM.do_rename_file_in_top_patch(file_path, destn, force=force, overwrite=overwrite)
-    refresh_op = lambda : pm_gui_ifce.PM.do_refresh_overlapped_files([file_path])
-    result = dooph.do_force_refresh_overwrite_or_rename(destn, do_op, refresh_op)
-    dialogue.main_window.report_any_problems(result)
-    return result
 
 def pm_do_rename_patch(patch_name):
     dialog = dialogue.ReadTextDialog(_("Rename Patch: {0}").format(patch_name), _("New Name:"), patch_name)
@@ -546,10 +441,6 @@ actions.CLASS_INDEP_AGS[pm_actions.AC_NOT_IN_PM_PGND].add_actions(
 
 actions.CLASS_INDEP_AGS[pm_actions.AC_PMIC | pm_actions.AC_IN_PM_PGND].add_actions(
     [
-        ("pm_add_new_file", Gtk.STOCK_NEW, _("New"), None,
-         _("Add a new file to the top applied patch"),
-         lambda _action=None: pm_do_add_new_file()
-        ),
         ("pm_refresh_top_patch", wsm_icons.STOCK_REFRESH_PATCH, _("Refresh"), None,
          _("Refresh the top patch"),
          lambda _action=None: pm_do_refresh_top_patch()

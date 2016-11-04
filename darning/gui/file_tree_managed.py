@@ -24,20 +24,22 @@ from ..wsm.bab import os_utils
 
 from ..wsm.gtx import actions
 from ..wsm.gtx import dialogue
+from ..wsm.gtx import doop
 from ..wsm.gtx import file_tree
-from ..wsm.gtx import xtnl_edit
 from ..wsm.gtx import gutils
+from ..wsm.gtx import xtnl_edit
 
 from ..wsm import pm
 from ..wsm import scm
 from ..wsm.pm_gui import ifce as pm_gui_ifce
 from ..wsm.pm_gui import actions as pm_actions
+from ..wsm.pm_gui import pm_do_opn_files
+
 from ..wsm.scm_gui import ifce as scm_gui_ifce
 from ..wsm.scm_gui import actions as scm_actions
 
 from ..wsm import wsm_icons
 
-from . import dooph_pm
 #          <menuitem action='peruse_files'/>
 #          <menuitem action='pm_copy_files_to_top_patch'/>
 #          <menuitem action='pm_move_files_in_top_patch'/>
@@ -49,7 +51,9 @@ class WSTreeModel(file_tree.FileTreeModel):
     def _get_file_db():
         return scm_gui_ifce.SCM.get_wd_file_db()
 
-class WSTreeView(file_tree.FileTreeView, enotify.Listener, scm_actions.WDListenerMixin, pm_actions.WDListenerMixin):
+class WSTreeView(file_tree.FileTreeView, enotify.Listener,
+                 scm_actions.WDListenerMixin, pm_actions.WDListenerMixin,
+                 doop.DoOperationMixin, pm_do_opn_files.PMDoOpnFilesMixin):
     MODEL = WSTreeModel
     UI_DESCR = \
     '''
@@ -57,6 +61,7 @@ class WSTreeView(file_tree.FileTreeView, enotify.Listener, scm_actions.WDListene
       <menubar name="scm_files_menubar">
         <menu name="scm_files_menu" action="scm_files_menu_files">
           <menuitem action="refresh_files"/>
+          <menuitem action="pm_add_new_file"/>
         </menu>
       </menubar>
       <popup name="files_popup">
@@ -109,34 +114,38 @@ class WSTreeView(file_tree.FileTreeView, enotify.Listener, scm_actions.WDListene
             [
                 ('pm_add_files_to_top_patch', Gtk.STOCK_ADD, _('_Add'), None,
                  _('Add the selected files to the top patch'),
-                 lambda _action=None: dooph_pm.pm_do_add_files(self.get_selected_fsi_paths())
+                 lambda _action=None: self.pm_do_add_files(self.get_selected_fsi_paths())
                 ),
                 ('pm_move_files_in_top_patch', wsm_icons.STOCK_RENAME, _('_Move'), None,
                  _('Move the selected files within the top patch'),
-                 lambda _action=None: dooph_pm.pm_do_move_files(self.get_selected_fsi_paths())
+                 lambda _action=None: self.pm_do_move_files(self.get_selected_fsi_paths())
                 ),
                 ('pm_edit_files_in_top_patch', Gtk.STOCK_EDIT, _('_Edit'), None,
                  _('Open the selected files for editing after adding them to the top patch'),
-                 lambda _action=None: dooph_pm.pm_do_edit_files(self.get_selected_fsi_paths())
+                 lambda _action=None: self.pm_do_edit_files(self.get_selected_fsi_paths())
                 ),
                 ('pm_delete_files_in_top_patch', Gtk.STOCK_DELETE, _('_Delete'), None,
                  _('Add the selected files to the top patch and then delete them'),
-                 lambda _action=None: dooph_pm.pm_do_delete_files(self.get_selected_fsi_paths())
+                 lambda _action=None: self.pm_do_delete_files(self.get_selected_fsi_paths())
                 ),
             ])
         self.action_groups[pm_actions.AC_IN_PM_PGND + pm_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
             [
                 ('pm_copy_file_to_top_patch', Gtk.STOCK_COPY, _('_Copy'), None,
                  _('Add a copy of the selected file to the top patch'),
-                 lambda _action=None: dooph_pm.pm_do_copy_file(self.get_selected_fsi_path())
+                 lambda _action=None: self.pm_do_copy_file(self.get_selected_fsi_path())
                 ),
                 ('pm_rename_file_in_top_patch', wsm_icons.STOCK_RENAME, _('_Rename'), None,
                  _('Rename the selected file within the top patch'),
-                 lambda _action=None: dooph_pm.pm_do_rename_file(self.get_selected_fsi_path())
+                 lambda _action=None: self.pm_do_rename_file(self.get_selected_fsi_path())
                 ),
             ])
         self.action_groups[pm_actions.AC_IN_PM_PGND + pm_actions.AC_PMIC].add_actions(
             [
+                ("pm_add_new_file", Gtk.STOCK_NEW, _("New"), None,
+                 _("Add a new file to the top applied patch"),
+                 lambda _action=None: self.pm_do_add_new_file()
+                ),
                 ('pm_select_unsettled', None, _('Select _Unsettled'), None,
                  _('Select files that are unrefreshed in patches below top or have uncommitted SCM changes not covered by an applied patch'),
                  lambda _action=None: self.pm_select_unsettled()

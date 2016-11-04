@@ -20,6 +20,7 @@ from gi.repository import GObject
 
 from ..wsm.gtx import actions
 from ..wsm.gtx import dialogue
+from ..wsm.gtx import doop
 from ..wsm.gtx import file_tree
 
 from ..wsm.bab import enotify
@@ -27,18 +28,21 @@ from ..wsm.bab import enotify
 from ..wsm import pm
 from ..wsm.pm_gui import ifce as pm_gui_ifce
 from ..wsm.pm_gui import actions as pm_actions
+from ..wsm.pm_gui import pm_do_opn_files
+
 from ..wsm.scm_gui import actions as scm_actions
 
 from ..wsm import wsm_icons
 
 from . import pm_diff
-from . import dooph_pm
 
-class _GenericPatchFileTreeView(file_tree.FileTreeView, enotify.Listener, scm_actions.WDListenerMixin, pm_actions.WDListenerMixin):
+class _GenericPatchFileTreeView(file_tree.FileTreeView, enotify.Listener,
+                                scm_actions.WDListenerMixin, pm_actions.WDListenerMixin,
+                                doop.DoOperationMixin, pm_do_opn_files.PMDoOpnFilesMixin):
     def __init__(self, **kwargs):
         file_tree.FileTreeView.__init__(self, **kwargs)
         enotify.Listener.__init__(self)
-        scm_actions.WDListenerMixin.__init__(self) 
+        scm_actions.WDListenerMixin.__init__(self)
         pm_actions.WDListenerMixin.__init__(self)
 
 class PatchFileTreeModel(file_tree.FileTreeModel):
@@ -93,7 +97,7 @@ class PatchFileTreeView(file_tree.FileTreeView):
             [
                 ('pm_patch_extdiff_selected_file', wsm_icons.STOCK_DIFF, _('E_xtDiff'), None,
                  _('Launch external diff viewer for selected file'),
-                 lambda _action=None: dooph_pm.pm_do_extdiff_for_file(self.get_selected_fsi_path(), patch_name=self._patch_name)
+                 lambda _action=None: self.pm_do_extdiff_for_file(self.get_selected_fsi_path(), patch_name=self._patch_name)
                 ),
             ])
         self.action_groups[pm_actions.AC_IN_PM_PGND].add_actions(
@@ -154,6 +158,7 @@ class TopPatchFileTreeView(_GenericPatchFileTreeView):
           <menuitem action="pm_edit_files"/>
           <menuitem action="pm_drop_selected_files"/>
           <menuitem action="pm_delete_selected_files"/>
+          <menuitem action="pm_add_new_file"/>
         <separator/>
           <menuitem action="pm_copy_file"/>
           <menuitem action="pm_rename_file"/>
@@ -173,7 +178,7 @@ class TopPatchFileTreeView(_GenericPatchFileTreeView):
             [
                 ('pm_edit_files', Gtk.STOCK_EDIT, _('_Edit'), None,
                  _('Edit the selected file(s)'),
-                 lambda _action=None: dooph_pm.pm_do_edit_files(self.get_selected_fsi_paths())
+                 lambda _action=None: self.pm_do_edit_files(self.get_selected_fsi_paths())
                 ),
                 ('pm_diff_selected_files', wsm_icons.STOCK_DIFF, _('_Diff'), None,
                  _('Display the diff for selected files'),
@@ -181,30 +186,37 @@ class TopPatchFileTreeView(_GenericPatchFileTreeView):
                 ),
                 ('pm_drop_selected_files', Gtk.STOCK_REMOVE, _('_Drop'), None,
                  _('Drop/remove the selected files from the top patch'),
-                 lambda _action=None: dooph_pm.pm_do_drop_files(self.get_selected_fsi_paths())
+                 lambda _action=None: self.pm_do_drop_files(self.get_selected_fsi_paths())
                 ),
                 ('pm_delete_selected_files', Gtk.STOCK_DELETE, _('_Delete'), None,
                  _('Delete the selected files'),
-                 lambda _action=None: dooph_pm.pm_do_delete_files(self.get_selected_fsi_paths())
+                 lambda _action=None: self.pm_do_delete_files(self.get_selected_fsi_paths())
                 ),
             ])
         self.action_groups[pm_actions.AC_IN_PM_PGND + pm_actions.AC_PMIC + actions.AC_SELN_UNIQUE].add_actions(
             [
                 ('pm_reconcile_selected_file', wsm_icons.STOCK_MERGE, _('_Reconcile'), None,
                  _('Launch reconciliation tool for the selected file'),
-                 lambda _action=None: dooph_pm.pm_do_reconcile_file(self.get_selected_fsi_path())
+                 lambda _action=None: self.pm_do_reconcile_file(self.get_selected_fsi_path())
                 ),
                 ('pm_copy_file', Gtk.STOCK_COPY, _('_Copy'), None,
                  _('Add a copy of the selected file to the top patch'),
-                 lambda _action=None: dooph_pm.pm_do_copy_file(self.get_selected_fsi_path())
+                 lambda _action=None: self.pm_do_copy_file(self.get_selected_fsi_path())
                 ),
                 ('pm_rename_file', wsm_icons.STOCK_RENAME, _('_Rename'), None,
                  _('Rename the selected file within the top patch'),
-                 lambda _action=None: dooph_pm.pm_do_rename_file(self.get_selected_fsi_path())
+                 lambda _action=None: self.pm_do_rename_file(self.get_selected_fsi_path())
                 ),
                 ('pm_extdiff_selected_file', wsm_icons.STOCK_DIFF, _('E_xtDiff'), None,
                  _('Launch external diff viewer for selected file'),
-                 lambda _action=None: dooph_pm.pm_do_extdiff_for_file(self.get_selected_fsi_path(), patch_name=None)
+                 lambda _action=None: self.pm_do_extdiff_for_file(self.get_selected_fsi_path(), patch_name=None)
+                ),
+            ])
+        self.action_groups[pm_actions.AC_IN_PM_PGND + pm_actions.AC_PMIC].add_actions(
+            [
+                ("pm_add_new_file", Gtk.STOCK_NEW, _("New"), None,
+                 _("Add a new file to the top applied patch"),
+                 lambda _action=None: self.pm_do_add_new_file()
                 ),
             ])
 
