@@ -26,7 +26,7 @@ import gettext
 HOME = os.path.expanduser("~")
 APP_NAME = "darning"
 CONFIG_DIR_PATH = os.path.join(HOME, ".config", APP_NAME + os.extsep + "d")
-PGND_CONFIG_DIR_PATH = os.path.join(os.curdir, "." + APP_NAME + os.extsep + "d")
+PGND_CONFIG_DIR_PATH = os.path.join(os.curdir, "." + APP_NAME + os.extsep + "dbd")
 
 if not os.path.exists(CONFIG_DIR_PATH):
     os.makedirs(CONFIG_DIR_PATH, 0o775)
