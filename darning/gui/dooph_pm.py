@@ -50,21 +50,6 @@ from ..wsm.scm_gui import actions as scm_actions
 from . import recollect
 from . import dooph
 
-def pm_do_create_new_pgnd():
-    req_backend = pm_gui_ifce.choose_backend(dialogue.main_window)
-    if not req_backend:
-        return CmdResult.ok()
-    new_pgnd_path = dialogue.main_window.ask_dir_path(_("Select/create playground .."))
-    if new_pgnd_path is not None:
-        result = pm_gui_ifce.create_new_playground(new_pgnd_path, req_backend)
-        dialogue.main_window.report_any_problems(result)
-        if not result.is_ok:
-            return result
-        result = pm_wspce.chdir(new_pgnd_path)
-        dialogue.main_window.report_any_problems(result)
-        return result
-    return CmdResult.ok()
-
 def pm_do_duplicate_patch(patch_name):
     description = pm_gui_ifce.PM.get_patch_description(patch_name)
     dialog = DuplicatePatchDialog(patch_name, description, parent=dialogue.main_window)
@@ -420,15 +405,6 @@ def pm_do_scm_absorb_applied_patches():
         result = pm_gui_ifce.PM.do_scm_absorb_applied_patches()
     dialogue.main_window.report_any_problems(result)
     return result.is_ok
-
-actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_actions(
-    [
-        ("pm_create_new_pgnd", wsm_icons.STOCK_NEW_PLAYGROUND, _("_New"), "",
-         _("Create a new intitialized playground"),
-         lambda _action=None: pm_do_create_new_pgnd()
-        ),
-    ]
-)
 
 actions.CLASS_INDEP_AGS[pm_actions.AC_NOT_IN_PM_PGND].add_actions(
     [

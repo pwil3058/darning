@@ -73,6 +73,13 @@ class Interface(pm_gui.InterfaceMixin):
         raise AttributeError(attr_name)
     @staticmethod
     def create_new_playground(dir_path=None):
+        if dir_path:
+            import os
+            if not os.path.exists(dir_path):
+                try:
+                    os.mkdir(dir_path)
+                except OSError as edata:
+                    return CmdResult.error(stderr=str(edata))
         cmd_str = "init {0}\n".format(dir_path) if dir_path else "init\n"
         events = pm.E_NEW_PM if not dir_path else 0
         return _RUN_DO(cmd_str, lambda: patch_db.do_create_db(dir_path), events)
