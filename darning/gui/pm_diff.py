@@ -49,14 +49,14 @@ class TopPatchDiffPlusesWidget(diff.DiffPlusesWidget, enotify.Listener):
     def _refresh_ecb(self, **kwargs):
         self.update()
     def _get_diff_pluses(self):
-        return scm_gui_ifce.PM.get_top_patch_diff_pluses(self._file_paths)
+        return pm_gui_ifce.PM.get_top_patch_diff_pluses(self._file_paths)
     @property
     def window_title(self):
         return _("Top Patch: diff: {0}").format(utils.cwd_rel_home())
 
 class CombinedPatchDiffPlusesWidget(TopPatchDiffPlusesWidget):
     def _get_diff_pluses(self):
-        return scm_gui_ifce.PM.get_combined_patch_diff_pluses(self._file_paths)
+        return pm_gui_ifce.PM.get_combined_patch_diff_pluses(self._file_paths)
     @property
     def window_title(self):
         return _("Combined Patches diff: {0}").format(utils.cwd_rel_home())
@@ -68,7 +68,7 @@ class NamedPatchDiffPlusesWidget(diff.DiffPlusesWidget):
         self._file_paths = file_paths
         diff.DiffPlusesWidget.__init__(self)
     def _get_diff_pluses(self):
-        return scm_gui_ifce.PM.get_named_patch_diff_pluses(self._patch_name, self._file_paths)
+        return pm_gui_ifce.PM.get_named_patch_diff_pluses(self._patch_name, self._file_paths)
     @property
     def window_title(self):
         return _("Patch \"{0}\" diff: {1}").format(self._patch_name, utils.cwd_rel_home())
@@ -109,7 +109,7 @@ class TopPatchDiffTextWidget(diff.DiffTextsWidget, enotify.Listener):
     def _refresh_ecb(self, **kwargs):
         self.update()
     def _get_diff_text(self):
-        return scm_gui_ifce.PM.get_top_patch_diff_text(self._file_paths)
+        return pm_gui_ifce.PM.get_top_patch_diff_text(self._file_paths)
     @property
     def window_title(self):
         return _("Top Patch: diff: {0}").format(utils.cwd_rel_home())
@@ -119,7 +119,7 @@ class TopPatchDiffTextDialog(_DiffDialog):
 
 class CombinedPatchDiffTextWidget(TopPatchDiffTextWidget):
     def _get_diff_text(self):
-        return scm_gui_ifce.PM.get_combined_patch_diff_text(self._file_paths)
+        return pm_gui_ifce.PM.get_combined_patch_diff_text(self._file_paths)
     @property
     def window_title(self):
         return _("Combined Patches diff: {0}").format(utils.cwd_rel_home())
@@ -134,7 +134,7 @@ class NamedPatchDiffTextWidget(diff.DiffTextsWidget):
         self._file_paths = file_paths
         diff.DiffTextsWidget.__init__(self)
     def _get_diff_text(self):
-        return scm_gui_ifce.PM.get_named_patch_diff_text(self._patch_name, self._file_paths)
+        return pm_gui_ifce.PM.get_named_patch_diff_text(self._patch_name, self._file_paths)
     @property
     def window_title(self):
         return _("Patch \"{0}\" diff: {1}").format(self._patch_name, utils.cwd_rel_home())
@@ -158,7 +158,7 @@ actions.CLASS_INDEP_AGS[pm_actions.AC_IN_PM_PGND + pm_actions.AC_PMIC].add_actio
         ),
         ("pm_top_patch_extdiff", wsm_icons.STOCK_DIFF, _('E_xtdiff'), None,
          _('Launch extdiff for all files in patch'),
-         lambda _action=None: scm_gui_ifce.PM.launch_extdiff_for_top_patch()
+         lambda _action=None: pm_gui_ifce.PM.launch_extdiff_for_top_patch()
         ),
         ("pm_combined_patch_diff_text", wsm_icons.STOCK_DIFF, _("Combined Diff"), "",
          _("View the combined diff for all files in all currently applied patches"),
