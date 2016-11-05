@@ -250,16 +250,6 @@ def pm_do_initialize_curdir():
     result = pm_gui_ifce.init_current_dir(req_backend)
     dialogue.main_window.report_any_problems(result)
 
-def pm_do_new_patch():
-    dlg = NewPatchDialog(parent=dialogue.main_window)
-    while dlg.run() == Gtk.ResponseType.OK:
-        with dlg.showing_busy():
-            result = pm_gui_ifce.PM.do_create_new_patch(dlg.get_new_patch_name(), dlg.get_descr())
-        dialogue.main_window.report_any_problems(result)
-        if not result.suggests_rename:
-            break
-    dlg.destroy()
-
 def pm_do_pop():
     refresh_tried = False
     while True:
@@ -458,7 +448,7 @@ actions.CLASS_INDEP_AGS[pm_actions.AC_IN_PM_PGND].add_actions(
     [
         ("pm_new_patch", wsm_icons.STOCK_NEW_PATCH, _("New Patch"), None,
          _("Create a new patch"),
-         lambda _action=None: pm_do_new_patch()
+         lambda _action=None: NewPatchDialog().run()
         ),
         ("pm_restore_patch", wsm_icons.STOCK_IMPORT_PATCH, _("Restore Patch"), None,
          _("Restore a previously removed patch behind the top applied patch"),
@@ -538,7 +528,7 @@ class NewSeriesDescrDialog(dialogue.Dialog):
     def get_descr(self):
         return self.edit_descr_widget.get_contents()
 
-class NewPatchDialog(NewSeriesDescrDialog):
+class NewPatchDialog(NewSeriesDescrDialog, dialogue.ClientMixin):
     def __init__(self, parent=None):
         NewSeriesDescrDialog.__init__(self, parent=parent)
         self.set_title(_("New Patch: {0} -- {1}").format(utils.path_rel_home(os.getcwd()), APP_NAME))
@@ -550,8 +540,16 @@ class NewPatchDialog(NewSeriesDescrDialog):
         self.hbox.show_all()
         self.vbox.pack_start(self.hbox, expand=True, fill=True, padding=0)
         self.vbox.reorder_child(self.hbox, 0)
-    def get_new_patch_name(self):
-        return self.new_name_entry.get_text()
+        self.connect("response", self._response_cb)
+        self.show_all()
+    def _response_cb(self, dlg, response):
+        if response == Gtk.ResponseType.OK:
+            with dlg.showing_busy():
+                result = pm_gui_ifce.PM.do_create_new_patch(dlg.new_name_entry.get_text(), dlg.get_descr())
+            dlg.report_any_problems(result)
+            if not result.is_ok:
+                return
+        dlg.destroy()
 
 class DuplicatePatchDialog(NewSeriesDescrDialog):
     def __init__(self, patch_name, olddescr, parent=None):
