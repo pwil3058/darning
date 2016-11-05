@@ -62,7 +62,7 @@ def pm_do_duplicate_patch(patch_name):
             with dialog.showing_busy():
                 result = pm_gui_ifce.PM.do_duplicate_patch(patch_name, as_patch_name, newdescription)
             if not refresh_tried and result.suggests_refresh:
-                resp = dialogue.main_window.ask_force_refresh_absorb_or_cancel(result, clarification=None)
+                resp = dialogue.main_window.ask_force_refresh_absorb_or_cancel(result)
                 if resp == Gtk.ResponseType.CANCEL:
                     break
                 elif resp == dialogue.Response.REFRESH:
@@ -97,7 +97,7 @@ def pm_do_export_named_patch(patch_name, suggestion=None, busy_indicator=None):
         if refresh_tried:
             result = result - result.Suggest.REFRESH
         if result.suggests(result.Suggest.FORCE_OR_REFRESH):
-            resp = dialogue.main_window.ask_force_refresh_absorb_or_cancel(result, clarification=None)
+            resp = dialogue.main_window.ask_force_refresh_absorb_or_cancel(result)
             if resp == Gtk.ResponseType.CANCEL:
                 return
             elif resp == dialogue.Response.FORCE:
@@ -109,7 +109,7 @@ def pm_do_export_named_patch(patch_name, suggestion=None, busy_indicator=None):
                 dialogue.main_window.report_any_problems(result)
             continue
         elif result.suggests_rename:
-            resp = dialogue.main_window.ask_rename_overwrite_or_cancel(result, clarification=None)
+            resp = dialogue.main_window.ask_rename_overwrite_or_cancel(result)
             if resp == Gtk.ResponseType.CANCEL:
                 return
             elif resp == dialogue.Response.OVERWRITE:
@@ -133,7 +133,7 @@ def pm_do_fold_patch(patch_name):
         if refresh_tried:
             result = result - result.Suggest.REFRESH
         if not (absorb or force) and result.suggests(result.Suggest.FORCE_ABSORB_OR_REFRESH):
-            resp = dialogue.main_window.ask_force_refresh_absorb_or_cancel(result, clarification=None)
+            resp = dialogue.main_window.ask_force_refresh_absorb_or_cancel(result)
             if resp == Gtk.ResponseType.CANCEL:
                 break
             elif resp == dialogue.Response.FORCE:
@@ -188,7 +188,7 @@ def pm_do_fold_external_patch():
         if refresh_tried:
             result = result - result.Suggest.REFRESH
         if not (absorb or force) and result.suggests(result.Suggest.FORCE_ABSORB_OR_REFRESH):
-            resp = dialogue.main_window.ask_force_refresh_absorb_or_cancel(result, clarification=None)
+            resp = dialogue.main_window.ask_force_refresh_absorb_or_cancel(result)
             if resp == Gtk.ResponseType.CANCEL:
                 break
             elif resp == dialogue.Response.FORCE:
@@ -228,7 +228,7 @@ def pm_do_import_external_patch():
         with dlg.showing_busy():
             result = pm_gui_ifce.PM.do_import_patch(epatch, dlg.get_as_name(), overwrite=overwrite)
         if not overwrite and result.suggests(result.Suggest.OVERWRITE_OR_RENAME):
-            resp = dialogue.main_window.ask_rename_overwrite_or_cancel(result, clarification=None)
+            resp = dialogue.main_window.ask_rename_overwrite_or_cancel(result)
             if resp == Gtk.ResponseType.CANCEL:
                 break
             elif resp == dialogue.Response.OVERWRITE:
@@ -256,7 +256,7 @@ def pm_do_pop():
         with dialogue.main_window.showing_busy():
             result = pm_gui_ifce.PM.do_pop_top_patch()
         if not refresh_tried and result.suggests_refresh:
-            resp = dialogue.main_window.ask_force_refresh_absorb_or_cancel(result, clarification=None)
+            resp = dialogue.main_window.ask_force_refresh_absorb_or_cancel(result)
             if resp == Gtk.ResponseType.CANCEL:
                 return False
             elif resp == dialogue.Response.REFRESH:
@@ -289,7 +289,7 @@ def pm_do_push():
         if refresh_tried:
             result = result - result.Suggest.REFRESH
         if not (absorb or force) and result.suggests(result.Suggest.FORCE_ABSORB_OR_REFRESH):
-            resp = dialogue.main_window.ask_force_refresh_absorb_or_cancel(result, clarification=None)
+            resp = dialogue.main_window.ask_force_refresh_absorb_or_cancel(result)
             if resp == Gtk.ResponseType.CANCEL:
                 return False
             elif resp == dialogue.Response.FORCE:
