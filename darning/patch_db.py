@@ -295,8 +295,9 @@ class _CameFromData(mixins.PedanticSlotPickleMixin):
 
 class DarnIt(Exception):
     def __init__(self, **kwargs):
-        for key, val in kwargs.items():
-            self.__dict__[key] = val
+        self.__kwargs = kwargs
+    def __getattr__(self, attr_name):
+        return self.__kwargs[attr_name]
 
 class DarnItPatchError(DarnIt): pass
 class DarnItPatchExists(DarnItPatchError): pass
@@ -824,12 +825,12 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
             if drop_atws:
                 atws_lines = self.diff.fix_trailing_whitespace()
                 if atws_lines:
-                    RCTX.stdout.write(_("\"{0}\": added trailing white space to \"{1}\" at line(s) {{{2}}}: removed before application.\n").format(next_patch.name, rel_subdir(self.path), ", ".join([str(line) for line in atws_lines])))
+                    RCTX.stdout.write(_("\"{1}\": had added trailing white space at line(s) {{{1}}}: removed before application.\n").format(rel_subdir(self.path), ", ".join([str(line) for line in atws_lines])))
             else:
                 atws_lines = self.diff.report_trailing_whitespace()
                 if atws_lines:
                     retval = CmdResult.WARNING
-                    RCTX.stderr.write(_("Warning: \"{0}\": added trailing white space to \"{1}\" at line(s) {{{2}}}.\n").format(next_patch.name, rel_subdir(self.path), ", ".join([str(line) for line in atws_lines])))
+                    RCTX.stderr.write(_("Warning: \"{0}\": has added trailing white space at line(s) {{{2}}}.\n").format(rel_subdir(self.path), ", ".join([str(line) for line in atws_lines])))
             if result.ecode != 0:
                 RCTX.stderr.write(result.stdout)
             else:
@@ -1413,7 +1414,7 @@ class DataBase(mixins.WrapperMixin):
         return None if not self._PPD.applied_patches_data else self._PPD.applied_patches_data[0].name
     @property
     def prev_patch(self):
-        return None if len(self._PPD.applied_patches_data) < 2 else PathcMgr(self._PPD.applied_patches_data[-2], self)
+        return None if len(self._PPD.applied_patches_data) < 2 else Patch(self._PPD.applied_patches_data[-2], self)
     @property
     def prev_patch_name(self):
         return None if len(self._PPD.applied_patches_data) < 2 else self._PPD.applied_patches_data[-2].name
@@ -1941,7 +1942,7 @@ def do_drop_files_fm_patch(patch_name, file_paths):
 def do_duplicate_patch(patch_name, as_patch_name, new_description):
     with open_db(mutable=True) as DB:
         if not is_valid_dir_name(as_patch_name):
-            RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(as_patch_name, utils.ALLOWED_DIR_NAME_CHARS_MSG))
+            RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(as_patch_name, ALLOWED_DIR_NAME_CHARS_MSG))
             return CmdResult.ERROR|CmdResult.Suggest.RENAME
         try:
             new_patch = DB.duplicate_named_patch(patch_name, as_patch_name, new_description)
@@ -2018,7 +2019,7 @@ def do_import_patch(epatch, patch_name, overwrite=False, absorb=False, force=Fal
                 except DarnItPatchError:
                     return CmdResult.ERROR
         elif not is_valid_dir_name(patch_name):
-            RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(patch_name, utils.ALLOWED_DIR_NAME_CHARS_MSG))
+            RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(patch_name, ALLOWED_DIR_NAME_CHARS_MSG))
             return CmdResult.ERROR|CmdResult.Suggest.RENAME
         descr = utils.make_utf8_compliant(epatch.get_description())
         top_patch = DB.top_patch
@@ -2180,7 +2181,7 @@ def do_rename_patch(patch_name, new_name):
             RCTX.stderr.write(_('patch "{0}" already exists\n').format(new_name))
             return CmdResult.ERROR|CmdResult.Suggest.RENAME
         elif not is_valid_dir_name(new_name):
-            RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(new_name, utils.ALLOWED_DIR_NAME_CHARS_MSG))
+            RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(new_name, ALLOWED_DIR_NAME_CHARS_MSG))
             return CmdResult.ERROR|CmdResult.Suggest.RENAME
         patch = _get_patch(patch_name, DB)
         if patch is None:
@@ -2192,7 +2193,7 @@ def do_rename_patch(patch_name, new_name):
 def do_restore_patch(patch_name, as_patch_name):
     with open_db(mutable=True) as DB:
         if not is_valid_dir_name(as_patch_name):
-            RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(as_patch_name, utils.ALLOWED_DIR_NAME_CHARS_MSG))
+            RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(as_patch_name, ALLOWED_DIR_NAME_CHARS_MSG))
             return CmdResult.ERROR|CmdResult.Suggest.RENAME
         try:
             patch = DB.restore_named_patch(patch_name, as_patch_name)
