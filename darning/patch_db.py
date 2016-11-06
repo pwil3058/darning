@@ -88,8 +88,8 @@ def rel_basedir(file_path):
     return file_path
 
 # TODO: do we really need is_valid_dir_name()
-_VALID_DIR_NAME_CRE = re.compile('^[ \w.-]+$')
-ALLOWED_DIR_NAME_CHARS_MSG = _('Only alphanumeric characters plus " ", "_", "-" and "." are allowed.')
+_VALID_DIR_NAME_CRE = re.compile(r"^[ \w.-]+$")
+ALLOWED_DIR_NAME_CHARS_MSG = _("Only alphanumeric characters plus \" \", \"_\", \"-\" and \".\" are allowed.")
 
 def is_valid_dir_name(dirname):
     return _VALID_DIR_NAME_CRE.match(dirname) is not None
@@ -118,7 +118,7 @@ def iter_with_subdir(file_paths):
 
 def find_base_dir(dir_path=None, remember_sub_dir=False):
     """Find the nearest directory above that contains a database"""
-    global _SUB_DIR
+    global _SUB_DIR # pylint: disable=global-statement
     dir_path = os.getcwd() if dir_path is None else os.path.abspath(os.path.expanduser(dir_path))
     subdir_parts = []
     while True:
@@ -183,8 +183,8 @@ class ZippedData(object):
 
 class OverlapData(object):
     def __init__(self, unrefreshed=None, uncommitted=None):
-         self.unrefreshed = {} if not unrefreshed else unrefreshed
-         self.uncommitted = set() if not uncommitted else set(uncommitted)
+        self.unrefreshed = {} if not unrefreshed else unrefreshed
+        self.uncommitted = set() if not uncommitted else set(uncommitted)
     def __bool__(self):
         return self.__len__() > 0
     def __len__(self):
@@ -202,7 +202,7 @@ class OverlapData(object):
 
 class _DataBaseData(mixins.PedanticSlotPickleMixin):
     __slots__ = ("selected_guards", "patch_series_data", "applied_patches_data", "combined_patch_data", "kept_patches")
-    def __init__(self, description):
+    def __init__(self):
         self.selected_guards = set()
         self.patch_series_data = list()
         self.applied_patches_data = list()
@@ -295,6 +295,7 @@ class _CameFromData(mixins.PedanticSlotPickleMixin):
 
 class DarnIt(Exception):
     def __init__(self, **kwargs):
+        Exception.__init__(self)
         self.__kwargs = kwargs
     def __getattr__(self, attr_name):
         return self.__kwargs[attr_name]
@@ -406,7 +407,7 @@ def generate_unified_diff_lines(before, after):
             diff_lines.append(diff_line)
         else:
             diff_lines.append(diff_line + "\n")
-            diff_lines.append("\ No newline at end of file\n")
+            diff_lines.append("\\ No newline at end of file\n")
     return diff_lines
 
 def generate_unified_diff(before, after):
@@ -501,11 +502,11 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
         self.persistent_file_data = persistent_file_data
         self.patch = patch
     def __eq__(self, other):
-        self.persistent_file_data is other.persistent_file_data
+        return self.persistent_file_data is other.persistent_file_data
     def __lt__(self, other):
-        self.path < other.path
+        return self.path < other.path
     def __gt__(self, other):
-        self.path > other.path
+        return self.path > other.path
     def clone_for_patch(self, for_patch):
         orig = self.patch.database.clone_stored_content_data(self.orig)
         darned = self.patch.database.clone_stored_content_data(self.darned)
@@ -551,6 +552,9 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
             raise
         if self.came_from:
             self.patch.database.release_stored_content(self.came_from.orig)
+        # TODO: handle disable=attribute-defined-outside-init better
+        # e.g don't use wrapped names for internal assignments
+        # pylint: disable=attribute-defined-outside-init
         self.came_from = new_came_from
         if self.came_from:
             self.patch.database.release_stored_content(self.darned)
@@ -595,6 +599,7 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
         # so that there is nothing to undo in that event
         os.rename(fm_file_data.path, self.path)
         # shouldn't get here if the rename fails
+        # pylint: disable=attribute-defined-outside-init
         if self.came_from:
             self.patch.database.release_stored_content(self.came_from.orig)
             if self.came_from.as_rename:
@@ -768,6 +773,7 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
         return _DiffData(label, efd, content, timestamp)
     def do_refresh(self, stdout=None, with_timestamps=False):
         assert self.patch.is_applied
+        # pylint: disable=attribute-defined-outside-init
         overlapping_file = self.get_overlapping_file()
         if self._has_unresolved_merges(overlapping_file):
             self.diff_wrt = False
@@ -814,7 +820,6 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
                         RCTX.stdout.write(_("\"{0}\": renamed from \"{1}\" and modified.\n").format(rel_subdir(self.path), rel_subdir(self.came_from.file_path)))
                     else:
                         RCTX.stdout.write(_("\"{0}\": copied from \"{1}\" and modified.\n").format(rel_subdir(self.path), rel_subdir(self.came_from.file_path)))
-                    pass
                 elif already_exists:
                     RCTX.stdout.write(_("\"{0}\": modified.\n").format(rel_subdir(self.path)))
                 else:
@@ -1126,7 +1131,7 @@ class Patch(mixins.WrapperMixin):
                 self.add_file(FileData.new_as_move(new_file_path, self, file_data))
         except OSError:
             if already_in_patch:
-                file_data.renamed_as = None
+                file_data.renamed_as = None # pylint: disable=attribute-defined-outside-init
             else:
                 self.drop_file(file_data)
             raise
@@ -1267,7 +1272,7 @@ class Patch(mixins.WrapperMixin):
             RCTX.stdout.write(_("Copying \"{0}\" to \"{1}\".\n").format(rel_subdir(came_from_path), rel_subdir(new_file_data.path)))
             try:
                 new_file_data.copy_contents_from(came_from_path)
-            except OSError as edata:
+            except OSError:
                 biggest_ecode = CmdResult.ERROR
                 RCTX.stderr.write(_("{0}: failed to copy {1}.\n").format(rel_subdir(new_file_data.path), rel_subdir(came_from_path)))
                 failures.append(diff_plus)
@@ -1278,7 +1283,7 @@ class Patch(mixins.WrapperMixin):
             RCTX.stdout.write(_("Renaming/moving \"{0}\" to \"{1}\".\n").format(rel_subdir(came_from_path), rel_subdir(new_file_data.path)))
             try:
                 new_file_data.move_contents_from(fm_file_data)
-            except OSError as edata:
+            except OSError:
                 biggest_ecode = CmdResult.ERROR
                 RCTX.stderr.write(_("{0}: failed to move {1}.\n").format(rel_subdir(new_file_data.path), rel_subdir(came_from_path)))
                 failures.append(diff_plus)
@@ -1286,7 +1291,7 @@ class Patch(mixins.WrapperMixin):
             if fm_file_data.orig is None:
                 self.drop_file(fm_file_data)
         # Apply the remaining changes
-        for diff_plus, _dummy in copies + renames:
+        for diff_plus, _dummy in copies + renames: # pylint: disable=unused-variable
             # NB: don't try applying patch if the copy/rename failed
             if diff_plus not in failures:
                 biggest_ecode = max(self._apply_diff_plus_changes(diff_plus, drop_atws, epatch.num_strip_levels), biggest_ecode)
@@ -1298,7 +1303,7 @@ class Patch(mixins.WrapperMixin):
             try:
                 RCTX.stdout.write(_("Deleting \"{0}\".\n").format(rel_file_path))
                 os.remove(file_path)
-            except OSError as edata:
+            except OSError:
                 biggest_ecode = CmdResult.ERROR
                 RCTX.stderr.write(_("{0}: deletion failed.\n").format(rel_file_path))
         return biggest_ecode
@@ -1372,22 +1377,22 @@ class CombinedPatch(mixins.WrapperMixin):
             return not self.get_file(file_path).was_ephemeral
         except KeyError:
             return False
-    def get_text_diff(self, file_paths=None):
+    def get_text_diff(self, file_paths=None, with_timestamps=False):
         text = ""
         if file_paths:
             for file_path in file_paths:
-                text += self.get_file(file_path).get_diff_text()
+                text += self.get_file(file_path).get_diff_text(with_timestamps=with_timestamps)
         else:
             for file_data in self.iterate_files_sorted():
                 if file_data.was_ephemeral:
                     continue
-                text += file_data.get_diff_text()
+                text += file_data.get_diff_text(with_timestamps=with_timestamps)
         return text
-    def get_diff_pluses(self, file_paths=None):
+    def get_diff_pluses(self, file_paths=None, with_timestamps=False):
         if file_paths:
-            return [self.get_file(file_path).get_diff_plus() for file_path in file_paths]
+            return [self.get_file(file_path).get_diff_plus(with_timestamps=with_timestamps) for file_path in file_paths]
         else:
-            return [file_data.get_diff_plus() for file_data in self.iterate_files_sorted()]
+            return [file_data.get_diff_plus(with_timestamps=with_timestamps) for file_data in self.iterate_files_sorted()]
 
 _ContentState = collections.namedtuple("_ContentState", ["orphans", "missing", "bad_content"])
 
@@ -1516,7 +1521,7 @@ class DataBase(mixins.WrapperMixin):
             self._PPD.patch_series_data.insert(0, patch_data)
         return Patch(patch_data, self)
     def get_named_patch(self, patch_name):
-        _index, patch = _find_named_patch_in_list(self._PPD.patch_series_data, patch_name)
+        _index, patch = _find_named_patch_in_list(self._PPD.patch_series_data, patch_name) # pylint: disable=unused-variable
         if not patch:
             raise DarnItUnknownPatch(patch_name=patch_name)
         return Patch(patch, self)
@@ -1595,7 +1600,7 @@ class DataBase(mixins.WrapperMixin):
         orphans = []
         missing = []
         bad_content = []
-        for base_dir_path, dir_names, file_names in os.walk(_BLOBS_DIR_PATH):
+        for base_dir_path, _dir_names, file_names in os.walk(_BLOBS_DIR_PATH): # pylint: disable=unused-variable
             if file_names:
                 key1 = os.path.basename(base_dir_path)
                 for file_name in file_names:
@@ -1703,7 +1708,7 @@ def do_create_db(dir_path=None, description=None):
         os.mkdir(database_blobs_dir_path, dir_mode)
         open(database_lock_file_path, "wb").write(b"0")
         open(description_file_path, "w").write(_tidy_text(description) if description else "")
-        db_obj = _DataBaseData(description)
+        db_obj = _DataBaseData()
         fobj = open(patches_data_file_path, "wb", stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
         try:
             pickle.dump(db_obj, fobj)
@@ -1725,7 +1730,7 @@ def do_create_db(dir_path=None, description=None):
 
 # Wrappers for portable lock routines
 if os.name == 'nt' or os.name == 'dos':
-    import msvcrt
+    import msvcrt # pylint: disable=import-error
     LOCK_EXCL = msvcrt.LK_LOCK
     LOCK_READ = msvcrt.LK_RLCK
     def lock_db(fd, mode):
@@ -1873,7 +1878,7 @@ def do_create_new_patch(patch_name, description):
     with open_db(mutable=True) as DB:
         old_top = DB.top_patch
         try:
-            patch = DB.create_new_patch(patch_name, description)
+            DB.create_new_patch(patch_name, description)
         except DarnItPatchExists:
             RCTX.stderr.write(_("patch \"{0}\" already exists.\n").format(patch_name))
             return CmdResult.ERROR|CmdResult.Suggest.RENAME
@@ -1949,7 +1954,7 @@ def do_duplicate_patch(patch_name, as_patch_name, new_description):
         except DarnItUnknownPatch:
             RCTX.stderr.write(_("{0}: patch is NOT known.\n").format(patch_name))
             return CmdResult.ERROR
-        except DarnItPatchNeedsRefresh as edata:
+        except DarnItPatchNeedsRefresh:
             RCTX.stderr.write(_('{0}: patch needs refresh.\n').format(patch_name))
             RCTX.stderr.write(_('Aborted.\n'))
             return CmdResult.ERROR | CmdResult.Suggest.REFRESH
@@ -2107,7 +2112,7 @@ def do_pop_top_patch(force=False):
         if new_top_patch is None:
             RCTX.stdout.write(_("There are now no patches applied.\n"))
         else:
-             RCTX.stdout.write(_("Patch \"{0}\" is now on top.\n").format(new_top_patch.name))
+            RCTX.stdout.write(_("Patch \"{0}\" is now on top.\n").format(new_top_patch.name))
         return CmdResult.OK
 
 def do_refresh_patch(patch_name=None):
@@ -2196,7 +2201,7 @@ def do_restore_patch(patch_name, as_patch_name):
             RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(as_patch_name, ALLOWED_DIR_NAME_CHARS_MSG))
             return CmdResult.ERROR|CmdResult.Suggest.RENAME
         try:
-            patch = DB.restore_named_patch(patch_name, as_patch_name)
+            DB.restore_named_patch(patch_name, as_patch_name)
         except DarnItUnknownPatch:
             RCTX.stderr.write(_('{0}: is NOT available for restoration\n').format(patch_name))
             return CmdResult.ERROR|CmdResult.Suggest.RENAME
@@ -2420,7 +2425,7 @@ def get_combined_diff_for_files(file_paths, with_timestamps=False):
                 for file_path in unknown_file_paths:
                     RCTX.stderr.write("{0}: file is not in any applied patch.\n".format(rel_subdir(file_path)))
                 return ""
-        return DB.combined_patch.get_text_diff(file_paths)
+        return DB.combined_patch.get_text_diff(file_paths, with_timestamps=with_timestamps)
 
 def get_combined_diff_pluses_for_files(file_paths, with_timestamps=False):
     with open_db(mutable=False) as DB:
@@ -2434,7 +2439,7 @@ def get_combined_diff_pluses_for_files(file_paths, with_timestamps=False):
                 for file_path in unknown_file_paths:
                     RCTX.stderr.write("{0}: file is not in any applied patch.\n".format(rel_subdir(file_path)))
                 return ""
-        return DB.combined_patch.get_diff_pluses(file_paths)
+        return DB.combined_patch.get_diff_pluses(file_paths, with_timestamps=with_timestamps)
 
 def get_combined_patch_file_table():
     """Get a table of file data for all applied patches"""

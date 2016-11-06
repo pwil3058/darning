@@ -82,7 +82,7 @@ class Interface(pm_gui.InterfaceMixin):
                     return CmdResult.error(stderr=str(edata))
         cmd_str = "init {0}\n".format(dir_path) if dir_path else "init\n"
         events = pm.E_NEW_PM if not dir_path else 0
-        return _RUN_DO(cmd_str, lambda: patch_db.do_create_db(dir_path), events)
+        return _RUN_DO(cmd_str, lambda: patch_db.do_create_db(dir_path=dir_path), events)
     @staticmethod
     def dir_is_in_valid_pgnd(dir_path=None):
         return patch_db.find_base_dir(dir_path) is not None
