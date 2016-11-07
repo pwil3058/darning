@@ -51,31 +51,7 @@ from . import recollect
 from . import dooph
 
 def pm_do_duplicate_patch(patch_name):
-    description = pm_gui_ifce.PM.get_patch_description(patch_name)
-    dialog = DuplicatePatchDialog(patch_name, description, parent=dialogue.main_window)
-    refresh_tried = False
-    while True:
-        response = dialog.run()
-        if response == Gtk.ResponseType.OK:
-            as_patch_name = dialog.get_new_patch_name()
-            newdescription = dialog.get_descr()
-            with dialog.showing_busy():
-                result = pm_gui_ifce.PM.do_duplicate_patch(patch_name, as_patch_name, newdescription)
-            if not refresh_tried and result.suggests_refresh:
-                resp = dialogue.main_window.ask_force_refresh_absorb_or_cancel(result)
-                if resp == Gtk.ResponseType.CANCEL:
-                    break
-                elif resp == dialogue.Response.REFRESH:
-                    refresh_tried = True
-                    with dialogue.main_window.showing_busy():
-                        result = pm_gui_ifce.PM.do_refresh_patch()
-                    dialogue.main_window.report_any_problems(result)
-                continue
-            dialogue.main_window.report_any_problems(result)
-            if result.suggests_rename:
-                continue
-        break
-    dialog.destroy()
+    DuplicatePatchDialog(patch_name, parent=dialogue.main_window).run()
 
 def pm_do_export_named_patch(patch_name, suggestion=None, busy_indicator=None):
     if busy_indicator is None:
@@ -551,22 +527,49 @@ class NewPatchDialog(NewSeriesDescrDialog, dialogue.ClientMixin):
                 return
         dlg.destroy()
 
-class DuplicatePatchDialog(NewSeriesDescrDialog):
-    def __init__(self, patch_name, olddescr, parent=None):
+class DuplicatePatchDialog(NewSeriesDescrDialog, dialogue.ClientMixin):
+    def __init__(self, patch_name, parent=None):
+        self.patch_name = patch_name
         NewSeriesDescrDialog.__init__(self, parent=parent)
         self.set_title(_("Duplicate Patch: {0}: {1} -- {2}").format(patch_name, utils.path_rel_home(os.getcwd()), APP_NAME))
-        self.hbox = Gtk.HBox()
-        self.hbox.pack_start(Gtk.Label(_("Duplicate Patch Name:")), expand=False, fill=False, padding=0)
+        hbox = Gtk.HBox()
+        hbox.pack_start(Gtk.Label(_("Duplicate Patch Name:")), expand=False, fill=False, padding=0)
         self.new_name_entry = Gtk.Entry()
         self.new_name_entry.set_width_chars(32)
         self.new_name_entry.set_text(patch_name + ".duplicate")
-        self.hbox.pack_start(self.new_name_entry, expand=True, fill=True, padding=0)
+        hbox.pack_start(self.new_name_entry, expand=True, fill=True, padding=0)
+        olddescr = pm_gui_ifce.PM.get_patch_description(patch_name)
         self.edit_descr_widget.set_contents(olddescr)
-        self.hbox.show_all()
-        self.vbox.pack_start(self.hbox, expand=True, fill=True, padding=0)
-        self.vbox.reorder_child(self.hbox, 0)
+        hbox.show_all()
+        self.get_content_area().pack_start(hbox, expand=True, fill=True, padding=0)
+        self.get_content_area().reorder_child(hbox, 0)
+        self.connect("response", self.response_cb)
     def get_new_patch_name(self):
         return self.new_name_entry.get_text()
+    @staticmethod
+    def response_cb(dialog, response_id):
+        if response_id == Gtk.ResponseType.OK:
+            refresh_tried = False
+            while True:
+                as_patch_name = dialog.get_new_patch_name()
+                newdescription = dialog.get_descr()
+                with dialog.showing_busy():
+                    result = pm_gui_ifce.PM.do_duplicate_patch(dialog.patch_name, as_patch_name, newdescription)
+                if not refresh_tried and result.suggests_refresh:
+                    resp = dialog.ask_force_refresh_absorb_or_cancel(result)
+                    if resp == Gtk.ResponseType.CANCEL:
+                        break
+                    elif resp == dialogue.Response.REFRESH:
+                        refresh_tried = True
+                        with dialog.showing_busy():
+                            result = pm_gui_ifce.PM.do_refresh_patch()
+                        dialog.report_any_problems(result)
+                    continue # try again after the refresh
+                dialog.report_any_problems(result)
+                if result.suggests_rename:
+                    return # give the user another chance
+                break
+        dialog.destroy()
 
 class SeriesDescrEditDialog(dialogue.Dialog):
     class Widget(text_edit.DbMessageWidget):

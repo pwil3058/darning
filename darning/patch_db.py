@@ -1049,6 +1049,7 @@ class Patch(mixins.WrapperMixin):
             # complex interactions that make using os.rename problematic
             # so we just move content and mode using stored original data
             fm_file_data = self.get_file(file_data.came_from.file_path)
+            # TODO: investigate whether fm_file_data.orig can be None here. Duplicated patch?
             try:
                 open(file_data.path, "wb").write(self.database.get_content_for(fm_file_data.orig))
                 os.chmod(file_data.path, fm_file_data.orig.permissions)
