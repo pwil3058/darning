@@ -123,6 +123,24 @@ class Interface(pm_gui.InterfaceMixin):
         cmd_str += " --msg \"{0}\"\n".format(new_description)
         return _RUN_DO(cmd_str, lambda: patch_db.do_duplicate_patch(patch_name, as_patch_name, new_description), pm.E_NEW_PATCH, False)
     @staticmethod
+    def do_export_patch_as(patch_name, export_file_path, force=False, overwrite=False):
+        import os
+        if not overwrite and os.path.exists(export_file_path):
+            emsg = _("{0}: file already exists.\n").format(export_file_path)
+            return CmdResult.error(stderr=emsg) | CmdResult.Suggest.OVERWRITE_OR_RENAME
+        try:
+            text_patch = patch_db.get_textpatch(patch_name)
+        except patch_db.DarnItUnknownPatch:
+            return CmdResult.error(stderr=_("{}: unknown patch.\n").format(patch_name))
+        if not force:
+            if text_patch.state == PatchState.APPLIED_NEEDS_REFRESH:
+                emsg = _("{0}: is applied but needs refreshing.\n").format(patch_name)
+                return CmdResult.error(stderr=emsg) | CmdResult.Suggest.FORCE_OR_REFRESH
+            elif text_patch.state == PatchState.APPLIED_UNREFRESHABLE:
+                emsg = _("{0}: is applied, needs refreshing but is unrefreshable.\n").format(patch_name)
+                return CmdResult.error(stderr=emsg) | CmdResult.Suggest.FORCE
+        return utils.set_file_contents(export_file_path, str(text_patch))
+    @staticmethod
     def do_import_patch(epatch, as_patchname, overwrite=False):
         RCTX.reset()
         if overwrite:
@@ -282,6 +300,9 @@ class Interface(pm_gui.InterfaceMixin):
     def get_textpatch(patch_name):
         return patch_db.get_textpatch(patch_name)
     @staticmethod
+    def get_patch_text(patch_name):
+        return str(patch_db.get_textpatch(patch_name))
+    @staticmethod
     def get_top_patch_diff_pluses(file_paths=None, with_timestamps=False):
         if patch_db.get_applied_patch_count() == 0:
             return []
@@ -297,10 +318,16 @@ class Interface(pm_gui.InterfaceMixin):
         return patch_db.is_blocked_by_guard(patch_name)
     @staticmethod
     def is_patch_applied(patch_name):
-        return quilt_utils.is_patch_applied(patch_name)
+        return patch_db.is_patch_applied(patch_name)
     @staticmethod
     def is_top_patch(patch_name):
         return patch_db.is_top_patch(patch_name)
+    @staticmethod
+    def _check_patch_export_status(patch_name):
+        if patch_db.is_patch_refreshed(patch_name):
+            return CmdResult.ok()
+        else:
+            return CmdResult.error(stderr=_("{}: needs refreshing")) | CmdResult.SUGGEST_REFRESH
 
 PM = Interface()
 pm_gui_ifce.add_backend(PM)

@@ -2450,6 +2450,9 @@ def get_combined_patch_file_table():
             return []
         return DB.combined_patch.get_files_table()
 
+def get_combined_textpatch(with_timestamps=False):
+    return NotImplemented
+
 def get_diff_for_files(file_paths, patch_name, with_timestamps=False):
     with open_db(mutable=False) as DB:
         patch = _get_named_or_top_patch(patch_name, DB)
@@ -2576,6 +2579,11 @@ def is_patch_applied(patch_name):
     '''Is the named patch applied?'''
     with open_db(mutable=False) as DB:
         return DB.get_named_patch(patch_name).is_applied
+
+def is_patch_refreshed(patch_name):
+    '''Is the named patch in need of refresh?'''
+    with open_db(mutable=False) as DB:
+        return not DB.get_named_patch(patch_name).needs_refresh
 
 def is_pushable():
     with open_db(mutable=False) as DB:

@@ -13,7 +13,7 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-'''Print a text version of a patch to standard output.'''
+"""Print a text version of a patch to standard output."""
 
 import sys
 
@@ -23,37 +23,35 @@ from . import cli_args
 from . import db_utils
 
 PARSER = cli_args.SUB_CMD_PARSER.add_parser(
-    'export',
-    description=_('Output a text version of the named (or top) patch to standard output.'),
+    "export",
+    description=_("Output a text version of the named (or top) patch to standard output or a named file."),
 )
 
 GROUP = PARSER.add_mutually_exclusive_group()
 
 GROUP.add_argument(
-    '--combined',
-    dest='opt_combined',
-    help=_('text version all applied patches combined.'),
-    action='store_true'
+    "--combined",
+    dest="opt_combined",
+    help=_("text version all applied patches combined."),
+    action="store_true"
 )
 
-GROUP.add_argument(
-    'patchname',
-    metavar=_('patchname'),
-    nargs='?',
-    help=_('the name of the patch to be exported.'),
-)
+cli_args.add_patch_option(GROUP, _("the name of the patch to be exported."))
 
 def run_export(args):
-    '''Execute the "export" sub command using the supplied args'''
+    """Execute the "export" sub command using the supplied args"""
     PM = db_utils.get_pm_db()
     db_utils.set_report_context(verbose=True)
-    patchname = PM.get_named_or_top_patch_name(args.patchname)
-    if patchname is None:
+    patch_name = PM.get_named_or_top_patch_name(args.opt_patch)
+    if patch_name is None:
         return CmdResult.ERROR
     if args.opt_combined:
         tpatch = PM.get_combined_textpatch()
     else:
-        tpatch = PM.get_textpatch(patchname)
+        tpatch = PM.get_textpatch(patch_name)
+    if tpatch is NotImplemented:
+        sys.stderr.write(_("Export of combined patch not yet implemented.\n"))
+        return CmdResult.ERROR
     sys.stdout.write(str(tpatch))
     return CmdResult.OK
 
