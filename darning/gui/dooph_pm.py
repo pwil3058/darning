@@ -20,7 +20,6 @@ from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import GObject
 
-from ..wsm.bab import enotify
 from ..wsm.bab import utils
 
 from ..wsm.bab import CmdResult
@@ -31,24 +30,18 @@ from ..wsm.gtx import icons
 from ..wsm.gtx import tlview
 from ..wsm.gtx import table
 from ..wsm.gtx import gutils
+from ..wsm.gtx import recollect
 from ..wsm.gtx import textview
-from ..wsm.gtx import xtnl_edit
 from ..wsm.gtx import text_edit
 
-from ..wsm import pm
-from ..wsm import scm
 from ..wsm import wsm_icons
 
 from .. import APP_NAME
 
 from ..wsm.pm_gui import ifce as pm_gui_ifce
 from ..wsm.pm_gui import actions as pm_actions
-from ..wsm.pm_gui import pm_wspce
 
 from ..wsm.scm_gui import actions as scm_actions
-
-from . import recollect
-from . import dooph
 
 def pm_do_duplicate_patch(patch_name):
     DuplicatePatchDialog(patch_name, parent=dialogue.main_window).run()
@@ -184,10 +177,9 @@ def pm_do_fold_external_patch():
     dlg.destroy()
 
 def pm_do_import_external_patch():
-    from . import recollect
     suggestion = recollect.get("import", "last_directory")
     from ..wsm.patch_diff import patchlib
-    patch_file_path = dialogue.main_window.ask_file_path(_("Select patch file to be imported"))
+    patch_file_path = dialogue.main_window.ask_file_path(_("Select patch file to be imported"), suggestion=suggestion)
     if patch_file_path is None:
         return
     try:
@@ -497,8 +489,9 @@ class NewSeriesDescrDialog(dialogue.Dialog):
         toolbar.set_orientation(Gtk.Orientation.HORIZONTAL)
         hbox.pack_end(toolbar, expand=False, fill=False, padding=0)
         hbox.show_all()
-        self.vbox.pack_start(hbox, expand=False, fill=True, padding=0)
-        self.vbox.pack_start(self.edit_descr_widget, expand=True, fill=True, padding=0)
+        vbox = self.get_content_area()
+        vbox.pack_start(hbox, expand=False, fill=True, padding=0)
+        vbox.pack_start(self.edit_descr_widget, expand=True, fill=True, padding=0)
         self.set_focus_child(self.edit_descr_widget)
         self.edit_descr_widget.show_all()
     def get_descr(self):
@@ -514,8 +507,9 @@ class NewPatchDialog(NewSeriesDescrDialog, dialogue.ClientMixin):
         self.new_name_entry.set_width_chars(32)
         self.hbox.pack_start(self.new_name_entry, expand=True, fill=True, padding=0)
         self.hbox.show_all()
-        self.vbox.pack_start(self.hbox, expand=True, fill=True, padding=0)
-        self.vbox.reorder_child(self.hbox, 0)
+        vbox = self.get_content_area()
+        vbox.pack_start(self.hbox, expand=True, fill=True, padding=0)
+        vbox.reorder_child(self.hbox, 0)
         self.connect("response", self._response_cb)
         self.show_all()
     def _response_cb(self, dlg, response):
@@ -618,12 +612,14 @@ class SeriesDescrEditDialog(dialogue.Dialog):
         toolbar.set_orientation(Gtk.Orientation.HORIZONTAL)
         hbox.pack_end(toolbar, expand=False, fill=False, padding=0)
         hbox.show_all()
-        self.vbox.pack_start(hbox, expand=False, fill=True, padding=0)
-        self.vbox.pack_start(self.edit_descr_widget, expand=True, fill=True, padding=0)
+        vbox = self.get_content_area()
+        vbox.pack_start(hbox, expand=False, fill=True, padding=0)
+        vbox.pack_start(self.edit_descr_widget, expand=True, fill=True, padding=0)
         self.set_focus_child(self.edit_descr_widget)
-        self.action_area.pack_start(self.edit_descr_widget.reload_button, expand=True, fill=True, padding=0)
-        self.action_area.pack_start(self.edit_descr_widget.save_button, expand=True, fill=True, padding=0)
-        self.action_area.show_all()
+        action_area = self.get_action_area()
+        action_area.pack_start(self.edit_descr_widget.reload_button, expand=True, fill=True, padding=0)
+        action_area.pack_start(self.edit_descr_widget.save_button, expand=True, fill=True, padding=0)
+        action_area.show_all()
         self.add_button(Gtk.STOCK_CLOSE, Gtk.ResponseType.CLOSE)
         self.connect("response", self._handle_response_cb)
         self.set_focus_child(self.edit_descr_widget.view)
@@ -685,12 +681,14 @@ class PatchDescrEditDialog(dialogue.Dialog):
         toolbar.set_orientation(Gtk.Orientation.HORIZONTAL)
         hbox.pack_end(toolbar, expand=False, fill=False, padding=0)
         hbox.show_all()
-        self.vbox.pack_start(hbox, expand=False, fill=True, padding=0)
-        self.vbox.pack_start(self.edit_descr_widget, expand=True, fill=True, padding=0)
+        vbox = self.get_content_area()
+        vbox.pack_start(hbox, expand=False, fill=True, padding=0)
+        vbox.pack_start(self.edit_descr_widget, expand=True, fill=True, padding=0)
         self.set_focus_child(self.edit_descr_widget)
-        self.action_area.pack_start(self.edit_descr_widget.reload_button, expand=True, fill=True, padding=0)
-        self.action_area.pack_start(self.edit_descr_widget.save_button, expand=True, fill=True, padding=0)
-        self.action_area.show_all()
+        action_area = self.get_action_area()
+        action_area.pack_start(self.edit_descr_widget.reload_button, expand=True, fill=True, padding=0)
+        action_area.pack_start(self.edit_descr_widget.save_button, expand=True, fill=True, padding=0)
+        action_area.show_all()
         self.add_button(Gtk.STOCK_CLOSE, Gtk.ResponseType.CLOSE)
         self.connect("response", self._handle_response_cb)
         self.set_focus_child(self.edit_descr_widget.view)
@@ -720,7 +718,8 @@ class ImportPatchDialog(dialogue.Dialog):
         self.as_name.get_child().set_width_chars(32)
         self.as_name.set_text(patch_file_name)
         self.namebox.pack_start(self.as_name, expand=True, fill=True, padding=0)
-        self.vbox.pack_start(self.namebox, expand=False, fill=False, padding=0)
+        vbox = self.get_content_area()
+        vbox.pack_start(self.namebox, expand=False, fill=False, padding=0)
         #
         hbox = Gtk.HBox()
         hbox.pack_start(Gtk.Label(_("Files: Strip Level:")), expand=False, fill=True, padding=0)
@@ -731,12 +730,12 @@ class ImportPatchDialog(dialogue.Dialog):
             strip_level_button.connect("toggled", self._strip_level_toggle_cb)
             hbox.pack_start(strip_level_button, expand=False, fill=False, padding=0)
             strip_level_button.set_active(False)
-        self.vbox.pack_start(hbox, expand=False, fill=False, padding=0)
+        vbox.pack_start(hbox, expand=False, fill=False, padding=0)
         #
         self.file_list_widget = textview.Widget()
         self.strip_level_buttons[1 if est_strip_level is None else est_strip_level].set_active(True)
         self.update_file_list()
-        self.vbox.pack_start(self.file_list_widget, expand=True, fill=True, padding=0)
+        vbox.pack_start(self.file_list_widget, expand=True, fill=True, padding=0)
         self.show_all()
         self.add_button(Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL)
         self.add_button(Gtk.STOCK_OK, Gtk.ResponseType.OK)
@@ -749,11 +748,12 @@ class ImportPatchDialog(dialogue.Dialog):
     def get_as_name(self):
         return self.as_name.get_text()
     def update_file_list(self):
+        from ..wsm.patch_diff.patchlib import TooMayStripLevels
         strip_level = self.get_strip_level()
         try:
             filepaths = self.epatch.get_file_paths(strip_level)
             self.file_list_widget.set_contents("\n".join(filepaths))
-        except:
+        except TooMayStripLevels:
             if strip_level == 0:
                 return
             self.strip_level_buttons[0].set_active(True)
@@ -767,7 +767,6 @@ class FoldPatchDialog(ImportPatchDialog):
         self.namebox.hide()
 
 class RestorePatchDialog(dialogue.Dialog):
-    _KEYVAL_ESCAPE = Gdk.keyval_from_name("Escape")
     class Table(table.EditedEntriesTable):
         class VIEW(table.EditedEntriesTable.VIEW):
             class MODEL(table.EditedEntriesTable.VIEW.MODEL):
@@ -804,20 +803,20 @@ class RestorePatchDialog(dialogue.Dialog):
             table.EditedEntriesTable.__init__(self, size_req=(480, 160))
             self.connect("key_press_event", self._key_press_cb)
             self.connect("button_press_event", self._handle_button_press_cb)
-            self.set_contents()
+            self.view.set_contents()
         def get_selected_patch(self):
-            data = self.get_selected_data_by_label(["PatchName"])
+            data = self.view.get_selected_data_by_label(["PatchName"])
             if not data:
                 return False
             return data[0]
         def _handle_button_press_cb(self, widget, event):
-            if event.type == Gdk.BUTTON_PRESS:
+            if event.type == Gdk.EventType.BUTTON_PRESS:
                 if event.button == 2:
                     self.seln.unselect_all()
                     return True
             return False
         def _key_press_cb(self, widget, event):
-            if event.keyval == _KEYVAL_ESCAPE:
+            if event.keyval == Gdk.keyval_from_name("Escape"):
                 self.seln.unselect_all()
                 return True
             return False
@@ -831,7 +830,8 @@ class RestorePatchDialog(dialogue.Dialog):
                                           Gtk.STOCK_OK, Gtk.ResponseType.OK)
                                 )
         self.kept_patch_table = self.Table()
-        self.vbox.pack_start(self.kept_patch_table, expand=True, fill=True, padding=0)
+        vbox = self.get_content_area()
+        vbox.pack_start(self.kept_patch_table, expand=True, fill=True, padding=0)
         #
         hbox = Gtk.HBox()
         hbox.pack_start(Gtk.Label(_("Restore Patch:")), expand=False, fill=True, padding=0)
@@ -839,7 +839,7 @@ class RestorePatchDialog(dialogue.Dialog):
         self.rpatch_name.set_editable(False)
         self.rpatch_name.set_width_chars(32)
         hbox.pack_start(self.rpatch_name, expand=True, fill=True, padding=0)
-        self.vbox.pack_start(hbox, expand=False, fill=False, padding=0)
+        vbox.pack_start(hbox, expand=False, fill=False, padding=0)
         #
         hbox = Gtk.HBox()
         hbox.pack_start(Gtk.Label(_("As Patch:")), expand=False, fill=True, padding=0)
@@ -847,7 +847,7 @@ class RestorePatchDialog(dialogue.Dialog):
         self.as_name.get_child().set_width_chars(32)
         self.as_name.get_child().connect("activate", self._as_name_cb)
         hbox.pack_start(self.as_name, expand=True, fill=True, padding=0)
-        self.vbox.pack_start(hbox, expand=False, fill=False, padding=0)
+        vbox.pack_start(hbox, expand=False, fill=False, padding=0)
         #
         self.show_all()
         self.kept_patch_table.seln.unselect_all()
