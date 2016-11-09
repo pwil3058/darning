@@ -1569,7 +1569,7 @@ class DataBase(mixins.WrapperMixin):
         # NB: let this blow up if index fails
         patch_index = None if patch is None else self.applied_patches_data.index(patch.persistent_patch_data)
         remaining_files = set(file_paths)
-        uncommitted = set(scm_ifce.get_ifce().get_files_with_uncommitted_changes(remaining_files))
+        uncommitted = set(scm_ifce.get_current_ifce().get_files_with_uncommitted_changes(remaining_files))
         unrefreshed = {}
         for patch in self.iterate_applied_patches(stop=patch_index, backwards=True):
             if len(uncommitted) + len(remaining_files) == 0:
@@ -1644,7 +1644,7 @@ class DataBase(mixins.WrapperMixin):
         if overlapped_patch:
             return self.clone_stored_content_data(overlapped_patch.get_file(file_path).darned)
         if file_path in overlaps.uncommitted:
-            contents = scm_ifce.get_ifce().get_clean_contents(file_path)
+            contents = scm_ifce.get_current_ifce().get_clean_contents(file_path)
             if contents is None:
                 # Will occur if file has been added to SCM but not committed
                 return None
@@ -2213,13 +2213,13 @@ def do_restore_patch(patch_name, as_patch_name):
 
 def do_scm_absorb_applied_patches(force=False, with_timestamps=False):
     with open_db(mutable=True) as DB:
-        if not scm_ifce.get_ifce().in_valid_pgnd:
+        if not scm_ifce.get_current_ifce().in_valid_pgnd:
             RCTX.stderr.write(_("Sources not under control of known SCM\n"))
             return CmdResult.ERROR
         if not DB.applied_patches_data:
             RCTX.stderr.write(_("There are no patches applied.\n"))
             return CmdResult.ERROR
-        is_ready, msg = scm_ifce.get_ifce().is_ready_for_import()
+        is_ready, msg = scm_ifce.get_current_ifce().is_ready_for_import()
         if not is_ready:
             RCTX.stderr.write(_(msg))
             return CmdResult.ERROR
@@ -2276,7 +2276,7 @@ def do_scm_absorb_applied_patches(force=False, with_timestamps=False):
         ret_code = CmdResult.OK
         count = 0
         for patch_file_name in patch_file_names:
-            result = scm_ifce.get_ifce().do_import_patch(patch_file_name)
+            result = scm_ifce.get_current_ifce().do_import_patch(patch_file_name)
             RCTX.stdout.write(result.stdout)
             RCTX.stderr.write(result.stderr)
             if result.ecode != 0:
@@ -2528,7 +2528,7 @@ def get_outstanding_changes_below_top():
                     if applied_patch.get_file(apfile).needs_refresh:
                         unrefreshed[apfile] = applied_patch
                 skip_set |= apfiles_set
-        uncommitted = set(scm_ifce.get_ifce().get_files_with_uncommitted_changes()) - skip_set
+        uncommitted = set(scm_ifce.get_current_ifce().get_files_with_uncommitted_changes()) - skip_set
         return OverlapData(unrefreshed=unrefreshed, uncommitted=uncommitted)
 
 def get_patch_description(patch_name):
