@@ -2213,7 +2213,7 @@ def do_restore_patch(patch_name, as_patch_name):
 
 def do_scm_absorb_applied_patches(force=False, with_timestamps=False):
     with open_db(mutable=True) as DB:
-        if not scm_ifce.get_current_ifce().in_valid_pgnd:
+        if not scm_ifce.get_current_ifce().in_valid_wspce:
             RCTX.stderr.write(_("Sources not under control of known SCM\n"))
             return CmdResult.ERROR
         if not DB.applied_patches_data:

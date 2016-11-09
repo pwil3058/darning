@@ -101,7 +101,7 @@ class WSTreeView(file_tree.FileTreeView, enotify.Listener,
     def _update_popup_cb(self, **kwargs):
         if pm_gui_ifce.PM.is_poppable:
             self.set_popup("/pmic_files_popup")
-        elif scm_gui_ifce.SCM.in_valid_pgnd:
+        elif scm_gui_ifce.SCM.in_valid_wspce:
             self.set_popup("/scmic_files_popup")
         else:
             self.set_popup(self.DEFAULT_POPUP)

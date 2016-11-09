@@ -27,7 +27,7 @@ rctx.reset(RCTX.stdout, RCTX.stderr)
 
 
 # Import SCM back ends that we're interested in
-from ..wsm.git_gui import ifce as git_gui_ifce
+from ..wsm.git_gui import git_gui_ifce
 from ..wsm.hg_gui import hg_gui_ifce
 
 # import PM backend  GUI interfaces here
