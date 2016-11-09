@@ -937,10 +937,10 @@ class Patch(mixins.WrapperMixin):
         assert patch_data in database.patch_series_data
     def __eq__(self, other):
         try:
-            return self.persistent_patch_data is other.persistent_patch_data
+            return self.persistent_patch_data == other.persistent_patch_data
         except AttributeError:
             assert isinstance(other, _PatchData) or other is None
-            return self.persistent_patch_data is other
+            return self.persistent_patch_data == other
     @property
     def is_applied(self):
         return self.persistent_patch_data in self.database.applied_patches_data
@@ -949,7 +949,7 @@ class Patch(mixins.WrapperMixin):
         return _guards_block_patch(self.database.selected_guards, self)
     @property
     def is_top_patch(self):
-        return self.persistent_patch_data is self.database.top_patch.persistent_patch_data
+        return self.persistent_patch_data == self.database.top_patch.persistent_patch_data
     @property
     def needs_refresh(self):
         for pfile in self.iterate_files():
@@ -1358,7 +1358,7 @@ class CombinedPatch(mixins.WrapperMixin):
             bottom = file_data.persistent_file_data
         self.files_data[file_data.path] = _CombinedFileData(file_data.persistent_file_data, bottom)
     def drop_file(self, file_data):
-        assert self.files_data[file_data.path].top is file_data.persistent_file_data
+        assert self.files_data[file_data.path].top == file_data.persistent_file_data
         prev_file_data = self.prev.files_data.get(file_data.path, None) if self.prev else None
         if prev_file_data:
             self.files_data[file_data.path] = copy.copy(prev_file_data)
@@ -1460,7 +1460,7 @@ class DataBase(mixins.WrapperMixin):
         else:
             self._PPD.patch_series_data.insert(0, new_patch)
         self._PPD.applied_patches_data.append(new_patch)
-        assert self._PPD.applied_patches_data[-1] is new_patch
+        assert self._PPD.applied_patches_data[-1] == new_patch
         assert new_patch in self._PPD.patch_series_data
         self._PPD.combined_patch_data = _CombinedPatchData(self._PPD.combined_patch_data)
         return Patch(new_patch, self)
@@ -2591,4 +2591,4 @@ def is_pushable():
 
 def is_top_patch(patch_name):
     with open_db(mutable=False) as DB:
-        return DB.top_patch_name == patch_name
+        return DB.get_named_patch(patch_name).is_top_patch
