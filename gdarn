@@ -71,7 +71,7 @@ def report_exception(exc_data, parent=None):
 
 try:
     from darning.gui import gdarn
-    from darning.wsm.pm_gui import ifce
+    from darning.wsm.pm_gui import ifce as pm_gui_ifce
     from darning.wsm.pm_gui import pm_wspce
     from darning.gui import recollect
 except Exception:
@@ -89,9 +89,13 @@ PARSER.add_argument(
 
 ARGS = PARSER.parse_args()
 
+pm_gui_ifce.init()
+
+# TODO: rationalize and simplify "gdarn" start up
+
 if ARGS.playground:
     try:
-        os.chdir(ARGS.playground)
+        pm_wspce.chdir(ARGS.playground)
         recollect.set(APP_NAME, "last_wd", ARGS.playground)
     except OSError as msg:
         sys.stderr.write(str(msg) + '\n')
@@ -100,32 +104,13 @@ else:
     last_dir = recollect.get(APP_NAME, "last_pgnd")
     if os.path.isdir(last_dir):
         try:
-            os.chdir(last_dir)
+            pm_wspce.chdir(last_dir)
         except OSError as msg:
             pass # go back to asking the user where he wants to start
         ARGS.playground = os.getcwd()
 
-ifce.init()
 mw = gdarn.Darning(dir_specified=ARGS.playground is not None)
 mw.show()
-
-open_dialog = None
-if not ifce.PM.in_valid_pgnd and ARGS.playground is None:
-    last_pgnd = recollect.get(APP_NAME, "last_pgnd")
-    open_dialog = pm_wspce.PgndOpenDialog(suggestion=last_pgnd)
-    if open_dialog.run() == Gtk.ResponseType.OK:
-        wspath = open_dialog.get_path()
-        if wspath:
-            open_dialog.show_busy()
-            result = ifce.chdir(wspath)
-            open_dialog.unshow_busy()
-            open_dialog.report_any_problems(result)
-    else:
-        sys.exit()
-    open_dialog.show_busy()
-if open_dialog:
-    open_dialog.unshow_busy()
-    open_dialog.destroy()
 
 try:
     Gtk.main()
