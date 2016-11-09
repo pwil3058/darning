@@ -31,7 +31,7 @@ from ..wsm.patch_diff_gui import diff
 from ..wsm.patch_diff_gui import patch_view
 
 from ..wsm import pm
-from ..wsm.pm_gui import ifce as pm_gui_ifce
+from ..wsm.pm_gui import pm_gui_ifce
 
 from ..wsm import wsm_icons
 

@@ -32,8 +32,8 @@ from ..wsm.gtx import terminal
 from ..wsm.gtx import console
 
 from ..wsm.pm_gui import pm_wspce
-from ..wsm.pm_gui import actions as pm_actions
-from ..wsm.scm_gui import actions as scm_actions
+from ..wsm.pm_gui import pm_actions
+from ..wsm.scm_gui import scm_actions
 
 from ..wsm.gtx import icons
 

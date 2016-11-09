@@ -38,11 +38,11 @@ from ..wsm import wsm_icons
 
 from .. import APP_NAME
 
-from ..wsm.pm_gui import ifce as pm_gui_ifce
-from ..wsm.pm_gui import actions as pm_actions
+from ..wsm.pm_gui import pm_gui_ifce
+from ..wsm.pm_gui import pm_actions
 from ..wsm.pm_gui.pm_do_opn_patches import NewSeriesDescrDialog
 
-from ..wsm.scm_gui import actions as scm_actions
+from ..wsm.scm_gui import scm_actions
 
 def pm_do_fold_external_patch():
     from ..wsm.patch_diff import patchlib

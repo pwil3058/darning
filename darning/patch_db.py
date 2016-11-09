@@ -41,7 +41,7 @@ from .wsm.patch_diff import patchlib
 from . import ntuples
 from . import rctx as RCTX
 from . import mixins
-from .wsm.scm import ifce as scm_ifce
+from .wsm.scm import scm_ifce
 
 from .wsm.pm import PatchState, FileStatus, Presence, Validity, PatchTableRow
 from .wsm.pm import MERGE_CRE, patch_timestamp_str

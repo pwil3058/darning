@@ -28,7 +28,7 @@ from ..wsm import pm_gui
 
 from ..wsm.pm import PatchState
 
-from ..wsm.pm_gui import ifce as pm_gui_ifce
+from ..wsm.pm_gui import pm_gui_ifce
 
 from .. import patch_db
 from . import fsdb_darning

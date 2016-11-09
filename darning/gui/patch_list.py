@@ -36,8 +36,8 @@ from ..wsm import pm
 from ..wsm import wsm_icons
 
 from ..wsm.pm import PatchState
-from ..wsm.pm_gui import ifce as pm_gui_ifce
-from ..wsm.pm_gui import actions as pm_actions
+from ..wsm.pm_gui import pm_gui_ifce
+from ..wsm.pm_gui import pm_actions
 from ..wsm.pm_gui import pm_do_opn_patches
 
 from . import patch_view

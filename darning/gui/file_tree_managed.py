@@ -31,12 +31,12 @@ from ..wsm.gtx import xtnl_edit
 
 from ..wsm import pm
 from ..wsm import scm
-from ..wsm.pm_gui import ifce as pm_gui_ifce
-from ..wsm.pm_gui import actions as pm_actions
+from ..wsm.pm_gui import pm_gui_ifce
+from ..wsm.pm_gui import pm_actions
 from ..wsm.pm_gui import pm_do_opn_files
 
-from ..wsm.scm_gui import ifce as scm_gui_ifce
-from ..wsm.scm_gui import actions as scm_actions
+from ..wsm.scm_gui import scm_gui_ifce
+from ..wsm.scm_gui import scm_actions
 
 from ..wsm import wsm_icons
 

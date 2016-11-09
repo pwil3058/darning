@@ -36,7 +36,7 @@ from ..wsm.gtx import dialogue
 from ..wsm.gtx import gutils
 
 from ..wsm import pm
-from ..wsm.pm_gui import ifce as pm_gui_ifce
+from ..wsm.pm_gui import pm_gui_ifce
 
 from ..wsm import wsm_icons
 
@@ -144,7 +144,7 @@ class NamedPatchDiffTextDialog(_DiffDialog):
 
 #GLOBAL ACTIONS
 from ..wsm.gtx import actions
-from ..wsm.pm_gui import actions as pm_actions
+from ..wsm.pm_gui import pm_actions
 
 actions.CLASS_INDEP_AGS[pm_actions.AC_IN_PM_PGND + pm_actions.AC_PMIC].add_actions(
     [
