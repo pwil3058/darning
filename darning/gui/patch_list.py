@@ -25,6 +25,7 @@ from ..wsm.bab import enotify
 from ..wsm.bab import utils
 
 from ..wsm.gtx import dialogue
+from ..wsm.gtx import doop
 from ..wsm.gtx import gutils
 from ..wsm.gtx import tlview
 from ..wsm.gtx import actions
@@ -37,6 +38,7 @@ from ..wsm import wsm_icons
 from ..wsm.pm import PatchState
 from ..wsm.pm_gui import ifce as pm_gui_ifce
 from ..wsm.pm_gui import actions as pm_actions
+from ..wsm.pm_gui import pm_do_opn_patches
 
 from . import patch_view
 from . import dooph_pm
@@ -80,7 +82,8 @@ def get_applied_condns(seln):
         cond = AC_UNAPPLIED_NOT_BLOCKED
     return actions.MaskedCondns(cond, AC_APPLIED_MASK)
 
-class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
+class ListView(table.MapManagedTableView, pm_actions.WDListenerMixin,
+               doop.DoOperationMixin, pm_do_opn_patches.PMDoOpnPatchesMixin):
     REPOPULATE_EVENTS = enotify.E_CHANGE_WD|pm.E_NEW_PM
     UPDATE_EVENTS = pm.E_PATCH_LIST_CHANGES|pm.E_PATCH_REFRESH
     PopUp = "/patches_popup"
@@ -169,7 +172,7 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
         self._hash_data = None
         self._applied_count = 0
         table.MapManagedTableView.__init__(self, size_req=size_req)
-        auto_update.AutoUpdater.__init__(self)
+        pm_actions.WDListenerMixin.__init__(self)
         self.get_selection().connect("changed", self._selection_changed_cb)
         self.add_notification_cb(self.REPOPULATE_EVENTS, self.repopulate_list)
         self.add_notification_cb(self.UPDATE_EVENTS, self.refresh_contents)
@@ -196,57 +199,57 @@ class ListView(table.MapManagedTableView, auto_update.AutoUpdater):
                 ),
                 ("patch_list_export_patch", Gtk.STOCK_SAVE_AS, _("Export"), None,
                  _("Export the selected patch to a text file"),
-                 lambda _action=None: dooph_pm.pm_do_export_named_patch(self.get_selected_patch())
+                 lambda _action=None: self.pm_do_export_named_patch(self.get_selected_patch())
                 ),
             ])
         self.action_groups[actions.AC_SELN_UNIQUE | pm_actions.AC_IN_PM_PGND].add_actions(
             [
-                ("pm_set_patch_guards", wsm_icons.STOCK_PATCH_GUARD, None, None,
+                ("pm_set_patch_guards", wsm_icons.STOCK_PATCH_GUARD, _("Guard"), None,
                  _("Set guards on the selected patch"),
-                 lambda _action=None: dooph_pm.pm_do_set_guards_on_patch(self.get_selected_patch())
+                 lambda _action=None: self.pm_do_set_guards_on_patch(self.get_selected_patch())
                 ),
                 ("patch_list_rename", wsm_icons.STOCK_RENAME, _("Rename"), None,
                  _("Rename the selected patch"),
-                 lambda _action=None: dooph_pm.pm_do_rename_patch(self.get_selected_patch())
+                 lambda _action=None: self.pm_do_rename_patch(self.get_selected_patch())
                 ),
                 ("patch_list_duplicate", Gtk.STOCK_COPY, _("Duplicate"), None,
                  _("Duplicate the selected patch after the top applied patch"),
-                 lambda _action=None: dooph_pm.pm_do_duplicate_patch(self.get_selected_patch())
+                 lambda _action=None: self.pm_do_duplicate_patch(self.get_selected_patch())
                 ),
             ])
         self.action_groups[actions.AC_SELN_UNIQUE | pm_actions.AC_PUSH_POSSIBLE | pm_actions.AC_IN_PM_PGND | AC_UNAPPLIED_NOT_BLOCKED].add_actions(
             [
                 ("patch_list_push_to", wsm_icons.STOCK_PUSH_PATCH, _("Push To"), None,
                  _("Apply all unguarded unapplied patches up to the selected patch."),
-                 lambda _action=None: dooph_pm.pm_do_push_to(self.get_selected_patch())
+                 lambda _action=None: self.pm_do_push_to(self.get_selected_patch())
                 ),
             ])
         self.action_groups[actions.AC_SELN_UNIQUE | pm_actions.AC_IN_PM_PGND | AC_UNAPPLIED].add_actions(
             [
                 ("patch_list_remove", Gtk.STOCK_DELETE, _("Remove"), None,
                  _("Remove the selected patch from the series."),
-                 lambda _action=None: dooph_pm.pm_do_remove_patch(self.get_selected_patch())
+                 lambda _action=None: self.pm_do_remove_patch(self.get_selected_patch())
                 ),
             ])
         self.action_groups[actions.AC_SELN_UNIQUE | pm_actions.AC_POP_POSSIBLE | pm_actions.AC_IN_PM_PGND | AC_APPLIED_NOT_TOP].add_actions(
             [
                 ("patch_list_pop_to", wsm_icons.STOCK_POP_PATCH, _("Pop To"), None,
                  _("Apply all applied patches down to the selected patch."),
-                 lambda _action=None: dooph_pm.pm_do_pop_to(self.get_selected_patch())
+                 lambda _action=None: self.pm_do_pop_to(self.get_selected_patch())
                 ),
             ])
         self.action_groups[actions.AC_SELN_UNIQUE | pm_actions.AC_POP_POSSIBLE | pm_actions.AC_IN_PM_PGND | AC_APPLIED].add_actions(
             [
                 ("patch_list_refresh_selected", wsm_icons.STOCK_PUSH_PATCH, _("Refresh"), None,
                  _("Refresh the selected patch."),
-                 lambda _action=None: dooph_pm.pm_do_refresh_named_patch(self.get_selected_patch())
+                 lambda _action=None: self.pm_do_refresh_named_patch(self.get_selected_patch())
                 ),
             ])
         self.action_groups[actions.AC_SELN_UNIQUE | pm_actions.AC_POP_POSSIBLE | pm_actions.AC_IN_PM_PGND | AC_UNAPPLIED].add_actions(
             [
                 ("patch_list_fold_selected", wsm_icons.STOCK_FOLD_PATCH, _("Fold"), None,
                  _("Fold the selected patch into the top applied patch."),
-                 lambda _action=None: dooph_pm.pm_do_fold_patch(self.get_selected_patch())
+                 lambda _action=None: self.pm_do_fold_patch(self.get_selected_patch())
                 ),
             ])
     def _selection_changed_cb(self, selection):
