@@ -1,20 +1,24 @@
 #!/usr/bin/env python3
-### Copyright (C) 2010 Peter Williams <peter_ono@users.sourceforge.net>
-###
-### This program is free software; you can redistribute it and/or modify
-### it under the terms of the GNU General Public License as published by
-### the Free Software Foundation; version 2 of the License only.
-###
-### This program is distributed in the hope that it will be useful,
-### but WITHOUT ANY WARRANTY; without even the implied warranty of
-### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-### GNU General Public License for more details.
-###
-### You should have received a copy of the GNU General Public License
-### along with this program; if not, write to the Free Software
-### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+#
+#  Copyright 2010-2016 Peter Williams <pwil3058@gmail.com>
+#
+# This software is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; version 2 of the License only.
+#
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this software; if not, write to:
+#  The Free Software Foundation, Inc., 51 Franklin Street,
+#  Fifth Floor, Boston, MA 02110-1301 USA
 
 '''GUI interface for the darning patch management system'''
+
+__author__ = "Peter Williams <pwil3058@gmail.com>"
 
 import argparse
 import os
@@ -24,98 +28,42 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
-from darning import APP_NAME
+from darning.wsm.gtx import recollect
+from darning.wsm.gtx import dialogue
+from darning.gui import main_window
 
-_BUG_TRACK_URL = 'http://sourceforge.net/tracker/?group_id=386122&amp;atid=1604800'
-_DISCUSSION_GRP = 'darning-discussion@lists.sourceforge.net'
-_REPORT_REQUEST_MSG = \
-_('''<b>Please report this problem by either:
-  submitting a bug report at &lt;{url}&gt;
-or:
-  e-mailing &lt;{grp}&gt;
-and including a copy of the details below this message.
+parser = argparse.ArgumentParser(description=_('GUI to manage stacked patches'))
 
-Thank you.</b>
-''').format(url=_BUG_TRACK_URL, grp=_DISCUSSION_GRP)
-
-def report_exception(exc_data, parent=None):
-    def copy_cb(tview):
-        tview.get_buffer().copy_clipboard(Gtk.clipboard_get())
-    import traceback
-    msg = ''.join(traceback.format_exception(exc_data[0], exc_data[1], exc_data[2]))
-    dialog = Gtk.Dialog(title=_(APP_NAME + ": Unhandled Exception"),
-                        parent=parent, flags=Gtk.DialogFlags.MODAL|Gtk.DialogFlags.DESTROY_WITH_PARENT,
-                        buttons=(Gtk.STOCK_CLOSE, Gtk.ResponseType.CLOSE))
-    icon = Gtk.Image()
-    icon.set_from_stock(Gtk.STOCK_DIALOG_ERROR, Gtk.IconSize.DIALOG)
-    vbox = Gtk.VBox()
-    vbox.pack_start(icon, expand=False, fill=False, padding=0)
-    hbox = Gtk.HBox()
-    hbox.pack_start(vbox, expand=False, fill=False, padding=0)
-    label = Gtk.Label()
-    label.set_selectable(True)
-    label.set_markup(_REPORT_REQUEST_MSG)
-    hbox.pack_start(label, expand=False, fill=False, padding=0)
-    dialog.get_content_area().pack_start(hbox, expand=False, fill=False, padding=0)
-    sbw = Gtk.ScrolledWindow()
-    tview = Gtk.TextView()
-    tview.set_editable(False)
-    tview.get_buffer().set_text(msg)
-    tview.connect('copy-clipboard', copy_cb)
-    sbw.add(tview)
-    dialog.get_content_area().pack_end(sbw, expand=True, fill=True, padding=0)
-    dialog.show_all()
-    dialog.set_resizable(True)
-    dialog.run()
-    dialog.destroy()
-
-try:
-    from darning.gui import gdarn
-    from darning.wsm.pm_gui import pm_gui_ifce
-    from darning.wsm.pm_gui import pm_wspce
-    from darning.gui import recollect
-except Exception:
-    report_exception(sys.exc_info())
-    sys.exit(3)
-
-PARSER = argparse.ArgumentParser(description=_('GUI to manage stacked patches'))
-
-PARSER.add_argument(
+parser.add_argument(
     'playground',
     help=_('Directory where patches are to be managed'),
     metavar=_('dir'),
     nargs='?'
 )
 
-ARGS = PARSER.parse_args()
-
-pm_gui_ifce.init()
+args = parser.parse_args()
 
 # TODO: rationalize and simplify "gdarn" start up
 
-if ARGS.playground:
+if args.playground:
     try:
-        pm_wspce.chdir(ARGS.playground)
-        recollect.set(APP_NAME, "last_wd", ARGS.playground)
+        os.chdir(args.playground)
     except OSError as msg:
-        sys.stderr.write(str(msg) + '\n')
+        sys.stderr.write(str(msg) + "\n")
         sys.exit(2)
 else:
-    last_dir = recollect.get(APP_NAME, "last_pgnd")
+    last_dir = recollect.get("playground", "last_used")
     if os.path.isdir(last_dir):
         try:
-            pm_wspce.chdir(last_dir)
+            os.chdir(last_dir)
         except OSError as msg:
-            pass # go back to asking the user where he wants to start
-        ARGS.playground = os.getcwd()
-
-mw = gdarn.Darning(dir_specified=ARGS.playground is not None)
-mw.show()
+            pass # open in current directory
 
 try:
+    main_window.MainWindow().show()
     Gtk.main()
-except (SystemExit, KeyboardInterrupt):
-    pass
-except BaseException:
-    report_exception(sys.exc_info(), parent=mw)
+except SystemExit as edata:
+    raise edata # let the usual suspects handle this
+except:
+    dialogue.ask_for_bug_report(sys.exc_info())
     sys.exit(3)

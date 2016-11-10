@@ -33,6 +33,7 @@ from ..wsm.gtx import console
 
 from ..wsm.pm_gui import pm_wspce
 from ..wsm.pm_gui import pm_actions
+from ..wsm.pm_gui import pm_gui_ifce
 from ..wsm.scm_gui import scm_actions
 
 from ..wsm.gtx import icons
@@ -42,7 +43,7 @@ from . import file_tree_managed
 from . import file_tree_cs
 
 @singleton
-class Darning(dialogue.MainWindow, actions.CAGandUIManager, enotify.Listener, scm_actions.WDListenerMixin, pm_actions.WDListenerMixin):
+class MainWindow(dialogue.MainWindow, actions.CAGandUIManager, enotify.Listener, scm_actions.WDListenerMixin, pm_actions.WDListenerMixin):
     UI_DESCR = '''
     <ui>
         <menubar name="gdarn_left_menubar">
@@ -79,6 +80,7 @@ class Darning(dialogue.MainWindow, actions.CAGandUIManager, enotify.Listener, sc
     '''
     def __init__(self, dir_specified=False):
         dialogue.MainWindow.__init__(self, Gtk.WindowType.TOPLEVEL)
+        pm_gui_ifce.init()
         self.set_icon_from_file(icons.APP_ICON_FILE)
         self.connect("destroy", Gtk.main_quit)
         self._update_title()
@@ -86,7 +88,7 @@ class Darning(dialogue.MainWindow, actions.CAGandUIManager, enotify.Listener, sc
         enotify.Listener.__init__(self)
         scm_actions.WDListenerMixin.__init__(self)
         pm_actions.WDListenerMixin.__init__(self)
-        self.ui_manager.add_ui_from_string(Darning.UI_DESCR)
+        self.ui_manager.add_ui_from_string(MainWindow.UI_DESCR)
         vbox = Gtk.VBox()
         self.add(vbox)
         mbar_box = Gtk.HBox()
