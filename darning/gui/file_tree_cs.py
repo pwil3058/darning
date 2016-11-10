@@ -117,7 +117,6 @@ class PatchFilesDialog(dialogue.ListenerDialog, enotify.Listener):
         self.file_tree = PatchFileTreeView(patch_name=patch_name)
         self.file_tree.get_selection().set_mode(Gtk.SelectionMode.MULTIPLE)
         self.file_tree.set_headers_visible(False)
-        self.file_tree.set_size_request(240, 320)
         self.vbox.pack_start(gutils.wrap_in_scrolled_window(self.file_tree), expand=True, fill=True, padding=0)
         self.connect("response", self._close_cb)
         self.show_all()
@@ -224,7 +223,6 @@ class TopPatchFileTreeWidget(file_tree.FileTreeWidget):
     MENUBAR = None
     BUTTON_BAR_ACTIONS = ["hide_clean_files"]
     TREE_VIEW = TopPatchFileTreeView
-    SIZE = (240, 320)
     @staticmethod
     def get_menu_prefix():
         return pm_gui_ifce.PM.name

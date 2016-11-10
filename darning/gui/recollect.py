@@ -17,11 +17,5 @@
 
 from ..wsm.gtx.recollect import define, set, get, Defn
 
-from .. import APP_NAME
-
-define("main_window", "last_geometry", Defn(str, ""))
-define("main_window", "vpaned_position", Defn(int, -1))
-define("main_window", "hpaned_position", Defn(int, -1))
-
 define("export", "last_directory", Defn(str, ""))
 define("import", "last_directory", Defn(str, ""))
