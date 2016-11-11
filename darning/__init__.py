@@ -35,8 +35,6 @@ ISSUES_URL = "<https://github.com/pwil3058/darning/issues>"
 ISSUES_EMAIL = __author__
 ISSUES_VERSION = __version__
 
-from . import option_defs
-
 # import SCM CLI level backend interfaces here
 from .wsm.git import git_ifce
 from .wsm.hg import hg_ifce
