@@ -21,7 +21,7 @@ from ..wsm.bab import utils
 
 from ..wsm.bab.decorators import singleton
 
-from ..wsm.gtx.console import RCTX, LOG
+from ..wsm.gtx.console import LOG
 
 from ..wsm import pm
 from ..wsm import pm_gui
@@ -32,6 +32,7 @@ from ..wsm.pm_gui import pm_gui_ifce
 
 from .. import patch_db
 from . import fsdb_darning
+from . import RCTX
 
 def _RUN_DO(cmd_text, cmd_do, events, e_always=True):
     RCTX.reset()
