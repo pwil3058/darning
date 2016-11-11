@@ -40,14 +40,14 @@ from ..wsm.gtx import console
 
 from ..wsm.pm_gui import pm_wspce
 from ..wsm.pm_gui import pm_actions
+from ..wsm.pm_gui import pm_file_tree_cs
+from ..wsm.pm_gui import pm_file_tree_pgnd
 from ..wsm.pm_gui import pm_gui_ifce
+from ..wsm.pm_gui import pm_patch_list
+
 from ..wsm.scm_gui import scm_actions
 
 from ..wsm.gtx import icons
-
-from . import patch_list
-from . import file_tree_managed
-from . import file_tree_cs
 
 recollect.define("main_window", "last_geometry", recollect.Defn(str, "900x600+100+100"))
 recollect.define("main_window", "vpane_position", recollect.Defn(int, 270))
@@ -120,7 +120,7 @@ class MainWindow(dialogue.MainWindow, actions.CAGandUIManager, enotify.Listener,
         hpane = Gtk.HPaned()
         hpane.set_position(recollect.get("main_window", "hpane_position"))
         vpane.add1(hpane)
-        stree = file_tree_managed.WSFilesWidget()
+        stree = pm_file_tree_pgnd.WSFilesWidget()
         hpane.add1(stree)
         phpane = Gtk.HPaned()
         phpane.set_position(recollect.get("main_window", "phpane_position"))
@@ -128,10 +128,10 @@ class MainWindow(dialogue.MainWindow, actions.CAGandUIManager, enotify.Listener,
         hpane.connect("notify", self._paned_notify_cb, "hpane_position")
         phpane.connect("notify", self._paned_notify_cb, "phpane_position")
         nbook = Gtk.Notebook()
-        nbook.append_page(file_tree_cs.TopPatchFileTreeWidget(), Gtk.Label(_('Top Patch Files')))
-        nbook.append_page(file_tree_cs.CombinedPatchFileTreeWidget(), Gtk.Label(_('Combined Patch Files')))
+        nbook.append_page(pm_file_tree_cs.TopPatchFileTreeWidget(), Gtk.Label(_('Top Patch Files')))
+        nbook.append_page(pm_file_tree_cs.CombinedPatchFileTreeWidget(), Gtk.Label(_('Combined Patch Files')))
         phpane.add1(nbook)
-        plist = patch_list.List()
+        plist = pm_patch_list.List()
         phpane.add2(plist)
         hpane.add2(phpane)
         if terminal.AVAILABLE:
