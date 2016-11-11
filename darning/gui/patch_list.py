@@ -36,11 +36,11 @@ from ..wsm import pm
 from ..wsm import wsm_icons
 
 from ..wsm.pm import PatchState
-from ..wsm.pm_gui import pm_gui_ifce
+
 from ..wsm.pm_gui import pm_actions
 from ..wsm.pm_gui import pm_do_opn_patches
-
-from . import patch_view
+from ..wsm.pm_gui import pm_gui_ifce
+from ..wsm.pm_gui import pm_patch_view
 
 def patch_markup(patch_data, selected_guards):
     markup = patch_data.name
@@ -194,7 +194,7 @@ class ListView(table.MapManagedTableView, pm_actions.WDListenerMixin,
                 ),
                 ("patch_list_patch_view", wsm_icons.STOCK_DIFF, _("Details"), None,
                  _("View the selected patch's details"),
-                 lambda _action=None: patch_view.Dialogue(self.get_selected_patch()).show()
+                 lambda _action=None: pm_patch_view.Dialogue(self.get_selected_patch()).show()
                 ),
                 ("patch_list_export_patch", Gtk.STOCK_SAVE_AS, _("Export"), None,
                  _("Export the selected patch to a text file"),
