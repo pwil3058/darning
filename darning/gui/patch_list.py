@@ -41,7 +41,6 @@ from ..wsm.pm_gui import pm_actions
 from ..wsm.pm_gui import pm_do_opn_patches
 
 from . import patch_view
-from . import dooph_pm
 
 def patch_markup(patch_data, selected_guards):
     markup = patch_data.name

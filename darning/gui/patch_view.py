@@ -110,7 +110,7 @@ class Dialogue(dialogue.ListenerDialog):
             result = pm_gui_ifce.PM.do_refresh_patch(self._widget.patch_name)
         dialogue.main_window.report_any_problems(result)
     def _save_as_acb(self, _action):
-        from . import recollect
+        from ..wsm.gtx import recollect
         suggestion = os.path.basename(utils.convert_patchname_to_filename(self._widget.patch_name))
         export_filepath = os.path.join(recollect.get("export", "last_directory"), suggestion)
         while True:
