@@ -24,11 +24,11 @@ from ..wsm.bab.decorators import singleton
 from ..wsm.gtx.console import LOG
 
 from ..wsm import pm
-from ..wsm import pm_gui
+from ..wsm.pm import gui as pm_gui
 
 from ..wsm.pm import PatchState
 
-from ..wsm.pm_gui import pm_gui_ifce
+from ..wsm.pm.gui import pm_gui_ifce
 
 from .. import patch_db
 from . import fsdb_darning

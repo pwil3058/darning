@@ -38,14 +38,14 @@ from ..wsm.gtx import recollect
 from ..wsm.gtx import terminal
 from ..wsm.gtx import console
 
-from ..wsm.pm_gui import pm_wspce
-from ..wsm.pm_gui import pm_actions
-from ..wsm.pm_gui import pm_file_tree_cs
-from ..wsm.pm_gui import pm_file_tree_pgnd
-from ..wsm.pm_gui import pm_gui_ifce
-from ..wsm.pm_gui import pm_patch_list
+from ..wsm.pm.gui import pm_wspce
+from ..wsm.pm.gui import pm_actions
+from ..wsm.pm.gui import pm_file_tree_cs
+from ..wsm.pm.gui import pm_file_tree_pgnd
+from ..wsm.pm.gui import pm_gui_ifce
+from ..wsm.pm.gui import pm_patch_list
 
-from ..wsm.scm_gui import scm_actions
+from ..wsm.scm.gui import scm_actions
 
 from ..wsm.gtx import icons
 
