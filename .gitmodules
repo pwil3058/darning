@@ -4,3 +4,24 @@
 [submodule "darning/wsm"]
 	path = darning/wsm
 	url = git@github.com:pwil3058/pysm_wsm.git
+[submodule "darning/scm"]
+	path = darning/scm
+	url = git@github.com:pwil3058/pysm_scm.git
+[submodule "darning/wsm_icons"]
+	path = darning/wsm_icons
+	url = git@github.com:pwil3058/pysm_icons.git
+[submodule "darning/patch_diff"]
+	path = darning/patch_diff
+	url = git@github.com:pwil3058/pysm_patch_diff.git
+[submodule "darning/pm"]
+	path = darning/pm
+	url = git@github.com:pwil3058/pysm_pm.git
+[submodule "darning/bab"]
+	path = darning/bab
+	url = git@github.com:pwil3058/pysm_bab.git
+[submodule "darning/gtx"]
+	path = darning/gtx
+	url = git@github.com:pwil3058/pysm_gtx.git
+[submodule "darning/hg"]
+	path = darning/hg
+	url = git@github.com:pwil3058/pysm_hg.git
