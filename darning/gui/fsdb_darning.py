@@ -15,7 +15,7 @@
 
 from gi.repository import Pango
 
-from ..wsm.gtx import fsdb
+from ..gtx import fsdb
 
 from .. import patch_db
 
@@ -33,7 +33,7 @@ class FileData(fsdb.FileData):
         return self.STATUS_DECO_MAP[self.status.presence]
     @property
     def icon(self):
-        from ..wsm import wsm_icons
+        from .. import wsm_icons
         if self.status.validity == patch_db.Validity.REFRESHED:
             return wsm_icons.STOCK_FILE_REFRESHED
         elif self.status.validity == patch_db.Validity.NEEDS_REFRESH:

@@ -19,8 +19,8 @@ Library functions that are ony of interest GUI programs
 
 from .. import APP_NAME, CONFIG_DIR_PATH
 
-from ..wsm.gtx import auto_update
-from ..wsm.gtx.console import LOG
+from ..gtx import auto_update
+from ..gtx.console import LOG
 from .. import rctx
 
 class ReportContext:
@@ -52,8 +52,8 @@ rctx.reset(RCTX.stdout, RCTX.stderr)
 
 
 # Import SCM back ends that we're interested in
-from ..wsm.git.gui import git_gui_ifce
-from ..wsm.hg.gui import hg_gui_ifce
+from ..git.gui import git_gui_ifce
+from ..hg.gui import hg_gui_ifce
 
 # import PM backend  GUI interfaces here
 from . import pm_ifce_darning

@@ -17,7 +17,7 @@
 
 import sys
 
-from ..wsm.bab import CmdResult
+from ..bab import CmdResult
 
 from . import cli_args
 from . import db_utils

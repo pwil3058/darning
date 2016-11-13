@@ -28,8 +28,8 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
-from darning.wsm.gtx import recollect
-from darning.wsm.gtx import dialogue
+from darning.gtx import recollect
+from darning.gtx import dialogue
 from darning.gui import main_window
 
 parser = argparse.ArgumentParser(description=_('GUI to manage stacked patches'))

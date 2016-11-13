@@ -13,22 +13,22 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-from ..wsm.bab import CmdResult
-from ..wsm.bab import CmdFailure
+from ..bab import CmdResult
+from ..bab import CmdFailure
 
-from ..wsm.bab import enotify
-from ..wsm.bab import utils
+from ..bab import enotify
+from ..bab import utils
 
-from ..wsm.bab.decorators import singleton
+from ..bab.decorators import singleton
 
-from ..wsm.gtx.console import LOG
+from ..gtx.console import LOG
 
-from ..wsm import pm
-from ..wsm.pm import gui as pm_gui
+from .. import pm
+from ..pm import gui as pm_gui
 
-from ..wsm.pm import PatchState
+from ..pm import PatchState
 
-from ..wsm.pm.gui import pm_gui_ifce
+from ..pm.gui import pm_gui_ifce
 
 from .. import patch_db
 from . import fsdb_darning

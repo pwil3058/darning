@@ -25,29 +25,29 @@ import gi
 gi.require_version("Gtk", "3.0")
 from gi.repository import Gtk
 
-from ..wsm.bab import enotify
-from ..wsm.bab import utils
+from ..bab import enotify
+from ..bab import utils
 
 
-from ..wsm.bab.decorators import singleton
+from ..bab.decorators import singleton
 
-from ..wsm.gtx import gutils
-from ..wsm.gtx import dialogue
-from ..wsm.gtx import actions
-from ..wsm.gtx import recollect
-from ..wsm.gtx import terminal
-from ..wsm.gtx import console
+from ..gtx import gutils
+from ..gtx import dialogue
+from ..gtx import actions
+from ..gtx import recollect
+from ..gtx import terminal
+from ..gtx import console
 
-from ..wsm.pm.gui import pm_wspce
-from ..wsm.pm.gui import pm_actions
-from ..wsm.pm.gui import pm_file_tree_cs
-from ..wsm.pm.gui import pm_file_tree_pgnd
-from ..wsm.pm.gui import pm_gui_ifce
-from ..wsm.pm.gui import pm_patch_list
+from ..pm.gui import pm_wspce
+from ..pm.gui import pm_actions
+from ..pm.gui import pm_file_tree_cs
+from ..pm.gui import pm_file_tree_pgnd
+from ..pm.gui import pm_gui_ifce
+from ..pm.gui import pm_patch_list
 
-from ..wsm.scm.gui import scm_actions
+from ..scm.gui import scm_actions
 
-from ..wsm.gtx import icons
+from ..gtx import icons
 
 recollect.define("main_window", "last_geometry", recollect.Defn(str, "900x600+100+100"))
 recollect.define("main_window", "vpane_position", recollect.Defn(int, 270))

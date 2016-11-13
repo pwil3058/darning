@@ -30,21 +30,21 @@ import zlib
 
 from contextlib import contextmanager
 
-from .wsm.bab import CmdResult
-from .wsm.bab import os_utils
-from .wsm.bab import runext
-from .wsm.bab import options
-from .wsm.bab import utils
+from .bab import CmdResult
+from .bab import os_utils
+from .bab import runext
+from .bab import options
+from .bab import utils
 
-from .wsm.patch_diff import patchlib
+from .patch_diff import patchlib
 
 from . import ntuples
 from . import rctx as RCTX
 from . import mixins
-from .wsm.scm import scm_ifce
+from .scm import scm_ifce
 
-from .wsm.pm import PatchState, FileStatus, Presence, Validity, PatchTableRow
-from .wsm.pm import MERGE_CRE, patch_timestamp_str
+from .pm import PatchState, FileStatus, Presence, Validity, PatchTableRow
+from .pm import MERGE_CRE, patch_timestamp_str
 
 options.define("pop", "drop_added_tws", options.Defn(options.str_to_bool, True, _("Remove added trailing white space (TWS) from patch after pop")))
 options.define("push", "drop_added_tws", options.Defn(options.str_to_bool, True, _("Remove added trailing white space (TWS) from patch before push")))
@@ -382,8 +382,8 @@ def generate_diff_preamble(file_path, before, after, came_from=None):
     return patchlib.Preamble.parse_lines(generate_diff_preamble_lines(file_path, before, after, came_from))
 
 def generate_binary_diff_lines(before, after):
-    from .wsm.patch_diff import gitdelta
-    from .wsm.patch_diff import gitbase85
+    from .patch_diff import gitdelta
+    from .patch_diff import gitbase85
     def _component_lines(fm_data, to_data):
         delta = None
         if fm_data.raw_len and to_data.raw_len:
@@ -731,7 +731,7 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
             return _content_has_unresolved_merges(content)
     @property
     def related_file_data(self):
-        from .wsm.bab.nmd_tuples import PathAndRelation as RFD
+        from .bab.nmd_tuples import PathAndRelation as RFD
         if self.came_from:
             if self.came_from.as_rename:
                 return RFD(self.came_from.file_path, os_utils.Relation.MOVED_FROM)
@@ -1180,7 +1180,7 @@ class Patch(mixins.WrapperMixin):
                         retval = CmdResult.ERROR
                         RCTX.stderr.write("{0}: {1}\n".format(rel_subdir(file_path), edata))
                 elif diff_plus.is_compatible_with(utils.get_git_hash_for_file(file_path)):
-                    from .wsm.patch_diff import gitdelta
+                    from .patch_diff import gitdelta
                     contents = open(file_path, "rb").read()
                     try:
                         new_contents = gitdelta.patch_delta(contents, diff_plus.diff.forward.data_raw)

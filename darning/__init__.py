@@ -36,5 +36,5 @@ ISSUES_EMAIL = __author__
 ISSUES_VERSION = __version__
 
 # import SCM CLI level backend interfaces here
-from .wsm.git import git_ifce
-from .wsm.hg import hg_ifce
+from .git import git_ifce
+from .hg import hg_ifce

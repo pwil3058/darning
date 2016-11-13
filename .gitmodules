@@ -1,9 +1,6 @@
 [submodule "pixmaps"]
 	path = pixmaps
 	url = git@github.com:pwil3058/gwsmpixmaps.git
-[submodule "darning/wsm"]
-	path = darning/wsm
-	url = git@github.com:pwil3058/pysm_wsm.git
 [submodule "darning/scm"]
 	path = darning/scm
 	url = git@github.com:pwil3058/pysm_scm.git
@@ -25,3 +22,6 @@
 [submodule "darning/hg"]
 	path = darning/hg
 	url = git@github.com:pwil3058/pysm_hg.git
+[submodule "darning/git"]
+	path = darning/git
+	url = git@github.com:pwil3058/pysm_git.git

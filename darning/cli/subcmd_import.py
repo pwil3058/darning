@@ -18,9 +18,9 @@
 import os
 import sys
 
-from ..wsm.bab import CmdResult
+from ..bab import CmdResult
 
-from ..wsm.patch_diff import patchlib
+from ..patch_diff import patchlib
 
 from . import cli_args
 from . import db_utils
