@@ -348,7 +348,11 @@ def _content_has_unresolved_merges(content):
     return False
 
 def _file_has_unresolved_merges(file_path):
-    return _content_has_unresolved_merges(open(file_path, "rb").read()) if os.path.exists(file_path) else False
+    if os.path.exists(file_path):
+        with open(file_path, "rb") as f_obj:
+            return _content_has_unresolved_merges(f_obj.read())
+    else:
+        return False
 
 def generate_diff_preamble_lines(file_path, before, after, came_from=None):
     if came_from:
@@ -454,7 +458,8 @@ class FileDiffMixin(object):
                 efd = overlapping_file.orig
                 content = self.patch.database.get_content_for(efd)
             elif os.path.exists(self.path):
-                content = open(self.path, "rb").read()
+                with open(self.path, "rb") as f_obj:
+                    content = f_obj.read()
                 efd = _EssentialFileData(utils.get_git_hash_for_content(content), os.lstat(self.path))
             else:
                 efd = None
@@ -768,7 +773,8 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
             efd = self.patch.database.clone_stored_content_data(overlapping_file.orig)
             content = self.patch.database.get_content_for(efd)
         elif os.path.exists(self.path):
-            content = open(self.path, "rb").read()
+            with open(self.path, "rb") as f_obj:
+                content = f_obj.read()
             efd = _EssentialFileData(self.patch.database.store_content(content), os.lstat(self.path))
         else:
             efd = None
@@ -806,7 +812,8 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
         already_exists = os.path.exists(self.path)
         if isinstance(self.diff, patchlib.GitBinaryDiff):
             if self.darned is not None:
-                open(self.path, "wb").write(self.patch.database.get_content_for(self.darned))
+                with open(self.path, "wb") as f_obj:
+                    f_obj.write(self.patch.database.get_content_for(self.darned))
                 if already_exists:
                     RCTX.stdout.write(_("\"{0}\": binary file replaced.\n").format(rel_subdir(self.path)))
                 else:
@@ -1056,7 +1063,8 @@ class Patch(mixins.WrapperMixin):
             fm_file_data = self.get_file(file_data.came_from.file_path)
             # TODO: investigate whether fm_file_data.orig can be None here. Duplicated patch?
             try:
-                open(file_data.path, "wb").write(self.database.get_content_for(fm_file_data.orig))
+                with open(file_data.path, "wb") as f_obj:
+                    f_obj.write(self.database.get_content_for(fm_file_data.orig))
                 os.chmod(file_data.path, fm_file_data.orig.permissions)
             except (OSError, IOError) as edata:
                 biggest_ecode = CmdResult.ERROR
@@ -1081,7 +1089,8 @@ class Patch(mixins.WrapperMixin):
             # TODO: add special handling for restoring deleted soft links on pop
             # TODO: use move to put back renamed files
             orig_content = self.database.get_content_for(file_data.orig)
-            open(file_path, "wb").write(orig_content)
+            with open(file_path, "wb") as f_obj:
+                f_obj.write(orig_content)
             os.chmod(file_path, file_data.orig.permissions)
     def add_file(self, file_data):
         assert not self.is_applied or self.is_top_patch
@@ -1096,7 +1105,8 @@ class Patch(mixins.WrapperMixin):
         if self.is_applied:
             self.database.combined_patch.drop_file(file_data)
             if file_data.orig:
-                open(file_data.path, "wb").write(self.database.get_content_for(file_data.orig))
+                with open(file_data.path, "wb") as f_obj:
+                    f_obj.write(self.database.get_content_for(file_data.orig))
                 os.chmod(file_data.path, file_data.orig.permissions)
             elif os.path.exists(file_data.path):
                 os.remove(file_data.path)
@@ -1146,11 +1156,10 @@ class Patch(mixins.WrapperMixin):
             # No longer needed as it was created in this patch and now has no content or histroy
             self.drop_file(file_data)
     def write_to_file(self, file_path):
-        fobj = open(file_path, "wb")
-        fobj.write(self.description)
-        for file_data in self.iterate_files_sorted():
-            fobj.write(file_data.get_diff_text())
-        fobj.close()
+        with open(file_path, "wb") as f_obj:
+            fobj.write(self.description)
+            for file_data in self.iterate_files_sorted():
+                fobj.write(file_data.get_diff_text())
     def _apply_diff_plus_changes(self, diff_plus, drop_atws=True, num_strip_levels=1):
         retval = CmdResult.OK
         file_path = diff_plus.get_file_path(num_strip_levels)
@@ -1166,7 +1175,8 @@ class Patch(mixins.WrapperMixin):
             elif "new file mode" in git_preamble.extras:
                 RCTX.stdout.write(_("Creating binary file \"{0}\".\n").format(rel_subdir(file_path)))
                 try:
-                    open(file_path, "wb").write(diff_plus.diff.forward.data_raw)
+                    with open(file_path, "wb") as f_obj:
+                        f_obj.write(diff_plus.diff.forward.data_raw)
                 except IOError as edata:
                     retval = CmdResult.ERROR
                     RCTX.stderr.write("{0}: {1}\n".format(rel_subdir(file_path), edata))
@@ -1175,20 +1185,23 @@ class Patch(mixins.WrapperMixin):
                 if diff_plus.diff.forward.method == patchlib.GitBinaryDiffData.LITERAL:
                     # if it's literal just insert the raw data.
                     try:
-                        open(file_path, "wb").write(diff_plus.diff.forward.data_raw)
+                        with open(file_path, "wb") as f_obj:
+                            f_obj.write(diff_plus.diff.forward.data_raw)
                     except IOError as edata:
                         retval = CmdResult.ERROR
                         RCTX.stderr.write("{0}: {1}\n".format(rel_subdir(file_path), edata))
                 elif diff_plus.is_compatible_with(utils.get_git_hash_for_file(file_path)):
                     from .patch_diff import gitdelta
-                    contents = open(file_path, "rb").read()
+                    with open(file_path, "rb") as f_obj:
+                        contents = f_obj.read()
                     try:
                         new_contents = gitdelta.patch_delta(contents, diff_plus.diff.forward.data_raw)
                     except gitdelta.PatchError as edata:
                         retval = CmdResult.ERROR
                         RCTX.stderr.write(_("\"{0}\": imported binary delta failed to apply: {1}.\n").format(rel_subdir(file_path), edata))
                     else:
-                        open(file_path, "wb").write(new_contents)
+                        with open(file_path, "wb") as f_obj:
+                            f_obj.write(new_contents)
                 else:
                     # the original file has changed and it would be unwise to apply the delta
                     retval = CmdResult.ERROR
@@ -1641,7 +1654,8 @@ class DataBase(mixins.WrapperMixin):
             if not os.path.exists(blob_dir_path):
                 os.mkdir(blob_dir_path)
             blob_file_path = BLOB_PATH(git_hash)
-            open(blob_file_path, "wb").write(content)
+            with open(blob_file_path, "wb") as f_obj:
+                f_obj.write(content)
             utils.do_turn_off_write_for_file(blob_file_path)
         return git_hash
     def store_file_content(self, file_path, overlaps=OverlapData()):
@@ -1654,7 +1668,8 @@ class DataBase(mixins.WrapperMixin):
                 # Will occur if file has been added to SCM but not committed
                 return None
         elif os.path.exists(file_path):
-            contents = open(file_path, "rb").read()
+            with open(file_path, "rb") as f_obj:
+                contents = f_obj.read()
         else:
             return None
         return _EssentialFileData(self.store_content(contents), os.lstat(file_path))
@@ -1678,7 +1693,11 @@ class DataBase(mixins.WrapperMixin):
                 del self.blob_ref_counts[dir_name][file_name]
     @staticmethod
     def get_content_for(obj):
-        return b"" if obj is None else open(BLOB_PATH(obj.git_hash), "rb").read()
+        if obj is None:
+            return b""
+        else:
+            with open(BLOB_PATH(obj.git_hash), "rb") as f_obj:
+                return f_obj.read()
 
 def do_create_db(dir_path=None, description=None):
     """Create a patch database in the current directory?"""
@@ -1712,19 +1731,15 @@ def do_create_db(dir_path=None, description=None):
         dir_mode = stat.S_IRWXU|stat.S_IRGRP|stat.S_IXGRP|stat.S_IROTH|stat.S_IXOTH
         os.mkdir(database_dir_path, dir_mode)
         os.mkdir(database_blobs_dir_path, dir_mode)
-        open(database_lock_file_path, "wb").write(b"0")
-        open(description_file_path, "w").write(_tidy_text(description) if description else "")
+        with open(database_lock_file_path, "wb") as f_obj:
+            f_obj.write(b"0")
+        with open(description_file_path, "w") as f_obj:
+            f_obj.write(_tidy_text(description) if description else "")
         db_obj = _DataBaseData()
-        fobj = open(patches_data_file_path, "wb", stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
-        try:
-            pickle.dump(db_obj, fobj)
-        finally:
-            fobj.close()
-        fobj = open(blob_ref_count_file_path, "wb", stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH)
-        try:
-            pickle.dump(dict(), fobj)
-        finally:
-            fobj.close()
+        with open(patches_data_file_path, "wb", stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH) as f_obj:
+            pickle.dump(db_obj, f_obj)
+        with open(blob_ref_count_file_path, "wb", stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH) as f_obj:
+            pickle.dump(dict(), f_obj)
     except OSError as edata:
         rollback()
         RCTX.stderr.write(edata.strerror)
@@ -1758,8 +1773,10 @@ else:
 def open_db(mutable=False):
     fd = os.open(_LOCK_FILE_PATH, os.O_RDWR if mutable else os.O_RDONLY)
     lock_db(fd, LOCK_EXCL if mutable else LOCK_READ)
-    patches_data = pickle.load(open(_PATCHES_DATA_FILE_PATH, "rb"))
-    blob_ref_counts = pickle.load(open(_BLOB_REF_COUNT_FILE_PATH, "rb"))
+    with open(_PATCHES_DATA_FILE_PATH, "rb") as f_obj:
+        patches_data = pickle.load(f_obj)
+    with open(_BLOB_REF_COUNT_FILE_PATH, "rb") as f_obj:
+        blob_ref_counts = pickle.load(f_obj)
     try:
         yield DataBase(patches_data, blob_ref_counts, mutable)
     finally:
@@ -1767,8 +1784,10 @@ def open_db(mutable=False):
             scount = os.read(fd, 255)
             os.lseek(fd, 0, 0)
             os.write(fd, str(int(scount) + 1).encode())
-            pickle.dump(patches_data, open(_PATCHES_DATA_FILE_PATH, "wb"))
-            pickle.dump(blob_ref_counts, open(_BLOB_REF_COUNT_FILE_PATH, "wb"))
+            with open(_PATCHES_DATA_FILE_PATH, "wb") as f_obj:
+                pickle.dump(patches_data, f_obj)
+            with open(_BLOB_REF_COUNT_FILE_PATH, "wb") as f_obj:
+                pickle.dump(blob_ref_counts, f_obj)
         unlock_db(fd)
         os.close(fd)
 
@@ -2364,7 +2383,8 @@ def do_set_patch_guards_fm_str(patch_name, guards_str):
 
 def do_set_series_description(description):
     try:
-        open(_DESCRIPTION_FILE_PATH, "w").write(description)
+        with open(_DESCRIPTION_FILE_PATH, "w") as f_obj:
+            f_obj.write(description)
     except IOError as edata:
         RCTX.stderr.write(edata)
         return CmdResult.ERROR
@@ -2563,7 +2583,8 @@ def get_selected_guards():
         return DB.selected_guards
 
 def get_series_description():
-    return open(_DESCRIPTION_FILE_PATH, "r").read()
+    with open(_DESCRIPTION_FILE_PATH, "r") as f_obj:
+        return f_obj.read()
 
 def get_textpatch(patch_name, with_timestamps=False):
     with open_db(mutable=False) as DB:
