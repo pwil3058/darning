@@ -48,4 +48,5 @@ class WrapperMixin:
     def __setattr__(self, attr_name, value):
         if attr_name in self.WRAPPED_ATTRIBUTES:
             setattr(self.__dict__[self.WRAPPED_OBJECT_NAME], attr_name, value)
-        self.__dict__[attr_name] = value
+        else:
+            self.__dict__[attr_name] = value
