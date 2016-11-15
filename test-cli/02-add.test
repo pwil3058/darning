@@ -43,6 +43,8 @@ $ darn files
 >  :+: file1
 >  :+: file2
 > +:+: nonexistent
+$ darn series
+> +: first
 $ ls .darning.dbd/blobs
 > 9d
 > cd
@@ -135,7 +137,20 @@ Do it again into a fourth patch using --force.
 $ darn new fourth --descr "Fourth patch created."
 ? 1
 ! Previous top patch ("third") needs refreshing.
+$ darn series
+> +: first
+> +: second
+> ?: third
+> +: fourth
+$ darn files third
+>  :+: file1
+>  :?: file2
+> +:+: nonexistent
 $ darn_test_tree modify file1
+$ darn files third
+>  :?: file1
+>  :?: file2
+> +:+: nonexistent
 $ darn add --force file1 file2 nonexistent
 > file1: file added to patch "fourth".
 > file2: file added to patch "fourth".

@@ -225,11 +225,11 @@ class _PatchData(mixins.PedanticSlotPickleMixin):
     def decrement_ref_counts(self, blob_ref_counts):
         for pfd in self.files_data.values():
             if pfd.orig is not None:
-                blob_ref_counts[pfd.orig.git_hash[:2]][pfd.orig.git_hash[2:]] -= 1
+                blob_ref_counts[pfd.orig["git_hash"][:2]][pfd.orig["git_hash"][2:]] -= 1
             if pfd.darned is not None:
-                blob_ref_counts[pfd.darned.git_hash[:2]][pfd.darned.git_hash[2:]] -= 1
+                blob_ref_counts[pfd.darned["git_hash"][:2]][pfd.darned["git_hash"][2:]] -= 1
             if pfd.came_from is not None:
-                blob_ref_counts[pfd.came_from.orig.git_hash[:2]][pfd.came_from.orig.git_hash[2:]] -= 1
+                blob_ref_counts[pfd.came_from["orig"]["git_hash"][:2]][pfd.came_from["orig"]["git_hash"][2:]] -= 1
     def clear(self, database):
         for file_data in self.files_data.values():
             file_data.release_contents(database)
@@ -254,7 +254,7 @@ class _FileData(mixins.PedanticSlotPickleMixin):
         database.release_stored_content(self.orig)
         database.release_stored_content(self.darned)
         if self.came_from:
-            database.release_stored_content(self.came_from.orig)
+            database.release_stored_content(self.came_from["orig"])
         self.orig = None
         self.darned = None
         self.came_from = None
@@ -268,35 +268,63 @@ class _CombinedFileData(mixins.PedanticSlotPickleMixin):
         self.top = top
         self.bottom = bottom
 
-class _EssentialFileData(mixins.PedanticSlotPickleMixin):
-    __slots__ = ("git_hash", "lstats")
-    def __init__(self, git_hash, lstats):
-        self.git_hash = git_hash
-        self.lstats = lstats
-    @property
-    def permissions(self):
-        return stat.S_IMODE(self.lstats.st_mode)
-    @property
-    def st_mode(self):
-        return self.lstats.st_mode
-    @property
-    def timestamp(self):
-        return patch_timestamp_str(self.lstats.st_mtime)
-    def clone(self):
-        return self.__class__(self.git_hash, self.lstats)
-    def __eq__(self, other):
-        return False if other is None else self.lstats.st_mode == other.lstats.st_mode and self.git_hash == other.git_hash
-    def __ne__(self, other):
-        return not self.__eq__(other)
-    def __str__(self):
-        return "EFD({0}, {1})".format(self.git_hash, str(self.lstats))
+class SupervisedDictFactory:
+    ALLOWED_ITEMS = dict()
 
-class _CameFromData(mixins.PedanticSlotPickleMixin):
-    __slots__ = ("file_path", "as_rename", "orig")
-    def __init__(self, file_path, as_rename, orig):
-        self.file_path = file_path
-        self.as_rename = as_rename
-        self.orig = orig
+    @classmethod
+    def new_dict(cls, **kwargs):
+        nd = dict()
+        for key, v_type in cls.ALLOWED_ITEMS.items():
+            if key in kwargs:
+                nd[key] = kwargs[key]
+            else:
+                nd[key] = v_type()
+        assert cls.verify_dict(nd), "{}: {} produced invalid product {}".format(cls, kwargs, nd)
+        return nd
+
+    @classmethod
+    def verify_dict(cls, candidate_dict):
+        if len(cls.ALLOWED_ITEMS) != len(candidate_dict):
+            return False
+        try:
+            for key, v_type in cls.ALLOWED_ITEMS.items():
+                if not isinstance(candidate_dict[key], v_type):
+                    return False
+        except KeyError:
+            return False
+        return True
+
+class _EssentialFileData(SupervisedDictFactory):
+    """Factory to create/manage essential file data in dictionaries"""
+    ALLOWED_ITEMS = {"git_hash" : str, "lstats" : os.stat_result}
+
+    @staticmethod
+    def different(efd1, efd2):
+        """Are the data different from diff's pointof view?"""
+        if efd1 is None:
+            return efd2 is not None
+        elif efd2 is None:
+            return True
+        elif efd1["lstats"].st_mode != efd2["lstats"].st_mode:
+            return True
+        elif efd1["git_hash"] != efd2["git_hash"]:
+            return True
+        else:
+            return False
+
+    @staticmethod
+    def permissions(efd):
+        """Extract the "permissions" bits for the file"""
+        return stat.S_IMODE(efd["lstats"].st_mode)
+
+    @staticmethod
+    def timestamp(efd):
+        """Create the "timestamp" string for the file"""
+        return patch_timestamp_str(efd["lstats"].st_mtime)
+
+class _CameFromData(SupervisedDictFactory):
+    """Factory to create/manage "came from' data in dictionaries"""
+    ALLOWED_ITEMS = {"file_path" : str, "as_rename" : bool, "orig" : dict}
 
 class DarnIt(Exception):
     def __init__(self, **kwargs):
@@ -356,29 +384,29 @@ def _file_has_unresolved_merges(file_path):
 
 def generate_diff_preamble_lines(file_path, before, after, came_from=None):
     if came_from:
-        lines = ["diff --git {0} {1}\n".format(os.path.join("a", came_from.file_path), os.path.join("b", file_path)), ]
+        lines = ["diff --git {0} {1}\n".format(os.path.join("a", came_from["file_path"]), os.path.join("b", file_path)), ]
     else:
         lines = ["diff --git {0} {1}\n".format(os.path.join("a", file_path), os.path.join("b", file_path)), ]
     if before is None:
         if after is not None:
-            lines.append("new file mode {0:07o}\n".format(after.st_mode))
+            lines.append("new file mode {0:07o}\n".format(after["lstats"].st_mode))
     elif after is None:
-        lines.append("deleted file mode {0:07o}\n".format(before.st_mode))
+        lines.append("deleted file mode {0:07o}\n".format(before["lstats"].st_mode))
     else:
-        if before.st_mode != after.st_mode:
-            lines.append("old mode {0:07o}\n".format(before.st_mode))
-            lines.append("new mode {0:07o}\n".format(after.st_mode))
+        if before["lstats"].st_mode != after["lstats"].st_mode:
+            lines.append("old mode {0:07o}\n".format(before["lstats"].st_mode))
+            lines.append("new mode {0:07o}\n".format(after["lstats"].st_mode))
     if came_from:
-        if came_from.as_rename:
-            lines.append("rename from {0}\n".format(came_from.file_path))
+        if came_from["as_rename"]:
+            lines.append("rename from {0}\n".format(came_from["file_path"]))
             lines.append("rename to {0}\n".format(file_path))
         else:
-            lines.append("copy from {0}\n".format(came_from.file_path))
+            lines.append("copy from {0}\n".format(came_from["file_path"]))
             lines.append("copy to {0}\n".format(file_path))
     if before or after:
-        hash_line = "index {0}".format(before.git_hash if before else "0" *48)
-        hash_line += "..{0}".format(after.git_hash if after else "0" *48)
-        hash_line += " {0:07o}\n".format(after.st_mode) if after and before and before.st_mode == after.st_mode else "\n"
+        hash_line = "index {0}".format(before["git_hash"] if before else "0" *48)
+        hash_line += "..{0}".format(after["git_hash"] if after else "0" *48)
+        hash_line += " {0:07o}\n".format(after["lstats"].st_mode) if after and before and before["lstats"].st_mode == after["lstats"].st_mode else "\n"
         lines.append(hash_line)
     return lines
 
@@ -431,20 +459,20 @@ def git_hashes_differ(efd1, efd2):
     elif efd2 is None:
         return False
     else:
-        return efd1.git_hash != efd2.git_hash
+        return efd1["git_hash"] != efd2["git_hash"]
 
 class FileDiffMixin(object):
     def get_diff_before_data(self, as_refreshed=False, with_timestamps=False):
         if self.came_from:
-            efd = self.came_from.orig
-            label = os.path.join("a", self.came_from.file_path)
+            efd = self.came_from["orig"]
+            label = os.path.join("a", self.came_from["file_path"])
         elif self.renamed_as:
             efd = None
             label = "/dev/null"
         else:
             efd = self.orig
             label = os.path.join("a", self.path) if efd else "/dev/null"
-        timestamp = efd.timestamp if (with_timestamps and efd) else ""
+        timestamp = _EssentialFileData.timestamp(efd) if (with_timestamps and efd) else ""
         content = b"" if as_refreshed else self.patch.database.get_content_for(efd)
         return _DiffData(label, efd, content, timestamp)
     def get_diff_after_data(self, as_refreshed=False, with_timestamps=False):
@@ -460,12 +488,12 @@ class FileDiffMixin(object):
             elif os.path.exists(self.path):
                 with open(self.path, "rb") as f_obj:
                     content = f_obj.read()
-                efd = _EssentialFileData(utils.get_git_hash_for_content(content), os.lstat(self.path))
+                efd = _EssentialFileData.new_dict(git_hash=utils.get_git_hash_for_content(content), lstats=os.lstat(self.path))
             else:
                 efd = None
                 content = b""
             label = os.path.join("b", self.path) if efd else "/dev/null"
-        timestamp = efd.timestamp if (with_timestamps and efd) else ""
+        timestamp = _EssentialFileData.timestamp(efd) if (with_timestamps and efd) else ""
         return _DiffData(label, efd, content, timestamp)
     def get_diff_plus(self, as_refreshed=False, with_timestamps=False):
         assert as_refreshed is False or not isinstance(self, CombinedFileData)
@@ -473,7 +501,7 @@ class FileDiffMixin(object):
         after = self.get_diff_after_data(as_refreshed=as_refreshed, with_timestamps=with_timestamps)
         preamble = generate_diff_preamble(self.path, before.efd, after.efd, self.came_from)
         if not as_refreshed and not isinstance(self, CombinedFileData):
-            as_refreshed = after.efd and self.darned and after.efd.git_hash == self.darned.git_hash
+            as_refreshed = after.efd and self.darned and after.efd["git_hash"] == self.darned["git_hash"]
         if as_refreshed:
             diff = copy.deepcopy(self.diff)
         elif before.content == after.content:
@@ -492,7 +520,7 @@ class FileDiffMixin(object):
         after = self.get_diff_after_data(as_refreshed=as_refreshed, with_timestamps=with_timestamps)
         preamble = "".join(generate_diff_preamble_lines(self.path, before.efd, after.efd, self.came_from))
         if not as_refreshed and not isinstance(self, CombinedFileData):
-            as_refreshed = after.efd and self.darned and after.efd.git_hash == self.darned.git_hash
+            as_refreshed = after.efd and self.darned and after.efd["git_hash"] == self.darned["git_hash"]
         if as_refreshed:
             diff = "" if self.diff is None else str(copy.deepcopy(self.diff))
         elif before.content == after.content:
@@ -521,8 +549,8 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
         orig = self.patch.database.clone_stored_content_data(self.orig)
         darned = self.patch.database.clone_stored_content_data(self.darned)
         if self.came_from:
-            cf_orig = self.patch.database.clone_stored_content_data(self.came_from.orig)
-            came_from = _CameFromData(self.came_from.file_path, self.came_from.as_rename, cf_orig)
+            cf_orig = self.patch.database.clone_stored_content_data(self.came_from["orig"])
+            came_from = _CameFromData.new_dict(file_path=self.came_from["file_path"], as_rename=self.came_from["as_rename"], orig=cf_orig)
         else:
             came_from = None
         clone_data = _FileData(orig=orig, darned=darned, came_from=came_from, renamed_as=self.renamed_as, diff=self.diff, diff_wrt=self.diff_wrt)
@@ -543,11 +571,11 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
         except OSError:
             patch.database.release_stored_content(orig)
             if came_from:
-                patch.database.release_stored_content(came_from.orig)
+                patch.database.release_stored_content(came_from["orig"])
             raise
         if came_from:
-            darned = patch.database.clone_stored_content_data(came_from.orig)
-            diff_wrt = came_from.orig
+            darned = patch.database.clone_stored_content_data(came_from["orig"])
+            diff_wrt = came_from["orig"]
         else:
             darned = patch.database.clone_stored_content_data(orig)
             diff_wrt = orig
@@ -558,18 +586,18 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
             shutil.copy2(copy_from_path, self.path)
         except OSError:
             if new_came_from:
-                self.patch.database.release_stored_content(new_came_from.orig)
+                self.patch.database.release_stored_content(new_came_from["orig"])
             raise
         if self.came_from:
-            self.patch.database.release_stored_content(self.came_from.orig)
+            self.patch.database.release_stored_content(self.came_from["orig"])
         # TODO: handle disable=attribute-defined-outside-init better
         # e.g don't use wrapped names for internal assignments
         # pylint: disable=attribute-defined-outside-init
         self.came_from = new_came_from
         if self.came_from:
             self.patch.database.release_stored_content(self.darned)
-            self.darned = self.patch.database.clone_stored_content_data(self.came_from.orig)
-            self.diff_wrt = self.came_from.orig
+            self.darned = self.patch.database.clone_stored_content_data(self.came_from["orig"])
+            self.diff_wrt = self.came_from["orig"]
             self.diff = None
     @classmethod
     def new_as_move(cls, file_path, patch, fm_file_data):
@@ -583,11 +611,11 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
         diff = None
         if fm_file_data.came_from:
             came_from = fm_file_data.came_from
-            diff_wrt = came_from.orig
-            darned = patch.database.clone_stored_content_data(came_from.orig)
-            if came_from.as_rename:
-                assert came_from.file_path != file_path
-                patch.get_file(came_from.file_path).renamed_as = file_path
+            diff_wrt = came_from["orig"]
+            darned = patch.database.clone_stored_content_data(came_from["orig"])
+            if came_from["as_rename"]:
+                assert came_from["file_path"] != file_path
+                patch.get_file(came_from["file_path"]).renamed_as = file_path
             fm_file_data.came_from = None
         elif fm_file_data.orig is None:
             # this a rename of a file created in this patch
@@ -596,10 +624,10 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
             diff_wrt = fm_file_data.diff_wrt
             diff = fm_file_data.diff
         else:
-            came_from = _CameFromData(fm_file_data.path, True, patch.database.clone_stored_content_data(fm_file_data.orig))
+            came_from = _CameFromData.new_dict(file_path=fm_file_data.path, as_rename=True, orig=patch.database.clone_stored_content_data(fm_file_data.orig))
             fm_file_data.renamed_as = file_path
-            darned = patch.database.clone_stored_content_data(came_from.orig)
-            diff_wrt = came_from.orig
+            darned = patch.database.clone_stored_content_data(came_from["orig"])
+            diff_wrt = came_from["orig"]
         fm_file_data.diff_wrt = None
         fm_file_data.diff = None
         fm_file_data.darned = patch.database.release_stored_content(fm_file_data.darned)
@@ -611,26 +639,26 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
         # shouldn't get here if the rename fails
         # pylint: disable=attribute-defined-outside-init
         if self.came_from:
-            self.patch.database.release_stored_content(self.came_from.orig)
-            if self.came_from.as_rename:
-                self.patch.files_data[self.came_from.file_path].renamed_as = False
+            self.patch.database.release_stored_content(self.came_from["orig"])
+            if self.came_from["as_rename"]:
+                self.patch.files_data[self.came_from["file_path"]].renamed_as = False
             self.came_from = None
         if fm_file_data.came_from:
-            if fm_file_data.came_from.as_rename:
+            if fm_file_data.came_from["as_rename"]:
                 # rename of a rename
-                if fm_file_data.came_from.file_path == self.path:
+                if fm_file_data.came_from["file_path"] == self.path:
                     # Boomerang
                     assert self.renamed_as == fm_file_data.path
-                    self.patch.database.release_stored_content(fm_file_data.came_from.orig)
+                    self.patch.database.release_stored_content(fm_file_data.came_from["orig"])
                     fm_file_data.came_from = None
                     self.renamed_as = None
                 else:
                     self.came_from = fm_file_data.came_from
                     fm_file_data.came_from = None
-                    self.patch.get_file(self.came_from.file_path).renamed_as = self.path
+                    self.patch.get_file(self.came_from["file_path"]).renamed_as = self.path
                     self.patch.database.release_stored_content(self.darned)
-                    self.darned = self.patch.database.clone_stored_content_data(self.came_from.orig)
-                    self.diff_wrt = self.came_from.orig
+                    self.darned = self.patch.database.clone_stored_content_data(self.came_from["orig"])
+                    self.diff_wrt = self.came_from["orig"]
                     self.diff = None
             else:
                 # this a rename of a copy
@@ -644,11 +672,11 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
             self.diff = fm_file_data.diff
         else:
             efd = self.patch.database.clone_stored_content_data(fm_file_data.orig)
-            self.came_from = _CameFromData(fm_file_data.path, True, efd)
+            self.came_from = _CameFromData.new_dict(file_path=fm_file_data.path, as_rename=True, orig=efd)
             fm_file_data.renamed_as = self.path
             self.patch.database.release_stored_content(self.darned)
-            self.darned = self.patch.database.clone_stored_content_data(self.came_from.orig)
-            self.diff_wrt = self.came_from.orig
+            self.darned = self.patch.database.clone_stored_content_data(self.came_from["orig"])
+            self.diff_wrt = self.came_from["orig"]
             self.diff = None
         fm_file_data.diff_wrt = None
         fm_file_data.diff = None
@@ -688,12 +716,12 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
         if self.diff_wrt is False: # NB: False has a special meaning do not abbreviate this test
             return True
         if self.came_from:
-            if self.came_from.orig != self.diff_wrt:
+            if _EssentialFileData.different(self.came_from["orig"], self.diff_wrt):
                 return True
         elif self.renamed_as:
             if self.diff_wrt:
                 return True
-        elif self.orig != self.diff_wrt:
+        elif _EssentialFileData.different(self.orig, self.diff_wrt):
             return True
         if overlapping_file is None:
             if self.darned:
@@ -701,26 +729,26 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
                     lstats = os.lstat(self.path)
                 except OSError:
                     return True
-                if self.darned.lstats.st_mode != lstats.st_mode:
+                if self.darned["lstats"].st_mode != lstats.st_mode:
                     return True
-                elif self.darned.lstats.st_size != lstats.st_size:
+                elif self.darned["lstats"].st_size != lstats.st_size:
                     return True
-                elif self.darned.lstats.st_mtime != lstats.st_mtime:
+                elif self.darned["lstats"].st_mtime != lstats.st_mtime:
                     # NB: using modify time and size instead of comparing hash values
                     # but since change modification times doesn't mean contents changed
                     # we will check (this is expensive but good for the UIX)
-                    return self.darned.git_hash != utils.get_git_hash_for_file(self.path)
+                    return self.darned["git_hash"] != utils.get_git_hash_for_file(self.path)
             else:
                 return os.path.exists(self.path)
         else:
-            return self.darned != overlapping_file.orig
+            return _EssentialFileData.different(self.darned, overlapping_file.orig)
         return False
     @property
     def has_actionable_preamble(self):
         if self.came_from:
             return True
         elif self.orig:
-            return self.darned and self.orig.permissions != self.darned.permissions
+            return self.darned and _EssentialFileData.permissions(self.orig) != _EssentialFileData.permissions(self.darned)
         return bool(self.darned)
     @property
     def has_unresolved_merges(self):
@@ -738,10 +766,10 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
     def related_file_data(self):
         from .bab.nmd_tuples import PathAndRelation as RFD
         if self.came_from:
-            if self.came_from.as_rename:
-                return RFD(self.came_from.file_path, os_utils.Relation.MOVED_FROM)
+            if self.came_from["as_rename"]:
+                return RFD(self.came_from["file_path"], os_utils.Relation.MOVED_FROM)
             else:
-                return RFD(self.came_from.file_path, os_utils.Relation.COPIED_FROM)
+                return RFD(self.came_from["file_path"], os_utils.Relation.COPIED_FROM)
         elif self.renamed_as:
             return RFD(self.renamed_as, os_utils.Relation.MOVED_TO)
         return None
@@ -754,14 +782,14 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
     def get_reconciliation_paths(self):
         assert self.patch.is_top_patch
         # make it hard for the user to (accidentally) create these files if they don't exist
-        before = BLOB_PATH(self.came_from.orig.git_hash) if self.came_from else (BLOB_PATH(self.orig.git_hash) if self.orig else "/dev/null")
-        stashed = BLOB_PATH(self.darned.git_hash) if self.darned else "/dev/null"
+        before = BLOB_PATH(self.came_from["orig"]["git_hash"]) if self.came_from else (BLOB_PATH(self.orig["git_hash"]) if self.orig else "/dev/null")
+        stashed = BLOB_PATH(self.darned["git_hash"]) if self.darned else "/dev/null"
         # The user has to be able to cope with the main file not existing (meld can)
         return _O_IP_S_TRIPLET(before, self.path, stashed)
     def get_extdiff_paths(self):
         assert self.patch.is_applied and self.get_overlapping_file() is None
         # make it hard for the user to (accidentally) create these files if they don't exist
-        before = BLOB_PATH(self.came_from.orig.git_hash) if self.came_from else (BLOB_PATH(self.orig.git_hash) if self.orig else "/dev/null")
+        before = BLOB_PATH(self.came_from["orig"]["git_hash"]) if self.came_from else (BLOB_PATH(self.orig["git_hash"]) if self.orig else "/dev/null")
         # The user has to be able to cope with the main file not existing (meld can)
         return _O_IP_PAIR(before, self.path)
     def get_table_row(self):
@@ -775,12 +803,12 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
         elif os.path.exists(self.path):
             with open(self.path, "rb") as f_obj:
                 content = f_obj.read()
-            efd = _EssentialFileData(self.patch.database.store_content(content), os.lstat(self.path))
+            efd = _EssentialFileData.new_dict(git_hash=self.patch.database.store_content(content), lstats=os.lstat(self.path))
         else:
             efd = None
             content = b""
         label = os.path.join("b", self.path) if efd else "/dev/null"
-        timestamp = efd.timestamp if (with_timestamps and efd) else ""
+        timestamp = _EssentialFileData.timestamp(efd) if (with_timestamps and efd) else ""
         return _DiffData(label, efd, content, timestamp)
     def do_refresh(self, stdout=None, with_timestamps=False):
         assert self.patch.is_applied
@@ -803,11 +831,11 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
         if stdout:
             if not after.efd:
                 stdout.write(_("\"{0}\": file does not exist\n").format(rel_subdir(self.path)))
-            elif before.efd and after.efd and after.efd.st_mode != before.efd.st_mode:
-                stdout.write(_("\"{0}\": mode {1:07o} -> {2:07o}.\n").format(rel_subdir(self.path), before.efd.st_mode, after.efd.st_mode))
+            elif before.efd and after.efd and after.efd["lstats"].st_mode != before.efd["lstats"].st_mode:
+                stdout.write(_("\"{0}\": mode {1:07o} -> {2:07o}.\n").format(rel_subdir(self.path), before.efd["lstats"].st_mode, after.efd["lstats"].st_mode))
     def apply_diff(self, drop_atws=True):
         # we assume that "orig" data is correct
-        current_efd = self.came_from.orig if self.came_from else self.orig
+        current_efd = self.came_from["orig"] if self.came_from else self.orig
         retval = CmdResult.OK
         already_exists = os.path.exists(self.path)
         if isinstance(self.diff, patchlib.GitBinaryDiff):
@@ -828,10 +856,10 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
             result = _do_apply_diff_to_file(self.path, self.diff, delete_empty=self.darned is None)
             if os.path.exists(self.path):
                 if self.came_from:
-                    if self.came_from.as_rename:
-                        RCTX.stdout.write(_("\"{0}\": renamed from \"{1}\" and modified.\n").format(rel_subdir(self.path), rel_subdir(self.came_from.file_path)))
+                    if self.came_from["as_rename"]:
+                        RCTX.stdout.write(_("\"{0}\": renamed from \"{1}\" and modified.\n").format(rel_subdir(self.path), rel_subdir(self.came_from["file_path"])))
                     else:
-                        RCTX.stdout.write(_("\"{0}\": copied from \"{1}\" and modified.\n").format(rel_subdir(self.path), rel_subdir(self.came_from.file_path)))
+                        RCTX.stdout.write(_("\"{0}\": copied from \"{1}\" and modified.\n").format(rel_subdir(self.path), rel_subdir(self.came_from["file_path"])))
                 elif already_exists:
                     RCTX.stdout.write(_("\"{0}\": modified.\n").format(rel_subdir(self.path)))
                 else:
@@ -855,17 +883,17 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
             RCTX.stderr.write(result.stderr)
             retval = result.ecode
         elif self.came_from:
-            if self.came_from.as_rename:
-                RCTX.stdout.write(_("\"{0}\": renamed from \"{1}\".\n").format(rel_subdir(self.path), rel_subdir(self.came_from.file_path)))
+            if self.came_from["as_rename"]:
+                RCTX.stdout.write(_("\"{0}\": renamed from \"{1}\".\n").format(rel_subdir(self.path), rel_subdir(self.came_from["file_path"])))
             else:
-                RCTX.stdout.write(_("\"{0}\": copied from \"{1}\".\n").format(rel_subdir(self.path), rel_subdir(self.came_from.file_path)))
+                RCTX.stdout.write(_("\"{0}\": copied from \"{1}\".\n").format(rel_subdir(self.path), rel_subdir(self.came_from["file_path"])))
         elif self.renamed_as:
             RCTX.stdout.write(_("\"{0}\": renamed as \"{1}\".\n").format(rel_subdir(self.path), rel_subdir(self.renamed_as)))
         else:
             RCTX.stdout.write(_("\"{0}\": unchanged.\n").format(rel_subdir(self.path)))
         if self.darned:
             if os.path.exists(self.path):
-                os.chmod(self.path, self.darned.permissions)
+                os.chmod(self.path, _EssentialFileData.permissions(self.darned))
             else:
                 retval = max(retval, CmdResult.WARNING)
                 RCTX.stderr.write(_("Expected file not found.\n"))
@@ -911,27 +939,27 @@ class CombinedFileData(mixins.WrapperMixin, FileDiffMixin):
         if self.top.diff_wrt is False: # NB: False has a special meaning do not abbreviate this test
             return True
         if self.top.came_from:
-            if self.top.came_from.orig != self.top.diff_wrt:
+            if _EssentialFileData.different(self.top.came_from["orig"], self.top.diff_wrt):
                 return True
         elif self.top.renamed_as:
             if self.top.diff_wrt:
                 return True
-        elif self.top.orig != self.top.diff_wrt:
+        elif _EssentialFileData.different(self.top.orig, self.top.diff_wrt):
             return True
         if self.top.darned:
             try:
                 lstats = os.lstat(self.path)
             except OSError:
                 return True
-            if self.top.darned.lstats.st_mode != lstats.st_mode:
+            if self.top.darned["lstats"].st_mode != lstats.st_mode:
                 return True
-            elif self.top.darned.lstats.st_size != lstats.st_size:
+            elif self.top.darned["lstats"].st_size != lstats.st_size:
                 return True
-            elif self.top.darned.lstats.st_mtime != lstats.st_mtime:
+            elif self.top.darned["lstats"].st_mtime != lstats.st_mtime:
                 # NB: using modify time and size instead of comparing hash values
                 # but since change modification times doesn't mean contents changed
                 # we will check (this is expensive but good for the UIX)
-                return self.top.darned.git_hash != utils.get_git_hash_for_file(self.path)
+                return self.top.darned["git_hash"] != utils.get_git_hash_for_file(self.path)
             else:
                 return False
         else:
@@ -1007,13 +1035,13 @@ class Patch(mixins.WrapperMixin):
         try:
             came_from_file = self.get_file(came_from_path)
             if came_from_file.came_from:
-                efd = self.database.clone_stored_content_data(came_from_file.came_from.orig)
-                came_from_path = came_from_file.came_from.file_path
+                efd = self.database.clone_stored_content_data(came_from_file.came_from["orig"])
+                came_from_path = came_from_file.came_from["file_path"]
             else:
                 efd = self.database.clone_stored_content_data(came_from_file.orig)
         except KeyError:
             efd = self.database.store_file_content(came_from_path)
-        return _CameFromData(came_from_path, False, efd) if efd else None
+        return _CameFromData.new_dict(file_path=came_from_path, as_rename=False, orig=efd) if efd else None
     def do_apply(self, overlaps=OverlapData()):
         # NB: presence of overlaps implies absorb
         if len(self.files_data) == 0:
@@ -1028,8 +1056,8 @@ class Patch(mixins.WrapperMixin):
         for file_data in self.iterate_files_sorted():
             file_data.orig = self.database.update_stored_content_data(file_data.path, file_data.orig, overlaps)
             if file_data.came_from:
-                file_data.came_from.orig = self.database.update_stored_content_data(file_data.came_from.file_path, file_data.came_from.orig)
-                if file_data.came_from.as_rename:
+                file_data.came_from["orig"] = self.database.update_stored_content_data(file_data.came_from["file_path"], file_data.came_from["orig"])
+                if file_data.came_from["as_rename"]:
                     renames.append(file_data)
                 else:
                     copies.append(file_data)
@@ -1046,12 +1074,12 @@ class Patch(mixins.WrapperMixin):
             biggest_ecode = max(biggest_ecode, file_data.apply_diff(drop_atws))
         # Now do the copying
         for file_data in copies:
-            if not os.path.exists(file_data.came_from.file_path):
+            if not os.path.exists(file_data.came_from["file_path"]):
                 biggest_ecode = CmdResult.ERROR
-                RCTX.stderr.write(_("{0}: failed to copy {1}.\n").format(rel_subdir(file_data.path), rel_subdir(file_data.came_from.file_path)))
+                RCTX.stderr.write(_("{0}: failed to copy {1}.\n").format(rel_subdir(file_data.path), rel_subdir(file_data.came_from["file_path"])))
             else:
                 try:
-                    shutil.copy2(file_data.came_from.file_path, file_data.path)
+                    shutil.copy2(file_data.came_from["file_path"], file_data.path)
                 except OSError as edata:
                     biggest_ecode = CmdResult.ERROR
                     RCTX.stderr.write(edata)
@@ -1060,12 +1088,12 @@ class Patch(mixins.WrapperMixin):
             # NB if there's more than one rename then there is a possibility of
             # complex interactions that make using os.rename problematic
             # so we just move content and mode using stored original data
-            fm_file_data = self.get_file(file_data.came_from.file_path)
+            fm_file_data = self.get_file(file_data.came_from["file_path"])
             # TODO: investigate whether fm_file_data.orig can be None here. Duplicated patch?
             try:
                 with open(file_data.path, "wb") as f_obj:
                     f_obj.write(self.database.get_content_for(fm_file_data.orig))
-                os.chmod(file_data.path, fm_file_data.orig.permissions)
+                os.chmod(file_data.path, _EssentialFileData.permissions(fm_file_data.orig))
             except (OSError, IOError) as edata:
                 biggest_ecode = CmdResult.ERROR
                 RCTX.stderr.write(edata)
@@ -1091,7 +1119,7 @@ class Patch(mixins.WrapperMixin):
             orig_content = self.database.get_content_for(file_data.orig)
             with open(file_path, "wb") as f_obj:
                 f_obj.write(orig_content)
-            os.chmod(file_path, file_data.orig.permissions)
+            os.chmod(file_path, _EssentialFileData.permissions(file_data.orig))
     def add_file(self, file_data):
         assert not self.is_applied or self.is_top_patch
         assert file_data.path not in self.files_data
@@ -1107,16 +1135,16 @@ class Patch(mixins.WrapperMixin):
             if file_data.orig:
                 with open(file_data.path, "wb") as f_obj:
                     f_obj.write(self.database.get_content_for(file_data.orig))
-                os.chmod(file_data.path, file_data.orig.permissions)
+                os.chmod(file_data.path, _EssentialFileData.permissions(file_data.orig))
             elif os.path.exists(file_data.path):
                 os.remove(file_data.path)
         # if this file was the result of a rename then we make the original a normal file
-        if file_data.came_from and file_data.came_from.as_rename:
-            self.files_data[file_data.came_from.file_path].renamed_as = None
+        if file_data.came_from and file_data.came_from["as_rename"]:
+            self.files_data[file_data.came_from["file_path"]].renamed_as = None
         del self.files_data[file_data.path]
         # if this file had been renamed then the renamed version becomes a copy
         if file_data.renamed_as:
-            self.files_data[file_data.renamed_as].came_from.as_rename = False
+            self.files_data[file_data.renamed_as].came_from["as_rename"] = False
             file_data.renamed_as = None
         file_data.release_contents()
     def drop_named_file(self, file_path):
@@ -1157,9 +1185,9 @@ class Patch(mixins.WrapperMixin):
             self.drop_file(file_data)
     def write_to_file(self, file_path):
         with open(file_path, "wb") as f_obj:
-            fobj.write(self.description)
+            f_obj.write(self.description)
             for file_data in self.iterate_files_sorted():
-                fobj.write(file_data.get_diff_text())
+                f_obj.write(file_data.get_diff_text())
     def _apply_diff_plus_changes(self, diff_plus, drop_atws=True, num_strip_levels=1):
         retval = CmdResult.OK
         file_path = diff_plus.get_file_path(num_strip_levels)
@@ -1672,7 +1700,7 @@ class DataBase(mixins.WrapperMixin):
                 contents = f_obj.read()
         else:
             return None
-        return _EssentialFileData(self.store_content(contents), os.lstat(file_path))
+        return _EssentialFileData.new_dict(git_hash=self.store_content(contents), lstats=os.lstat(file_path))
     def update_stored_content_data(self, file_path, old_data, overlaps=OverlapData()):
         # NB: get new data first so that if it hasn't changed not much gets done
         new_data = self.store_file_content(file_path, overlaps)
@@ -1681,12 +1709,12 @@ class DataBase(mixins.WrapperMixin):
     def clone_stored_content_data(self, content_data):
         if content_data is None:
             return None
-        cloned_data = content_data.clone()
-        self.incr_ref_count_for_hash(cloned_data.git_hash)
+        cloned_data = content_data.copy()
+        self.incr_ref_count_for_hash(cloned_data["git_hash"])
         return cloned_data
     def release_stored_content(self, efd):
         if efd is not None:
-            dir_name, file_name = efd.git_hash[:2], efd.git_hash[2:]
+            dir_name, file_name = efd["git_hash"][:2], efd["git_hash"][2:]
             self.blob_ref_counts[dir_name][file_name] -= 1
             if self.blob_ref_counts[dir_name][file_name] == 0:
                 os.remove(os.path.join(_BLOBS_DIR_PATH, dir_name, file_name))
@@ -1696,7 +1724,7 @@ class DataBase(mixins.WrapperMixin):
         if obj is None:
             return b""
         else:
-            with open(BLOB_PATH(obj.git_hash), "rb") as f_obj:
+            with open(BLOB_PATH(obj["git_hash"]), "rb") as f_obj:
                 return f_obj.read()
 
 def do_create_db(dir_path=None, description=None):
