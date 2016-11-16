@@ -50,3 +50,15 @@ class WrapperMixin:
             setattr(self.__dict__[self.WRAPPED_OBJECT_NAME], attr_name, value)
         else:
             self.__dict__[attr_name] = value
+
+class DictWrapperMixin:
+    WRAPPED_ITEMS = dict()
+    WRAPPED_DICT_NAME = "_WRAPPED_DICT"
+    def __getattr__(self, attr_name):
+        # TODO: think about converting KeyError to AttributeError
+        return self.__dict__[self.WRAPPED_DICT_NAME][attr_name]
+    def __setattr__(self, attr_name, value):
+        if attr_name in self.WRAPPED_ITEMS:
+            self.__dict__[self.WRAPPED_DICT_NAME][attr_name] = value
+        else:
+            self.__dict__[attr_name] = value

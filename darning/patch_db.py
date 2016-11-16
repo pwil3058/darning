@@ -262,14 +262,9 @@ class _FileData(mixins.PedanticSlotPickleMixin):
         self.diff = None
         self.diff_wrt = None
 
-class _CombinedFileData(mixins.PedanticSlotPickleMixin):
-    __slots__ = ("top", "bottom")
-    def __init__(self, top, bottom):
-        self.top = top
-        self.bottom = bottom
-
 class SupervisedDictFactory:
     ALLOWED_ITEMS = dict()
+    MAY_BE_NONE = frozenset()
 
     @classmethod
     def new_dict(cls, **kwargs):
@@ -289,10 +284,16 @@ class SupervisedDictFactory:
         try:
             for key, v_type in cls.ALLOWED_ITEMS.items():
                 if not isinstance(candidate_dict[key], v_type):
-                    return False
+                    if key not in cls.MAY_BE_NONE or candidate_dict[key] is not None:
+                        return False
         except KeyError:
             return False
         return True
+
+class _CombinedFileData(SupervisedDictFactory):
+    """Factory to create/manage essential file data for combined patches in dictionaries"""
+    ALLOWED_ITEMS = {"top" : _FileData, "bottom" : _FileData }
+    MAY_BE_NONE = frozenset(["top", "bottom"])
 
 class _EssentialFileData(SupervisedDictFactory):
     """Factory to create/manage essential file data in dictionaries"""
@@ -899,9 +900,9 @@ class FileData(mixins.WrapperMixin, FileDiffMixin):
                 RCTX.stderr.write(_("Expected file not found.\n"))
         return retval
 
-class CombinedFileData(mixins.WrapperMixin, FileDiffMixin):
-    WRAPPED_ATTRIBUTES = _CombinedFileData.__slots__
-    WRAPPED_OBJECT_NAME = "persistent_data"
+class CombinedFileData(mixins.DictWrapperMixin, FileDiffMixin):
+    WRAPPED_ITEMS = _CombinedFileData.ALLOWED_ITEMS
+    WRAPPED_DICT_NAME = "persistent_data"
     def __init__(self, file_path, persistent_data, combined_patch):
         self.path = file_path
         self.persistent_data = persistent_data
@@ -913,7 +914,7 @@ class CombinedFileData(mixins.WrapperMixin, FileDiffMixin):
         if attr_name == "orig": return self.bottom.orig
         if attr_name == "darned": return self.top.darned
         if attr_name == "diff": return None
-        return mixins.WrapperMixin.__getattr__(self, attr_name)
+        return mixins.DictWrapperMixin.__getattr__(self, attr_name)
     def get_overlapping_file(self):
         return None
     @property
@@ -1399,12 +1400,12 @@ class CombinedPatch(mixins.WrapperMixin):
     def add_file(self, file_data):
         if self.prev:
             prev_file_data = self.prev.files_data.get(file_data.path, None)
-            bottom = prev_file_data.bottom if prev_file_data else file_data.persistent_file_data
+            bottom = prev_file_data["bottom"] if prev_file_data else file_data.persistent_file_data
         else:
             bottom = file_data.persistent_file_data
-        self.files_data[file_data.path] = _CombinedFileData(file_data.persistent_file_data, bottom)
+        self.files_data[file_data.path] = _CombinedFileData.new_dict(top=file_data.persistent_file_data, bottom=bottom)
     def drop_file(self, file_data):
-        assert self.files_data[file_data.path].top == file_data.persistent_file_data
+        assert self.files_data[file_data.path]["top"] == file_data.persistent_file_data
         prev_file_data = self.prev.files_data.get(file_data.path, None) if self.prev else None
         if prev_file_data:
             self.files_data[file_data.path] = copy.copy(prev_file_data)
