@@ -235,12 +235,6 @@ class _PatchData(mixins.PedanticSlotPickleMixin):
             _FileData.release_contents(file_data, database)
         self.files_data.clear()
 
-class _CombinedPatchData(mixins.PedanticSlotPickleMixin):
-    __slots__ = ("files_data", "prev")
-    def __init__(self, prev):
-        self.files_data = dict() if not prev else {file_path : copy.copy(files_data) for file_path, files_data in prev.files_data.items()}
-        self.prev = prev
-
 class SupervisedDictFactory:
     ALLOWED_ITEMS = dict()
     MAY_BE_NONE = frozenset()
@@ -274,6 +268,17 @@ class SupervisedDictFactory:
         except KeyError:
             return False
         return True
+
+class _CombinedPatchData(SupervisedDictFactory):
+    ALLOWED_ITEMS = {"files_data" : dict, "prev" : dict}
+    MAY_BE_NONE = frozenset(["prev"])
+    REQUIRED = frozenset(["files_data", "prev"])
+    DEFAULT_NONE = frozenset(["prev"])
+
+    @classmethod
+    def make_new_dict(cls, prev=None):
+        files_data = dict() if not prev else {file_path : copy.copy(file_data) for file_path, file_data in prev["files_data"].items()}
+        return cls.new_dict(files_data=files_data, prev=prev)
 
 class _DiffData(SupervisedDictFactory):
     """Factory to create/manage persistent diff data in dictionaries"""
@@ -1414,23 +1419,23 @@ class TextPatch(patchlib.Patch):
         h.update(str(self.state).encode())
         return h.digest()
 
-class CombinedPatch(mixins.WrapperMixin):
-    WRAPPED_ATTRIBUTES = _CombinedPatchData.__slots__
-    WRAPPED_OBJECT_NAME = "persistent_data"
+class CombinedPatch(mixins.DictWrapperMixin):
+    WRAPPED_ITEMS = list(_CombinedPatchData.ALLOWED_ITEMS.keys())
+    WRAPPED_DICT_NAME = "persistent_data"
     is_applied = True
     def __init__(self, persistent_data, database):
         self.persistent_data = persistent_data
         self.database = database
     def add_file(self, file_data):
         if self.prev:
-            prev_file_data = self.prev.files_data.get(file_data.path, None)
+            prev_file_data = self.prev["files_data"].get(file_data.path, None)
             bottom = prev_file_data["bottom"] if prev_file_data else file_data.persistent_file_data
         else:
             bottom = file_data.persistent_file_data
         self.files_data[file_data.path] = _CombinedFileData.new_dict(top=file_data.persistent_file_data, bottom=bottom)
     def drop_file(self, file_data):
         assert self.files_data[file_data.path]["top"] == file_data.persistent_file_data
-        prev_file_data = self.prev.files_data.get(file_data.path, None) if self.prev else None
+        prev_file_data = self.prev["files_data"].get(file_data.path, None) if self.prev else None
         if prev_file_data:
             self.files_data[file_data.path] = copy.copy(prev_file_data)
         else:
@@ -1533,7 +1538,7 @@ class DataBase(mixins.WrapperMixin):
         self._PPD.applied_patches_data.append(new_patch)
         assert self._PPD.applied_patches_data[-1] == new_patch
         assert new_patch in self._PPD.patch_series_data
-        self._PPD.combined_patch_data = _CombinedPatchData(self._PPD.combined_patch_data)
+        self._PPD.combined_patch_data = _CombinedPatchData.make_new_dict(self._PPD.combined_patch_data)
         return Patch(new_patch, self)
     def duplicate_patch(self, patch, new_patch_name, new_description):
         assert self.is_writable
@@ -1612,7 +1617,7 @@ class DataBase(mixins.WrapperMixin):
             raise DarnItPatchNeedsRefresh(patch_name=self.top_patch_name)
         self.top_patch.undo_apply()
         self.applied_patches_data.pop()
-        self._PPD.combined_patch_data = self._PPD.combined_patch_data.prev
+        self._PPD.combined_patch_data = self._PPD.combined_patch_data["prev"]
         return self.top_patch
     def push_next_patch(self, absorb=False, force=False):
         assert not (absorb and force)
@@ -1627,7 +1632,7 @@ class DataBase(mixins.WrapperMixin):
             if not absorb and len(overlaps):
                 raise DarnItPatchOverlapsChanges(overlaps=overlaps)
         self.applied_patches_data.append(patch)
-        self._PPD.combined_patch_data = _CombinedPatchData(self._PPD.combined_patch_data)
+        self._PPD.combined_patch_data = _CombinedPatchData.make_new_dict(self._PPD.combined_patch_data)
         return patch.do_apply(overlaps)
     def get_overlap_data(self, file_paths, patch=None):
         """
