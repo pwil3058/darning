@@ -205,15 +205,6 @@ class OverlapData(object):
         RCTX.stderr.write(_('Aborted.\n'))
         return CmdResult.ERROR | CmdResult.Suggest.FORCE_ABSORB_OR_REFRESH if len(self.unrefreshed) > 0 else CmdResult.ERROR | CmdResult.Suggest.FORCE_OR_ABSORB
 
-class _DataBaseData(mixins.PedanticSlotPickleMixin):
-    __slots__ = ("selected_guards", "patch_series_data", "applied_patches_data", "combined_patch_data", "kept_patches")
-    def __init__(self):
-        self.selected_guards = set()
-        self.patch_series_data = list()
-        self.applied_patches_data = list()
-        self.combined_patch_data = None
-        self.kept_patches = dict()
-
 class SupervisedDictFactory:
     ALLOWED_ITEMS = dict()
     MAY_BE_NONE = frozenset()
@@ -250,6 +241,25 @@ class SupervisedDictFactory:
         except KeyError:
             return False
         return True
+
+class _DataBaseData(SupervisedDictFactory):
+    ALLOWED_ITEMS = {
+        "selected_guards" : set,
+        "patch_series_data" : list,
+        "applied_patches_data" : list,
+        "combined_patch_data" : dict,
+        "kept_patches" :dict
+    }
+    MAY_BE_NONE = frozenset(["combined_patch_data"])
+    REQUIRED = frozenset()
+    DEFAULT_NONE = frozenset(["combined_patch_data"])
+    #__slots__ = ("selected_guards", "patch_series_data", "applied_patches_data", "combined_patch_data", "kept_patches")
+    #def __init__(self):
+        #self.selected_guards = set()
+        #self.patch_series_data = list()
+        #self.applied_patches_data = list()
+        #self.combined_patch_data = None
+        #self.kept_patches = dict()
 
 class _PatchData(SupervisedDictFactory):
     ALLOWED_ITEMS = {
@@ -1484,42 +1494,42 @@ class CombinedPatch(mixins.DictWrapperMixin):
 
 _ContentState = collections.namedtuple("_ContentState", ["orphans", "missing", "bad_content"])
 
-class DataBase(mixins.WrapperMixin):
-    WRAPPED_ATTRIBUTES = _DataBaseData.__slots__
-    WRAPPED_OBJECT_NAME = "_PPD"
+class DataBase(mixins.DictWrapperMixin):
+    WRAPPED_ITEMS = list(_DataBaseData.ALLOWED_ITEMS.keys())
+    WRAPPED_DICT_NAME = "_PPD"
     def __init__(self, patches_persistent_data, blob_ref_counts, is_writable):
         self._PPD = patches_persistent_data
         self.blob_ref_counts = blob_ref_counts
         self.is_writable = is_writable
-        for patch in patches_persistent_data.applied_patches_data:
-            assert patch in patches_persistent_data.patch_series_data
+        for patch in patches_persistent_data["applied_patches_data"]:
+            assert patch in patches_persistent_data["patch_series_data"]
     @property
     def top_patch(self):
-        return None if not self._PPD.applied_patches_data else Patch(self._PPD.applied_patches_data[-1], self)
+        return None if not self._PPD["applied_patches_data"] else Patch(self._PPD["applied_patches_data"][-1], self)
     @property
     def top_patch_name(self):
-        return None if not self._PPD.applied_patches_data else self._PPD.applied_patches_data[-1]["name"]
+        return None if not self._PPD["applied_patches_data"] else self._PPD["applied_patches_data"][-1]["name"]
     @property
     def base_patch(self):
-        return None if not self._PPD.applied_patches_data else Patch(self._PPD.applied_patches_data[0], self)
+        return None if not self._PPD["applied_patches_data"] else Patch(self._PPD["applied_patches_data"][0], self)
     @property
     def base_patch_name(self):
-        return None if not self._PPD.applied_patches_data else self._PPD.applied_patches_data[0]["name"]
+        return None if not self._PPD["applied_patches_data"] else self._PPD["applied_patches_data"][0]["name"]
     @property
     def prev_patch(self):
-        return None if len(self._PPD.applied_patches_data) < 2 else Patch(self._PPD.applied_patches_data[-2], self)
+        return None if len(self._PPD["applied_patches_data"]) < 2 else Patch(self._PPD["applied_patches_data"][-2], self)
     @property
     def prev_patch_name(self):
-        return None if len(self._PPD.applied_patches_data) < 2 else self._PPD.applied_patches_data[-2]["name"]
+        return None if len(self._PPD["applied_patches_data"]) < 2 else self._PPD["applied_patches_data"][-2]["name"]
     def _next_patch_data(self):
-        if self._PPD.applied_patches_data:
-            top_patch_index = self._PPD.patch_series_data.index(self._PPD.applied_patches_data[-1])
-            for patch in self._PPD.patch_series_data[top_patch_index + 1:]:
-                if not _guards_block_patch(self._PPD.selected_guards, patch):
+        if self._PPD["applied_patches_data"]:
+            top_patch_index = self._PPD["patch_series_data"].index(self._PPD["applied_patches_data"][-1])
+            for patch in self._PPD["patch_series_data"][top_patch_index + 1:]:
+                if not _guards_block_patch(self._PPD["selected_guards"], patch):
                     return patch
         else:
-            for patch in self._PPD.patch_series_data:
-                if not _guards_block_patch(self._PPD.selected_guards, patch):
+            for patch in self._PPD["patch_series_data"]:
+                if not _guards_block_patch(self._PPD["selected_guards"], patch):
                     return patch
         return None
     @property
@@ -1538,29 +1548,29 @@ class DataBase(mixins.WrapperMixin):
         return CombinedPatch(self.combined_patch_data, self) if self.combined_patch_data else None
     def create_new_patch(self, patch_name, description):
         assert self.is_writable
-        if _named_patch_is_in_list(self._PPD.patch_series_data, patch_name):
+        if _named_patch_is_in_list(self._PPD["patch_series_data"], patch_name):
             raise DarnItPatchExists(patch_name=patch_name)
         new_patch = _PatchData.new_dict(name=patch_name, description=description)
-        if self._PPD.applied_patches_data:
-            top_patch_index = self._PPD.patch_series_data.index(self._PPD.applied_patches_data[-1])
-            self._PPD.patch_series_data.insert(top_patch_index + 1, new_patch)
+        if self._PPD["applied_patches_data"]:
+            top_patch_index = self._PPD["patch_series_data"].index(self._PPD["applied_patches_data"][-1])
+            self._PPD["patch_series_data"].insert(top_patch_index + 1, new_patch)
         else:
-            self._PPD.patch_series_data.insert(0, new_patch)
-        self._PPD.applied_patches_data.append(new_patch)
-        assert self._PPD.applied_patches_data[-1] == new_patch
-        assert new_patch in self._PPD.patch_series_data
-        self._PPD.combined_patch_data = _CombinedPatchData.make_new_dict(self._PPD.combined_patch_data)
+            self._PPD["patch_series_data"].insert(0, new_patch)
+        self._PPD["applied_patches_data"].append(new_patch)
+        assert self._PPD["applied_patches_data"][-1] == new_patch
+        assert new_patch in self._PPD["patch_series_data"]
+        self._PPD["combined_patch_data"] = _CombinedPatchData.make_new_dict(self._PPD["combined_patch_data"])
         return Patch(new_patch, self)
     def duplicate_patch(self, patch, new_patch_name, new_description):
         assert self.is_writable
-        if _named_patch_is_in_list(self._PPD.patch_series_data, new_patch_name):
+        if _named_patch_is_in_list(self._PPD["patch_series_data"], new_patch_name):
             raise DarnItPatchExists(patch_name=new_patch_name)
         new_patch_data = _PatchData.new_dict(name=new_patch_name, description=new_description)
-        if self._PPD.applied_patches_data:
-            top_patch_index = self._PPD.patch_series_data.index(self._PPD.applied_patches_data[-1])
-            self._PPD.patch_series_data.insert(top_patch_index + 1, new_patch_data)
+        if self._PPD["applied_patches_data"]:
+            top_patch_index = self._PPD["patch_series_data"].index(self._PPD["applied_patches_data"][-1])
+            self._PPD["patch_series_data"].insert(top_patch_index + 1, new_patch_data)
         else:
-            self._PPD.patch_series_data.insert(0, new_patch_data)
+            self._PPD["patch_series_data"].insert(0, new_patch_data)
         new_patch = Patch(new_patch_data, self)
         for file_data in patch.iterate_files():
             new_patch.add_file(file_data.clone_for_patch(new_patch))
@@ -1602,14 +1612,14 @@ class DataBase(mixins.WrapperMixin):
         except KeyError:
             raise DarnItUnknownPatch(patch_name=patch_name)
         patch_data["name"] = as_patch_name
-        if self._PPD.applied_patches_data:
-            top_patch_index = self._PPD.patch_series_data.index(self._PPD.applied_patches_data[-1])
-            self._PPD.patch_series_data.insert(top_patch_index + 1, patch_data)
+        if self._PPD["applied_patches_data"]:
+            top_patch_index = self._PPD["patch_series_data"].index(self._PPD["applied_patches_data"][-1])
+            self._PPD["patch_series_data"].insert(top_patch_index + 1, patch_data)
         else:
-            self._PPD.patch_series_data.insert(0, patch_data)
+            self._PPD["patch_series_data"].insert(0, patch_data)
         return Patch(patch_data, self)
     def get_named_patch(self, patch_name):
-        _index, patch = _find_named_patch_in_list(self._PPD.patch_series_data, patch_name) # pylint: disable=unused-variable
+        _index, patch = _find_named_patch_in_list(self._PPD["patch_series_data"], patch_name) # pylint: disable=unused-variable
         if not patch:
             raise DarnItUnknownPatch(patch_name=patch_name)
         return Patch(patch, self)
@@ -1628,7 +1638,7 @@ class DataBase(mixins.WrapperMixin):
             raise DarnItPatchNeedsRefresh(patch_name=self.top_patch_name)
         self.top_patch.undo_apply()
         self.applied_patches_data.pop()
-        self._PPD.combined_patch_data = self._PPD.combined_patch_data["prev"]
+        self._PPD["combined_patch_data"] = self._PPD["combined_patch_data"]["prev"]
         return self.top_patch
     def push_next_patch(self, absorb=False, force=False):
         assert not (absorb and force)
@@ -1643,7 +1653,7 @@ class DataBase(mixins.WrapperMixin):
             if not absorb and len(overlaps):
                 raise DarnItPatchOverlapsChanges(overlaps=overlaps)
         self.applied_patches_data.append(patch.persistent_patch_data)
-        self._PPD.combined_patch_data = _CombinedPatchData.make_new_dict(self._PPD.combined_patch_data)
+        self._PPD["combined_patch_data"] = _CombinedPatchData.make_new_dict(self._PPD["combined_patch_data"])
         return patch.do_apply(overlaps)
     def get_overlap_data(self, file_paths, patch=None):
         """
@@ -1804,7 +1814,7 @@ def do_create_db(dir_path=None, description=None):
             f_obj.write(b"0")
         with open(description_file_path, "w") as f_obj:
             f_obj.write(_tidy_text(description) if description else "")
-        db_obj = _DataBaseData()
+        db_obj = _DataBaseData.new_dict()
         with open(patches_data_file_path, "wb", stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH) as f_obj:
             pickle.dump(db_obj, f_obj)
         with open(blob_ref_count_file_path, "wb", stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH) as f_obj:
