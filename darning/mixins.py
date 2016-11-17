@@ -62,3 +62,17 @@ class DictWrapperMixin:
             self.__dict__[self.WRAPPED_DICT_NAME][attr_name] = value
         else:
             self.__dict__[attr_name] = value
+
+class PedanticDictProxyMixin:
+    PROXIED_ITEMS = dict()
+    PROXIED_DICT_NAME = "_PROXIED_DICT"
+    def __getitem__(self, key):
+        if key in self.PROXIED_ITEMS:
+            return self.__dict__[self.PROXIED_DICT_NAME][key]
+        else:
+            raise KeyError(key)
+    def __setitem__(self, key, value):
+        if key in self.PROXIED_ITEMS:
+            self.__dict__[self.PROXIED_DICT_NAME][key] = value
+        else:
+            raise KeyError(key)

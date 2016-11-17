@@ -142,9 +142,10 @@ def find_base_dir(dir_path=None, remember_sub_dir=False):
 def _tidy_text(text):
     '''Return the given text with any trailing white space removed.
     Also ensure there is a new line at the end of the lastline.'''
-    tidy_text = ''
-    for line in text.splitlines():
-        tidy_text += re.sub('[ \t]+$', '', line) + '\n'
+    tidy_text = ""
+    if text: # This will allow text to be None
+        for line in text.splitlines():
+            tidy_text += re.sub("[ \t]+$", "", line) + "\n"
     return tidy_text
 
 def _do_apply_diff_to_file(filepath, diff, delete_empty=False):
@@ -253,13 +254,6 @@ class _DataBaseData(SupervisedDictFactory):
     MAY_BE_NONE = frozenset(["combined_patch_data"])
     REQUIRED = frozenset()
     DEFAULT_NONE = frozenset(["combined_patch_data"])
-    #__slots__ = ("selected_guards", "patch_series_data", "applied_patches_data", "combined_patch_data", "kept_patches")
-    #def __init__(self):
-        #self.selected_guards = set()
-        #self.patch_series_data = list()
-        #self.applied_patches_data = list()
-        #self.combined_patch_data = None
-        #self.kept_patches = dict()
 
 class _PatchData(SupervisedDictFactory):
     ALLOWED_ITEMS = {
@@ -1025,7 +1019,7 @@ class Patch(mixins.DictWrapperMixin):
     def __init__(self, patch_data, database):
         self.persistent_patch_data = patch_data
         self.database = database
-        assert patch_data in database.patch_series_data
+        assert patch_data in database["patch_series_data"]
     def __eq__(self, other):
         try:
             return self.persistent_patch_data == other.persistent_patch_data
@@ -1034,10 +1028,10 @@ class Patch(mixins.DictWrapperMixin):
             return self.persistent_patch_data == other
     @property
     def is_applied(self):
-        return self.persistent_patch_data in self.database.applied_patches_data
+        return self.persistent_patch_data in self.database["applied_patches_data"]
     @property
     def is_blocked_by_guard(self):
-        return _guards_block_patch(self.database.selected_guards, self.persistent_patch_data)
+        return _guards_block_patch(self.database["selected_guards"], self.persistent_patch_data)
     @property
     def is_top_patch(self):
         return self.persistent_patch_data == self.database.top_patch.persistent_patch_data
@@ -1067,7 +1061,7 @@ class Patch(mixins.DictWrapperMixin):
         else:
             return (FileData(file_path, pfd, self) for file_path, pfd in sorted(self.files_data.items()) if file_path in file_paths)
     def iterate_overlying_patches(self):
-        applied_index = self.database.applied_patches_data.index(self.persistent_patch_data)
+        applied_index = self.database["applied_patches_data"].index(self.persistent_patch_data)
         return self.database.iterate_applied_patches(start=applied_index + 1)
     def get_file(self, file_path):
         return FileData(file_path, self.files_data[file_path], self)
@@ -1494,9 +1488,9 @@ class CombinedPatch(mixins.DictWrapperMixin):
 
 _ContentState = collections.namedtuple("_ContentState", ["orphans", "missing", "bad_content"])
 
-class DataBase(mixins.DictWrapperMixin):
-    WRAPPED_ITEMS = list(_DataBaseData.ALLOWED_ITEMS.keys())
-    WRAPPED_DICT_NAME = "_PPD"
+class DataBase(mixins.PedanticDictProxyMixin):
+    PROXIED_ITEMS = list(_DataBaseData.ALLOWED_ITEMS.keys())
+    PROXIED_DICT_NAME = "_PPD"
     def __init__(self, patches_persistent_data, blob_ref_counts, is_writable):
         self._PPD = patches_persistent_data
         self.blob_ref_counts = blob_ref_counts
@@ -1545,12 +1539,18 @@ class DataBase(mixins.DictWrapperMixin):
         return self._next_patch_data() is not None
     @property
     def combined_patch(self):
-        return CombinedPatch(self.combined_patch_data, self) if self.combined_patch_data else None
+        return CombinedPatch(self["combined_patch_data"], self) if self["combined_patch_data"] else None
+    @property
+    def patch_count(self):
+        return len(self._PPD["patch_series_data"])
+    @property
+    def applied_patch_count(self):
+        return len(self._PPD["applied_patches_data"])
     def create_new_patch(self, patch_name, description):
         assert self.is_writable
         if _named_patch_is_in_list(self._PPD["patch_series_data"], patch_name):
             raise DarnItPatchExists(patch_name=patch_name)
-        new_patch = _PatchData.new_dict(name=patch_name, description=description)
+        new_patch = _PatchData.new_dict(name=patch_name, description=_tidy_text(description))
         if self._PPD["applied_patches_data"]:
             top_patch_index = self._PPD["patch_series_data"].index(self._PPD["applied_patches_data"][-1])
             self._PPD["patch_series_data"].insert(top_patch_index + 1, new_patch)
@@ -1565,7 +1565,7 @@ class DataBase(mixins.DictWrapperMixin):
         assert self.is_writable
         if _named_patch_is_in_list(self._PPD["patch_series_data"], new_patch_name):
             raise DarnItPatchExists(patch_name=new_patch_name)
-        new_patch_data = _PatchData.new_dict(name=new_patch_name, description=new_description)
+        new_patch_data = _PatchData.new_dict(name=new_patch_name, description=_tidy_text(new_description))
         if self._PPD["applied_patches_data"]:
             top_patch_index = self._PPD["patch_series_data"].index(self._PPD["applied_patches_data"][-1])
             self._PPD["patch_series_data"].insert(top_patch_index + 1, new_patch_data)
@@ -1584,13 +1584,13 @@ class DataBase(mixins.DictWrapperMixin):
         assert self.is_writable
         if patch.is_applied:
             raise DarnItPatchIsApplied(patch_name=patch.name)
-        self.patch_series_data.remove(patch)
+        self["patch_series_data"].remove(patch)
         if retain_copy:
             try:
-                _PatchData.clear(self.kept_patches.pop(patch.name), self)
+                _PatchData.clear(self["kept_patches"].pop(patch.name), self)
             except KeyError:
                 pass
-            self.kept_patches[patch.name] = patch.persistent_patch_data
+            self["kept_patches"][patch.name] = patch.persistent_patch_data
         else:
             patch.clear()
     def remove_named_patch(self, patch_name, retain_copy=False):
@@ -1598,7 +1598,7 @@ class DataBase(mixins.DictWrapperMixin):
         return self.remove_patch(patch, retain_copy=retain_copy)
     def delete_kept_patch(self, patch_name):
         try:
-            _PatchData.clear(self.kept_patches.pop(patch_name), self)
+            _PatchData.clear(self["kept_patches"].pop(patch_name), self)
         except KeyError:
             raise DarnItUnknownPatch(patch_name=patch_name)
     def restore_named_patch(self, patch_name, as_patch_name=None):
@@ -1608,7 +1608,7 @@ class DataBase(mixins.DictWrapperMixin):
         if self.has_patch_with_name(as_patch_name):
             raise DarnItPatchExists(patch_name=as_patch_name)
         try:
-            patch_data = self.kept_patches.pop(patch_name)
+            patch_data = self["kept_patches"].pop(patch_name)
         except KeyError:
             raise DarnItUnknownPatch(patch_name=patch_name)
         patch_data["name"] = as_patch_name
@@ -1625,19 +1625,19 @@ class DataBase(mixins.DictWrapperMixin):
         return Patch(patch, self)
     def iterate_applied_patches(self, start=0, stop=None, backwards=False):
         if backwards:
-            return (Patch(patch_data, self) for patch_data in reversed(self.applied_patches_data[slice(start, stop)]))
+            return (Patch(patch_data, self) for patch_data in reversed(self["applied_patches_data"][slice(start, stop)]))
         else:
-            return (Patch(patch_data, self) for patch_data in self.applied_patches_data[slice(start, stop)])
+            return (Patch(patch_data, self) for patch_data in self["applied_patches_data"][slice(start, stop)])
     def iterate_series(self, start=0, stop=None):
-        return (Patch(patch_data, self) for patch_data in self.patch_series_data[slice(start, stop)])
+        return (Patch(patch_data, self) for patch_data in self["patch_series_data"][slice(start, stop)])
     def pop_top_patch(self, force=False):
         assert self.is_writable
-        if not self.applied_patches_data:
+        if not self["applied_patches_data"]:
             raise DarnItNoPatchesApplied()
         if not force and self.top_patch.needs_refresh:
             raise DarnItPatchNeedsRefresh(patch_name=self.top_patch_name)
         self.top_patch.undo_apply()
-        self.applied_patches_data.pop()
+        self["applied_patches_data"].pop()
         self._PPD["combined_patch_data"] = self._PPD["combined_patch_data"]["prev"]
         return self.top_patch
     def push_next_patch(self, absorb=False, force=False):
@@ -1652,9 +1652,15 @@ class DataBase(mixins.DictWrapperMixin):
             overlaps = self.get_overlap_data([file_data.path for file_data in patch.iterate_files() if file_data.came_from is None])
             if not absorb and len(overlaps):
                 raise DarnItPatchOverlapsChanges(overlaps=overlaps)
-        self.applied_patches_data.append(patch.persistent_patch_data)
+        self["applied_patches_data"].append(patch.persistent_patch_data)
         self._PPD["combined_patch_data"] = _CombinedPatchData.make_new_dict(self._PPD["combined_patch_data"])
         return patch.do_apply(overlaps)
+    def get_kept_patch_names(self):
+        return sorted(list(self._PPD["kept_patches"].keys()))
+    def get_selected_guards(self):
+        return sorted(self._PPD["selected_guards"])
+    def set_selected_guards(self, guards):
+        self._PPD["selected_guards"] = set(guards)
     def get_overlap_data(self, file_paths, patch=None):
         """
         Get the data detailing unrefreshed/uncommitted files that will be
@@ -1664,7 +1670,7 @@ class DataBase(mixins.DictWrapperMixin):
         if not file_paths:
             return OverlapData()
         # NB: let this blow up if index fails
-        patch_index = None if patch is None else self.applied_patches_data.index(patch.persistent_patch_data)
+        patch_index = None if patch is None else self["applied_patches_data"].index(patch.persistent_patch_data)
         remaining_files = set(file_paths)
         uncommitted = set(scm_ifce.get_current_ifce().get_files_with_uncommitted_changes(remaining_files))
         unrefreshed = {}
@@ -1679,8 +1685,13 @@ class DataBase(mixins.DictWrapperMixin):
                     if patched_file.needs_refresh:
                         unrefreshed[patched_file.path] = patch
         return OverlapData(unrefreshed=unrefreshed, uncommitted=uncommitted)
+    def get_top_patch_for_file(self, file_path):
+        for applied_patch in reversed(self._PPD["applied_patches_data"]):
+            if file_path in applied_patch["files_data"]:
+                return applied_patch["name"]
+        return None
     def has_patch_with_name(self, name):
-        for patch in self.patch_series_data:
+        for patch in self["patch_series_data"]:
             if patch["name"] == name:
                 return True
         return False
@@ -1716,9 +1727,9 @@ class DataBase(mixins.DictWrapperMixin):
         return _ContentState(orphans=orphans, missing=missing, bad_content=bad_content)
     def validate_ref_counts(self):
         blob_ref_counts = self.blob_ref_counts.copy()
-        for patch_data in self.patch_series_data:
+        for patch_data in self["patch_series_data"]:
             _PatchData.decrement_ref_counts(patch_data, blob_ref_counts)
-        for patch_data in self.kept_patches.values():
+        for patch_data in self["kept_patches"].values():
             _PatchData.decrement_ref_counts(patch_data, blob_ref_counts)
         bad_ref_counts = []
         for key1, ref_counts in blob_ref_counts.items():
@@ -1813,7 +1824,7 @@ def do_create_db(dir_path=None, description=None):
         with open(database_lock_file_path, "wb") as f_obj:
             f_obj.write(b"0")
         with open(description_file_path, "w") as f_obj:
-            f_obj.write(_tidy_text(description) if description else "")
+            f_obj.write(_tidy_text(description))
         db_obj = _DataBaseData.new_dict()
         with open(patches_data_file_path, "wb", stat.S_IRUSR|stat.S_IWUSR|stat.S_IRGRP|stat.S_IROTH) as f_obj:
             pickle.dump(db_obj, f_obj)
@@ -2319,7 +2330,7 @@ def do_scm_absorb_applied_patches(force=False, with_timestamps=False):
         if not scm_ifce.get_current_ifce().in_valid_wspce:
             RCTX.stderr.write(_("Sources not under control of known SCM\n"))
             return CmdResult.ERROR
-        if not DB.applied_patches_data:
+        if DB.applied_patch_count == 0:
             RCTX.stderr.write(_("There are no patches applied.\n"))
             return CmdResult.ERROR
         is_ready, msg = scm_ifce.get_current_ifce().is_ready_for_import()
@@ -2367,7 +2378,7 @@ def do_scm_absorb_applied_patches(force=False, with_timestamps=False):
         if empty_patch_count > 0:
             shutil.rmtree(tempdir)
             return CmdResult.ERROR
-        while len(DB.applied_patches_data) > 0:
+        while DB.applied_patch_count > 0:
             try:
                 DB.pop_top_patch()
             except DarnItNoPatchesApplied:
@@ -2417,8 +2428,8 @@ def do_select_guards(guards):
         if bad_guard_count > 0:
             RCTX.stderr.write(_('Aborted.\n'))
             return CmdResult.ERROR|CmdResult.Suggest.EDIT
-        DB.selected_guards = set(guards)
-        RCTX.stdout.write(_('{{{0}}}: is now the set of selected guards.\n').format(', '.join(sorted(DB.selected_guards))))
+        DB.set_selected_guards(guards)
+        RCTX.stdout.write(_('{{{0}}}: is now the set of selected guards.\n').format(', '.join(DB.get_selected_guards())))
         return CmdResult.OK
 
 def do_set_patch_description(patch_name, text):
@@ -2427,9 +2438,7 @@ def do_set_patch_description(patch_name, text):
         if not patch:
             return CmdResult.ERROR
         old_description = patch.description
-        if text:
-            text = _tidy_text(text)
-        patch.description = text if text is not None else ''
+        patch.description = _tidy_text(text)
         if old_description != patch.description:
             change_lines = difflib.ndiff(old_description.splitlines(True), patch.description.splitlines(True))
             RCTX.stdout.write(''.join(change_lines))
@@ -2478,7 +2487,7 @@ def all_applied_patches_refreshed():
     # NB: the exception handling is for the case we're not in a darning pgnd
     try:
         with open_db(mutable=False) as DB:
-            if len(DB.applied_patches_data) == 0:
+            if DB.applied_patch_count == 0:
                 return False
             for applied_patch in DB.iterate_applied_patches():
                 if applied_patch.needs_refresh:
@@ -2513,7 +2522,7 @@ def get_applied_patch_count():
     # NB: the exception handling is for the case we're not in a darning pgnd
     try:
         with open_db(mutable=False) as DB:
-            count = len(DB.applied_patches_data)
+            count = DB.applied_patch_count
     except OSError:
         count = 0
     return count
@@ -2550,7 +2559,7 @@ def get_combined_patch_file_table():
     """Get a table of file data for all applied patches"""
     with open_db(mutable=False) as DB:
         if DB.combined_patch is None:
-            assert len(DB.applied_patches_data) == 0
+            assert DB.applied_patch_count == 0
             return []
         return DB.combined_patch.get_files_table()
 
@@ -2610,7 +2619,7 @@ def get_filepaths_not_in_patch(patch_name, file_paths):
 
 def get_kept_patch_names():
     with open_db(mutable=False) as DB:
-        return sorted(list(DB.kept_patches.keys()))
+        return DB.get_kept_patch_names()
 
 def get_named_or_top_patch_name(patch_name):
     """Return the name of the named or top patch if patch_name is None or None if patch_name is not a valid patch_name"""
@@ -2620,7 +2629,7 @@ def get_named_or_top_patch_name(patch_name):
 
 def get_outstanding_changes_below_top():
     with open_db(mutable=False) as DB:
-        if not DB.applied_patches_data:
+        if DB.applied_patch_count == 0:
             return OverlapData()
         skip_set = DB.top_patch.get_file_paths_set()
         unrefreshed = {}
@@ -2659,7 +2668,7 @@ def get_reconciliation_paths(file_path):
 
 def get_selected_guards():
     with open_db(mutable=False) as DB:
-        return DB.selected_guards
+        return DB.get_selected_guards()
 
 def get_series_description():
     with open(_DESCRIPTION_FILE_PATH, "r") as f_obj:
@@ -2671,10 +2680,7 @@ def get_textpatch(patch_name, with_timestamps=False):
 
 def get_top_patch_for_file(file_path):
     with open_db(mutable=False) as DB:
-        for applied_patch in reversed(DB.applied_patches_data):
-            if file_path in applied_patch.files_data:
-                return applied_patch.name
-        return None
+        return DB.get_top_patch_for_file(file_path)
 
 def is_blocked_by_guard(patch_name):
     with open_db(mutable=False) as DB:
