@@ -214,27 +214,6 @@ class _DataBaseData(mixins.PedanticSlotPickleMixin):
         self.combined_patch_data = None
         self.kept_patches = dict()
 
-class _PatchData(mixins.PedanticSlotPickleMixin):
-    __slots__ = ("name", "description", "files_data", "pos_guards", "neg_guards")
-    def __init__(self, name, description=None):
-        self.name = name
-        self.description = _tidy_text(description) if description else ""
-        self.files_data = dict()
-        self.pos_guards = set()
-        self.neg_guards = set()
-    def decrement_ref_counts(self, blob_ref_counts):
-        for pfd in self.files_data.values():
-            if pfd["orig"] is not None:
-                blob_ref_counts[pfd["orig"]["git_hash"][:2]][pfd["orig"]["git_hash"][2:]] -= 1
-            if pfd["darned"] is not None:
-                blob_ref_counts[pfd["darned"]["git_hash"][:2]][pfd["darned"]["git_hash"][2:]] -= 1
-            if pfd["came_from"] is not None:
-                blob_ref_counts[pfd["came_from"]["orig"]["git_hash"][:2]][pfd["came_from"]["orig"]["git_hash"][2:]] -= 1
-    def clear(self, database):
-        for file_data in self.files_data.values():
-            _FileData.release_contents(file_data, database)
-        self.files_data.clear()
-
 class SupervisedDictFactory:
     ALLOWED_ITEMS = dict()
     MAY_BE_NONE = frozenset()
@@ -246,7 +225,10 @@ class SupervisedDictFactory:
         nd = dict()
         for key, v_type in cls.ALLOWED_ITEMS.items():
             if key in kwargs:
-                nd[key] = kwargs[key]
+                if kwargs[key] is None and key not in cls.MAY_BE_NONE:
+                    nd[key] = v_type()
+                else:
+                    nd[key] = kwargs[key]
             elif key in cls.REQUIRED:
                 assert False, "{} is a compulsory key for {} dictionaries".format(key, cls)
             elif key in cls.DEFAULT_NONE:
@@ -268,6 +250,35 @@ class SupervisedDictFactory:
         except KeyError:
             return False
         return True
+
+class _PatchData(SupervisedDictFactory):
+    ALLOWED_ITEMS = {
+        "name" : str,
+        "description" : str,
+        "files_data" : dict,
+        "pos_guards" : set,
+        "neg_guards" : set
+    }
+    MAY_BE_NONE = frozenset()
+    REQUIRED = frozenset(["name"])
+    DEFAULT_NONE = frozenset()
+
+    @staticmethod
+    def decrement_ref_counts(patch_data, blob_ref_counts):
+        for pfd in patch_data["files_data"].values():
+            if pfd["orig"] is not None:
+                blob_ref_counts[pfd["orig"]["git_hash"][:2]][pfd["orig"]["git_hash"][2:]] -= 1
+            if pfd["darned"] is not None:
+                blob_ref_counts[pfd["darned"]["git_hash"][:2]][pfd["darned"]["git_hash"][2:]] -= 1
+            if pfd["came_from"] is not None:
+                blob_ref_counts[pfd["came_from"]["orig"]["git_hash"][:2]][pfd["came_from"]["orig"]["git_hash"][2:]] -= 1
+
+    @staticmethod
+    def clear(patch_data, database):
+        for file_data in patch_data["files_data"].values():
+            _FileData.release_contents(file_data, database)
+        patch_data["files_data"].clear()
+        patch_data.clear()
 
 class _CombinedPatchData(SupervisedDictFactory):
     ALLOWED_ITEMS = {"files_data" : dict, "prev" : dict}
@@ -376,23 +387,23 @@ class DarnItFileHasUnresolvedMerges(DarnItFileError): pass
 
 def _find_named_patch_in_list(patch_list, patch_name):
     for index, patch in enumerate(patch_list):
-        if patch.name == patch_name:
+        if patch["name"] == patch_name:
             return (index, patch)
     return (None, None)
 
 def _named_patch_is_in_list(patch_list, patch_name):
     for patch in patch_list:
-        if patch.name == patch_name:
+        if patch["name"] == patch_name:
             return True
     return False
 
 def _guards_block_patch(guards, patch):
     if guards:
-        if patch.pos_guards and not patch.pos_guards & guards:
+        if patch["pos_guards"] and not patch["pos_guards"] & guards:
             return True
-        elif patch.neg_guards & guards:
+        elif patch["neg_guards"] & guards:
             return True
-    elif patch.pos_guards:
+    elif patch["pos_guards"]:
         return True
     return False
 
@@ -998,9 +1009,9 @@ class CombinedFileData(mixins.DictWrapperMixin, FileDiffMixin):
         from .gui import fsdb_darning
         return fsdb_darning.FileData(self.path, FileStatus(self.presence, self.validity), None)
 
-class Patch(mixins.WrapperMixin):
-    WRAPPED_ATTRIBUTES = _PatchData.__slots__
-    WRAPPED_OBJECT_NAME = "persistent_patch_data"
+class Patch(mixins.DictWrapperMixin):
+    WRAPPED_ITEMS = list(_PatchData.ALLOWED_ITEMS.keys())
+    WRAPPED_DICT_NAME = "persistent_patch_data"
     def __init__(self, patch_data, database):
         self.persistent_patch_data = patch_data
         self.database = database
@@ -1009,14 +1020,14 @@ class Patch(mixins.WrapperMixin):
         try:
             return self.persistent_patch_data == other.persistent_patch_data
         except AttributeError:
-            assert isinstance(other, _PatchData) or other is None
+            assert other is None or _PatchData.verify_dict(other)
             return self.persistent_patch_data == other
     @property
     def is_applied(self):
         return self.persistent_patch_data in self.database.applied_patches_data
     @property
     def is_blocked_by_guard(self):
-        return _guards_block_patch(self.database.selected_guards, self)
+        return _guards_block_patch(self.database.selected_guards, self.persistent_patch_data)
     @property
     def is_top_patch(self):
         return self.persistent_patch_data == self.database.top_patch.persistent_patch_data
@@ -1157,7 +1168,7 @@ class Patch(mixins.WrapperMixin):
         if self.is_applied:
             self.database.combined_patch.add_file(file_data)
     def clear(self):
-        return self.persistent_patch_data.clear(self.database)
+        return _PatchData.clear(self.persistent_patch_data, self.database)
     def drop_file(self, file_data):
         assert not self.is_applied or self.is_top_patch
         if self.is_applied:
@@ -1487,19 +1498,19 @@ class DataBase(mixins.WrapperMixin):
         return None if not self._PPD.applied_patches_data else Patch(self._PPD.applied_patches_data[-1], self)
     @property
     def top_patch_name(self):
-        return None if not self._PPD.applied_patches_data else self._PPD.applied_patches_data[-1].name
+        return None if not self._PPD.applied_patches_data else self._PPD.applied_patches_data[-1]["name"]
     @property
     def base_patch(self):
         return None if not self._PPD.applied_patches_data else Patch(self._PPD.applied_patches_data[0], self)
     @property
     def base_patch_name(self):
-        return None if not self._PPD.applied_patches_data else self._PPD.applied_patches_data[0].name
+        return None if not self._PPD.applied_patches_data else self._PPD.applied_patches_data[0]["name"]
     @property
     def prev_patch(self):
         return None if len(self._PPD.applied_patches_data) < 2 else Patch(self._PPD.applied_patches_data[-2], self)
     @property
     def prev_patch_name(self):
-        return None if len(self._PPD.applied_patches_data) < 2 else self._PPD.applied_patches_data[-2].name
+        return None if len(self._PPD.applied_patches_data) < 2 else self._PPD.applied_patches_data[-2]["name"]
     def _next_patch_data(self):
         if self._PPD.applied_patches_data:
             top_patch_index = self._PPD.patch_series_data.index(self._PPD.applied_patches_data[-1])
@@ -1518,7 +1529,7 @@ class DataBase(mixins.WrapperMixin):
     @property
     def next_patch_name(self):
         next_patch_data = self._next_patch_data()
-        return next_patch_data.name if next_patch_data else None
+        return next_patch_data["name"] if next_patch_data else None
     @property
     def is_pushable(self):
         return self._next_patch_data() is not None
@@ -1529,7 +1540,7 @@ class DataBase(mixins.WrapperMixin):
         assert self.is_writable
         if _named_patch_is_in_list(self._PPD.patch_series_data, patch_name):
             raise DarnItPatchExists(patch_name=patch_name)
-        new_patch = _PatchData(patch_name, description)
+        new_patch = _PatchData.new_dict(name=patch_name, description=description)
         if self._PPD.applied_patches_data:
             top_patch_index = self._PPD.patch_series_data.index(self._PPD.applied_patches_data[-1])
             self._PPD.patch_series_data.insert(top_patch_index + 1, new_patch)
@@ -1544,7 +1555,7 @@ class DataBase(mixins.WrapperMixin):
         assert self.is_writable
         if _named_patch_is_in_list(self._PPD.patch_series_data, new_patch_name):
             raise DarnItPatchExists(patch_name=new_patch_name)
-        new_patch_data = _PatchData(new_patch_name, new_description)
+        new_patch_data = _PatchData.new_dict(name=new_patch_name, description=new_description)
         if self._PPD.applied_patches_data:
             top_patch_index = self._PPD.patch_series_data.index(self._PPD.applied_patches_data[-1])
             self._PPD.patch_series_data.insert(top_patch_index + 1, new_patch_data)
@@ -1566,7 +1577,7 @@ class DataBase(mixins.WrapperMixin):
         self.patch_series_data.remove(patch)
         if retain_copy:
             try:
-                self.kept_patches.pop(patch.name).clear(self)
+                _PatchData.clear(self.kept_patches.pop(patch.name), self)
             except KeyError:
                 pass
             self.kept_patches[patch.name] = patch.persistent_patch_data
@@ -1577,7 +1588,7 @@ class DataBase(mixins.WrapperMixin):
         return self.remove_patch(patch, retain_copy=retain_copy)
     def delete_kept_patch(self, patch_name):
         try:
-            self.kept_patches.pop(patch_name).clear(self)
+            _PatchData.clear(self.kept_patches.pop(patch_name), self)
         except KeyError:
             raise DarnItUnknownPatch(patch_name=patch_name)
     def restore_named_patch(self, patch_name, as_patch_name=None):
@@ -1590,7 +1601,7 @@ class DataBase(mixins.WrapperMixin):
             patch_data = self.kept_patches.pop(patch_name)
         except KeyError:
             raise DarnItUnknownPatch(patch_name=patch_name)
-        patch_data.name = as_patch_name
+        patch_data["name"] = as_patch_name
         if self._PPD.applied_patches_data:
             top_patch_index = self._PPD.patch_series_data.index(self._PPD.applied_patches_data[-1])
             self._PPD.patch_series_data.insert(top_patch_index + 1, patch_data)
@@ -1631,7 +1642,7 @@ class DataBase(mixins.WrapperMixin):
             overlaps = self.get_overlap_data([file_data.path for file_data in patch.iterate_files() if file_data.came_from is None])
             if not absorb and len(overlaps):
                 raise DarnItPatchOverlapsChanges(overlaps=overlaps)
-        self.applied_patches_data.append(patch)
+        self.applied_patches_data.append(patch.persistent_patch_data)
         self._PPD.combined_patch_data = _CombinedPatchData.make_new_dict(self._PPD.combined_patch_data)
         return patch.do_apply(overlaps)
     def get_overlap_data(self, file_paths, patch=None):
@@ -1660,7 +1671,7 @@ class DataBase(mixins.WrapperMixin):
         return OverlapData(unrefreshed=unrefreshed, uncommitted=uncommitted)
     def has_patch_with_name(self, name):
         for patch in self.patch_series_data:
-            if patch.name == name:
+            if patch["name"] == name:
                 return True
         return False
     def incr_ref_count_for_hash(self, git_hash):
@@ -1696,9 +1707,9 @@ class DataBase(mixins.WrapperMixin):
     def validate_ref_counts(self):
         blob_ref_counts = self.blob_ref_counts.copy()
         for patch_data in self.patch_series_data:
-            patch_data.decrement_ref_counts(blob_ref_counts)
+            _PatchData.decrement_ref_counts(patch_data, blob_ref_counts)
         for patch_data in self.kept_patches.values():
-            patch_data.decrement_ref_counts(blob_ref_counts)
+            _PatchData.decrement_ref_counts(patch_data, blob_ref_counts)
         bad_ref_counts = []
         for key1, ref_counts in blob_ref_counts.items():
             for key2, count in ref_counts.items():

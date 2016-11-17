@@ -65,6 +65,28 @@ $ diff lsop_now lsop_start
 
 Refresh and try again
 $ darn refresh
+$ darn export -P first
+> First patch created.
+> -
+>
+>  file1 |    1 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+>  file2 |    1 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+>  2 files changed, 2 insertions(+)
+>
+> diff --git a/file1 b/file1
+> index 9d588eff9808b6c1b73445cb3526e1e62bf01bb7..ad6359c197c230703a629bb53a12ec31a192ec50 0100664
+> --- a/file1
+> +++ b/file1
+> @@ -1 +1,2 @@
+>  file1: is a text file.
+> +Patch: "first"; Path: "file1"
+> diff --git a/file2 b/file2
+> index cd1c1e8e36a212ba7723de693b194e58acab54ae..b30b9de443b547f30526cb164297f653aff20c42 0100664
+> --- a/file2
+> +++ b/file2
+> @@ -1 +1,2 @@
+>  file2: is a text file.
+> +Patch: "first"; Path: "file2"
 $ darn absorb
 > Patch "first" removed (but available for restoration).
 $ git status --short
