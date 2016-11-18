@@ -818,11 +818,7 @@ class FileData(mixins.DictWrapperMixin, FileDiffMixin):
             return RFD(self.renamed_as, os_utils.Relation.MOVED_TO)
         return None
     def get_overlapping_file(self):
-        for patch in self.patch.iterate_overlying_patches():
-            file_data = patch.files_data.get(self.path, None)
-            if file_data:
-                return FileData(self.path, file_data, patch)
-        return None
+        return self.patch.get_overlapping_file(self.path)
     def get_reconciliation_paths(self):
         assert self.patch.is_top_patch
         # make it hard for the user to (accidentally) create these files if they don't exist
@@ -1013,9 +1009,9 @@ class CombinedFileData(mixins.DictWrapperMixin, FileDiffMixin):
         from .gui import fsdb_darning
         return fsdb_darning.FileData(self.path, FileStatus(self.presence, self.validity), None)
 
-class Patch(mixins.DictWrapperMixin):
-    WRAPPED_ITEMS = list(_PatchData.ALLOWED_ITEMS.keys())
-    WRAPPED_DICT_NAME = "persistent_patch_data"
+class Patch(mixins.PedanticDictProxyMixin):
+    PROXIED_ITEMS = list(_PatchData.ALLOWED_ITEMS.keys())
+    PROXIED_DICT_NAME = "persistent_patch_data"
     def __init__(self, patch_data, database):
         self.persistent_patch_data = patch_data
         self.database = database
@@ -1027,6 +1023,12 @@ class Patch(mixins.DictWrapperMixin):
             assert other is None or _PatchData.verify_dict(other)
             return self.persistent_patch_data == other
     @property
+    def name(self):
+        return self["name"]
+    @property
+    def description(self):
+        return self["description"]
+    @property
     def is_applied(self):
         return self.persistent_patch_data in self.database["applied_patches_data"]
     @property
@@ -1037,8 +1039,10 @@ class Patch(mixins.DictWrapperMixin):
         return self.persistent_patch_data == self.database.top_patch.persistent_patch_data
     @property
     def needs_refresh(self):
+        if not self.is_applied:
+            return None # Undeterminable
         for pfile in self.iterate_files():
-            if pfile.needs_refresh:
+            if pfile.needs_refresh :
                 return True
         return False
     @property
@@ -1050,32 +1054,41 @@ class Patch(mixins.DictWrapperMixin):
             #PatchState.APPLIED_UNREFRESHABLE self.has_unresolved_merges else
         else:
             return PatchState.APPLIED_REFRESHED
+    @property
+    def guards(self):
+        return ntuples.Guards(self["pos_guards"], self["neg_guards"])
     def iterate_files(self, file_paths=None):
         if file_paths is None:
-            return (FileData(file_path, pfd, self) for file_path, pfd in self.files_data.items())
+            return (FileData(file_path, pfd, self) for file_path, pfd in self["files_data"].items())
         else:
-            return (FileData(file_path, self.files_data[file_path], self) for file_path in file_paths)
+            return (FileData(file_path, self["files_data"][file_path], self) for file_path in file_paths)
     def iterate_files_sorted(self, file_paths=None):
         if file_paths is None:
-            return (FileData(file_path, pfd, self) for file_path, pfd in sorted(self.files_data.items()))
+            return (FileData(file_path, pfd, self) for file_path, pfd in sorted(self["files_data"].items()))
         else:
-            return (FileData(file_path, pfd, self) for file_path, pfd in sorted(self.files_data.items()) if file_path in file_paths)
+            return (FileData(file_path, pfd, self) for file_path, pfd in sorted(self["files_data"].items()) if file_path in file_paths)
     def iterate_overlying_patches(self):
         applied_index = self.database["applied_patches_data"].index(self.persistent_patch_data)
         return self.database.iterate_applied_patches(start=applied_index + 1)
     def get_file(self, file_path):
-        return FileData(file_path, self.files_data[file_path], self)
+        return FileData(file_path, self["files_data"][file_path], self)
     def has_file_with_path(self, file_path):
-        return file_path in self.files_data
+        return file_path in self["files_data"]
     def get_file_paths_set(self, file_paths=None):
         if file_paths is None:
-            return set(self.files_data.keys())
+            return set(self["files_data"].keys())
         else:
-            return {file_path for file_path in self.files_data.keys() if file_path in file_paths}
+            return {file_path for file_path in self["files_data"].keys() if file_path in file_paths}
     def get_files_table(self):
         return [patch_file.get_table_row() for patch_file in self.iterate_files()]
+    def get_overlapping_file(self, file_path):
+        for patch in self.iterate_overlying_patches():
+            file_data = patch["files_data"].get(file_path, None)
+            if file_data:
+                return FileData(file_path, file_data, patch)
+        return None
     def get_table_row(self):
-        return PatchTableRow(self.name, self.state, self.pos_guards, self.neg_guards)
+        return PatchTableRow(self["name"], self.state, self["pos_guards"], self["neg_guards"])
     def create_came_from_for_copy(self, came_from_path):
         try:
             came_from_file = self.get_file(came_from_path)
@@ -1089,7 +1102,7 @@ class Patch(mixins.DictWrapperMixin):
         return _CameFromData.new_dict(file_path=came_from_path, as_rename=False, orig=efd) if efd else None
     def do_apply(self, overlaps=OverlapData()):
         # NB: presence of overlaps implies absorb
-        if len(self.files_data) == 0:
+        if len(self["files_data"]) == 0:
             return CmdResult.OK
         drop_atws = options.get("push", "drop_added_tws")
         copies = []
@@ -1151,7 +1164,7 @@ class Patch(mixins.DictWrapperMixin):
             biggest_ecode = max(biggest_ecode, file_data.apply_diff(drop_atws))
         return biggest_ecode
     def undo_apply(self):
-        for file_path, file_data in self.files_data.items():
+        for file_path, file_data in self["files_data"].items():
             if file_data["orig"] is None:
                 if os.path.exists(file_path):
                     os.remove(file_path)
@@ -1167,8 +1180,8 @@ class Patch(mixins.DictWrapperMixin):
             os.chmod(file_path, _EssentialFileData.permissions(file_data["orig"]))
     def add_file(self, file_data):
         assert not self.is_applied or self.is_top_patch
-        assert file_data.path not in self.files_data
-        self.files_data[file_data.path] = file_data.persistent_file_data
+        assert file_data.path not in self["files_data"]
+        self["files_data"][file_data.path] = file_data.persistent_file_data
         if self.is_applied:
             self.database.combined_patch.add_file(file_data)
     def clear(self):
@@ -1186,7 +1199,7 @@ class Patch(mixins.DictWrapperMixin):
         # if this file was the result of a rename then we make the original a normal file
         if file_data.came_from and file_data.came_from["as_rename"]:
             self.get_file(file_data.came_from["file_path"]).renamed_as = None
-        del self.files_data[file_data.path]
+        del self["files_data"][file_data.path]
         # if this file had been renamed then the renamed version becomes a copy
         if file_data.renamed_as:
             self.get_file(file_data.renamed_as).came_from["as_rename"] = False
@@ -1214,7 +1227,7 @@ class Patch(mixins.DictWrapperMixin):
             self.add_file(file_data)
             already_in_patch = False
         try:
-            if new_file_path in self.files_data:
+            if new_file_path in self["files_data"]:
                 self.get_file(new_file_path).move_contents_from(file_data)
             else:
                 self.add_file(FileData.new_as_move(new_file_path, self, file_data))
@@ -1228,6 +1241,9 @@ class Patch(mixins.DictWrapperMixin):
         if file_data.orig is None:
             # No longer needed as it was created in this patch and now has no content or histroy
             self.drop_file(file_data)
+    def do_set_guards(self, pos_guards, neg_guards):
+        self["pos_guards"] = set(pos_guards)
+        self["neg_guards"] = set(neg_guards)
     def write_to_file(self, file_path):
         with open(file_path, "wb") as f_obj:
             f_obj.write(self.description)
@@ -1309,7 +1325,7 @@ class Patch(mixins.DictWrapperMixin):
             new_file_paths = []
             for diff_plus in epatch.diff_pluses:
                 file_path = diff_plus.get_file_path(epatch.num_strip_levels)
-                if file_path in self.files_data:
+                if file_path in self["files_data"]:
                     continue
                 git_preamble = diff_plus.get_preamble_for_type("git")
                 if git_preamble and ("copy from" in git_preamble.extras or "rename from" in git_preamble.extras):
@@ -1329,14 +1345,14 @@ class Patch(mixins.DictWrapperMixin):
         # Do the caching of existing files first to obviate copy/rename problems
         for diff_plus in epatch.diff_pluses:
             file_path = diff_plus.get_file_path(epatch.num_strip_levels)
-            if file_path not in self.files_data:
+            if file_path not in self["files_data"]:
                 self.add_file(FileData.new(file_path, self, overlaps=overlaps))
             git_preamble = diff_plus.get_preamble_for_type("git")
             if git_preamble:
                 copied_from = git_preamble.extras.get("copy from", None)
                 renamed_from = git_preamble.extras.get("rename from", None)
                 if renamed_from is not None:
-                    if renamed_from not in self.files_data:
+                    if renamed_from not in self["files_data"]:
                         self.add_file(FileData.new(renamed_from, self, overlaps=overlaps))
                     renames.append((diff_plus, renamed_from))
                 elif copied_from is not None:
@@ -1434,36 +1450,36 @@ class TextPatch(patchlib.Patch):
         h.update(str(self.state).encode())
         return h.digest()
 
-class CombinedPatch(mixins.DictWrapperMixin):
-    WRAPPED_ITEMS = list(_CombinedPatchData.ALLOWED_ITEMS.keys())
-    WRAPPED_DICT_NAME = "persistent_data"
+class CombinedPatch(mixins.PedanticDictProxyMixin):
+    PROXIED_ITEMS = list(_CombinedPatchData.ALLOWED_ITEMS.keys())
+    PROXIED_DICT_NAME = "persistent_data"
     is_applied = True
     def __init__(self, persistent_data, database):
         self.persistent_data = persistent_data
         self.database = database
     def add_file(self, file_data):
-        if self.prev:
-            prev_file_data = self.prev["files_data"].get(file_data.path, None)
+        if self["prev"]:
+            prev_file_data = self["prev"]["files_data"].get(file_data.path, None)
             bottom = prev_file_data["bottom"] if prev_file_data else file_data.persistent_file_data
         else:
             bottom = file_data.persistent_file_data
-        self.files_data[file_data.path] = _CombinedFileData.new_dict(top=file_data.persistent_file_data, bottom=bottom)
+        self["files_data"][file_data.path] = _CombinedFileData.new_dict(top=file_data.persistent_file_data, bottom=bottom)
     def drop_file(self, file_data):
-        assert self.files_data[file_data.path]["top"] == file_data.persistent_file_data
-        prev_file_data = self.prev["files_data"].get(file_data.path, None) if self.prev else None
+        assert self["files_data"][file_data.path]["top"] == file_data.persistent_file_data
+        prev_file_data = self["prev"]["files_data"].get(file_data.path, None) if self["prev"] else None
         if prev_file_data:
-            self.files_data[file_data.path] = copy.copy(prev_file_data)
+            self["files_data"][file_data.path] = copy.copy(prev_file_data)
         else:
-            del self.files_data[file_data.path]
+            del self["files_data"][file_data.path]
     def iterate_files_sorted(self, file_paths=None):
         if file_paths is None:
-            return (CombinedFileData(file_path, pfd, self) for file_path, pfd in sorted(self.files_data.items()))
+            return (CombinedFileData(file_path, pfd, self) for file_path, pfd in sorted(self["files_data"].items()))
         else:
-            return (CombinedFileData(file_path, pfd, self) for file_path, pfd in sorted(self.files_data.items()) if file_path in file_paths)
+            return (CombinedFileData(file_path, pfd, self) for file_path, pfd in sorted(self["files_data"].items()) if file_path in file_paths)
     def get_files_table(self):
         return [file_data.get_table_row() for file_data in self.iterate_files_sorted() if not file_data.was_ephemeral]
     def get_file(self, file_path):
-        return CombinedFileData(file_path, self.files_data[file_path], self)
+        return CombinedFileData(file_path, self["files_data"][file_path], self)
     def has_file_with_path(self, file_path):
         try:
             return not self.get_file(file_path).was_ephemeral
@@ -1971,7 +1987,7 @@ def do_copy_file_to_top_patch(file_path, as_file_path, overwrite=False):
             RCTX.stderr.write(_("{0}: file does not exist.\n").format(rel_subdir(file_path)))
             return CmdResult.ERROR
         if not overwrite:
-            if as_file_path in top_patch.files_data:
+            if top_patch.has_file_with_path(as_file_path):
                 RCTX.stderr.write(_("{0}: file already in patch.\n").format(rel_subdir(as_file_path)))
                 return CmdResult.ERROR | CmdResult.Suggest.RENAME | CmdResult.Suggest.OVERWRITE
             if os.path.exists(as_file_path):
@@ -2048,7 +2064,7 @@ def do_drop_files_fm_patch(patch_name, file_paths):
             return CmdResult.ERROR
         issued_warning = False
         for file_path, file_path_rel_subdir in iter_with_subdir(file_paths):
-            if file_path in patch.files_data:
+            if patch.has_file_with_path(file_path):
                 patch.drop_named_file(file_path)
                 RCTX.stdout.write(_("{0}: file dropped from patch \"{1}\".\n").format(file_path_rel_subdir, patch.name))
             elif os.path.isdir(file_path):
@@ -2180,8 +2196,8 @@ def do_move_files_in_top_patch(file_paths, target_path, force=False, overwrite=F
             return CmdResult.ERROR
         target_file_paths = [os.path.join(target_path, os.path.basename(file_path)) for file_path in file_paths]
         if not overwrite:
-            tfps_in_patch = [tfp for tfp in target_file_paths if tfp in top_patch.files_data]
-            tfps_exist = [tfp for tfp in target_file_paths if tfp not in top_patch.files_data and os.path.exists(tfp)]
+            tfps_in_patch = [tfp for tfp in target_file_paths if top_patch.has_file_with_path(tfp)]
+            tfps_exist = [tfp for tfp in target_file_paths if not top_patch.has_file_with_path(tfp) and os.path.exists(tfp)]
             if tfps_in_patch or tfps_exist:
                 for target_file_path in tfps_in_patch:
                     RCTX.stderr.write(_("{0}: file already in patch.\n").format(rel_subdir(target_file_path)))
@@ -2277,7 +2293,7 @@ def do_rename_file_in_top_patch(file_path, new_file_path, force=False, overwrite
             RCTX.stderr.write(_("{0}: file does not exist.\n").format(rel_subdir(file_path)))
             return CmdResult.ERROR
         if not overwrite:
-            if new_file_path in top_patch.files_data:
+            if top_patch.has_file_with_path(new_file_path):
                 RCTX.stderr.write(_("{0}: file already in patch.\n").format(rel_subdir(new_file_path)))
                 return CmdResult.ERROR | CmdResult.Suggest.RENAME | CmdResult.Suggest.OVERWRITE
             if os.path.exists(new_file_path):
@@ -2449,10 +2465,10 @@ def do_set_patch_guards(patch_name, pos_guards, neg_guards):
         patch = _get_named_or_top_patch(patch_name, DB)
         if not patch:
             return CmdResult.ERROR
-        patch.pos_guards = set(pos_guards)
-        patch.neg_guards = set(neg_guards)
-        RCTX.stdout.write(_('{0}: patch positive guards = {{{1}}}\n').format(patch_name, ', '.join(sorted(patch.pos_guards))))
-        RCTX.stdout.write(_('{0}: patch negative guards = {{{1}}}\n').format(patch_name, ', '.join(sorted(patch.neg_guards))))
+        patch.do_set_guards(pos_guards, neg_guards)
+        pos_guard_set, neg_guard_set = patch.guards
+        RCTX.stdout.write(_('{0}: patch positive guards = {{{1}}}\n').format(patch_name, ', '.join(sorted(pos_guard_set))))
+        RCTX.stdout.write(_('{0}: patch negative guards = {{{1}}}\n').format(patch_name, ', '.join(sorted(neg_guard_set))))
         return CmdResult.OK
 
 def do_set_patch_guards_fm_list(patch_name, guards_list):
@@ -2656,7 +2672,7 @@ def get_patch_file_table(patch_name=None):
 def get_patch_guards(patch_name=None):
     with open_db(mutable=False) as DB:
         patch = DB.top_patch if patch_name is None else DB.get_named_patch(patch_name)
-        return ntuples.Guards(patch.pos_guards, patch.neg_guards) if patch else None
+        return patch.guards if patch else None
 
 def get_patch_table_data():
     with open_db(mutable=False) as DB:
