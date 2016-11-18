@@ -1,17 +1,17 @@
-### Copyright (C) 2015 Peter Williams <peter_ono@users.sourceforge.net>
-###
-### This program is free software; you can redistribute it and/or modify
-### it under the terms of the GNU General Public License as published by
-### the Free Software Foundation; version 2 of the License only.
-###
-### This program is distributed in the hope that it will be useful,
-### but WITHOUT ANY WARRANTY; without even the implied warranty of
-### MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-### GNU General Public License for more details.
-###
-### You should have received a copy of the GNU General Public License
-### along with this program; if not, write to the Free Software
-### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
+# Copyright (C) 2015 Peter Williams <peter_ono@users.sourceforge.net>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; version 2 of the License only.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
 """
 Implement a patch stack management database
@@ -63,8 +63,16 @@ _BLOB_REF_COUNT_FILE_PATH = os.path.join(_DIR_PATH, "blob_ref_counts")
 _DESCRIPTION_FILE_PATH = os.path.join(_DIR_PATH, "description")
 _LOCK_FILE_PATH = os.path.join(_DIR_PATH, "lock_db_ng")
 
-BLOB_DIR_PATH = lambda git_hash: os.path.join(_BLOBS_DIR_PATH, git_hash[:2])
-BLOB_PATH = lambda git_hash: os.path.join(_BLOBS_DIR_PATH, git_hash[:2], git_hash[2:])
+def get_blob_dir_path(git_hash):
+    """Get path of directory containing the file that contains the
+    content associated with "git_hash".
+    """
+    return os.path.join(_BLOBS_DIR_PATH, git_hash[:2])
+
+def get_blob_path(git_hash):
+    """Get path of file containing content associated with "git_hash".
+    """
+    return os.path.join(_BLOBS_DIR_PATH, git_hash[:2], git_hash[2:])
 
 _SUB_DIR = None
 
@@ -817,19 +825,26 @@ class FileData(mixins.PedanticDictProxyMixin, FileDiffMixin):
         return None
     def get_overlapping_file(self):
         return self.patch.get_overlapping_file(self.path)
+    def _get_before_content_path(self):
+        if self["came_from"]:
+            return get_blob_path(self["came_from"]["orig"]["git_hash"])
+        elif self["orig"]:
+            return get_blob_path(self["orig"]["git_hash"])
+        else:
+            return "/dev/null"
     def get_reconciliation_paths(self):
         assert self.patch.is_top_patch
         # make it hard for the user to (accidentally) create these files if they don't exist
-        before = BLOB_PATH(self["came_from"]["orig"]["git_hash"]) if self["came_from"] else (BLOB_PATH(self["orig"]["git_hash"]) if self["orig"] else "/dev/null")
-        stashed = BLOB_PATH(self["darned"]["git_hash"]) if self["darned"] else "/dev/null"
+        before_path = self._get_before_content_path()
+        stashed_path = get_blob_path(self["darned"]["git_hash"]) if self["darned"] else "/dev/null"
         # The user has to be able to cope with the main file not existing (meld can)
-        return _O_IP_S_TRIPLET(before, self.path, stashed)
+        return _O_IP_S_TRIPLET(before_path, self.path, stashed_path)
     def get_extdiff_paths(self):
         assert self.patch.is_applied and self.get_overlapping_file() is None
         # make it hard for the user to (accidentally) create these files if they don't exist
-        before = BLOB_PATH(self["came_from"]["orig"]["git_hash"]) if self["came_from"] else (BLOB_PATH(self["orig"]["git_hash"]) if self["orig"] else "/dev/null")
+        before_path = self._get_before_content_path()
         # The user has to be able to cope with the main file not existing (meld can)
-        return _O_IP_PAIR(before, self.path)
+        return _O_IP_PAIR(before_path, self.path)
     def get_table_row(self):
         # TODO: get rid of need to import fsdb_darning
         from .gui import fsdb_darning
@@ -1754,10 +1769,10 @@ class DataBase(mixins.PedanticDictProxyMixin):
     def store_content(self, content):
         git_hash = utils.get_git_hash_for_content(content)
         if self.incr_ref_count_for_hash(git_hash) == 1:
-            blob_dir_path = BLOB_DIR_PATH(git_hash)
+            blob_dir_path = get_blob_dir_path(git_hash)
             if not os.path.exists(blob_dir_path):
                 os.mkdir(blob_dir_path)
-            blob_file_path = BLOB_PATH(git_hash)
+            blob_file_path = get_blob_path(git_hash)
             with open(blob_file_path, "wb") as f_obj:
                 f_obj.write(content)
             utils.do_turn_off_write_for_file(blob_file_path)
@@ -1800,7 +1815,7 @@ class DataBase(mixins.PedanticDictProxyMixin):
         if obj is None:
             return b""
         else:
-            with open(BLOB_PATH(obj["git_hash"]), "rb") as f_obj:
+            with open(get_blob_path(obj["git_hash"]), "rb") as f_obj:
                 return f_obj.read()
 
 def do_create_db(dir_path=None, description=None):
@@ -1917,9 +1932,9 @@ def _get_named_or_top_patch(patch_name, db):
     """Return the named or top applied patch"""
     return _get_patch(patch_name, db) if patch_name is not None else _get_top_patch(db)
 
-### Main interface commands start here
+# Main interface commands start here
 
-### DOs
+# DOs
 
 def do_add_files_to_top_patch(file_paths, absorb=False, force=False):
     assert not (absorb and force)
@@ -2495,7 +2510,7 @@ def do_set_series_description(description):
 def do_unapply_top_patch(force=False):
     return do_pop_top_patch(force=force)
 
-### GETs
+# GETs
 
 def all_applied_patches_refreshed():
     # NB: the exception handling is for the case we're not in a darning pgnd
