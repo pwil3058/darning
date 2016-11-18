@@ -583,8 +583,6 @@ class FileData(mixins.DictWrapperMixin, FileDiffMixin):
         self.path = file_path
         self.persistent_file_data = persistent_file_data
         self.patch = patch
-    def __eq__(self, other):
-        return self.persistent_file_data is other.persistent_file_data
     def __lt__(self, other):
         return self.path < other.path
     def __gt__(self, other):
