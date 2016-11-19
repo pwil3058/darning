@@ -52,9 +52,9 @@ options.define("absorb", "drop_added_tws", options.Defn(options.str_to_bool, Tru
 options.define("remove", "keep_patch_backup", options.Defn(options.str_to_bool, True, _("Keep back up copies of removed patches.  Facilitates restoration at a later time.")))
 
 # A convenience tuple for sending an original and patched version of something
-_O_IP_PAIR = collections.namedtuple('_O_IP_PAIR', ['original_version', 'patched_version'])
+_O_IP_PAIR = collections.namedtuple("_O_IP_PAIR", ["original_version", "patched_version"])
 # A convenience tuple for sending original, patched and stashed versions of something
-_O_IP_S_TRIPLET = collections.namedtuple('_O_IP_S_TRIPLET', ['original_version', 'patched_version', 'stashed_version'])
+_O_IP_S_TRIPLET = collections.namedtuple("_O_IP_S_TRIPLET", ["original_version", "patched_version", "stashed_version"])
 
 _DIR_PATH = ".darning.dbd"
 _BLOBS_DIR_PATH = os.path.join(_DIR_PATH, "blobs")
@@ -77,7 +77,7 @@ def get_blob_path(git_hash):
 _SUB_DIR = None
 
 class Failure(object):
-    '''Report failure'''
+    """Report failure"""
     def __init__(self, msg):
         self._bool = False
         self.msg = msg
@@ -88,7 +88,7 @@ class Failure(object):
     def __str__(self):
         return self.msg
     def __repr__(self):
-        return _('Failure({0})').format(self.msg)
+        return _("Failure({0})").format(self.msg)
 
 def rel_subdir(file_path):
     return file_path if _SUB_DIR is None else os.path.relpath(file_path, _SUB_DIR)
@@ -148,8 +148,8 @@ def find_base_dir(dir_path=None, remember_sub_dir=False):
     return None
 
 def _tidy_text(text):
-    '''Return the given text with any trailing white space removed.
-    Also ensure there is a new line at the end of the lastline.'''
+    """Return the given text with any trailing white space removed.
+    Also ensure there is a new line at the end of the lastline."""
     tidy_text = ""
     if text: # This will allow text to be None
         for line in text.splitlines():
@@ -157,21 +157,21 @@ def _tidy_text(text):
     return tidy_text
 
 def _do_apply_diff_to_file(filepath, diff, delete_empty=False):
-    patch_cmd_hdr = ['patch', '--merge', '--force', '-p1', '--batch', ]
-    patch_cmd = patch_cmd_hdr + (['--remove-empty-files', filepath] if delete_empty else [filepath])
+    patch_cmd_hdr = ["patch", "--merge", "--force", "-p1", "--batch", ]
+    patch_cmd = patch_cmd_hdr + (["--remove-empty-files", filepath] if delete_empty else [filepath])
     result = runext.run_cmd(patch_cmd, input_text=str(diff).encode())
     # move all but the first line of stdout to stderr
     # drop first line so that reports can be made relative to subdir
     olines = result.stdout.splitlines(True)
-    prefix = '{0}: '.format(rel_subdir(filepath))
+    prefix = "{0}: ".format(rel_subdir(filepath))
     # Put file name at start of line so they make sense on their own
     if len(olines) > 1:
         stderr = prefix + prefix.join(olines[1:] + result.stderr.splitlines(True))
     elif result.stderr:
         stderr = prefix + prefix.join(result.stderr.splitlines(True))
     else:
-        stderr = ''
-    return CmdResult(result.ecode, '', stderr)
+        stderr = ""
+    return CmdResult(result.ecode, "", stderr)
 
 class ZippedData(object):
     ZLIB_COMPRESSION_LEVEL = 6
@@ -206,12 +206,12 @@ class OverlapData(object):
     def report_and_abort(self):
         for filepath in sorted(self.uncommitted):
             rfilepath = rel_subdir(filepath)
-            RCTX.stderr.write(_('{0}: file has uncommitted SCM changes.\n').format(rfilepath))
+            RCTX.stderr.write(_("{0}: file has uncommitted SCM changes.\n").format(rfilepath))
         for filepath in sorted(self.unrefreshed):
             rfilepath = rel_subdir(filepath)
             opatch = self.unrefreshed[filepath]
-            RCTX.stderr.write(_('{0}: file has unrefreshed changes in (applied) patch "{1}".\n').format(rfilepath, opatch.name))
-        RCTX.stderr.write(_('Aborted.\n'))
+            RCTX.stderr.write(_("{0}: file has unrefreshed changes in (applied) patch \"{1}\".\n").format(rfilepath, opatch.name))
+        RCTX.stderr.write(_("Aborted.\n"))
         return CmdResult.ERROR | CmdResult.Suggest.FORCE_ABSORB_OR_REFRESH if len(self.unrefreshed) > 0 else CmdResult.ERROR | CmdResult.Suggest.FORCE_OR_ABSORB
 
 class SupervisedDictFactory:
@@ -1869,7 +1869,7 @@ def do_create_db(dir_path=None, description=None):
     return CmdResult.OK
 
 # Wrappers for portable lock routines
-if os.name == 'nt' or os.name == 'dos':
+if os.name == "nt" or os.name == "dos":
     import msvcrt # pylint: disable=import-error
     LOCK_EXCL = msvcrt.LK_LOCK
     LOCK_READ = msvcrt.LK_RLCK
@@ -2040,7 +2040,7 @@ def do_delete_files_in_top_patch(file_paths):
         ioerrors = 0
         for file_path in iter_prepending_subdir(file_paths):
             if not os.path.exists(file_path):
-                RCTX.stderr.write(_('{0}: file does not exist. Ignored.\n').format(rel_subdir(file_path)))
+                RCTX.stderr.write(_("{0}: file does not exist. Ignored.\n").format(rel_subdir(file_path)))
                 nonexists += 1
                 continue
             if not top_patch.has_file_with_path(file_path):
@@ -2052,7 +2052,7 @@ def do_delete_files_in_top_patch(file_paths):
                 ioerrors += 1
                 continue
             top_patch.get_file(file_path).do_refresh()
-            RCTX.stdout.write(_('{0}: file deleted within patch "{1}".\n').format(rel_subdir(file_path), top_patch.name))
+            RCTX.stdout.write(_("{0}: file deleted within patch \"{1}\".\n").format(rel_subdir(file_path), top_patch.name))
         return CmdResult.OK if (ioerrors == 0 and len(file_paths) > nonexists) else CmdResult.ERROR
 
 def do_delete_kept_patches(patch_names):
@@ -2091,7 +2091,7 @@ def do_drop_files_fm_patch(patch_name, file_paths):
 def do_duplicate_patch(patch_name, as_patch_name, new_description):
     with open_db(mutable=True) as DB:
         if not is_valid_dir_name(as_patch_name):
-            RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(as_patch_name, ALLOWED_DIR_NAME_CHARS_MSG))
+            RCTX.stderr.write(_("\"{0}\" is not a valid name. {1}\n").format(as_patch_name, ALLOWED_DIR_NAME_CHARS_MSG))
             return CmdResult.ERROR|CmdResult.Suggest.RENAME
         try:
             new_patch = DB.duplicate_named_patch(patch_name, as_patch_name, new_description)
@@ -2099,14 +2099,14 @@ def do_duplicate_patch(patch_name, as_patch_name, new_description):
             RCTX.stderr.write(_("{0}: patch is NOT known.\n").format(patch_name))
             return CmdResult.ERROR
         except DarnItPatchNeedsRefresh:
-            RCTX.stderr.write(_('{0}: patch needs refresh.\n').format(patch_name))
-            RCTX.stderr.write(_('Aborted.\n'))
+            RCTX.stderr.write(_("{0}: patch needs refresh.\n").format(patch_name))
+            RCTX.stderr.write(_("Aborted.\n"))
             return CmdResult.ERROR | CmdResult.Suggest.REFRESH
         except DarnItPatchExists:
-            RCTX.stderr.write(_('{0}: patch already in series.\n').format(as_patch_name))
-            RCTX.stderr.write(_('Aborted.\n'))
+            RCTX.stderr.write(_("{0}: patch already in series.\n").format(as_patch_name))
+            RCTX.stderr.write(_("Aborted.\n"))
             return CmdResult.ERROR | CmdResult.Suggest.RENAME
-        RCTX.stdout.write(_('{0}: patch duplicated as "{1}".\n').format(patch_name, new_patch.name))
+        RCTX.stdout.write(_("{0}: patch duplicated as \"{1}\".\n").format(patch_name, new_patch.name))
         return CmdResult.OK
 
 def do_fold_epatch(epatch, absorb=False, force=False):
@@ -2154,13 +2154,13 @@ def do_import_patch(epatch, patch_name, overwrite=False, absorb=False, force=Fal
         if DB.has_patch_with_name(patch_name):
             patch = DB.get_named_patch(patch_name)
             if not overwrite:
-                RCTX.stderr.write(_('patch "{0}" already exists\n').format(patch_name))
+                RCTX.stderr.write(_("patch \"{0}\" already exists\n").format(patch_name))
                 result = CmdResult.ERROR | CmdResult.Suggest.RENAME
                 if not patch.is_applied:
                     result |= CmdResult.Suggest.OVERWRITE
                 return result
             elif patch.is_applied:
-                RCTX.stderr.write(_('patch "{0}" already exists and is applied. Cannot be overwritten.\n').format(patch_name))
+                RCTX.stderr.write(_("patch \"{0}\" already exists and is applied. Cannot be overwritten.\n").format(patch_name))
                 return CmdResult.ERROR | CmdResult.Suggest.RENAME
             else:
                 try:
@@ -2168,15 +2168,15 @@ def do_import_patch(epatch, patch_name, overwrite=False, absorb=False, force=Fal
                 except DarnItPatchError:
                     return CmdResult.ERROR
         elif not is_valid_dir_name(patch_name):
-            RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(patch_name, ALLOWED_DIR_NAME_CHARS_MSG))
+            RCTX.stderr.write(_("\"{0}\" is not a valid name. {1}\n").format(patch_name, ALLOWED_DIR_NAME_CHARS_MSG))
             return CmdResult.ERROR|CmdResult.Suggest.RENAME
         descr = utils.make_utf8_compliant(epatch.get_description())
         top_patch = DB.top_patch
         patch = DB.create_new_patch(patch_name, descr)
         if top_patch:
-            RCTX.stdout.write(_('{0}: patch inserted after patch "{1}".\n').format(patch_name, top_patch.name))
+            RCTX.stdout.write(_("{0}: patch inserted after patch \"{1}\".\n").format(patch_name, top_patch.name))
         else:
-            RCTX.stdout.write(_('{0}: patch inserted at start of series.\n').format(patch_name))
+            RCTX.stdout.write(_("{0}: patch inserted at start of series.\n").format(patch_name))
         result = patch.do_fold_epatch(epatch, absorb=absorb, force=force)
         if result & CmdResult.Suggest.FORCE_OR_ABSORB:
             DB.pop_top_patch()
@@ -2327,30 +2327,30 @@ def do_rename_file_in_top_patch(file_path, new_file_path, force=False, overwrite
 def do_rename_patch(patch_name, new_name):
     with open_db(mutable=True) as DB:
         if DB.has_patch_with_name(new_name):
-            RCTX.stderr.write(_('patch "{0}" already exists\n').format(new_name))
+            RCTX.stderr.write(_("patch \"{0}\" already exists\n").format(new_name))
             return CmdResult.ERROR|CmdResult.Suggest.RENAME
         elif not is_valid_dir_name(new_name):
-            RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(new_name, ALLOWED_DIR_NAME_CHARS_MSG))
+            RCTX.stderr.write(_("\"{0}\" is not a valid name. {1}\n").format(new_name, ALLOWED_DIR_NAME_CHARS_MSG))
             return CmdResult.ERROR|CmdResult.Suggest.RENAME
         patch = _get_patch(patch_name, DB)
         if patch is None:
             return CmdResult.ERROR
         patch.name = new_name
-        RCTX.stdout.write(_('{0}: patch renamed as "{1}".\n').format(patch_name, patch.name))
+        RCTX.stdout.write(_("{0}: patch renamed as \"{1}\".\n").format(patch_name, patch.name))
         return CmdResult.OK
 
 def do_restore_patch(patch_name, as_patch_name):
     with open_db(mutable=True) as DB:
         if not is_valid_dir_name(as_patch_name):
-            RCTX.stderr.write(_('"{0}" is not a valid name. {1}\n').format(as_patch_name, ALLOWED_DIR_NAME_CHARS_MSG))
+            RCTX.stderr.write(_("\"{0}\" is not a valid name. {1}\n").format(as_patch_name, ALLOWED_DIR_NAME_CHARS_MSG))
             return CmdResult.ERROR|CmdResult.Suggest.RENAME
         try:
             DB.restore_named_patch(patch_name, as_patch_name)
         except DarnItUnknownPatch:
-            RCTX.stderr.write(_('{0}: is NOT available for restoration\n').format(patch_name))
+            RCTX.stderr.write(_("{0}: is NOT available for restoration\n").format(patch_name))
             return CmdResult.ERROR|CmdResult.Suggest.RENAME
         except DarnItPatchExists:
-            RCTX.stderr.write(_('{0}: Already exists in database\n').format(as_patch_name))
+            RCTX.stderr.write(_("{0}: Already exists in database\n").format(as_patch_name))
             return CmdResult.ERROR|CmdResult.Suggest.RENAME
         return CmdResult.OK
 
@@ -2451,14 +2451,14 @@ def do_select_guards(guards):
             guards = []
         bad_guard_count = 0
         for guard in guards:
-            if guard.startswith('+') or guard.startswith('-'):
-                RCTX.stderr.write(_('{0}: guard names may NOT begin with "+" or "-".\n').format(guard))
+            if guard.startswith("+") or guard.startswith("-"):
+                RCTX.stderr.write(_("{0}: guard names may NOT begin with \"+\" or \"-\".\n").format(guard))
                 bad_guard_count += 1
         if bad_guard_count > 0:
-            RCTX.stderr.write(_('Aborted.\n'))
+            RCTX.stderr.write(_("Aborted.\n"))
             return CmdResult.ERROR|CmdResult.Suggest.EDIT
         DB.set_selected_guards(guards)
-        RCTX.stdout.write(_('{{{0}}}: is now the set of selected guards.\n').format(', '.join(DB.get_selected_guards())))
+        RCTX.stdout.write(_("{{{0}}}: is now the set of selected guards.\n").format(", ".join(DB.get_selected_guards())))
         return CmdResult.OK
 
 def do_set_patch_description(patch_name, text):
@@ -2470,7 +2470,7 @@ def do_set_patch_description(patch_name, text):
         patch.description = _tidy_text(text)
         if old_description != patch.description:
             change_lines = difflib.ndiff(old_description.splitlines(True), patch.description.splitlines(True))
-            RCTX.stdout.write(''.join(change_lines))
+            RCTX.stdout.write("".join(change_lines))
         return CmdResult.OK
 
 def do_set_patch_guards(patch_name, pos_guards, neg_guards):
@@ -2480,18 +2480,18 @@ def do_set_patch_guards(patch_name, pos_guards, neg_guards):
             return CmdResult.ERROR
         patch.do_set_guards(pos_guards, neg_guards)
         pos_guard_set, neg_guard_set = patch.guards
-        RCTX.stdout.write(_('{0}: patch positive guards = {{{1}}}\n').format(patch_name, ', '.join(sorted(pos_guard_set))))
-        RCTX.stdout.write(_('{0}: patch negative guards = {{{1}}}\n').format(patch_name, ', '.join(sorted(neg_guard_set))))
+        RCTX.stdout.write(_("{0}: patch positive guards = {{{1}}}\n").format(patch_name, ", ".join(sorted(pos_guard_set))))
+        RCTX.stdout.write(_("{0}: patch negative guards = {{{1}}}\n").format(patch_name, ", ".join(sorted(neg_guard_set))))
         return CmdResult.OK
 
 def do_set_patch_guards_fm_list(patch_name, guards_list):
     if guards_list is None:
         guards_list = []
-    pos_guards = [grd[1:] for grd in guards_list if grd.startswith('+')]
-    neg_guards = [grd[1:] for grd in guards_list if grd.startswith('-')]
+    pos_guards = [grd[1:] for grd in guards_list if grd.startswith("+")]
+    neg_guards = [grd[1:] for grd in guards_list if grd.startswith("-")]
     if len(guards_list) != (len(pos_guards) + len(neg_guards)):
-        RCTX.stderr.write(_('Guards must start with "+" or "-" and contain no whitespace.\n'))
-        RCTX.stderr.write( _('Aborted.\n'))
+        RCTX.stderr.write(_("Guards must start with \"+\" or \"-\" and contain no whitespace.\n"))
+        RCTX.stderr.write( _("Aborted.\n"))
         return CmdResult.ERROR | CmdResult.Suggest.EDIT
     return do_set_patch_guards(patch_name, pos_guards, neg_guards)
 
@@ -2716,12 +2716,12 @@ def is_blocked_by_guard(patch_name):
         return DB.get_named_patch(patch_name).is_blocked_by_guard
 
 def is_patch_applied(patch_name):
-    '''Is the named patch applied?'''
+    """Is the named patch applied?"""
     with open_db(mutable=False) as DB:
         return DB.get_named_patch(patch_name).is_applied
 
 def is_patch_refreshed(patch_name):
-    '''Is the named patch in need of refresh?'''
+    """Is the named patch in need of refresh?"""
     with open_db(mutable=False) as DB:
         return not DB.get_named_patch(patch_name).needs_refresh
 

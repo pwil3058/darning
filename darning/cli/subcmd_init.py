@@ -13,7 +13,7 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-'''Create a darning patch management system (persistent) database'''
+"""Create a darning patch management system (persistent) database"""
 
 from .. import patch_db
 
@@ -21,14 +21,14 @@ from . import cli_args
 from . import db_utils
 
 PARSER = cli_args.SUB_CMD_PARSER.add_parser(
-    'init',
-    description=_('Create a new patch database.'),
+    "init",
+    description=_("Create a new patch database."),
 )
 
-cli_args.add_descr_option(PARSER, helptext=_('a message to describe the purpose of the patches to be managed.'))
+cli_args.add_descr_option(PARSER, helptext=_("a message to describe the purpose of the patches to be managed."))
 
 def run_init(args):
-    '''Execute the "init" sub command using the supplied args'''
+    """Execute the "init" sub command using the supplied args"""
     db_utils.set_report_context(verbose=True)
     return patch_db.do_create_db(description=args.opt_description)
 

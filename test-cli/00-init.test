@@ -13,7 +13,7 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-Test the 'darn init' command.
+Test the "darn init" command.
 
 Test a valid initialization.
 $ darn init --descr 'A short description of the patch series.'

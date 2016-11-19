@@ -13,7 +13,7 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-'''Delete files within the current top patch.'''
+"""Delete files within the current top patch."""
 
 from . import cli_args
 from . import db_utils

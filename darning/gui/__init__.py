@@ -13,9 +13,9 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-'''
+"""
 Library functions that are ony of interest GUI programs
-'''
+"""
 
 from .. import APP_NAME, CONFIG_DIR_PATH
 
@@ -26,13 +26,13 @@ from .. import rctx
 class ReportContext:
     class OutFile:
         def __init__(self):
-            self.text = ''
+            self.text = ""
         def write(self, text):
             self.text += text
             LOG.append_stdout(text)
     class ErrFile:
         def __init__(self):
-            self.text = ''
+            self.text = ""
         def write(self, text):
             self.text += text
             LOG.append_stderr(text)
@@ -43,8 +43,8 @@ class ReportContext:
     def message(self):
         return "\n".join([self.stdout.text, self.stderr.text])
     def reset(self):
-        self.stdout.text = ''
-        self.stderr.text = ''
+        self.stdout.text = ""
+        self.stderr.text = ""
 
 RCTX = ReportContext()
 

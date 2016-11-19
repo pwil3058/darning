@@ -25,11 +25,11 @@ from darning import version
 
 here = os.path.abspath(os.path.dirname(__file__))
 
-NAME = 'darning'
+NAME = "darning"
 
 VERSION = version.VERSION
 
-DESCRIPTION = 'a tool for managing a series of source patches.'
+DESCRIPTION = "a tool for managing a series of source patches."
 
 # Get the long description from the README file
 with open(os.path.join(here, "README.md"), encoding="utf-8") as f:
@@ -62,7 +62,7 @@ AUTHOR_EMAIL = "pwil3058@gmail.com"
 
 URL = "https://github.com/pwil3058/darning"
 
-SCRIPTS = ['darn', 'gdarn']
+SCRIPTS = ["darn", "gdarn"]
 
 PACKAGES = find_packages(exclude=["pixmaps", "test_cli"])
 

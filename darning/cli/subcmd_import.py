@@ -13,7 +13,7 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-'''Import an external patch and place it in the series behind the current top patch.'''
+"""Import an external patch and place it in the series behind the current top patch."""
 
 import os
 import sys
@@ -26,34 +26,34 @@ from . import cli_args
 from . import db_utils
 
 PARSER = cli_args.SUB_CMD_PARSER.add_parser(
-    'import',
-    description=_('''Import an external patch and place it in the series
+    "import",
+    description=_("""Import an external patch and place it in the series
         after the current top patch. Unless otherwise specified the
-        name of the imported file will be used as the patch name.'''),
+        name of the imported file will be used as the patch name."""),
 )
 
 PARSER.add_argument(
-    '--as',
-    help=_('the name to be assigned to the imported patch.'),
-    dest = 'patchname',
-    metavar=_('patch'),
+    "--as",
+    help=_("the name to be assigned to the imported patch."),
+    dest = "patchname",
+    metavar=_("patch"),
 )
 
 PARSER.add_argument(
-    '-p',
-    help=_('the number of path components to be stripped from file paths.'),
-    dest = 'opt_strip_level',
-    metavar=_('strip_level'),
-    choices = ['0', '1'],
+    "-p",
+    help=_("the number of path components to be stripped from file paths."),
+    dest = "opt_strip_level",
+    metavar=_("strip_level"),
+    choices = ["0", "1"],
 )
 
 PARSER.add_argument(
-    'patchfile',
-    help=_('the name of the patch file to be imported.'),
+    "patchfile",
+    help=_("the name of the patch file to be imported."),
 )
 
 def run_import(args):
-    '''Execute the "import" sub command using the supplied args'''
+    """Execute the "import" sub command using the supplied args"""
     PM = db_utils.get_pm_db()
     db_utils.set_report_context(verbose=True)
     if not args.patchname:
@@ -62,26 +62,26 @@ def run_import(args):
         epatch = patchlib.Patch.parse_text(open(args.patchfile).read())
     except patchlib.ParseError as edata:
         if edata.lineno is None:
-            sys.stderr.write(_('Parse Error: {0}.\n').format(edata.message))
+            sys.stderr.write(_("Parse Error: {0}.\n").format(edata.message))
         else:
-            sys.stderr.write(_('Parse Error: {0}: {1}.\n').format(edata.lineno, edata.message))
+            sys.stderr.write(_("Parse Error: {0}: {1}.\n").format(edata.lineno, edata.message))
         return CmdResult.ERROR
     except IOError as edata:
         if edata.filepath is None:
-            sys.stderr.write(_('IO Error: {0}.\n').format(edata.strerror))
+            sys.stderr.write(_("IO Error: {0}.\n").format(edata.strerror))
         else:
-            sys.stderr.write(_('IO Error: {0}: {1}.\n').format(edata.strerror, edata.filepath))
+            sys.stderr.write(_("IO Error: {0}: {1}.\n").format(edata.strerror, edata.filepath))
         return CmdResult.ERROR
     if args.opt_strip_level is None:
         args.opt_strip_level = epatch.estimate_strip_level()
         if args.opt_strip_level is None:
-            sys.stderr.write(_('Strip level auto detection failed.  Please use -p option.'))
+            sys.stderr.write(_("Strip level auto detection failed.  Please use -p option."))
             return CmdResult.ERROR
     epatch.set_strip_level(int(args.opt_strip_level))
     eflags = PM.do_import_patch(epatch, args.patchname)
     if eflags & CmdResult.ERROR:
         return eflags
-    sys.stdout.write(_('Imported "{0}" as patch "{1}".\n').format(args.patchfile, args.patchname))
+    sys.stdout.write(_("Imported \"{0}\" as patch \"{1}\".\n").format(args.patchfile, args.patchname))
     return eflags
 
 PARSER.set_defaults(run_cmd=run_import)

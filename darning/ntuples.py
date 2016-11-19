@@ -15,4 +15,4 @@
 
 import collections
 
-Guards = collections.namedtuple('Guards', ['positive', 'negative'])
+Guards = collections.namedtuple("Guards", ["positive", "negative"])

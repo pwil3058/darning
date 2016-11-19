@@ -13,7 +13,7 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-'''Set/display a patch's guards.'''
+"""Set/display a patch's guards."""
 
 import sys
 
@@ -53,7 +53,7 @@ GROUP.add_argument(
 )
 
 def run_guard(args):
-    '''Execute the "guard" sub command using the supplied args'''
+    """Execute the "guard" sub command using the supplied args"""
     PM = db_utils.get_pm_db()
     db_utils.set_report_context(verbose=True)
     if args.opt_none:

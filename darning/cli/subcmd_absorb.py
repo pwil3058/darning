@@ -13,18 +13,18 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-'''Have the underlying SCM absorb the applied patches.'''
+"""Have the underlying SCM absorb the applied patches."""
 
 from . import cli_args
 from . import db_utils
 
 PARSER = cli_args.SUB_CMD_PARSER.add_parser(
-    'absorb',
-    description=_('Have underlying SCM import/absorb all applied patches.'),
+    "absorb",
+    description=_("Have underlying SCM import/absorb all applied patches."),
 )
 
 def run_absorb(args):
-    '''Execute the "absorb" sub command using the supplied args'''
+    """Execute the "absorb" sub command using the supplied args"""
     PM = db_utils.get_pm_db()
     db_utils.set_report_context(verbose=True)
     return PM.do_scm_absorb_applied_patches()

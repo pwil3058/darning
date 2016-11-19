@@ -13,7 +13,7 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-'''Select/display which patch guards are in force.'''
+"""Select/display which patch guards are in force."""
 
 import sys
 
@@ -45,7 +45,7 @@ GROUP.add_argument(
 )
 
 def run_select(args):
-    '''Execute the "select" sub command using the supplied args'''
+    """Execute the "select" sub command using the supplied args"""
     PM = db_utils.get_pm_db()
     db_utils.set_report_context(verbose=True)
     if args.opt_none:

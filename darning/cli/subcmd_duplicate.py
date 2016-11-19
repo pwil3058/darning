@@ -13,7 +13,7 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-'''Duplicat a named patch in the series behind the current top patch.'''
+"""Duplicat a named patch in the series behind the current top patch."""
 
 from . import cli_args
 from . import db_utils
@@ -38,7 +38,7 @@ PARSER.add_argument(
 )
 
 def run_duplicate(args):
-    '''Execute the "duplicate" sub command using the supplied args'''
+    """Execute the "duplicate" sub command using the supplied args"""
     PM = db_utils.get_pm_db()
     db_utils.set_report_context(verbose=True)
     return PM.do_duplicate_patch(args.patch_name, args.as_patch_name, args.opt_description)

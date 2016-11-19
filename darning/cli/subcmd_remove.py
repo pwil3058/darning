@@ -13,24 +13,24 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-'''Remove a named patch from the series.'''
+"""Remove a named patch from the series."""
 
 from . import cli_args
 from . import db_utils
 
 PARSER = cli_args.SUB_CMD_PARSER.add_parser(
-    'remove',
-    description=_('Remove the named patch from the series.'),
+    "remove",
+    description=_("Remove the named patch from the series."),
 )
 
 PARSER.add_argument(
-    'patchname',
-    metavar=_('patchname'),
-    help=_('the name of the patch to be removed.'),
+    "patchname",
+    metavar=_("patchname"),
+    help=_("the name of the patch to be removed."),
 )
 
 def run_remove(args):
-    '''Execute the "new" sub command using the supplied args'''
+    """Execute the "new" sub command using the supplied args"""
     PM = db_utils.get_pm_db()
     db_utils.set_report_context(verbose=True)
     return PM.do_remove_patch(args.patchname)

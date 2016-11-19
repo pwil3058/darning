@@ -13,26 +13,26 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-'''Create a new patch in the series behind the current top patch.'''
+"""Create a new patch in the series behind the current top patch."""
 
 from . import cli_args
 from . import db_utils
 
 PARSER = cli_args.SUB_CMD_PARSER.add_parser(
-    'new',
-    description=_('Create a new patch in the series after the current top patch.'),
+    "new",
+    description=_("Create a new patch in the series after the current top patch."),
 )
 
-cli_args.add_descr_option(PARSER, helptext=_('a description of the patch\'s purpose.'))
+cli_args.add_descr_option(PARSER, helptext=_("a description of the patch's purpose."))
 
 PARSER.add_argument(
-    'patchname',
-    metavar=_('patchname'),
-    help=_('the name of the patch.'),
+    "patchname",
+    metavar=_("patchname"),
+    help=_("the name of the patch."),
 )
 
 def run_new(args):
-    '''Execute the "new" sub command using the supplied args'''
+    """Execute the "new" sub command using the supplied args"""
     PM = db_utils.get_pm_db()
     db_utils.set_report_context(verbose=True)
     return PM.do_create_new_patch(args.patchname, args.opt_description)

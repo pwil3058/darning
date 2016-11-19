@@ -13,18 +13,18 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-'''Create a new patch in the series behind the current top patch.'''
+"""Create a new patch in the series behind the current top patch."""
 
 from . import cli_args
 from . import db_utils
 
 PARSER = cli_args.SUB_CMD_PARSER.add_parser(
-    'validate',
-    description=_('Validate consistency of content data.'),
+    "validate",
+    description=_("Validate consistency of content data."),
 )
 
 def run_validate(args):
-    '''Execute the "new" sub command using the supplied args'''
+    """Execute the "new" sub command using the supplied args"""
     PM = db_utils.get_pm_db()
     db_utils.set_report_context(verbose=True)
     return PM.report_blobs_status()

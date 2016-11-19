@@ -13,7 +13,7 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-'''Print the diff for the named (or all) files in the named (or top) patch.'''
+"""Print the diff for the named (or all) files in the named (or top) patch."""
 
 import sys
 
@@ -23,40 +23,40 @@ from . import cli_args
 from . import db_utils
 
 PARSER = cli_args.SUB_CMD_PARSER.add_parser(
-    'diff',
-    description=_('Print the "diff" for the named (or all files) in the named (or top) patch.'),
-    epilog=_('''For applied patches, the printed "diff" will be reflect the actual
+    "diff",
+    description=_("Print the \"diff\" for the named (or all files) in the named (or top) patch."),
+    epilog=_("""For applied patches, the printed "diff" will be reflect the actual
         changes rather than the "refreshed" changes.  For unapplied patches, the change will
-        (obviously) reflect that last "refeshed" change.'''),
+        (obviously) reflect that last "refeshed" change."""),
 )
 
 GROUP = PARSER.add_mutually_exclusive_group()
 
 GROUP.add_argument(
-    '--combined',
-    dest='opt_combined',
-    help=_('show "diff" for all applied patches combined.'),
-    action='store_true'
+    "--combined",
+    dest="opt_combined",
+    help=_("show \"diff\" for all applied patches combined."),
+    action="store_true"
 )
 
-cli_args.add_patch_option(GROUP, 'the name of the patch for which the "diff" should be printed.')
+cli_args.add_patch_option(GROUP, "the name of the patch for which the \"diff\" should be printed.")
 
 PARSER.add_argument(
-    '--withtimestamps',
-    dest='opt_withtimestamps',
-    help=_('add timestamp data to the generated "diff".'),
-    action='store_true'
+    "--withtimestamps",
+    dest="opt_withtimestamps",
+    help=_("add timestamp data to the generated \"diff\"."),
+    action="store_true"
 )
 
 PARSER.add_argument(
-    'filepaths',
-    metavar=_('file'),
-    nargs='*',
-    help=_('the name(s) of the file(s) to be included in the "diff".'),
+    "filepaths",
+    metavar=_("file"),
+    nargs="*",
+    help=_("the name(s) of the file(s) to be included in the \"diff\"."),
 )
 
 def run_diff(args):
-    '''Execute the "diff" sub command using the supplied args'''
+    """Execute the "diff" sub command using the supplied args"""
     PM = db_utils.get_pm_db()
     db_utils.set_report_context(verbose=True)
     if args.opt_combined:

@@ -13,25 +13,25 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-'''
+"""
 Provide command line parsing mechanism including provision of a
 mechanism for sub commands to add their components.
-'''
+"""
 
 import argparse
 import collections
 
 from .. import version
 
-PARSER = argparse.ArgumentParser(description=_('Manage stacked patches'))
+PARSER = argparse.ArgumentParser(description=_("Manage stacked patches"))
 
 PARSER.add_argument(
-    '--version',
-    action='version',
+    "--version",
+    action="version",
     version=version.VERSION
 )
 
-SUB_CMD_PARSER = PARSER.add_subparsers(title=_('commands'))
+SUB_CMD_PARSER = PARSER.add_subparsers(title=_("commands"))
 
 # There doesn't seem to be a way to easily change the help messages
 # in argparse arguments incorporated using the "parents" mechanism so
@@ -39,64 +39,64 @@ SUB_CMD_PARSER = PARSER.add_subparsers(title=_('commands'))
 
 def add_descr_option(parser, helptext):
     parser.add_argument(
-        '--descr',
+        "--descr",
         help=helptext,
-        dest='opt_description',
-        metavar=_('text'),
+        dest="opt_description",
+        metavar=_("text"),
     )
 
 def add_patch_option(parser, helptext):
     parser.add_argument(
-        '-P', '--patch',
+        "-P", "--patch",
         help=helptext,
-        dest='opt_patch',
-        metavar=_('patch'),
+        dest="opt_patch",
+        metavar=_("patch"),
     )
 
 def add_force_option(parser, helptext):
     parser.add_argument(
-        '-f', '--force',
+        "-f", "--force",
         help=helptext,
-        dest='opt_force',
-        action='store_true',
+        dest="opt_force",
+        action="store_true",
     )
 
 def add_absorb_option(parser, helptext):
     parser.add_argument(
-        '-a', '--absorb',
+        "-a", "--absorb",
         help=helptext,
-        dest='opt_absorb',
-        action='store_true',
+        dest="opt_absorb",
+        action="store_true",
     )
 
 def add_overwrite_option(parser, helptext):
     parser.add_argument(
-        '-o', '--overwrite',
+        "-o", "--overwrite",
         help=helptext,
-        dest='opt_overwrite',
-        action='store_true',
+        dest="opt_overwrite",
+        action="store_true",
     )
 
 def add_verbose_option(parser, helptext):
     parser.add_argument(
-        '-v', '--verbose',
+        "-v", "--verbose",
         help=helptext,
-        dest='opt_verbose',
-        action='store_true',
+        dest="opt_verbose",
+        action="store_true",
     )
 
 def add_quiet_option(parser, helptext):
     parser.add_argument(
-        '-q', '--quiet',
+        "-q", "--quiet",
         help=helptext,
-        dest='opt_quiet',
-        action='store_true',
+        dest="opt_quiet",
+        action="store_true",
     )
 
 def add_files_argument(parser, helptext):
     parser.add_argument(
-        'filepaths',
+        "filepaths",
         help=helptext,
-        nargs='+',
-        metavar=_('file'),
+        nargs="+",
+        metavar=_("file"),
     )

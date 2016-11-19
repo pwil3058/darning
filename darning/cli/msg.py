@@ -13,7 +13,7 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-'''Standardize CLI error, warning and info messages'''
+"""Standardize CLI error, warning and info messages"""
 
 import sys
 
@@ -21,27 +21,27 @@ OK = 0
 ERROR = 1
 
 def Info(template, *args):
-    '''Print an message to stdout and return OK'''
+    """Print an message to stdout and return OK"""
     if len(args) == 0:
-        sys.stdout.write(template + '\n')
+        sys.stdout.write(template + "\n")
     else:
-        sys.stdout.write(template.format(*args) + '\n')
+        sys.stdout.write(template.format(*args) + "\n")
     return OK
 
 def Warn(template, *args):
-    '''Print an message to stderr and return OK'''
-    sys.stderr.write(_('Warning: '))
+    """Print an message to stderr and return OK"""
+    sys.stderr.write(_("Warning: "))
     if len(args) == 0:
-        sys.stderr.write(template + '\n')
+        sys.stderr.write(template + "\n")
     else:
-        sys.stderr.write(template.format(*args) + '\n')
+        sys.stderr.write(template.format(*args) + "\n")
     return OK
 
 def Error(template, *args):
-    '''Print an message to stderr and return ERROR'''
-    sys.stderr.write(_('Error: '))
+    """Print an message to stderr and return ERROR"""
+    sys.stderr.write(_("Error: "))
     if len(args) == 0:
-        sys.stderr.write(str(template) + '\n')
+        sys.stderr.write(str(template) + "\n")
     else:
-        sys.stderr.write(template.format(*args) + '\n')
+        sys.stderr.write(template.format(*args) + "\n")
     return ERROR

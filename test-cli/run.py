@@ -50,14 +50,14 @@ class Result(object):
         return True
 
 class Command(object):
-    IS_POSIX = os.name == 'posix'
+    IS_POSIX = os.name == "posix"
     def __init__(self, arg):
         self.cmd_line_str = arg
         assert self.cmd_line_str
         self.cmd_line = shlex.split(self.cmd_line_str)
-        self.input_text = ''
+        self.input_text = ""
         try:
-            red_index = self.cmd_line.index('>')
+            red_index = self.cmd_line.index(">")
             self.red_file_path = self.cmd_line[red_index + 1]
             del self.cmd_line[red_index:red_index + 2]
         except:
@@ -65,7 +65,7 @@ class Command(object):
     def __str__(self):
         return self.cmd_line_str
     def append_input_line(self, line):
-        self.input_text += line + '\n'
+        self.input_text += line + "\n"
     def _run(self):
         if self.IS_POSIX:
             savedsh = signal.getsignal(signal.SIGPIPE)
@@ -76,62 +76,62 @@ class Command(object):
         if self.IS_POSIX:
             signal.signal(signal.SIGPIPE, savedsh)
         if self.red_file_path:
-            open(self.red_file_path, 'wb').write(sout)
-            sout = ''
+            open(self.red_file_path, "wb").write(sout)
+            sout = ""
         return Result(ecode=sub.returncode, stdout=sout, stderr=serr)
     def run(self):
-        if self.cmd_line[0] == 'umask':
+        if self.cmd_line[0] == "umask":
             os.umask(int(self.cmd_line[1], 8))
-        elif self.cmd_line[0] == 'cd':
+        elif self.cmd_line[0] == "cd":
             try:
                 os.chdir(self.cmd_line[1])
-                os.environ['PWD'] = os.getcwd()
+                os.environ["PWD"] = os.getcwd()
             except OSError as edata:
                 return Result(ecode=1, stderr=str(edata))
-        elif self.cmd_line[0] == 'export':
-            ename, evalue = self.cmd_line[1].split('=')
+        elif self.cmd_line[0] == "export":
+            ename, evalue = self.cmd_line[1].split("=")
             os.environ[ename] = evalue
-        elif self.cmd_line[0] == 'unset':
+        elif self.cmd_line[0] == "unset":
             if self.cmd_line[0] in os.environ:
                 del os.environ[self.cmd_line[0]]
-        elif self.cmd_line[0] == 'mkfile':
+        elif self.cmd_line[0] == "mkfile":
             if len(self.cmd_line) == 2:
                 try:
-                    open(self.cmd_line[1], 'w').write(self.input_text)
+                    open(self.cmd_line[1], "w").write(self.input_text)
                 except OSError as edata:
                     return Result(ecode=1, stderr=str(edata))
             if len(self.cmd_line) == 3:
-                if self.cmd_line[1] != '-b':
-                    return Result(ecode=1, stderr='mkfile: Unrecognized option: {0}.'.format(self.cmd_line[1]))
+                if self.cmd_line[1] != "-b":
+                    return Result(ecode=1, stderr="mkfile: Unrecognized option: {0}.".format(self.cmd_line[1]))
                 # For the time being just stick a char 0 in the middle
                 midpoint = len(self.input_text) // 2
-                data = self.input_text[:midpoint] + '\000' + self.input_text[midpoint:]
+                data = self.input_text[:midpoint] + "\000" + self.input_text[midpoint:]
                 try:
-                    open(self.cmd_line[2], 'wb').write(data.encode())
+                    open(self.cmd_line[2], "wb").write(data.encode())
                 except OSError as edata:
                     return Result(ecode=1, stderr=str(edata))
             else:
-                Result(ecode=1, stderr='mkfile: Missing file name.')
-        elif self.cmd_line[0] == 'create_file_tree':
+                Result(ecode=1, stderr="mkfile: Missing file name.")
+        elif self.cmd_line[0] == "create_file_tree":
             for dindex in range(6):
                 if dindex:
-                    dname = 'dir{0}/'.format(dindex)
+                    dname = "dir{0}/".format(dindex)
                     os.mkdir(dname)
                 else:
-                    dname = ''
+                    dname = ""
                 for sdindex in range(6):
                     if sdindex:
                         if not dindex:
                             continue
-                        sdname = 'subdir{0}/'.format(sdindex)
+                        sdname = "subdir{0}/".format(sdindex)
                         os.mkdir(dname + sdname)
                     else:
-                        sdname = ''
+                        sdname = ""
                     for findex in range(1, 6):
-                        tfpath = dname + sdname + 'file{0}'.format(findex)
-                        open(tfpath, 'w').write('{0}:\nis a text file.\n'.format(tfpath))
-                        bfpath = dname + sdname + 'binary{0}'.format(findex)
-                        open(bfpath, 'w').write('{0}:\000is a binary file.\n'.format(bfpath))
+                        tfpath = dname + sdname + "file{0}".format(findex)
+                        open(tfpath, "w").write("{0}:\nis a text file.\n".format(tfpath))
+                        bfpath = dname + sdname + "binary{0}".format(findex)
+                        open(bfpath, "w").write("{0}:\000is a binary file.\n".format(bfpath))
         else:
             try:
                 return self._run()
@@ -141,9 +141,9 @@ class Command(object):
 
 if sys.stderr.isatty():
     def green(text):
-        return '\033[32m' + text + '\033[m'
+        return "\033[32m" + text + "\033[m"
     def red(text):
-        return '\033[31m' + text + '\033[m'
+        return "\033[31m" + text + "\033[m"
 else:
     def red(text):
         return text
@@ -153,7 +153,7 @@ else:
 class ParseError(Exception): pass
 
 class Test(object):
-    LINE_CRE = re.compile('^\s*([$<>!?]) ?(.*)')
+    LINE_CRE = re.compile("^\s*([$<>!?]) ?(.*)")
     @staticmethod
     def get_next_test(lines, index):
         test = None
@@ -161,7 +161,7 @@ class Test(object):
             match = Test.LINE_CRE.match(lines[index])
             if match:
                 token, line = match.groups()
-                if token == '$':
+                if token == "$":
                     index += 1
                     test = Test(index, line)
                     break
@@ -174,15 +174,15 @@ class Test(object):
             match = Test.LINE_CRE.match(lines[index])
             if match:
                 token, line = match.groups()
-                if token == '$':
+                if token == "$":
                     break
-                elif token == '<':
+                elif token == "<":
                     test.command.append_input_line(line)
-                elif token == '>':
+                elif token == ">":
                     test.expected.stdout.append(line)
-                elif token == '!':
+                elif token == "!":
                     test.expected.stderr.append(line)
-                elif token == '?':
+                elif token == "?":
                     test.expected.ecode = int(line)
                 else:
                     raise ParseError('{0}: unexpected "{1}"'.format(index, token))
@@ -210,52 +210,52 @@ class Test(object):
         def report_lists(prefix, left, right):
             for index in range(min(len(left), len(right))):
                 if left[index] == right[index]:
-                    sys.stdout.write('{0}: {1} == {2}\n'.format(prefix, left[index], right[index]))
+                    sys.stdout.write("{0}: {1} == {2}\n".format(prefix, left[index], right[index]))
                 else:
-                    sys.stdout.write(red('{0}: {1} != {2}\n'.format(prefix, left[index], right[index])))
+                    sys.stdout.write(red("{0}: {1} != {2}\n".format(prefix, left[index], right[index])))
             if len(left) > len(right):
                 for line in left[len(right):]:
-                    sys.stdout.write(red('{0}: {1} != \n'.format(prefix, line)))
+                    sys.stdout.write(red("{0}: {1} != \n".format(prefix, line)))
             elif len(left) < len(right):
                 for line in right[len(left):]:
-                    sys.stdout.write(red('{0}: != {1}\n'.format(prefix, line)))
+                    sys.stdout.write(red("{0}: != {1}\n".format(prefix, line)))
         if self.result.ecode == self.expected.ecode:
-            sys.stdout.write('RETN: {0} == {1}\n'.format(self.result.ecode, self.expected.ecode))
+            sys.stdout.write("RETN: {0} == {1}\n".format(self.result.ecode, self.expected.ecode))
         else:
-            sys.stdout.write(red('RETN: {0} != {1}\n'.format(self.result.ecode, self.expected.ecode)))
-        report_lists('SOUT', self.result.stdout, self.expected.stdout)
-        report_lists('SERR', self.result.stderr, self.expected.stderr)
+            sys.stdout.write(red("RETN: {0} != {1}\n".format(self.result.ecode, self.expected.ecode)))
+        report_lists("SOUT", self.result.stdout, self.expected.stdout)
+        report_lists("SERR", self.result.stderr, self.expected.stderr)
     def report(self, quiet=False, verbose=False):
         if self.result == self.expected:
-            sys.stdout.write('[{0}] {1} [{2}]\n'.format(self.line_no, str(self.command), green('OK')))
+            sys.stdout.write("[{0}] {1} [{2}]\n".format(self.line_no, str(self.command), green("OK")))
             if verbose:
                 self.report_details()
         else:
-            sys.stdout.write('[{0}] {1} [{2}]\n'.format(self.line_no, str(self.command), red('ERROR')))
+            sys.stdout.write("[{0}] {1} [{2}]\n".format(self.line_no, str(self.command), red("ERROR")))
             if not quiet:
                 self.report_details()
 
 
-PARSER = argparse.ArgumentParser(description='Run and evaluate a test script.')
+PARSER = argparse.ArgumentParser(description="Run and evaluate a test script.")
 
 PARSER.add_argument(
-    'arg_script_file',
-    metavar='script',
-    help='name of the file containing the script to be run.',
+    "arg_script_file",
+    metavar="script",
+    help="name of the file containing the script to be run.",
 )
 
 PARSER.add_argument(
-    '-q', '--quiet',
-    dest='opt_quiet',
-    action='store_true',
-    help='operate in quiet mode.',
+    "-q", "--quiet",
+    dest="opt_quiet",
+    action="store_true",
+    help="operate in quiet mode.",
 )
 
 PARSER.add_argument(
-    '-v', '--verbose',
-    dest='opt_verbose',
-    action='store_true',
-    help='operate in verbose mode.',
+    "-v", "--verbose",
+    dest="opt_verbose",
+    action="store_true",
+    help="operate in verbose mode.",
 )
 # Main program starts here
 args = PARSER.parse_args()
@@ -266,7 +266,7 @@ HEADER = args.arg_script_file
 ORIGDIR = os.getcwd()
 WORKDIR = tempfile.mkdtemp()
 os.chdir(WORKDIR)
-os.environ['PWD'] = os.getcwd()
+os.environ["PWD"] = os.getcwd()
 atexit.register(shutil.rmtree, WORKDIR)
 
 fail_count = 0
@@ -275,13 +275,13 @@ for test in TESTS:
         fail_count += 1
 
 if fail_count == 0:
-    sys.stdout.write('{0} [{1}]\n'.format(HEADER, green('PASSED')))
+    sys.stdout.write("{0} [{1}]\n".format(HEADER, green("PASSED")))
     if args.opt_verbose:
         for test in TESTS:
             test.report(quiet=args.opt_quiet, verbose=args.opt_verbose)
     sys.exit(0)
 
-sys.stdout.write('{0} [{1}]\n'.format(HEADER, red('FAILED')))
+sys.stdout.write("{0} [{1}]\n".format(HEADER, red("FAILED")))
 for test in TESTS:
     test.report(quiet=args.opt_quiet, verbose=args.opt_verbose)
 sys.exit(1)

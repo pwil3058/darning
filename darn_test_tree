@@ -14,7 +14,7 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-'''Command line interface for the darning patch management system'''
+"""Command line interface for the darning patch management system"""
 
 import sys
 import argparse
@@ -25,85 +25,85 @@ import darning.version
 
 from darning.cli import db_utils
 
-PARSER = argparse.ArgumentParser(description=_('Provide a "darning" test file tree.'))
+PARSER = argparse.ArgumentParser(description=_("Provide a \"darning\" test file tree."))
 
 PARSER.add_argument(
-    '--version',
-    action='version',
+    "--version",
+    action="version",
     version=darning.version.VERSION
 )
 
-SUB_CMD_PARSER = PARSER.add_subparsers(title=_('commands'))
+SUB_CMD_PARSER = PARSER.add_subparsers(title=_("commands"))
 
 CREATE_PARSER = SUB_CMD_PARSER.add_parser(
-    'create',
-    description=_('Create a file tree suitable for testing "darning" functionality.'),
+    "create",
+    description=_("Create a file tree suitable for testing \"darning\" functionality."),
 )
 
 def create_cmd(args):
-    '''Execute the "create" sub command using the supplied args'''
+    """Execute the "create" sub command using the supplied args"""
     for dindex in range(6):
         if dindex:
-            dname = 'dir{0}/'.format(dindex)
+            dname = "dir{0}/".format(dindex)
             os.mkdir(dname)
         else:
-            dname = ''
+            dname = ""
         for sdindex in range(6):
             if sdindex:
                 if not dindex:
                     continue
-                sdname = 'subdir{0}/'.format(sdindex)
+                sdname = "subdir{0}/".format(sdindex)
                 os.mkdir(dname + sdname)
             else:
-                sdname = ''
+                sdname = ""
             for findex in range(1, 6):
-                tfpath = dname + sdname + 'file{0}'.format(findex)
-                open(tfpath, 'w').write('{0}: is a text file.\n'.format(tfpath))
-                bfpath = dname + sdname + 'binary{0}'.format(findex)
-                open(bfpath, 'w').write('{0}:\000is a binary file.\n'.format(bfpath))
+                tfpath = dname + sdname + "file{0}".format(findex)
+                open(tfpath, "w").write("{0}: is a text file.\n".format(tfpath))
+                bfpath = dname + sdname + "binary{0}".format(findex)
+                open(bfpath, "w").write("{0}:\000is a binary file.\n".format(bfpath))
     return 0
 
 CREATE_PARSER.set_defaults(run_cmd=create_cmd)
 
 MODIFY_PARSER = SUB_CMD_PARSER.add_parser(
-    'modify',
-    description=_('Modify the specified (or all if none specified) files.'),
+    "modify",
+    description=_("Modify the specified (or all if none specified) files."),
 )
 
 MODIFY_PARSER.add_argument(
-    '--no_newline',
-    dest='opt_no_newline',
-    action='store_true',
-    help=_('suppress the newline at the end of the change(s).'),
+    "--no_newline",
+    dest="opt_no_newline",
+    action="store_true",
+    help=_("suppress the newline at the end of the change(s)."),
 )
 
 MODIFY_PARSER.add_argument(
-    'filepaths',
-    metavar=_('file'),
-    nargs='*',
-    help=_('the name(s) of the file(s) are to be modified.'),
+    "filepaths",
+    metavar=_("file"),
+    nargs="*",
+    help=_("the name(s) of the file(s) are to be modified."),
 )
 
 def modify_cmd(args):
-    '''Execute the "modify" sub command using the supplied args'''
+    """Execute the "modify" sub command using the supplied args"""
     PM = db_utils.get_pm_db()
     db_utils.set_report_context(verbose=False)
     top_patch_name = PM.get_named_or_top_patch_name(None)
-    ending = '' if args.opt_no_newline else '\n'
+    ending = "" if args.opt_no_newline else "\n"
     if top_patch_name is None:
-        template = 'No Patches Applied; Path: "{{0}}"{0}'.format(ending)
+        template = "No Patches Applied; Path: \"{{0}}\"{0}".format(ending)
     else:
-        template = 'Patch: "{0}"; Path: "{{0}}"{1}'.format(top_patch_name, ending)
+        template = "Patch: \"{0}\"; Path: \"{{0}}\"{1}".format(top_patch_name, ending)
     if not args.filepaths:
         pass # TODO: generate list of all files in dir (exclude .darning.dbd)
     for filepath in args.filepaths:
         if not os.path.exists(filepath):
-            sys.stderr.write('{0}: file does not exist.  Ignored.'.format(filepath))
+            sys.stderr.write("{0}: file does not exist.  Ignored.".format(filepath))
             continue
         elif os.path.isdir(filepath):
-            sys.stderr.write('{0}: is a directory ignored.  Ignored.'.format(filepath))
+            sys.stderr.write("{0}: is a directory ignored.  Ignored.".format(filepath))
             continue
-        with open(filepath, 'ab') as fobj:
+        with open(filepath, "ab") as fobj:
             fobj.write(template.format(filepath).encode())
     return 0
 

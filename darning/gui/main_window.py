@@ -56,21 +56,21 @@ recollect.define("main_window", "phpane_position", recollect.Defn(int, 330))
 
 @singleton
 class MainWindow(dialogue.MainWindow, actions.CAGandUIManager, enotify.Listener, scm_actions.WDListenerMixin, pm_actions.WDListenerMixin):
-    UI_DESCR = '''
+    UI_DESCR = """
     <ui>
         <menubar name="gdarn_left_menubar">
             <menu name="gdarn_pgnd" action="actions_wd_menu">
               <menuitem action="pm_change_wd"/>
               <menuitem action="pm_create_new_pgnd"/>
               <menuitem action="pm_init_cwd"/>
-              <menuitem action='pm_edit_series_descr'/>
+              <menuitem action="pm_edit_series_descr"/>
               <menuitem action="actions_quit"/>
             </menu>
         </menubar>
         <menubar name="gdarn_right_menubar">
             <menu name="gdarn_config" action="config_menu">
               <menuitem action="allocate_xtnl_editors"/>
-              <menuitem action='config_auto_update'/>
+              <menuitem action="config_auto_update"/>
             </menu>
         </menubar>
         <toolbar name="gdarn_patches_toolbar">
@@ -89,7 +89,7 @@ class MainWindow(dialogue.MainWindow, actions.CAGandUIManager, enotify.Listener,
             <toolitem name="CombinedDiff" action="pm_combined_patch_diff_pluses"/>
         </toolbar>
     </ui>
-    '''
+    """
     def __init__(self, dir_specified=False):
         pm_gui_ifce.init()
         dialogue.MainWindow.__init__(self, Gtk.WindowType.TOPLEVEL)
@@ -128,16 +128,16 @@ class MainWindow(dialogue.MainWindow, actions.CAGandUIManager, enotify.Listener,
         hpane.connect("notify", self._paned_notify_cb, "hpane_position")
         phpane.connect("notify", self._paned_notify_cb, "phpane_position")
         nbook = Gtk.Notebook()
-        nbook.append_page(pm_file_tree_cs.TopPatchFileTreeWidget(), Gtk.Label(_('Top Patch Files')))
-        nbook.append_page(pm_file_tree_cs.CombinedPatchFileTreeWidget(), Gtk.Label(_('Combined Patch Files')))
+        nbook.append_page(pm_file_tree_cs.TopPatchFileTreeWidget(), Gtk.Label(_("Top Patch Files")))
+        nbook.append_page(pm_file_tree_cs.CombinedPatchFileTreeWidget(), Gtk.Label(_("Combined Patch Files")))
         phpane.add1(nbook)
         plist = pm_patch_list.List()
         phpane.add2(plist)
         hpane.add2(phpane)
         if terminal.AVAILABLE:
             nbook = Gtk.Notebook()
-            nbook.append_page(console.LOG, Gtk.Label(_('Transaction Log')))
-            nbook.append_page(terminal.Terminal(), Gtk.Label(_('Terminal')))
+            nbook.append_page(console.LOG, Gtk.Label(_("Transaction Log")))
+            nbook.append_page(terminal.Terminal(), Gtk.Label(_("Terminal")))
             vpane.add2(nbook)
         else:
             vpane.add2(console.LOG)
@@ -158,7 +158,7 @@ class MainWindow(dialogue.MainWindow, actions.CAGandUIManager, enotify.Listener,
 actions.CLASS_INDEP_AGS[actions.AC_DONT_CARE].add_actions(
     [
         ("config_menu", None, _("Configuration")),
-        ("actions_wd_menu", None, _('_Working Directory')),
-        ("actions_quit", Gtk.STOCK_QUIT, _('_Quit'), "",
-         _('Quit'), Gtk.main_quit),
+        ("actions_wd_menu", None, _("_Working Directory")),
+        ("actions_quit", Gtk.STOCK_QUIT, _("_Quit"), "",
+         _("Quit"), Gtk.main_quit),
     ])

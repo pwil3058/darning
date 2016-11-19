@@ -16,7 +16,7 @@
 #  The Free Software Foundation, Inc., 51 Franklin Street,
 #  Fifth Floor, Boston, MA 02110-1301 USA
 
-'''GUI interface for the darning patch management system'''
+"""GUI interface for the darning patch management system"""
 
 __author__ = "Peter Williams <pwil3058@gmail.com>"
 
@@ -32,13 +32,13 @@ from darning.gtx import recollect
 from darning.gtx import dialogue
 from darning.gui import main_window
 
-parser = argparse.ArgumentParser(description=_('GUI to manage stacked patches'))
+parser = argparse.ArgumentParser(description=_("GUI to manage stacked patches"))
 
 parser.add_argument(
-    'playground',
-    help=_('Directory where patches are to be managed'),
-    metavar=_('dir'),
-    nargs='?'
+    "playground",
+    help=_("Directory where patches are to be managed"),
+    metavar=_("dir"),
+    nargs="?"
 )
 
 args = parser.parse_args()

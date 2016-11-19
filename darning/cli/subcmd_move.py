@@ -36,8 +36,8 @@ cli_args.add_force_option(PARSER, helptext=_("move the file even if it has unref
 PARSER.add_argument(
     "--mkdir",
     help="create the target directory if necessary",
-    dest='opt_mkdir',
-    action='store_true',
+    dest="opt_mkdir",
+    action="store_true",
 )
 
 PARSER.add_argument(

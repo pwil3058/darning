@@ -13,14 +13,14 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-'''Unapply the current top patch.'''
+"""Unapply the current top patch."""
 
 from . import cli_args
 from . import db_utils
 
 PARSER = cli_args.SUB_CMD_PARSER.add_parser(
-    'pop',
-    description=_('Unapply the top patch.'),
+    "pop",
+    description=_("Unapply the top patch."),
 )
 
 PARSER.add_argument(
@@ -31,7 +31,7 @@ PARSER.add_argument(
 )
 
 def run_pop(args):
-    '''Execute the "pop" sub command using the supplied args'''
+    """Execute the "pop" sub command using the supplied args"""
     PM = db_utils.get_pm_db()
     db_utils.set_report_context(verbose=True)
     if args.opt_all:

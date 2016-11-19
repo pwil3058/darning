@@ -13,9 +13,9 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-'''
+"""
 Utility database functions that are ony of interest CLI programs
-'''
+"""
 
 import os
 import sys
@@ -25,14 +25,14 @@ from .. import rctx
 from .. import patch_db
 
 def get_pm_db():
-    '''Change directory to the base direcory and open the database'''
+    """Change directory to the base direcory and open the database"""
     for db in [patch_db]:
         BASE_DIR = db.find_base_dir(remember_sub_dir=True)
         if BASE_DIR:
             os.chdir(BASE_DIR)
             return db
-    sys.exit(_('Valid database NOT found.'))
+    sys.exit(_("Valid database NOT found."))
 
 def set_report_context(verbose=True):
     if not verbose:
-        rctx.reset(open('/dev/null', 'w'), sys.stderr)
+        rctx.reset(open("/dev/null", "w"), sys.stderr)

@@ -13,9 +13,9 @@
 ### along with this program; if not, write to the Free Software
 ### Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
 
-'''
+"""
 Library functions that are ony of interest CLI programs
-'''
+"""
 
 # This should be the only place that subcmd_* modules should be imported
 # as this is sufficient to activate them.
