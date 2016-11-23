@@ -5,10 +5,24 @@ OS="linux"
 
 PREFIX=/usr
 
-SRCS:=$(git ls-tree --full-tree -r --name-only HEAD)
+BAB_SRCS = $(wildcard darning/bab/*.py)
+GIT_SRCS = $(wildcard darning/git/*.py)
+GIT_GUI_SRCS = $(wildcard darning/git/gui/*.py)
+GTX_SRCS = $(wildcard darning/gtx/*.py)
+HG_SRCS = $(wildcard darning/hg/*.py)
+HG_GUI_SRCS = $(wildcard darning/hg/gui/*.py)
+PD_SRCS = $(wildcard darning/patch_diff/*.py)
+PD_GUI_SRCS = $(wildcard darning/patch_diff/gui/*.py)
+PM_SRCS = $(wildcard darning/pm/*.py)
+PM_GUI_SRCS = $(wildcard darning/pm/gui/*.py)
+SCM_SRCS = $(wildcard darning/scm/*.py)
+SCM_GUI_SRCS = $(wildcard darning/scm/gui/*.py)
+SM_SRCS = $(BAB_SRCS) $(GIT_SRCS) $(GTX_SRCS) $(HG_SRCS) $(PD_SRCS) $(PM_SRCS) $(SCM_SRCS)
+SM_GUI_SRCS = $(GIT_GUI_SRCS) $(HG_GUI_SRCS) $(PD_GUI_SRCS) $(PM_GUI_SRCS) $(SCM_GUI_SRCS)
+SRCS:=$(git ls-tree --full-tree -r --name-only HEAD) $(SM_SRCS) $(SM_GUI_SRCS)
 SRCDIST:=dist/darning-$(VERSION).tar.gz
 SRCDIST:=dist/darning-$(VERSION).$(OS)-$(PROCESSOR).tar.gz
-CLI_SRCS=darn $(wildcard darning/*.py) $(wildcard darning/cli/*.py)
+CLI_SRCS=darn $(wildcard darning/*.py) $(wildcard darning/cli/*.py) $(SM_SRCS)
 CLI_TEST_SCRIPTS=$(sort $(wildcard test-cli/*.test))
 CLI_TESTS=$(patsubst test-cli/%.test,test-cli/.%.ok, $(CLI_TEST_SCRIPTS))
 
