@@ -69,8 +69,8 @@ $ darn export -P first
 > First patch created.
 > -
 >
->  file1 |    1 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
->  file2 |    1 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+>  file1 | 1 +
+>  file2 | 1 +
 >  2 files changed, 2 insertions(+)
 >
 > diff --git a/file1 b/file1

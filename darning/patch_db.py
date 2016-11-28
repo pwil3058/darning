@@ -36,6 +36,8 @@ from .bab import runext
 from .bab import options
 from .bab import utils
 
+from .patch_diff import diffs
+from .patch_diff import diff_preamble
 from .patch_diff import patchlib
 
 from . import ntuples
@@ -309,7 +311,7 @@ class _DiffData(SupervisedDictFactory):
 
     @staticmethod
     def fix_trailing_whitespace(diff_data):
-        pdiff = patchlib.Diff.parse_lines(diff_data["diff_lines"])
+        pdiff = diffs.diff_parse_lines(diff_data["diff_lines"])
         result = pdiff.fix_trailing_whitespace()
         if result: # Only need to reset the data if changes were reported
             diff_data["diff_lines"] = list(pdiff.iter_lines())
@@ -317,7 +319,7 @@ class _DiffData(SupervisedDictFactory):
 
     @staticmethod
     def report_trailing_whitespace(diff_data):
-        return patchlib.Diff.parse_lines(diff_data["diff_lines"]).report_trailing_whitespace()
+        return diffs.diff_parse_lines(diff_data["diff_lines"]).report_trailing_whitespace()
 
 class _FileData(SupervisedDictFactory):
     """Factory to create/manage persistent file data for patches in dictionaries"""
@@ -463,7 +465,7 @@ def generate_diff_preamble_lines(file_path, before, after, came_from=None):
     return lines
 
 def generate_diff_preamble(file_path, before, after, came_from=None):
-    return patchlib.Preamble.parse_lines(generate_diff_preamble_lines(file_path, before, after, came_from))
+    return diff_preamble.preamble_parse_lines(generate_diff_preamble_lines(file_path, before, after, came_from))
 
 def generate_binary_diff_lines(before, after):
     from .patch_diff import gitdelta
@@ -485,7 +487,7 @@ def generate_binary_diff_lines(before, after):
 
 def generate_binary_diff(before, after):
     diff_lines = generate_binary_diff_lines(before, after)
-    return patchlib.Diff.parse_lines(diff_lines) if diff_lines else None
+    return diffs.diff_parse_lines(diff_lines) if diff_lines else None
 
 def generate_unified_diff_lines(before, after):
     before_lines = before.content.decode().splitlines(True)
@@ -501,7 +503,7 @@ def generate_unified_diff_lines(before, after):
 
 def generate_unified_diff(before, after):
     diff_lines = generate_unified_diff_lines(before, after)
-    return patchlib.Diff.parse_lines(diff_lines) if diff_lines else None
+    return diffs.diff_parse_lines(diff_lines) if diff_lines else None
 
 _DiffCreationData = collections.namedtuple("_DiffCreationData", ["label", "efd", "content", "timestamp"])
 
@@ -555,7 +557,7 @@ class FileDiffMixin(object):
         if not as_refreshed and not isinstance(self, CombinedFileData):
             as_refreshed = after.efd and self["darned"] and after.efd["git_hash"] == self["darned"]["git_hash"]
         if as_refreshed:
-            diff = patchlib.Diff.parse_lines(self["diff"]["diff_lines"]) if self["diff"] else None
+            diff = diffs.diff_parse_lines(self["diff"]["diff_lines"]) if self["diff"] else None
         elif before.content == after.content:
             diff = None
         elif before.content.find(b"\000") != -1 or after.content.find(b"\000") != -1:
@@ -1265,7 +1267,7 @@ class Patch(mixins.PedanticDictProxyMixin):
     def _apply_diff_plus_changes(self, diff_plus, drop_atws=True, num_strip_levels=1):
         retval = CmdResult.OK
         file_path = diff_plus.get_file_path(num_strip_levels)
-        if isinstance(diff_plus.diff, patchlib.GitBinaryDiff):
+        if isinstance(diff_plus.diff, diffs.GitBinaryDiff):
             git_preamble = diff_plus.get_preamble_for_type("git")
             if "deleted file mode" in git_preamble.extras:
                 RCTX.stdout.write(_("Deleting binary file \"{0}\".\n").format(rel_subdir(file_path)))
@@ -1284,7 +1286,7 @@ class Patch(mixins.PedanticDictProxyMixin):
                     RCTX.stderr.write("{0}: {1}\n".format(rel_subdir(file_path), edata))
             else:
                 RCTX.stdout.write(_("Patching binary file \"{0}\".\n").format(rel_subdir(file_path)))
-                if diff_plus.diff.forward.method == patchlib.GitBinaryDiffData.LITERAL:
+                if diff_plus.diff.forward.method == diffs.GitBinaryDiffData.LITERAL:
                     # if it's literal just insert the raw data.
                     try:
                         with open(file_path, "wb") as f_obj:
