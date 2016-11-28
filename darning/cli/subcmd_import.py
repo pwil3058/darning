@@ -20,7 +20,7 @@ import sys
 
 from ..bab import CmdResult
 
-from ..patch_diff import patchlib
+from ..patch_diff import patches
 
 from . import cli_args
 from . import db_utils
@@ -59,8 +59,8 @@ def run_import(args):
     if not args.patchname:
         args.patchname = os.path.basename(args.patchfile)
     try:
-        epatch = patchlib.Patch.parse_text(open(args.patchfile).read())
-    except patchlib.ParseError as edata:
+        epatch = patches.Patch.parse_text(open(args.patchfile).read())
+    except patches.ParseError as edata:
         if edata.lineno is None:
             sys.stderr.write(_("Parse Error: {0}.\n").format(edata.message))
         else:

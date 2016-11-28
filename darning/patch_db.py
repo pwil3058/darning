@@ -38,7 +38,7 @@ from .bab import utils
 
 from .patch_diff import diffs
 from .patch_diff import diff_preamble
-from .patch_diff import patchlib
+from .patch_diff import patches
 
 from . import ntuples
 from . import rctx as RCTX
@@ -564,7 +564,7 @@ class FileDiffMixin(object):
             diff = generate_binary_diff(before, after)
         else:
             diff = generate_unified_diff(before, after)
-        diff_plus = patchlib.DiffPlus([preamble], diff)
+        diff_plus = patches.DiffPlus([preamble], diff)
         if self["renamed_as"] and after.efd is None:
             diff_plus.trailing_junk.append(_("# Renamed to: {0}\n").format(self["renamed_as"]))
         return diff_plus
@@ -1431,15 +1431,15 @@ class Patch(mixins.PedanticDictProxyMixin):
                 RCTX.stderr.write(_("{0}: deletion failed.\n").format(rel_file_path))
         return biggest_ecode
 
-class TextDiffPlus(patchlib.DiffPlus):
+class TextDiffPlus(patches.DiffPlus):
     def __init__(self, file_data, with_timestamps=False):
         diff_plus = file_data.get_diff_plus(as_refreshed=True, with_timestamps=with_timestamps)
-        patchlib.DiffPlus.__init__(self, preambles=diff_plus.preambles, diff=diff_plus.diff)
+        patches.DiffPlus.__init__(self, preambles=diff_plus.preambles, diff=diff_plus.diff)
         self.validity = file_data.validity
 
-class TextPatch(patchlib.Patch):
+class TextPatch(patches.Patch):
     def __init__(self, patch, with_timestamps=False, with_stats=True):
-        patchlib.Patch.__init__(self, num_strip_levels=1)
+        patches.Patch.__init__(self, num_strip_levels=1)
         self.source_name = patch.name
         self.state = PatchState.APPLIED_REFRESHED if patch.is_applied else PatchState.NOT_APPLIED
         self.set_description(patch.description)
