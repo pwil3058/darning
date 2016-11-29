@@ -175,27 +175,6 @@ def _do_apply_diff_to_file(filepath, diff, delete_empty=False):
         stderr = ""
     return CmdResult(result.ecode, "", stderr)
 
-class ZippedData(object):
-    ZLIB_COMPRESSION_LEVEL = 6
-    def __init__(self, data):
-        if data is not None:
-            try:
-                self.raw_len = len(data)
-                self.zipped_data = zlib.compress(bytes(data), self.ZLIB_COMPRESSION_LEVEL)
-            except TypeError as edata:
-                print("ZIP:", len(data), ":", data, "|")
-                raise edata
-        else:
-            self.raw_len = None
-            self.zipped_data = None
-    def __bool__(self):
-        return self.zipped_data is not None
-    @property
-    def raw_data(self):
-        return zlib.decompress(self.zipped_data)
-    @property
-    def zipped_len(self):
-        return len(self.zipped_data)
 
 class OverlapData(object):
     def __init__(self, unrefreshed=None, uncommitted=None):
@@ -467,43 +446,6 @@ def generate_diff_preamble_lines(file_path, before, after, came_from=None):
 def generate_diff_preamble(file_path, before, after, came_from=None):
     return diff_preamble.preamble_parse_lines(generate_diff_preamble_lines(file_path, before, after, came_from))
 
-def generate_binary_diff_lines(before, after):
-    from .patch_diff import gitdelta
-    from .patch_diff import gitbase85
-    def _component_lines(fm_data, to_data):
-        delta = None
-        if fm_data.raw_len and to_data.raw_len:
-            delta = ZippedData(gitdelta.diff_delta(fm_data.raw_data, to_data.raw_data))
-        if delta and delta.zipped_len < to_data.zipped_len:
-            lines = ["delta {0}\n".format(delta.raw_len)] + gitbase85.encode_to_lines(delta.zipped_data) + ["\n"]
-        else:
-            lines = ["literal {0}\n".format(to_data.raw_len)] + gitbase85.encode_to_lines(to_data.zipped_data) + ["\n"]
-        return lines
-    if before.content == after.content:
-        return []
-    orig = ZippedData(before.content)
-    darned = ZippedData(after.content)
-    return ["GIT binary patch\n"] + _component_lines(orig, darned) + _component_lines(darned, orig)
-
-def generate_binary_diff(before, after):
-    diff_lines = generate_binary_diff_lines(before, after)
-    return diffs.GitBinaryDiff.parse_lines(diff_lines) if diff_lines else None
-
-def generate_unified_diff_lines(before, after):
-    before_lines = before.content.decode().splitlines(True)
-    after_lines = after.content.decode().splitlines(True)
-    diff_lines = list()
-    for diff_line in difflib.unified_diff(before_lines, after_lines, fromfile=before.label, tofile=after.label, fromfiledate=before.timestamp, tofiledate=after.timestamp):
-        if diff_line.endswith((os.linesep, "\n")):
-            diff_lines.append(diff_line)
-        else:
-            diff_lines.append(diff_line + "\n")
-            diff_lines.append("\\ No newline at end of file\n")
-    return diff_lines
-
-def generate_unified_diff(before, after):
-    diff_lines = generate_unified_diff_lines(before, after)
-    return diffs.UnifiedDiff.parse_lines(diff_lines) if diff_lines else None
 
 _DiffCreationData = collections.namedtuple("_DiffCreationData", ["label", "efd", "content", "timestamp"])
 
@@ -561,9 +503,9 @@ class FileDiffMixin(object):
         elif before.content == after.content:
             diff = None
         elif before.content.find(b"\000") != -1 or after.content.find(b"\000") != -1:
-            diff = generate_binary_diff(before, after)
+            diff = diffs.GitBinaryDiff.generate_diff(before, after)
         else:
-            diff = generate_unified_diff(before, after)
+            diff = diffs.UnifiedDiff.generate_diff(before, after)
         diff_plus = patches.DiffPlus([preamble], diff)
         if self["renamed_as"] and after.efd is None:
             diff_plus.trailing_junk.append(_("# Renamed to: {0}\n").format(self["renamed_as"]))
@@ -580,9 +522,9 @@ class FileDiffMixin(object):
         elif before.content == after.content:
             diff = ""
         elif before.content.find(b"\000") != -1 or after.content.find(b"\000") != -1:
-            diff = "".join(generate_binary_diff_lines(before, after))
+            diff = "".join(diffs.GitBinaryDiff.generate_diff_lines(before, after))
         else:
-            diff = "".join(generate_unified_diff_lines(before, after))
+            diff = "".join(diffs.UnifiedDiff.generate_diff_lines(before, after))
         trailing_junk = _("# Renamed to: {0}\n").format(self["renamed_as"]) if self["renamed_as"] and after.efd is None else ""
         return preamble + (diff if diff else "") + trailing_junk
 
@@ -877,9 +819,9 @@ class FileData(mixins.PedanticDictProxyMixin, FileDiffMixin):
         if before.content == after.content:
             self["diff"] = None
         elif before.content.find(b"\000") != -1 or after.content.find(b"\000") != -1:
-            self["diff"] = _DiffData.new_dict(diff_type="binary", diff_lines=generate_binary_diff_lines(before, after))
+            self["diff"] = _DiffData.new_dict(diff_type="binary", diff_lines=diffs.GitBinaryDiff.generate_diff_lines(before, after))
         else:
-            self["diff"] = _DiffData.new_dict(diff_type="unified", diff_lines=generate_unified_diff_lines(before, after))
+            self["diff"] = _DiffData.new_dict(diff_type="unified", diff_lines=diffs.UnifiedDiff.generate_diff_lines(before, after))
         self.patch.database.release_stored_content(self["darned"])
         self["darned"] = after.efd
         self["diff_wrt"] = before.efd
