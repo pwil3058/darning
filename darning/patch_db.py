@@ -487,7 +487,7 @@ def generate_binary_diff_lines(before, after):
 
 def generate_binary_diff(before, after):
     diff_lines = generate_binary_diff_lines(before, after)
-    return diffs.diff_parse_lines(diff_lines) if diff_lines else None
+    return diffs.GitBinaryDiff.parse_lines(diff_lines) if diff_lines else None
 
 def generate_unified_diff_lines(before, after):
     before_lines = before.content.decode().splitlines(True)
@@ -503,7 +503,7 @@ def generate_unified_diff_lines(before, after):
 
 def generate_unified_diff(before, after):
     diff_lines = generate_unified_diff_lines(before, after)
-    return diffs.diff_parse_lines(diff_lines) if diff_lines else None
+    return diffs.UnifiedDiff.parse_lines(diff_lines) if diff_lines else None
 
 _DiffCreationData = collections.namedtuple("_DiffCreationData", ["label", "efd", "content", "timestamp"])
 
