@@ -415,36 +415,24 @@ def _file_has_unresolved_merges(file_path):
     else:
         return False
 
+class _RODW:
+    """"Read Only" wrapper for dictionaries.
+    """
+    def __init__(self, wrapped_dict):
+        self.__dict = wrapped_dict
+
+
+    def __getattr__(self, attr_name):
+        return self.__dict[attr_name]
+
+def rodw(arg):
+    return None if arg is None else _RODW(arg)
+
 def generate_diff_preamble_lines(file_path, before, after, came_from=None):
-    if came_from:
-        lines = ["diff --git {0} {1}\n".format(os.path.join("a", came_from["file_path"]), os.path.join("b", file_path)), ]
-    else:
-        lines = ["diff --git {0} {1}\n".format(os.path.join("a", file_path), os.path.join("b", file_path)), ]
-    if before is None:
-        if after is not None:
-            lines.append("new file mode {0:07o}\n".format(after["lstats"].st_mode))
-    elif after is None:
-        lines.append("deleted file mode {0:07o}\n".format(before["lstats"].st_mode))
-    else:
-        if before["lstats"].st_mode != after["lstats"].st_mode:
-            lines.append("old mode {0:07o}\n".format(before["lstats"].st_mode))
-            lines.append("new mode {0:07o}\n".format(after["lstats"].st_mode))
-    if came_from:
-        if came_from["as_rename"]:
-            lines.append("rename from {0}\n".format(came_from["file_path"]))
-            lines.append("rename to {0}\n".format(file_path))
-        else:
-            lines.append("copy from {0}\n".format(came_from["file_path"]))
-            lines.append("copy to {0}\n".format(file_path))
-    if before or after:
-        hash_line = "index {0}".format(before["git_hash"] if before else "0" *48)
-        hash_line += "..{0}".format(after["git_hash"] if after else "0" *48)
-        hash_line += " {0:07o}\n".format(after["lstats"].st_mode) if after and before and before["lstats"].st_mode == after["lstats"].st_mode else "\n"
-        lines.append(hash_line)
-    return lines
+    return diff_preamble.GitPreamble.generate_preamble_lines(file_path, rodw(before), rodw(after), rodw(came_from))
 
 def generate_diff_preamble(file_path, before, after, came_from=None):
-    return diff_preamble.preamble_parse_lines(generate_diff_preamble_lines(file_path, before, after, came_from))
+    return diff_preamble.GitPreamble.generate_preamble(file_path, rodw(before), rodw(after), rodw(came_from))
 
 
 _DiffCreationData = collections.namedtuple("_DiffCreationData", ["label", "efd", "content", "timestamp"])
