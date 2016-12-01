@@ -158,23 +158,6 @@ def _tidy_text(text):
             tidy_text += re.sub("[ \t]+$", "", line) + "\n"
     return tidy_text
 
-def _do_apply_diff_to_file(filepath, diff, delete_empty=False):
-    patch_cmd_hdr = ["patch", "--merge", "--force", "-p1", "--batch", ]
-    patch_cmd = patch_cmd_hdr + (["--remove-empty-files", filepath] if delete_empty else [filepath])
-    result = runext.run_cmd(patch_cmd, input_text=str(diff).encode())
-    # move all but the first line of stdout to stderr
-    # drop first line so that reports can be made relative to subdir
-    olines = result.stdout.splitlines(True)
-    prefix = "{0}: ".format(rel_subdir(filepath))
-    # Put file name at start of line so they make sense on their own
-    if len(olines) > 1:
-        stderr = prefix + prefix.join(olines[1:] + result.stderr.splitlines(True))
-    elif result.stderr:
-        stderr = prefix + prefix.join(result.stderr.splitlines(True))
-    else:
-        stderr = ""
-    return CmdResult(result.ecode, "", stderr)
-
 
 class OverlapData(object):
     def __init__(self, unrefreshed=None, uncommitted=None):
@@ -839,7 +822,7 @@ class FileData(mixins.PedanticDictProxyMixin, FileDiffMixin):
                     retval = CmdResult.WARNING
                     RCTX.stderr.write(_("Warning: \"{0}\": binary file's original has changed.\n").format(rel_subdir(self.path)))
             else:
-                result = _do_apply_diff_to_file(self.path, "".join(self["diff"]["diff_lines"]), delete_empty=self["darned"] is None)
+                result = diffs.apply_diff_to_file(self.path, "".join(self["diff"]["diff_lines"]), delete_empty=self["darned"] is None, rel_subdir=rel_subdir)
                 if os.path.exists(self.path):
                     if self["came_from"]:
                         if self["came_from"]["as_rename"]:
@@ -1250,7 +1233,7 @@ class Patch(mixins.PedanticDictProxyMixin):
                 atws_lines = diff_plus.report_trailing_whitespace()
                 if atws_lines:
                     RCTX.stderr.write(_("Added trailing white space to \"{1}\" at line(s) {{{2}}}.\n").format(rel_subdir(file_path), ", ".join([str(line) for line in atws_lines])))
-            result = _do_apply_diff_to_file(file_path, diff_plus.diff, delete_empty=diff_plus.get_outcome() < 0)
+            result = diffs.apply_diff_to_file(file_path, diff_plus.diff, delete_empty=diff_plus.get_outcome() < 0, rel_subdir=rel_subdir)
             RCTX.stderr.write(result.stderr)
             if result.ecode == CmdResult.OK and result.stderr:
                 retval = CmdResult.WARNING
