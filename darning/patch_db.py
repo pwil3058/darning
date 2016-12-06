@@ -478,7 +478,7 @@ class FileDiffMixin(object):
         elif before.content.find(b"\000") != -1 or after.content.find(b"\000") != -1:
             diff = git_binary_diff.GitBinaryDiff.generate_diff(before, after)
         else:
-            diff = unified_diff.UnifiedDiff.generate_diff(before, after)
+            diff = unified_diff.generate_diff(before, after)
         diff_plus = patches.DiffPlus([preamble], diff)
         if self["renamed_as"] and after.efd is None:
             diff_plus.trailing_junk.append(_("# Renamed to: {0}\n").format(self["renamed_as"]))
@@ -497,7 +497,7 @@ class FileDiffMixin(object):
         elif before.content.find(b"\000") != -1 or after.content.find(b"\000") != -1:
             diff = "".join(git_binary_diff.GitBinaryDiff.generate_diff_lines(before, after))
         else:
-            diff = "".join(unified_diff.UnifiedDiff.generate_diff_lines(before, after))
+            diff = "".join(unified_diff.generate_diff_lines(before, after))
         trailing_junk = _("# Renamed to: {0}\n").format(self["renamed_as"]) if self["renamed_as"] and after.efd is None else ""
         return preamble + (diff if diff else "") + trailing_junk
 
@@ -794,7 +794,7 @@ class FileData(mixins.PedanticDictProxyMixin, FileDiffMixin):
         elif before.content.find(b"\000") != -1 or after.content.find(b"\000") != -1:
             self["diff"] = _DiffData.new_dict(diff_type="binary", diff_lines=git_binary_diff.GitBinaryDiff.generate_diff_lines(before, after))
         else:
-            self["diff"] = _DiffData.new_dict(diff_type="unified", diff_lines=unified_diff.UnifiedDiff.generate_diff_lines(before, after))
+            self["diff"] = _DiffData.new_dict(diff_type="unified", diff_lines=unified_diff.generate_diff_lines(before, after))
         self.patch.database.release_stored_content(self["darned"])
         self["darned"] = after.efd
         self["diff_wrt"] = before.efd
@@ -824,7 +824,7 @@ class FileData(mixins.PedanticDictProxyMixin, FileDiffMixin):
                     retval = CmdResult.WARNING
                     RCTX.stderr.write(_("Warning: \"{0}\": binary file's original has changed.\n").format(rel_subdir(self.path)))
             else:
-                result = unified_diff.UnifiedDiff.parse_lines(self["diff"]["diff_lines"]).apply_to_file(self.path, rel_subdir(self.path))
+                result = unified_diff.parse_diff_lines(self["diff"]["diff_lines"]).apply_to_file(self.path, rel_subdir(self.path))
                 if os.path.exists(self.path):
                     if self["came_from"]:
                         if self["came_from"]["as_rename"]:
