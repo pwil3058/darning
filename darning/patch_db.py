@@ -38,7 +38,9 @@ from .bab import utils
 
 from .patch_diff import diffs
 from .patch_diff import diff_preamble
+from .patch_diff import git_binary_diff
 from .patch_diff import patches
+from .patch_diff import unified_diff
 
 from . import ntuples
 from . import rctx as RCTX
@@ -474,9 +476,9 @@ class FileDiffMixin(object):
         elif before.content == after.content:
             diff = None
         elif before.content.find(b"\000") != -1 or after.content.find(b"\000") != -1:
-            diff = diffs.GitBinaryDiff.generate_diff(before, after)
+            diff = git_binary_diff.GitBinaryDiff.generate_diff(before, after)
         else:
-            diff = diffs.UnifiedDiff.generate_diff(before, after)
+            diff = unified_diff.UnifiedDiff.generate_diff(before, after)
         diff_plus = patches.DiffPlus([preamble], diff)
         if self["renamed_as"] and after.efd is None:
             diff_plus.trailing_junk.append(_("# Renamed to: {0}\n").format(self["renamed_as"]))
@@ -493,9 +495,9 @@ class FileDiffMixin(object):
         elif before.content == after.content:
             diff = ""
         elif before.content.find(b"\000") != -1 or after.content.find(b"\000") != -1:
-            diff = "".join(diffs.GitBinaryDiff.generate_diff_lines(before, after))
+            diff = "".join(git_binary_diff.GitBinaryDiff.generate_diff_lines(before, after))
         else:
-            diff = "".join(diffs.UnifiedDiff.generate_diff_lines(before, after))
+            diff = "".join(unified_diff.UnifiedDiff.generate_diff_lines(before, after))
         trailing_junk = _("# Renamed to: {0}\n").format(self["renamed_as"]) if self["renamed_as"] and after.efd is None else ""
         return preamble + (diff if diff else "") + trailing_junk
 
@@ -790,9 +792,9 @@ class FileData(mixins.PedanticDictProxyMixin, FileDiffMixin):
         if before.content == after.content:
             self["diff"] = None
         elif before.content.find(b"\000") != -1 or after.content.find(b"\000") != -1:
-            self["diff"] = _DiffData.new_dict(diff_type="binary", diff_lines=diffs.GitBinaryDiff.generate_diff_lines(before, after))
+            self["diff"] = _DiffData.new_dict(diff_type="binary", diff_lines=git_binary_diff.GitBinaryDiff.generate_diff_lines(before, after))
         else:
-            self["diff"] = _DiffData.new_dict(diff_type="unified", diff_lines=diffs.UnifiedDiff.generate_diff_lines(before, after))
+            self["diff"] = _DiffData.new_dict(diff_type="unified", diff_lines=unified_diff.UnifiedDiff.generate_diff_lines(before, after))
         self.patch.database.release_stored_content(self["darned"])
         self["darned"] = after.efd
         self["diff_wrt"] = before.efd
@@ -822,7 +824,7 @@ class FileData(mixins.PedanticDictProxyMixin, FileDiffMixin):
                     retval = CmdResult.WARNING
                     RCTX.stderr.write(_("Warning: \"{0}\": binary file's original has changed.\n").format(rel_subdir(self.path)))
             else:
-                result = diffs.apply_diff_to_file(self.path, "".join(self["diff"]["diff_lines"]), delete_empty=self["darned"] is None, rel_subdir=rel_subdir)
+                result = unified_diff.UnifiedDiff.parse_lines(self["diff"]["diff_lines"]).apply_to_file(self.path, rel_subdir(self.path))
                 if os.path.exists(self.path):
                     if self["came_from"]:
                         if self["came_from"]["as_rename"]:
@@ -1180,7 +1182,7 @@ class Patch(mixins.PedanticDictProxyMixin):
     def _apply_diff_plus_changes(self, diff_plus, drop_atws=True, num_strip_levels=1):
         retval = CmdResult.OK
         file_path = diff_plus.get_file_path(num_strip_levels)
-        if isinstance(diff_plus.diff, diffs.GitBinaryDiff):
+        if isinstance(diff_plus.diff, git_binary_diff.GitBinaryDiff):
             git_preamble = diff_plus.get_preamble_for_type("git")
             if "deleted file mode" in git_preamble.extras:
                 RCTX.stdout.write(_("Deleting binary file \"{0}\".\n").format(rel_subdir(file_path)))
@@ -1199,7 +1201,7 @@ class Patch(mixins.PedanticDictProxyMixin):
                     RCTX.stderr.write("{0}: {1}\n".format(rel_subdir(file_path), edata))
             else:
                 RCTX.stdout.write(_("Patching binary file \"{0}\".\n").format(rel_subdir(file_path)))
-                if diff_plus.diff.forward.method == diffs.GitBinaryDiffData.LITERAL:
+                if diff_plus.diff.forward.method == git_binary_diff.GitBinaryDiffData.LITERAL:
                     # if it's literal just insert the raw data.
                     try:
                         with open(file_path, "wb") as f_obj:
@@ -1233,7 +1235,7 @@ class Patch(mixins.PedanticDictProxyMixin):
                 atws_lines = diff_plus.report_trailing_whitespace()
                 if atws_lines:
                     RCTX.stderr.write(_("Added trailing white space to \"{1}\" at line(s) {{{2}}}.\n").format(rel_subdir(file_path), ", ".join([str(line) for line in atws_lines])))
-            result = diffs.apply_diff_to_file(file_path, diff_plus.diff, delete_empty=diff_plus.get_outcome() < 0, rel_subdir=rel_subdir)
+            result = diff_plus.diff.apply_to_file(file_path, rel_subdir(file_path))
             RCTX.stderr.write(result.stderr)
             if result.ecode == CmdResult.OK and result.stderr:
                 retval = CmdResult.WARNING
