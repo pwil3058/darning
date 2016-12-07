@@ -495,7 +495,7 @@ class FileDiffMixin(object):
         elif before.content == after.content:
             diff = ""
         elif before.content.find(b"\000") != -1 or after.content.find(b"\000") != -1:
-            diff = "".join(git_binary_diff.GitBinaryDiff.generate_diff_lines(before, after))
+            diff = "".join(git_binary_diff.generate_diff_lines(before, after))
         else:
             diff = "".join(unified_diff.generate_diff_lines(before, after))
         trailing_junk = _("# Renamed to: {0}\n").format(self["renamed_as"]) if self["renamed_as"] and after.efd is None else ""
@@ -792,7 +792,7 @@ class FileData(mixins.PedanticDictProxyMixin, FileDiffMixin):
         if before.content == after.content:
             self["diff"] = None
         elif before.content.find(b"\000") != -1 or after.content.find(b"\000") != -1:
-            self["diff"] = _DiffData.new_dict(diff_type="binary", diff_lines=git_binary_diff.GitBinaryDiff.generate_diff_lines(before, after))
+            self["diff"] = _DiffData.new_dict(diff_type="binary", diff_lines=git_binary_diff.generate_diff_lines(before, after))
         else:
             self["diff"] = _DiffData.new_dict(diff_type="unified", diff_lines=unified_diff.generate_diff_lines(before, after))
         self.patch.database.release_stored_content(self["darned"])
@@ -1210,17 +1210,11 @@ class Patch(mixins.PedanticDictProxyMixin):
                         retval = CmdResult.ERROR
                         RCTX.stderr.write("{0}: {1}\n".format(rel_subdir(file_path), edata))
                 elif diff_plus.is_compatible_with(utils.get_git_hash_for_file(file_path)):
-                    from .patch_diff import gitdelta
-                    with open(file_path, "rb") as f_obj:
-                        contents = f_obj.read()
-                    try:
-                        new_contents = gitdelta.patch_delta(contents, diff_plus.diff.forward.data_raw)
-                    except gitdelta.PatchError as edata:
-                        retval = CmdResult.ERROR
-                        RCTX.stderr.write(_("\"{0}\": imported binary delta failed to apply: {1}.\n").format(rel_subdir(file_path), edata))
-                    else:
-                        with open(file_path, "wb") as f_obj:
-                            f_obj.write(new_contents)
+                    result = diff_plus.diff.apply_to_file(file_path, rel_subdir(file_path))
+                    retval = result.ecode
+                    RCTX.stderr.write(result.stderr)
+                    if not result.is_ok:
+                        RCTX.stderr.write(_("\"{0}\": imported binary delta failed to apply.\n").format(rel_subdir(file_path)))
                 else:
                     # the original file has changed and it would be unwise to apply the delta
                     retval = CmdResult.ERROR
