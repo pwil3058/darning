@@ -1,0 +1,207 @@
+#!/usr/bin/env python3
+#
+#  Copyright 2016 Peter Williams <pwil3058@gmail.com>
+#
+# This software is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; version 2 of the License only.
+#
+# This software is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this software; if not, write to:
+#  The Free Software Foundation, Inc., 51 Franklin Street,
+#  Fifth Floor, Boston, MA 02110-1301 USA
+
+"""Tool to create and modify files for testing application of diffs."""
+
+import os
+import sys
+
+__author__ = "Peter Williams <pwil3058@gmail.com>"
+
+
+_ = lambda x: x
+
+
+def create_cmd(args):
+    """Execute the "create" sub command using the supplied args"""
+    for file_path in args.file_paths:
+        with open(file_path, "w") as f_obj:
+            # We want big chunks plus lots of repetition
+            repeats = 0
+            while repeats < 5:
+                for i in range(50):
+                    f_obj.write("line {:2}:path \"{}\": original content\n".format(i + 1, file_path))
+                repeats += 1
+    return 0
+
+
+def modify_cmd(args):
+    """Execute the "modify" sub command using the supplied args"""
+    for file_path in args.file_paths:
+        outlines = []
+        with open(file_path, "r") as f_obj:
+            for line_num, line in enumerate(f_obj.readlines(), 1):
+                if line_num >= args.start_line_num and line_num < args.start_line_num + args.num_lines:
+                    line = line.rstrip(os.linesep) + ":modified" + os.linesep
+                outlines.append(line)
+        with open(file_path, "w") as f_obj:
+            f_obj.writelines(outlines)
+    return 0
+
+
+def add_cmd(args):
+    """Execute the "add" sub command using the supplied args"""
+    for file_path in args.file_paths:
+        outlines = []
+        with open(file_path, "r") as f_obj:
+            for line_num, line in enumerate(f_obj.readlines(), 1):
+                if line_num == args.before_line_num:
+                    for i in range(args.num_lines):
+                        outlines.append("added line #{}\n".format(i + 1))
+                outlines.append(line)
+        with open(file_path, "w") as f_obj:
+            f_obj.writelines(outlines)
+    return 0
+
+
+def delete_cmd(args):
+    """Execute the "modify" sub command using the supplied args"""
+    for file_path in args.file_paths:
+        outlines = []
+        with open(file_path, "r") as f_obj:
+            for line_num, line in enumerate(f_obj.readlines(), 1):
+                if line_num >= args.start_line_num and line_num < args.start_line_num + args.num_lines:
+                    continue
+                outlines.append(line)
+        with open(file_path, "w") as f_obj:
+            f_obj.writelines(outlines)
+    return 0
+
+
+if __name__ == '__main__':
+    import argparse
+
+    PARSER = argparse.ArgumentParser(description=_("Tool to create and modify files for testing application of diffs."))
+
+    PARSER.set_defaults(run_cmd=lambda _args: PARSER.print_usage())
+
+    SUB_CMD_PARSER = PARSER.add_subparsers(title=_("commands"))
+
+    CREATE_PARSER = SUB_CMD_PARSER.add_parser(
+        "create",
+        description=_("Create a file or files suitable for testing application of diffs."),
+    )
+
+    CREATE_PARSER.set_defaults(run_cmd=create_cmd)
+
+    CREATE_PARSER.add_argument(
+        "file_paths",
+        metavar=_("file"),
+        nargs="+",
+        help=_("the paths of the file(s) are to be created."),
+    )
+
+    MODIFY_PARSER = SUB_CMD_PARSER.add_parser(
+        "modify",
+        description=_("Modify the specified lines of the specified file(s)."),
+    )
+
+    MODIFY_PARSER.set_defaults(run_cmd=modify_cmd)
+
+    MODIFY_PARSER.add_argument(
+        "file_paths",
+        metavar=_("file"),
+        nargs="+",
+        help=_("the paths of the file(s) that are to be modified."),
+    )
+
+    MODIFY_PARSER.add_argument(
+        "--start", "-s",
+        type=int,
+        required=True,
+        dest="start_line_num",
+        metavar=_("<line number>"),
+        help=_("the line number of the first line to be modified."),
+    )
+
+    MODIFY_PARSER.add_argument(
+        "-N",
+        type=int,
+        default=1,
+        dest="num_lines",
+        metavar=_("<integer>"),
+        help=_("the number of the lines to be modified."),
+    )
+
+    ADD_PARSER = SUB_CMD_PARSER.add_parser(
+        "add",
+        description=_("Add the specified number of new lines to the specified file(s)."),
+    )
+
+    ADD_PARSER.set_defaults(run_cmd=add_cmd)
+
+    ADD_PARSER.add_argument(
+        "file_paths",
+        metavar=_("file"),
+        nargs="+",
+        help=_("the paths of the file(s) are to have lines added."),
+    )
+
+    ADD_PARSER.add_argument(
+        "--before", "-b",
+        type=int,
+        required=True,
+        dest="before_line_num",
+        metavar=_("<line number>"),
+        help=_("the line number of the line new lines are to be added before."),
+    )
+
+    ADD_PARSER.add_argument(
+        "-N",
+        type=int,
+        default=1,
+        dest="num_lines",
+        metavar=_("<integer>"),
+        help=_("the number of the lines to be added."),
+    )
+
+    DELETE_PARSER = SUB_CMD_PARSER.add_parser(
+        "delete",
+        description=_("Delete the specified lines from the specified file(s)."),
+    )
+
+    DELETE_PARSER.set_defaults(run_cmd=delete_cmd)
+
+    DELETE_PARSER.add_argument(
+        "file_paths",
+        metavar=_("file"),
+        nargs="+",
+        help=_("the paths of the file(s) are to have lines deleted."),
+    )
+
+    DELETE_PARSER.add_argument(
+        "--start", "-s",
+        type=int,
+        required=True,
+        dest="start_line_num",
+        metavar=_("<line number>"),
+        help=_("the line number of the first line to be deleted."),
+    )
+
+    DELETE_PARSER.add_argument(
+        "-N",
+        type=int,
+        default=1,
+        dest="num_lines",
+        metavar=_("<integer>"),
+        help=_("the number of the lines to be deleted."),
+    )
+
+    ARGS = PARSER.parse_args()
+
+    sys.exit(ARGS.run_cmd(ARGS))

@@ -1,6 +1,6 @@
 VERSION=$(shell python3 darning/version.py)
 RELEASE=1
-PROCESSOR=$(shel uname -p)
+PROCESSOR=$(shell uname -p)
 OS="linux"
 
 PREFIX=/usr
@@ -53,15 +53,18 @@ install:
 
 check: $(CLI_TESTS)
 
-test-cli/.%.ok: test-cli/%.test $(CLI_SRCS)
+test-cli/.%.ok: test-cli/%.test
 	@LANG=C; LC_ALL=C; PATH="$(PWD):$(PATH)";	\
 	export LANG LC_ALL PATH;					\
 	cd $(@D);									\
 	../test-cli/run.py $(<F)
 	@touch $@
 
+reset_check:
+	-rm $(CLI_TESTS)
+
 clean:
 	-rm *.rpm *.spec *.exe *.tar.gz MANIFEST
 	-rm -r build
 	-rm -r dist
-	-rm $(CLI_TESTS_LEGACY) $(CLI_TESTS)
+	-rm $(CLI_TESTS)
