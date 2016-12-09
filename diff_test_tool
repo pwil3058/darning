@@ -83,6 +83,18 @@ def delete_cmd(args):
     return 0
 
 
+def show_cmd(args):
+    """Execute the "show" sub command using the supplied args"""
+    for file_path in args.file_paths:
+        with open(file_path, "r") as f_obj:
+            for line_num, line in enumerate(f_obj.readlines(), 1):
+                if line_num >= args.start_line_num and line_num < args.start_line_num + args.num_lines:
+                    sys.stdout.write(file_path + "::" + line)
+                elif line_num == args.start_line_num + args.num_lines:
+                    break
+    return 0
+
+
 if __name__ == '__main__':
     import argparse
 
@@ -200,6 +212,38 @@ if __name__ == '__main__':
         dest="num_lines",
         metavar=_("<integer>"),
         help=_("the number of the lines to be deleted."),
+    )
+
+    SHOW_PARSER = SUB_CMD_PARSER.add_parser(
+        "show",
+        description=_("Write the specified lines from the specified file(s) to stdout."),
+    )
+
+    SHOW_PARSER.set_defaults(run_cmd=show_cmd)
+
+    SHOW_PARSER.add_argument(
+        "file_paths",
+        metavar=_("file"),
+        nargs="+",
+        help=_("the paths of the file(s) are to have lines shown."),
+    )
+
+    SHOW_PARSER.add_argument(
+        "--start", "-s",
+        type=int,
+        required=True,
+        dest="start_line_num",
+        metavar=_("<line number>"),
+        help=_("the line number of the first line to be shown."),
+    )
+
+    SHOW_PARSER.add_argument(
+        "-N",
+        type=int,
+        default=1,
+        dest="num_lines",
+        metavar=_("<integer>"),
+        help=_("the number of the lines to be shown."),
     )
 
     ARGS = PARSER.parse_args()
