@@ -33,8 +33,8 @@ def create_cmd(args):
         with open(file_path, "w") as f_obj:
             # We want big chunks plus lots of repetition
             repeats = 0
-            while repeats < 5:
-                for i in range(50):
+            while repeats < args.num_repeats:
+                for i in range(args.num_lines):
                     f_obj.write("line {:2}:path \"{}\": original content\n".format(i + 1, file_path))
                 repeats += 1
     return 0
@@ -116,6 +116,24 @@ if __name__ == '__main__':
         metavar=_("file"),
         nargs="+",
         help=_("the paths of the file(s) are to be created."),
+    )
+
+    CREATE_PARSER.add_argument(
+        "-N",
+        type=int,
+        default=50,
+        dest="num_lines",
+        metavar=_("<integer>"),
+        help=_("the number of the lines to be created in each chunk."),
+    )
+
+    CREATE_PARSER.add_argument(
+        "--repeats", "-s",
+        type=int,
+        default=1,
+        dest="num_repeats",
+        metavar=_("<number>"),
+        help=_("the line number of the times the chunk of lines is to be repeated."),
     )
 
     MODIFY_PARSER = SUB_CMD_PARSER.add_parser(

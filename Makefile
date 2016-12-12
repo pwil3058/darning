@@ -53,7 +53,7 @@ install:
 
 check: $(CLI_TESTS)
 
-test-cli/.%.ok: test-cli/%.test
+test-cli/.%.ok: test-cli/%.test diff_test_tool darn_test_tree test-cli/run.py
 	@LANG=C; LC_ALL=C; PATH="$(PWD):$(PATH)";	\
 	export LANG LC_ALL PATH;					\
 	cd $(@D);									\
