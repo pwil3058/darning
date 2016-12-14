@@ -824,7 +824,16 @@ class FileData(mixins.PedanticDictProxyMixin, FileDiffMixin):
                     retval = CmdResult.WARNING
                     RCTX.stderr.write(_("Warning: \"{0}\": binary file's original has changed.\n").format(rel_subdir(self.path)))
             else:
-                result = unified_diff.parse_diff_lines(self["diff"]["diff_lines"]).apply_to_file(self.path, rel_subdir(self.path))
+                if drop_atws:
+                    atws_lines = _DiffData.fix_trailing_whitespace(self["diff"])
+                    if atws_lines:
+                        RCTX.stdout.write(_("\"{1}\": had added trailing white space at line(s) {{{1}}}: removed before application.\n").format(rel_subdir(self.path), ", ".join([str(line) for line in atws_lines])))
+                else:
+                    atws_lines = _DiffData.report_trailing_whitespace(self["diff"])
+                    if atws_lines:
+                        retval = CmdResult.WARNING
+                        RCTX.stderr.write(_("Warning: \"{0}\": has added trailing white space at line(s) {{{2}}}.\n").format(rel_subdir(self.path), ", ".join([str(line) for line in atws_lines])))
+                retval = max(retval, unified_diff.parse_diff_lines(self["diff"]["diff_lines"]).apply_to_file(self.path, rel_subdir(self.path)))
                 if os.path.exists(self.path):
                     if self["came_from"]:
                         if self["came_from"]["as_rename"]:
@@ -838,21 +847,6 @@ class FileData(mixins.PedanticDictProxyMixin, FileDiffMixin):
                 else:
                     assert already_exists
                     RCTX.stdout.write(_("\"{0}\": deleted.\n").format(rel_subdir(self.path)))
-                if drop_atws:
-                    atws_lines = _DiffData.fix_trailing_whitespace(self["diff"])
-                    if atws_lines:
-                        RCTX.stdout.write(_("\"{1}\": had added trailing white space at line(s) {{{1}}}: removed before application.\n").format(rel_subdir(self.path), ", ".join([str(line) for line in atws_lines])))
-                else:
-                    atws_lines = _DiffData.report_trailing_whitespace(self["diff"])
-                    if atws_lines:
-                        retval = CmdResult.WARNING
-                        RCTX.stderr.write(_("Warning: \"{0}\": has added trailing white space at line(s) {{{2}}}.\n").format(rel_subdir(self.path), ", ".join([str(line) for line in atws_lines])))
-                if result.ecode != 0:
-                    RCTX.stderr.write(result.stdout)
-                else:
-                    RCTX.stdout.write(result.stdout)
-                RCTX.stderr.write(result.stderr)
-                retval = result.ecode
         elif self["came_from"]:
             if self["came_from"]["as_rename"]:
                 RCTX.stdout.write(_("\"{0}\": renamed from \"{1}\".\n").format(rel_subdir(self.path), rel_subdir(self["came_from"]["file_path"])))
@@ -1210,10 +1204,8 @@ class Patch(mixins.PedanticDictProxyMixin):
                         retval = CmdResult.ERROR
                         RCTX.stderr.write("{0}: {1}\n".format(rel_subdir(file_path), edata))
                 elif diff_plus.is_compatible_with(utils.get_git_hash_for_file(file_path)):
-                    result = diff_plus.diff.apply_to_file(file_path, rel_subdir(file_path))
-                    retval = result.ecode
-                    RCTX.stderr.write(result.stderr)
-                    if not result.is_ok:
+                    retval = diff_plus.diff.apply_to_file(file_path, rel_subdir(file_path), rctx=RCTX)
+                    if retval != CmdResult.OK:
                         RCTX.stderr.write(_("\"{0}\": imported binary delta failed to apply.\n").format(rel_subdir(file_path)))
                 else:
                     # the original file has changed and it would be unwise to apply the delta
@@ -1228,13 +1220,9 @@ class Patch(mixins.PedanticDictProxyMixin):
             else:
                 atws_lines = diff_plus.report_trailing_whitespace()
                 if atws_lines:
+                    retval = CmdResult.WARNING
                     RCTX.stderr.write(_("Added trailing white space to \"{1}\" at line(s) {{{2}}}.\n").format(rel_subdir(file_path), ", ".join([str(line) for line in atws_lines])))
-            result = diff_plus.diff.apply_to_file(file_path, rel_subdir(file_path))
-            RCTX.stderr.write(result.stderr)
-            if result.ecode == CmdResult.OK and result.stderr:
-                retval = CmdResult.WARNING
-            else:
-                retval = result.ecode
+            retval = max(retval, diff_plus.diff.apply_to_file(file_path, rel_subdir(file_path), rctx=RCTX))
         if retval == CmdResult.OK:
             self.get_file(file_path).do_refresh()
         if os.path.exists(file_path):
