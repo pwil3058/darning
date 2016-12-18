@@ -78,6 +78,13 @@ MODIFY_PARSER.add_argument(
 )
 
 MODIFY_PARSER.add_argument(
+    "--add_tws",
+    dest="opt_atws",
+    action="store_true",
+    help=_("add trailing white space at end of the change(s)."),
+)
+
+MODIFY_PARSER.add_argument(
     "filepaths",
     metavar=_("file"),
     nargs="*",
@@ -89,7 +96,10 @@ def modify_cmd(args):
     PM = db_utils.get_pm_db()
     db_utils.set_report_context(verbose=False)
     top_patch_name = PM.get_named_or_top_patch_name(None)
-    ending = "" if args.opt_no_newline else "\n"
+    if args.opt_no_newline:
+        ending = " \t" if args.opt_atws else ""
+    else:
+        ending = " \t\n" if args.opt_atws else "\n"
     if top_patch_name is None:
         template = "No Patches Applied; Path: \"{{0}}\"{0}".format(ending)
     else:

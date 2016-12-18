@@ -18,7 +18,6 @@ Requirements
 This software requires:
  * Python 3.5 or later
  * PyGObject 3.0 or later
- * patch 2.6.1 or later
 
 This software works better with:
  * meld 1.5 or later

@@ -28,6 +28,47 @@ $ diff_test_tool delete --start 40 -N 6 file1
 $ darn validate
 $ darn refresh
 $ darn validate
+$ darn diff
+> diff --git a/file1 b/file1
+> index d7a8ed0be751814e9c5874b63d388cdb28cf57bc..dc9598ddb189bf8d4ec4de436723d2ac0272def2 0100664
+> --- a/file1
+> +++ b/file1
+> @@ -7,9 +7,9 @@
+>  line  7:path "file1": original content
+>  line  8:path "file1": original content
+>  line  9:path "file1": original content
+> -line 10:path "file1": original content
+> -line 11:path "file1": original content
+> -line 12:path "file1": original content
+> +line 10:path "file1": original content:modified
+> +line 11:path "file1": original content:modified
+> +line 12:path "file1": original content:modified
+>  line 13:path "file1": original content
+>  line 14:path "file1": original content
+>  line 15:path "file1": original content
+> @@ -17,6 +17,9 @@
+>  line 17:path "file1": original content
+>  line 18:path "file1": original content
+>  line 19:path "file1": original content
+> +added line #1
+> +added line #2
+> +added line #3
+>  line 20:path "file1": original content
+>  line 21:path "file1": original content
+>  line 22:path "file1": original content
+> @@ -34,12 +37,6 @@
+>  line 34:path "file1": original content
+>  line 35:path "file1": original content
+>  line 36:path "file1": original content
+> -line 37:path "file1": original content
+> -line 38:path "file1": original content
+> -line 39:path "file1": original content
+> -line 40:path "file1": original content
+> -line 41:path "file1": original content
+> -line 42:path "file1": original content
+>  line 43:path "file1": original content
+>  line 44:path "file1": original content
+>  line 45:path "file1": original content
 $ darn pop
 > There are now no patches applied.
 $ diff_test_tool add --before 8 -N 1 file1
