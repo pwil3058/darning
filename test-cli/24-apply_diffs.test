@@ -87,6 +87,7 @@ $ darn pop
 > There are now no patches applied.
 $ diff_test_tool modify --start 34 -N 3 file1
 $ darn push
+? 1
 > "file1": modified.
 > Patch "first" is now on top.
 ! file1: Hunk #3 already applied at 40-42.
@@ -99,6 +100,7 @@ $ darn pop
 > There are now no patches applied.
 $ diff_test_tool add --before 8 -N 1 file1
 $ darn push
+? 1
 > "file1": modified.
 > Patch "first" is now on top.
 ! file1: Hunk #1 merged at 11-13.

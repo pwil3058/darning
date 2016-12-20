@@ -1866,7 +1866,7 @@ def do_apply_next_patch(absorb=False, force=False):
         elif DB.top_patch.needs_refresh:
             RCTX.stderr.write(_("A refresh is required.\n"))
         RCTX.stdout.write(_("Patch \"{0}\" is now on top.\n").format(DB.top_patch.name))
-        return CmdResult.ERROR if ecode > 1 else CmdResult.OK
+        return ecode
 
 def do_copy_file_to_top_patch(file_path, as_file_path, overwrite=False):
     with open_db(mutable=True) as DB:
