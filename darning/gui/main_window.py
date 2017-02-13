@@ -92,7 +92,7 @@ class MainWindow(dialogue.MainWindow, actions.CAGandUIManager, enotify.Listener,
     """
     def __init__(self, dir_specified=False):
         pm_gui_ifce.init()
-        dialogue.MainWindow.__init__(self, Gtk.WindowType.TOPLEVEL)
+        dialogue.MainWindow.__init__(self)
         self.parse_geometry(recollect.get("main_window", "last_geometry"))
         self.set_icon_from_file(icons.APP_ICON_FILE)
         self.connect("destroy", Gtk.main_quit)
