@@ -47,7 +47,7 @@ def modify_cmd(args):
         with open(file_path, "r") as f_obj:
             for line_num, line in enumerate(f_obj.readlines(), 1):
                 if line_num >= args.start_line_num and line_num < args.start_line_num + args.num_lines:
-                    line = line.rstrip(os.linesep) + ":modified" + os.linesep
+                    line = line.rstrip() + ":modified\n"
                 outlines.append(line)
         with open(file_path, "w") as f_obj:
             f_obj.writelines(outlines)
