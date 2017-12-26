@@ -6,3 +6,4 @@ include darning.desktop
 include test-cli/*.test
 include test-cli/run.py
 include darn_test_tree
+include pixmaps/*.png
